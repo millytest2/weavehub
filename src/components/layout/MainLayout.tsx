@@ -1,4 +1,4 @@
-import { Brain, Home, Lightbulb, FileText, Map, ListTodo, LogOut, FlaskConical } from "lucide-react";
+import { Brain, Home, Lightbulb, FileText, Map, ListTodo, LogOut, FlaskConical, Compass } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -8,11 +8,12 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
+    { name: "Daily", href: "/daily", icon: ListTodo },
+    { name: "Identity", href: "/identity", icon: Compass },
     { name: "Insights", href: "/insights", icon: Lightbulb },
     { name: "Documents", href: "/documents", icon: FileText },
     { name: "Topics", href: "/paths", icon: Map },
     { name: "Experiments", href: "/experiments", icon: FlaskConical },
-    { name: "Daily", href: "/daily", icon: ListTodo },
   ];
 
   return (

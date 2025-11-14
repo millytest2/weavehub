@@ -15,6 +15,7 @@ import LearningPaths from "./pages/LearningPaths";
 import LearningPathDetail from "./pages/LearningPathDetail";
 import Experiments from "./pages/Experiments";
 import DailyFocus from "./pages/DailyFocus";
+import IdentitySeed from "./pages/IdentitySeed";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -115,6 +116,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MainLayout>
                     <DailyFocus />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/identity"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <IdentitySeed />
                   </MainLayout>
                 </ProtectedRoute>
               }
