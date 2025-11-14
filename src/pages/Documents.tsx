@@ -157,50 +157,57 @@ const Documents = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Documents</h1>
+          <h1 className="text-3xl font-medium">Documents</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Your knowledge base
+            PDFs, resources, and reference materials
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-primary hover:bg-primary/90">
+        <Button onClick={() => setIsDialogOpen(true)} size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          Add
+          Upload Document
         </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         {documents.map((doc) => (
-          <Card key={doc.id} className="rounded-[10px] shadow-sm border-border/50">
+          <Card key={doc.id} className="rounded-[10px] border-border/30">
             <CardContent className="pt-5">
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <FileText className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base mb-2">{doc.title}</h3>
-                  {doc.summary && (
-                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-3">{doc.summary}</p>
-                  )}
+                  <h3 className="font-medium text-base mb-2">{doc.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                    {doc.summary || "No summary available"}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
                   {doc.file_path && (
                     <Button
+                      variant="ghost"
                       size="sm"
-                      variant="outline"
-                      onClick={() => handleDownload(doc.file_path, doc.title)}
-                      className="h-7 text-xs border-primary/20 text-primary hover:bg-primary/10 hover:text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(doc.file_path, doc.title);
+                      }}
+                      className="h-8 w-8 p-0"
                     >
-                      <Download className="mr-1.5 h-3 w-3" />
-                      Download
+                      <Download className="h-3.5 w-3.5" />
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(doc.id, doc.file_path);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(doc.id, doc.file_path)}
-                  className="h-8 w-8 p-0 shrink-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
               </div>
             </CardContent>
           </Card>

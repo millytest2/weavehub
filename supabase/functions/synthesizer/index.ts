@@ -24,18 +24,23 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    // Fetch user's context
-    const [insights, documents, experiments] = await Promise.all([
-      supabase.from("insights").select("*").eq("user_id", user.id).limit(5),
-      supabase.from("documents").select("*").eq("user_id", user.id).limit(5),
-      supabase.from("experiments").select("*").eq("user_id", user.id).limit(5),
+    // Fetch user's context including Identity Seed
+    const [identitySeed, insights, documents, experiments, topics] = await Promise.all([
+      supabase.from("identity_seeds").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("insights").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
+      supabase.from("documents").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
+      supabase.from("experiments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
+      supabase.from("topics").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
     ]);
 
     const context = `
-User Context:
+Identity Seed (North Star): ${identitySeed.data?.content || "Not set"}
+
+Current State:
+- Topics: ${topics.data?.map(t => t.name).join(", ") || "None"}
 - Recent Insights: ${insights.data?.map(i => i.title).join(", ") || "None"}
-- Projects: ${documents.data?.map(d => d.title).join(", ") || "None"}
-- Experiments: ${experiments.data?.map(e => e.title).join(", ") || "None"}
+- Documents: ${documents.data?.map(d => d.title).join(", ") || "None"}
+- Active Experiments: ${experiments.data?.filter((e: any) => e.status === 'in_progress').map((e: any) => e.title).join(", ") || "None"}
 `;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -49,11 +54,11 @@ User Context:
         messages: [
           {
             role: "system",
-            content: "Your job is to connect anything the user gives you across identity, projects, learning, and experiments — and return ONE clear direction. Keep it unbelievably simple."
+            content: "Your job: synthesize the user's Identity Seed with their current learning, experiments, insights, and documents. Return ONE clear, simple direction or next learning step. Philosophy: proof > theory, experiments > plans, identity > productivity, ease > force, simplicity > complexity."
           },
           {
             role: "user",
-            content: `Based on this context, suggest ONE next learning step:\n${context}`
+            content: `Based on my Identity Seed and current context, suggest ONE clear next step:\n${context}`
           }
         ],
       }),

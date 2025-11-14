@@ -24,20 +24,23 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    // Fetch comprehensive user context
-    const [insights, documents, experiments, paths] = await Promise.all([
-      supabase.from("insights").select("*").eq("user_id", user.id).limit(5),
-      supabase.from("documents").select("*").eq("user_id", user.id).limit(5),
-      supabase.from("experiments").select("*").eq("user_id", user.id).eq("status", "active").limit(3),
-      supabase.from("learning_paths").select("*").eq("user_id", user.id).eq("status", "active").limit(3),
+    // Fetch user's context including Identity Seed
+    const [identitySeed, insights, documents, experiments, topics] = await Promise.all([
+      supabase.from("identity_seeds").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("insights").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
+      supabase.from("documents").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
+      supabase.from("experiments").select("*").eq("user_id", user.id).eq("status", "in_progress").limit(3),
+      supabase.from("topics").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
     ]);
 
     const context = `
-User's Current Context:
-- Identity Goals: ${insights.data?.map(i => i.title).join(", ") || "None defined"}
-- Active Projects: ${documents.data?.map(d => d.title).join(", ") || "None"}
+Identity Seed (North Star): ${identitySeed.data?.content || "Not set"}
+
+Current State:
+- Topics Learning: ${topics.data?.map(t => t.name).join(", ") || "None"}
+- Recent Insights: ${insights.data?.map(i => i.title).join(", ") || "None"}
+- Documents: ${documents.data?.map(d => d.title).join(", ") || "None"}
 - Active Experiments: ${experiments.data?.map(e => e.title).join(", ") || "None"}
-- Learning Paths: ${paths.data?.map(p => p.title).join(", ") || "None"}
 `;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -51,11 +54,11 @@ User's Current Context:
         messages: [
           {
             role: "system",
-            content: "Choose ONE daily action that: can be done in < 45 minutes, matches the user's identity goals, moves at least one project forward, feels light and doable. Output as JSON with: one_thing, why_matters, how_to_start. Keep this extremely simple."
+            content: "You are guided by the user's Identity Seed. Suggest ONE simple action (≤45 min) aligned with their identity, experiments, and learning. Philosophy: proof > theory, experiments > plans, identity > productivity, ease > force. Return JSON with: one_thing, why_matters, how_to_start."
           },
           {
             role: "user",
-            content: `Based on this context, what's my ONE thing for today?\n${context}`
+            content: `Based on my Identity Seed and current context, what's my ONE thing for today?\n${context}`
           }
         ],
         tools: [

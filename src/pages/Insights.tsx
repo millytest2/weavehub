@@ -80,28 +80,28 @@ const Insights = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Insights</h1>
+          <h1 className="text-3xl font-medium">Insights</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Your identity, values, and beliefs
+            Capture thoughts, notes, ChatGPT snippets
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-primary hover:bg-primary/90">
+        <Button onClick={() => setIsDialogOpen(true)} size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          Add
+          Add Insight
         </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         {insights.map((insight) => (
-          <Card key={insight.id} className="rounded-[10px] shadow-sm border-border/50">
+          <Card key={insight.id} className="rounded-[10px] border-border/30">
             <CardContent className="pt-5">
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <Lightbulb className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base mb-2">{insight.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{insight.content}</p>
+                  <h3 className="font-medium text-base mb-2">{insight.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{insight.content}</p>
                 </div>
                 <Button
                   variant="ghost"

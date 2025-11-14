@@ -97,28 +97,68 @@ const Topics = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Topics</h1>
-          <p className="mt-1 text-muted-foreground">
-            Organize your learning around specific subjects
+          <h1 className="text-3xl font-medium">Topics</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Areas you're learning and evolving in
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Topic
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Learning Topic</DialogTitle>
-              <DialogDescription>
-                Define a subject area you want to learn and track
-              </DialogDescription>
-            </DialogHeader>
+        <Button onClick={() => setOpen(true)} size="sm">
+          <Plus className="mr-2 h-4 w-4" />
+          New Topic
+        </Button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {topics.map((topic) => (
+          <Card
+            key={topic.id}
+            className="cursor-pointer rounded-[10px] border-border/30 hover:border-primary/30 transition-colors"
+            onClick={() => navigate(`/topics/${topic.id}`)}
+          >
+            <CardContent className="pt-5">
+              <div className="flex items-start gap-3">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${topic.color}20` }}
+                >
+                  <BookOpen className="h-4 w-4" style={{ color: topic.color }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-base mb-2">{topic.name}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                    {topic.description || "No description"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {getItemCount(topic)} items
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(topic.id);
+                  }}
+                  className="h-8 w-8 p-0 shrink-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Learning Topic</DialogTitle>
+            <DialogDescription>
+              Define a subject area you want to learn and track
+            </DialogDescription>
+          </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
@@ -158,66 +198,11 @@ const Topics = () => {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Creating..." : "Create Topic"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {topics.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <BookOpen className="mb-4 h-16 w-16 text-muted-foreground opacity-20" />
-            <h3 className="text-lg font-medium">No topics yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Create your first learning topic to get started
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {topics.map((topic) => (
-            <Card
-              key={topic.id}
-              className="cursor-pointer transition-all hover:shadow-md"
-              onClick={() => navigate(`/topics/${topic.id}`)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div
-                    className="h-8 w-8 rounded-full"
-                    style={{ backgroundColor: topic.color }}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(topic.id);
-                    }}
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CardTitle className="mt-2 text-lg">{topic.name}</CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {topic.description || "No description"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{getItemCount(topic)} items</Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {topic.insights?.[0]?.count || 0} insights · {topic.documents?.[0]?.count || 0} docs
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+            {loading ? "Creating..." : "Create Topic"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 };
