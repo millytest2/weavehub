@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, BookOpen, Trash2 } from "lucide-react";
+import { Plus, BookOpen, Trash2, Edit } from "lucide-react";
 import { z } from "zod";
 
 const topicSchema = z.object({
@@ -24,6 +24,8 @@ const Topics = () => {
   const navigate = useNavigate();
   const [topics, setTopics] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingTopic, setEditingTopic] = useState<any>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#3B82F6");
@@ -90,6 +92,52 @@ const Topics = () => {
     }
   };
 
+  const handleEdit = (topic: any) => {
+    setEditingTopic(topic);
+    setName(topic.name);
+    setDescription(topic.description || "");
+    setColor(topic.color);
+    setEditOpen(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate input
+    const validation = topicSchema.safeParse({ name, description, color });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.from("topics")
+        .update({
+          name: validation.data.name,
+          description: validation.data.description,
+          color: validation.data.color,
+        })
+        .eq("id", editingTopic.id);
+
+      if (error) throw error;
+
+      toast.success("Path updated!");
+      setName("");
+      setDescription("");
+      setColor("#3B82F6");
+      setEditOpen(false);
+      setEditingTopic(null);
+      fetchTopics();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase.from("topics").delete().eq("id", id);
@@ -127,7 +175,7 @@ const Topics = () => {
 
       <div className="grid gap-4 md:grid-cols-3">
         {topics.map((topic) => (
-          <Card key={topic.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
+          <Card key={topic.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200">
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div
@@ -136,20 +184,36 @@ const Topics = () => {
                 >
                   <BookOpen className="h-4 w-4" style={{ color: topic.color }} />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/paths/${topic.id}`)}>
                   <h3 className="font-medium text-base mb-2">{topic.name}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
                     {topic.description || "No description"}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(topic.id)}
-                  className="h-8 w-8 p-0 shrink-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(topic);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(topic.id);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -208,6 +272,67 @@ const Topics = () => {
         </form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={editOpen} onOpenChange={(open) => {
+      setEditOpen(open);
+      if (!open) {
+        setName("");
+        setDescription("");
+        setColor("#3B82F6");
+        setEditingTopic(null);
+      }
+    }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Learning Path</DialogTitle>
+          <DialogDescription>
+            Update your learning path details
+          </DialogDescription>
+        </DialogHeader>
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                placeholder="e.g., AI & Machine Learning"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="What do you want to learn about this path?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-color">Color</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="edit-color"
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="h-10 w-20"
+                />
+                <Input
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  placeholder="#3B82F6"
+                />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Updating..." : "Update Path"}
+        </Button>
+      </form>
+    </DialogContent>
+  </Dialog>
     </div>
   );
 };

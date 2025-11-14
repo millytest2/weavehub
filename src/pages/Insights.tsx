@@ -106,17 +106,17 @@ const Insights = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         {insights.map((insight) => (
           <Card key={insight.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 pb-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <Lightbulb className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-base mb-2">{insight.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{insight.content}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">{insight.content}</p>
                 </div>
                 <Button
                   variant="ghost"
