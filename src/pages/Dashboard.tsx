@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Lightbulb, FlaskConical, Map, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -77,18 +77,19 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto">
+      {/* 3-Card Layout */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Card 1 — Today's One Thing */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base">Today's One Thing</CardTitle>
+        <Card className="rounded-[10px] shadow-sm border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold">Today's One Thing</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {todayTask ? (
               <div className="space-y-2">
-                <p className="font-medium">{(todayTask as any).one_thing}</p>
-                <p className="text-sm text-muted-foreground">{(todayTask as any).why_matters}</p>
+                <p className="font-medium text-foreground">{(todayTask as any).one_thing}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{(todayTask as any).why_matters}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No focus set yet</p>
@@ -97,7 +98,7 @@ const Dashboard = () => {
               size="sm"
               onClick={handleGenerateDailyOne}
               disabled={isGenerating}
-              className="w-full"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isGenerating ? "Generating..." : "Generate"}
             </Button>
@@ -105,15 +106,15 @@ const Dashboard = () => {
         </Card>
 
         {/* Card 2 — Active Experiment */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base">Active Experiment</CardTitle>
+        <Card className="rounded-[10px] shadow-sm border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold">Active Experiment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {activeExperiment ? (
               <div className="space-y-2">
-                <p className="font-medium">{(activeExperiment as any).title}</p>
-                <p className="text-sm text-muted-foreground">{(activeExperiment as any).identity_shift_target}</p>
+                <p className="font-medium text-foreground">{(activeExperiment as any).title}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{(activeExperiment as any).identity_shift_target}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No experiment yet</p>
@@ -122,7 +123,7 @@ const Dashboard = () => {
               size="sm"
               variant="outline"
               onClick={() => navigate("/experiments")}
-              className="w-full"
+              className="w-full border-border hover:bg-secondary"
             >
               Refine Experiment
             </Button>
@@ -130,13 +131,13 @@ const Dashboard = () => {
         </Card>
 
         {/* Card 3 — Direction Sync */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base">Direction Sync</CardTitle>
+        <Card className="rounded-[10px] shadow-sm border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold">Direction Sync</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {syncResult ? (
-              <p className="text-sm">{syncResult}</p>
+              <p className="text-sm leading-relaxed line-clamp-3">{syncResult}</p>
             ) : (
               <p className="text-sm text-muted-foreground">Sync your direction</p>
             )}
@@ -144,13 +145,53 @@ const Dashboard = () => {
               size="sm"
               onClick={handleSyncLife}
               disabled={isSyncing}
-              className="w-full"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Sparkles className="mr-2 h-4 w-4" />
               {isSyncing ? "Syncing..." : "Sync My Life"}
             </Button>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Mini Actions Row */}
+      <div className="flex flex-wrap items-center gap-4 justify-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/insights")}
+          className="text-primary hover:bg-primary/10 hover:text-primary"
+        >
+          <Lightbulb className="mr-2 h-4 w-4" />
+          Add Insight
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/experiments")}
+          className="text-primary hover:bg-primary/10 hover:text-primary"
+        >
+          <FlaskConical className="mr-2 h-4 w-4" />
+          Add Experiment
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/paths")}
+          className="text-primary hover:bg-primary/10 hover:text-primary"
+        >
+          <Map className="mr-2 h-4 w-4" />
+          Add Learning Step
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/documents")}
+          className="text-primary hover:bg-primary/10 hover:text-primary"
+        >
+          <FileText className="mr-2 h-4 w-4" />
+          Upload Document
+        </Button>
       </div>
     </div>
   );
