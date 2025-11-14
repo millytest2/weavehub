@@ -11,6 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Trash2, Upload, Download, Plus, FileText, Eye } from "lucide-react";
 import { z } from "zod";
+import * as pdfjs from 'pdfjs-dist';
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const documentSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
@@ -52,104 +56,102 @@ const Documents = () => {
     setDocuments(data || []);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    const file = e.target.files[0];
-    setUploading(true);
-
+  const extractPdfText = async (file: File): Promise<string> => {
     try {
-      const fileExt = file.name.split('.').pop();
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n';
+      }
+      
+      if (!fullText.trim()) {
+        throw new Error('No readable text found in PDF');
+      }
+      
+      return fullText;
+    } catch (error) {
+      console.error('PDF extraction error:', error);
+      throw new Error('Failed to extract text from PDF');
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setSelectedFile(file);
+    setUploadTitle(file.name);
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!selectedFile) return;
+    
+    setUploading(true);
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user!.id}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(fileName, file);
+        .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
 
       const { data: docData, error: dbError } = await supabase.from("documents").insert({
         user_id: user!.id,
-        title: file.name,
+        title: uploadTitle || selectedFile.name,
         file_path: fileName,
-        file_type: file.type,
-        file_size: file.size,
+        file_type: selectedFile.type,
+        file_size: selectedFile.size,
       }).select().single();
 
       if (dbError) throw dbError;
 
-      toast.success("Document uploaded! Processing with AI...");
+      toast.success("Document uploaded!");
       
-      // For PDFs and complex documents, we need to extract text properly
-      try {
-        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-          console.log('Processing PDF:', file.name, 'Size:', file.size);
+      // Only run AI analysis if toggle is ON
+      if (runAnalysis) {
+        toast.info("Processing with AI...");
+        
+        try {
+          let extractedContent = '';
           
-          // For PDFs, read as array buffer and send to edge function for processing
-          const arrayBuffer = await file.arrayBuffer();
-          console.log('ArrayBuffer size:', arrayBuffer.byteLength);
-          
-          const base64Content = btoa(
-            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-          );
-          console.log('Base64 content length:', base64Content.length);
-          
-          console.log('Calling document-intelligence edge function...');
-          const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
-            body: {
-              documentId: docData.id,
-              content: base64Content,
-              title: file.name,
-              isPdf: true
-            }
-          });
-
-          console.log('Edge function response:', { aiData, aiError });
-
-          if (aiError) {
-            console.error('AI processing error:', aiError);
-            toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
-          } else if (aiData) {
-            toast.success(`Document processed! Created ${aiData.insightsCreated || 0} insights.`);
+          if (selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')) {
+            extractedContent = await extractPdfText(selectedFile);
           } else {
-            toast.warning("Document uploaded but no response from AI");
+            extractedContent = await selectedFile.text();
           }
-        } else {
-          console.log('Processing text file:', file.name);
-          
-          // For text files, read as text
-          const extractedContent = await file.text();
-          console.log('Text content length:', extractedContent.length);
           
           const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
             body: {
               documentId: docData.id,
               content: extractedContent.substring(0, 50000),
-              title: file.name,
-              isPdf: false
+              title: uploadTitle || selectedFile.name
             }
           });
-
-          console.log('Edge function response:', { aiData, aiError });
 
           if (aiError) {
             console.error('AI processing error:', aiError);
             toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
           } else if (aiData) {
-            toast.success(`Document processed! Created ${aiData.insightsCreated || 0} insights.`);
-          } else {
-            toast.warning("Document uploaded but no response from AI");
+            toast.success(`AI analysis complete! Created ${aiData.insightsCreated || 0} insights.`);
           }
+        } catch (error) {
+          console.error('Error processing document:', error);
+          toast.error("AI processing failed: " + (error instanceof Error ? error.message : 'Unknown error'));
         }
-      } catch (error) {
-        console.error('Error processing document:', error);
-        toast.error("Failed to process document: " + (error instanceof Error ? error.message : 'Unknown error'));
-      } finally {
-        fetchDocuments();
       }
       
-      setTitle("");
-      setSummary("");
+      fetchDocuments();
+      setSelectedFile(null);
+      setUploadTitle("");
+      setRunAnalysis(false);
       setIsDialogOpen(false);
     } catch (error: any) {
       toast.error(error.message);
@@ -351,11 +353,42 @@ const Documents = () => {
               <Input
                 id="file"
                 type="file"
-                onChange={handleFileUpload}
+                onChange={handleFileSelect}
                 disabled={uploading}
                 className="mt-1.5"
               />
             </div>
+            {selectedFile && (
+              <>
+                <div>
+                  <Label htmlFor="uploadTitle">Document Title</Label>
+                  <Input
+                    id="uploadTitle"
+                    value={uploadTitle}
+                    onChange={(e) => setUploadTitle(e.target.value)}
+                    placeholder="Enter document title"
+                    className="mt-1.5"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="runAnalysis" className="text-sm font-medium">
+                    Analyze with AI
+                  </Label>
+                  <Switch
+                    id="runAnalysis"
+                    checked={runAnalysis}
+                    onCheckedChange={setRunAnalysis}
+                  />
+                </div>
+                <Button 
+                  onClick={handleConfirmUpload} 
+                  disabled={uploading}
+                  className="w-full"
+                >
+                  {uploading ? "Uploading..." : "Save Upload"}
+                </Button>
+              </>
+            )}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
