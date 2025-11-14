@@ -90,8 +90,8 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             {todayTask ? (
               <div className="space-y-2">
-                <p className="font-medium">{(todayTask as any).one_thing}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">{(todayTask as any).why_matters}</p>
+                <p className="font-medium text-sm">{(todayTask as any).one_thing}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{(todayTask as any).why_matters}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No focus set yet</p>

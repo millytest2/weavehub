@@ -54,13 +54,25 @@ Current State:
         messages: [
           {
             role: "system",
-            content: "Your job: synthesize the user's Identity Seed with their current learning, experiments, insights, and documents. Return ONE clear, simple direction or next learning step. Philosophy: proof > theory, experiments > plans, identity > productivity, ease > force, simplicity > complexity."
+            content: `You are a direction synthesizer. Look at the user's Identity Seed and current state, then return ONE clear direction.
+
+Return a JSON object with this exact structure:
+{
+  "headline": "Short direction phrase (5-8 words)",
+  "summary": "2-4 sentence explanation of how things connect",
+  "recommended_topic_id": null,
+  "recommended_experiment_id": null,
+  "suggested_next_step": "One concrete next step"
+}
+
+Philosophy: proof > theory, experiments > plans, identity > productivity, ease > force, simplicity > complexity.`
           },
           {
             role: "user",
-            content: `Based on my Identity Seed and current context, suggest ONE clear next step:\n${context}`
+            content: `Based on my Identity Seed and current context, suggest ONE clear direction:\n${context}`
           }
         ],
+        response_format: { type: "json_object" }
       }),
     });
 
@@ -81,10 +93,11 @@ Current State:
     }
 
     const data = await response.json();
-    const suggestion = data.choices[0].message.content;
+    const resultText = data.choices[0].message.content;
+    const result = JSON.parse(resultText);
 
     return new Response(
-      JSON.stringify({ suggestion }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
