@@ -52,59 +52,57 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'openai/gpt-5',
         messages: [
           {
             role: 'system',
-            content: `You are a document intelligence agent. Extract structured insights from documents.
-Return JSON with this exact structure:
-{
-  "summary": "2-3 sentence summary",
-  "keyTakeaways": ["takeaway1", "takeaway2", "takeaway3"],
-  "actionItems": [{"title": "action", "priority": "high|medium|low"}],
-  "suggestedTopics": ["topic1", "topic2"],
-  "relatedExperiments": ["experiment idea 1", "experiment idea 2"]
-}`
+            content: `You are a document intelligence agent that extracts key insights from documents.
+
+CRITICAL INSTRUCTIONS:
+- Only extract 1-2 truly meaningful insights that are NOT obvious from the title
+- Each insight must have a unique, descriptive title (5-10 words) and detailed content
+- Insights should be actionable, surprising, or provide deep understanding
+- If the document is corrupted, unreadable, or contains no meaningful insights, return empty arrays
+- DO NOT create generic takeaways like "The document discusses..." - be specific and insightful
+- Focus on non-obvious patterns, strategies, frameworks, or actionable knowledge`
           },
           {
             role: 'user',
-            content: `Document Title: ${title}\n\nContent:\n${content}\n\nExtract insights:`
+            content: `Document Title: ${title}\n\nContent:\n${content}\n\nExtract key insights from this document. Remember: only 1-2 truly meaningful insights with unique titles and detailed descriptions. If there are no real insights, return empty arrays.`
           }
         ],
         tools: [{
           type: "function",
           function: {
             name: "extract_document_intelligence",
-            description: "Extract structured intelligence from a document",
+            description: "Extract meaningful insights from a document",
             parameters: {
               type: "object",
               properties: {
-                summary: { type: "string" },
-                keyTakeaways: {
-                  type: "array",
-                  items: { type: "string" }
+                summary: { 
+                  type: "string",
+                  description: "A concise 2-3 sentence summary of the document's main content"
                 },
-                actionItems: {
+                insights: {
                   type: "array",
+                  description: "1-2 key insights with unique titles and detailed content. Leave empty if no meaningful insights found.",
                   items: {
                     type: "object",
                     properties: {
-                      title: { type: "string" },
-                      priority: { type: "string", enum: ["high", "medium", "low"] }
+                      title: { 
+                        type: "string",
+                        description: "A unique, descriptive title for this insight (5-10 words)"
+                      },
+                      content: { 
+                        type: "string",
+                        description: "Detailed explanation of the insight (2-4 sentences)"
+                      }
                     },
-                    required: ["title", "priority"]
+                    required: ["title", "content"]
                   }
-                },
-                suggestedTopics: {
-                  type: "array",
-                  items: { type: "string" }
-                },
-                relatedExperiments: {
-                  type: "array",
-                  items: { type: "string" }
                 }
               },
-              required: ["summary", "keyTakeaways", "actionItems", "suggestedTopics", "relatedExperiments"]
+              required: ["summary", "insights"]
             }
           }
         }],
@@ -152,82 +150,37 @@ Return JSON with this exact structure:
       throw updateError;
     }
 
-    // Create insights from key takeaways with meaningful titles
-    const insightsToCreate = intelligence.keyTakeaways.map((takeaway: string) => {
-      // Extract first sentence or first 60 chars as title
-      const firstSentence = takeaway.split(/[.!?]/)[0].trim();
-      const insightTitle = firstSentence.length > 60 
-        ? firstSentence.substring(0, 60) + '...'
-        : firstSentence;
-      
-      return {
-        user_id: user.id,
-        title: insightTitle || 'Document Insight',
-        content: takeaway,
-        source: 'document_ai',
-      };
-    });
+    // Create insights only if there are meaningful ones
+    let insightsCreated = 0;
+    if (intelligence.insights && intelligence.insights.length > 0) {
+      const insightsToCreate = intelligence.insights
+        .slice(0, 2) // Max 2 insights
+        .map((insight: { title: string; content: string }) => ({
+          user_id: user.id,
+          title: insight.title,
+          content: insight.content,
+          source: 'document_ai',
+        }));
 
-    if (insightsToCreate.length > 0) {
-      const { error: insightsError } = await supabase
-        .from('insights')
-        .insert(insightsToCreate);
+      if (insightsToCreate.length > 0) {
+        const { error: insightsError } = await supabase
+          .from('insights')
+          .insert(insightsToCreate);
 
-      if (insightsError) {
-        console.error('Error creating insights:', insightsError);
-      }
-    }
-
-    // Get or create suggested topics
-    const topicIds = [];
-    for (const topicName of intelligence.suggestedTopics) {
-      const { data: existingTopic } = await supabase
-        .from('topics')
-        .select('id')
-        .eq('user_id', user.id)
-        .ilike('name', topicName)
-        .single();
-
-      if (existingTopic) {
-        topicIds.push(existingTopic.id);
-      } else {
-        const { data: newTopic, error: topicError } = await supabase
-          .from('topics')
-          .insert({
-            user_id: user.id,
-            name: topicName,
-            description: `Auto-created from document: ${title}`
-          })
-          .select('id')
-          .single();
-
-        if (!topicError && newTopic) {
-          topicIds.push(newTopic.id);
+        if (insightsError) {
+          console.error('Error creating insights:', insightsError);
+        } else {
+          insightsCreated = insightsToCreate.length;
         }
       }
-    }
-
-    // Create connections between document and topics
-    const connections = topicIds.map(topicId => ({
-      user_id: user.id,
-      source_type: 'document',
-      source_id: documentId,
-      target_type: 'topic',
-      target_id: topicId,
-      note: 'AI-detected relationship'
-    }));
-
-    if (connections.length > 0) {
-      await supabase.from('connections').insert(connections);
     }
 
     console.log(`Successfully processed document ${documentId}`);
 
     return new Response(JSON.stringify({
       success: true,
-      intelligence,
-      topicsCreated: topicIds.length,
-      insightsCreated: insightsToCreate.length
+      summary: intelligence.summary,
+      insightsCreated
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
