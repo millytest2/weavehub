@@ -13,6 +13,8 @@ import { Trash2, Upload, Download, Plus, FileText, Eye } from "lucide-react";
 import { z } from "zod";
 import * as pdfjs from 'pdfjs-dist';
 import { createWorker } from 'tesseract.js';
+// @ts-ignore - browser build has no types
+import mammoth from 'mammoth/mammoth.browser';
 
 // Set up PDF.js worker with correct version
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/build/pdf.worker.min.mjs`;
