@@ -132,7 +132,7 @@ const Insights = () => {
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                rows={4}
+                rows={3}
                 required
               />
             </div>

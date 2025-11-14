@@ -139,7 +139,9 @@ const Documents = () => {
   const handleGenerateNextStep = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("navigator");
+      const { data, error } = await supabase.functions.invoke("navigator", {
+        body: { context: "documents" }
+      });
 
       if (error) throw error;
 
@@ -155,7 +157,7 @@ const Documents = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Projects</h1>
+          <h1 className="text-3xl font-medium">Documents</h1>
           <p className="text-muted-foreground mt-2">
             Your active work and resources
           </p>
