@@ -275,10 +275,6 @@ const Documents = () => {
               documentId: docData.id,
               content: extractedContent.substring(0, 50000),
               title: uploadTitle || selectedFile.name
-            },
-            headers: {
-              Authorization: `Bearer ${currentSession.access_token}`,
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             }
           });
 
