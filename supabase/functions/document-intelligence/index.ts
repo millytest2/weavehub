@@ -55,7 +55,16 @@ serve(async (req) => {
         
         // Use pdf.js to extract text
         const pdfjs = await import("https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs");
-        const loadingTask = pdfjs.getDocument({ data: bytes });
+        
+        // Disable worker for server-side environment
+        pdfjs.GlobalWorkerOptions.workerSrc = '';
+        
+        const loadingTask = pdfjs.getDocument({ 
+          data: bytes,
+          useWorkerFetch: false,
+          isEvalSupported: false,
+          useSystemFonts: true
+        });
         const pdf = await loadingTask.promise;
         
         let fullText = '';
