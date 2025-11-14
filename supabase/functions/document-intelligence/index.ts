@@ -53,31 +53,44 @@ serve(async (req) => {
           bytes[i] = binaryString.charCodeAt(i);
         }
         
-        // Use pdf.js to extract text
-        const pdfjs = await import("https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs");
+        console.log(`PDF bytes length: ${bytes.length}`);
         
-        // Disable worker for server-side environment
-        pdfjs.GlobalWorkerOptions.workerSrc = '';
+        // Simple PDF text extraction - look for text content streams
+        // This is a basic approach that works for most text-based PDFs
+        const decoder = new TextDecoder('utf-8', { fatal: false });
+        const pdfText = decoder.decode(bytes);
         
-        const loadingTask = pdfjs.getDocument({ 
-          data: bytes,
-          useWorkerFetch: false,
-          isEvalSupported: false,
-          useSystemFonts: true
-        });
-        const pdf = await loadingTask.promise;
-        
+        // Extract text between "BT" (Begin Text) and "ET" (End Text) markers
+        // Also extract from stream objects
+        const textMatches = pdfText.match(/\(([^)]+)\)/g);
         let fullText = '';
-        const maxPages = Math.min(pdf.numPages, 50);
-        for (let i = 1; i <= maxPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items.map((item: any) => item.str).join(' ');
-          fullText += pageText + '\n';
+        
+        if (textMatches) {
+          for (const match of textMatches) {
+            // Remove parentheses and unescape
+            let text = match.slice(1, -1);
+            // Replace common PDF escape sequences
+            text = text.replace(/\\n/g, '\n')
+                      .replace(/\\r/g, '\r')
+                      .replace(/\\t/g, '\t')
+                      .replace(/\\\(/g, '(')
+                      .replace(/\\\)/g, ')')
+                      .replace(/\\\\/g, '\\');
+            fullText += text + ' ';
+          }
         }
         
-        extractedText = fullText;
-        console.log(`Extracted ${extractedText.length} characters from ${maxPages} pages`);
+        // Also try to extract from Tj and TJ operators
+        const tjMatches = pdfText.match(/\[(.*?)\]\s*TJ/g);
+        if (tjMatches) {
+          for (const match of tjMatches) {
+            const text = match.replace(/\[|\]\s*TJ/g, '').replace(/[()]/g, '');
+            fullText += text + ' ';
+          }
+        }
+        
+        extractedText = fullText.trim();
+        console.log(`Extracted ${extractedText.length} characters from PDF`);
       } catch (error) {
         console.error('PDF extraction failed:', error);
         throw new Error(`Failed to extract PDF text: ${error instanceof Error ? error.message : 'Unknown error'}`);
