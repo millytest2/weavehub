@@ -34,9 +34,10 @@ const DailyFocus = () => {
 
     if (!error && data) {
       setTodayTask(data);
-      setOneThing(data.one_thing || "");
-      setWhyMatters(data.why_matters || "");
-      setReflection(data.reflection || "");
+      const taskData = data as any;
+      setOneThing(taskData.one_thing || "");
+      setWhyMatters(taskData.why_matters || "");
+      setReflection(taskData.reflection || "");
     }
   };
 
@@ -57,7 +58,7 @@ const DailyFocus = () => {
             one_thing: oneThing,
             why_matters: whyMatters,
             reflection: reflection,
-          })
+          } as any)
           .eq("id", todayTask.id);
 
         if (error) throw error;
@@ -70,7 +71,7 @@ const DailyFocus = () => {
           reflection: reflection,
           task_date: today,
           completed: false,
-        }]);
+        } as any]);
 
         if (error) throw error;
       }

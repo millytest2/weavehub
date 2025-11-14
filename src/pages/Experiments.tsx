@@ -28,7 +28,7 @@ const Experiments = () => {
   }, [user]);
 
   const fetchExperiments = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("experiments")
       .select("*")
       .eq("user_id", user!.id)
@@ -47,7 +47,7 @@ const Experiments = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("experiments").insert({
+      const { error } = await (supabase as any).from("experiments").insert({
         user_id: user!.id,
         title,
         description,
@@ -103,7 +103,7 @@ const Experiments = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from("experiments").delete().eq("id", id);
+      const { error } = await (supabase as any).from("experiments").delete().eq("id", id);
 
       if (error) throw error;
 

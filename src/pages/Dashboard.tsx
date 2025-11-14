@@ -27,7 +27,7 @@ const Dashboard = () => {
           .eq("user_id", user.id)
           .eq("task_date", new Date().toISOString().split("T")[0])
           .single(),
-        supabase
+        (supabase as any)
           .from("experiments")
           .select("*")
           .eq("user_id", user.id)
@@ -49,7 +49,7 @@ const Dashboard = () => {
       const { data, error } = await supabase.functions.invoke("navigator");
       if (error) throw error;
       if (data) {
-        setTodayTask({ one_thing: data.one_thing, why_matters: data.why_matters });
+        setTodayTask({ one_thing: data.one_thing, why_matters: data.why_matters } as any);
         toast.success("Generated your daily focus");
       }
     } catch (error: any) {
@@ -87,8 +87,8 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             {todayTask ? (
               <div className="space-y-2">
-                <p className="font-medium">{todayTask.one_thing}</p>
-                <p className="text-sm text-muted-foreground">{todayTask.why_matters}</p>
+                <p className="font-medium">{(todayTask as any).one_thing}</p>
+                <p className="text-sm text-muted-foreground">{(todayTask as any).why_matters}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No focus set yet</p>
@@ -112,8 +112,8 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             {activeExperiment ? (
               <div className="space-y-2">
-                <p className="font-medium">{activeExperiment.title}</p>
-                <p className="text-sm text-muted-foreground">{activeExperiment.identity_shift_target}</p>
+                <p className="font-medium">{(activeExperiment as any).title}</p>
+                <p className="text-sm text-muted-foreground">{(activeExperiment as any).identity_shift_target}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No experiment yet</p>
