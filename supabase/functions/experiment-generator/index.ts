@@ -24,16 +24,21 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    // Fetch user's identity insights
-    const { data: insights } = await supabase
-      .from("insights")
-      .select("*")
-      .eq("user_id", user.id)
-      .limit(5);
+    // Fetch user's context including Identity Seed
+    const [identitySeed, insights, userExperiments, topics] = await Promise.all([
+      supabase.from("identity_seeds").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("insights").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+      supabase.from("experiments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
+      supabase.from("topics").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
+    ]);
 
     const context = `
-User's Identity Context:
-${insights?.map(i => `- ${i.title}: ${i.content}`).join("\n") || "No identity data yet"}
+Identity Seed (North Star): ${identitySeed.data?.content || "Not set"}
+
+Current State:
+- Topics Learning: ${topics.data?.map(t => t.name).join(", ") || "None"}
+- Recent Insights/Patterns: ${insights.data?.map(i => `${i.title}: ${i.content.substring(0, 100)}`).join("\n") || "None"}
+- Past Experiments: ${userExperiments.data?.map(e => `${e.title} (${e.status})`).join(", ") || "None"}
 `;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -47,11 +52,11 @@ ${insights?.map(i => `- ${i.title}: ${i.content}`).join("\n") || "No identity da
         messages: [
           {
             role: "system",
-            content: "Generate 1–2 simple, fun, realistic experiments with: steps, duration, identity shift trained. Keep them very light, no complexity, no long essays. Return as JSON array with fields: title, steps (array of strings), duration, identity_shift_target, description."
+            content: "Based on the user's Identity Seed, recent insights, and patterns, suggest 1-3 small Anti-MBA style experiments. Each should be: testable, simple (7-14 days max), focused on identity shift, actionable. Philosophy: proof > theory, experiments > plans, identity > productivity. Return JSON."
           },
           {
             role: "user",
-            content: `Based on this identity context, generate experiments:\n${context}`
+            content: `Based on my Identity Seed and patterns, generate experiment suggestions:\n${context}`
           }
         ],
         tools: [
@@ -59,7 +64,7 @@ ${insights?.map(i => `- ${i.title}: ${i.content}`).join("\n") || "No identity da
             type: "function",
             function: {
               name: "generate_experiments",
-              description: "Generate 1-2 simple experiments",
+              description: "Generate 1-3 small experiment suggestions",
               parameters: {
                 type: "object",
                 properties: {
@@ -68,13 +73,13 @@ ${insights?.map(i => `- ${i.title}: ${i.content}`).join("\n") || "No identity da
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string" },
-                        steps: { type: "array", items: { type: "string" } },
-                        duration: { type: "string" },
-                        identity_shift_target: { type: "string" },
-                        description: { type: "string" }
+                        title: { type: "string", description: "Short experiment title" },
+                        description: { type: "string", description: "What you're testing (2-3 sentences)" },
+                        steps: { type: "array", items: { type: "string" }, description: "3-5 concrete action steps" },
+                        duration: { type: "string", description: "e.g., '7 days', '2 weeks'" },
+                        identity_shift_target: { type: "string", description: "The identity shift you're testing" }
                       },
-                      required: ["title", "steps", "duration", "identity_shift_target", "description"]
+                      required: ["title", "description", "steps", "duration", "identity_shift_target"]
                     }
                   }
                 },
@@ -105,10 +110,10 @@ ${insights?.map(i => `- ${i.title}: ${i.content}`).join("\n") || "No identity da
 
     const data = await response.json();
     const toolCall = data.choices[0].message.tool_calls?.[0];
-    const experiments = JSON.parse(toolCall.function.arguments).experiments;
+    const experiments = JSON.parse(toolCall.function.arguments);
 
     return new Response(
-      JSON.stringify({ experiments }),
+      JSON.stringify(experiments),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

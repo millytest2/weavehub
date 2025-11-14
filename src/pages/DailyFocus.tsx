@@ -105,13 +105,13 @@ const DailyFocus = () => {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold">Daily Focus</h1>
+        <h1 className="text-3xl font-medium">Daily</h1>
         <p className="text-sm text-muted-foreground mt-1">
           What's your ONE thing today?
         </p>
       </div>
 
-      <Card className="rounded-[10px] shadow-sm border-border/50">
+      <Card className="rounded-[10px] border-border/30">
         <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-medium">Your One Thing</label>
@@ -151,7 +151,7 @@ const DailyFocus = () => {
               onClick={handleGenerateDailyOne}
               disabled={generating}
               variant="outline"
-              className="flex-1 border-primary/20 text-primary hover:bg-primary/10"
+              className="flex-1"
             >
               <Sparkles className="mr-2 h-4 w-4" />
               {generating ? "Generating..." : "Generate"}
@@ -159,7 +159,7 @@ const DailyFocus = () => {
             <Button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 bg-primary hover:bg-primary/90"
+              className="flex-1"
             >
               {loading ? "Saving..." : "Save"}
             </Button>

@@ -127,45 +127,49 @@ const Experiments = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Experiments</h1>
+          <h1 className="text-3xl font-medium">Experiments</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Test, learn, evolve
+            Small tests to shift identity and build proof
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={handleGenerateExperiment} 
-            disabled={generating} 
-            variant="outline" 
+          <Button
+            onClick={handleGenerateExperiment}
+            disabled={generating}
+            variant="outline"
             size="sm"
-            className="border-primary/20 text-primary hover:bg-primary/10"
           >
             <Sparkles className="mr-2 h-4 w-4" />
             {generating ? "Generating..." : "Generate"}
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-primary hover:bg-primary/90">
+          <Button onClick={() => setIsDialogOpen(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
-            New
+            Add Experiment
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         {experiments.map((exp) => (
-          <Card key={exp.id} className="rounded-[10px] shadow-sm border-border/50">
+          <Card key={exp.id} className="rounded-[10px] border-border/30">
             <CardContent className="pt-5">
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <FlaskConical className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base mb-2">{exp.title}</h3>
-                  {exp.identity_shift_target && (
-                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-3">{exp.identity_shift_target}</p>
-                  )}
-                  <Badge variant="outline" className={getStatusColor(exp.status)}>
-                    {exp.status}
-                  </Badge>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-medium text-base">{exp.title}</h3>
+                    <Badge variant="outline" className={getStatusColor(exp.status)}>
+                      {exp.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-2">
+                    {exp.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Identity shift: {exp.identity_shift_target}
+                  </p>
                 </div>
                 <Button
                   variant="ghost"

@@ -80,15 +80,15 @@ const Dashboard = () => {
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* 3-Card Layout */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Card 1 — Today's One Thing */}
-        <Card className="rounded-[10px] shadow-sm border-border/50">
+        {/* Today's One Thing */}
+        <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold">Today's One Thing</CardTitle>
+            <CardTitle className="text-lg font-medium">Today's One Thing</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {todayTask ? (
               <div className="space-y-2">
-                <p className="font-medium text-foreground">{(todayTask as any).one_thing}</p>
+                <p className="font-medium">{(todayTask as any).one_thing}</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">{(todayTask as any).why_matters}</p>
               </div>
             ) : (
@@ -98,22 +98,22 @@ const Dashboard = () => {
               size="sm"
               onClick={handleGenerateDailyOne}
               disabled={isGenerating}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="w-full"
             >
               {isGenerating ? "Generating..." : "Generate"}
             </Button>
           </CardContent>
         </Card>
 
-        {/* Card 2 — Active Experiment */}
-        <Card className="rounded-[10px] shadow-sm border-border/50">
+        {/* Active Experiment */}
+        <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold">Active Experiment</CardTitle>
+            <CardTitle className="text-lg font-medium">Active Experiment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {activeExperiment ? (
               <div className="space-y-2">
-                <p className="font-medium text-foreground">{(activeExperiment as any).title}</p>
+                <p className="font-medium">{(activeExperiment as any).title}</p>
                 <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{(activeExperiment as any).identity_shift_target}</p>
               </div>
             ) : (
@@ -123,17 +123,17 @@ const Dashboard = () => {
               size="sm"
               variant="outline"
               onClick={() => navigate("/experiments")}
-              className="w-full border-border hover:bg-secondary"
+              className="w-full"
             >
               Refine Experiment
             </Button>
           </CardContent>
         </Card>
 
-        {/* Card 3 — Direction Sync */}
-        <Card className="rounded-[10px] shadow-sm border-border/50">
+        {/* Direction Sync */}
+        <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold">Direction Sync</CardTitle>
+            <CardTitle className="text-lg font-medium">Direction Sync</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {syncResult ? (
@@ -145,7 +145,7 @@ const Dashboard = () => {
               size="sm"
               onClick={handleSyncLife}
               disabled={isSyncing}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="w-full"
             >
               <Sparkles className="mr-2 h-4 w-4" />
               {isSyncing ? "Syncing..." : "Sync My Life"}
@@ -154,13 +154,13 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Mini Actions Row */}
-      <div className="flex flex-wrap items-center gap-4 justify-center">
+      {/* Simple Actions */}
+      <div className="flex flex-wrap items-center gap-4 justify-center text-sm">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate("/insights")}
-          className="text-primary hover:bg-primary/10 hover:text-primary"
+          className="text-muted-foreground hover:text-foreground"
         >
           <Lightbulb className="mr-2 h-4 w-4" />
           Add Insight
@@ -169,7 +169,7 @@ const Dashboard = () => {
           variant="ghost"
           size="sm"
           onClick={() => navigate("/experiments")}
-          className="text-primary hover:bg-primary/10 hover:text-primary"
+          className="text-muted-foreground hover:text-foreground"
         >
           <FlaskConical className="mr-2 h-4 w-4" />
           Add Experiment
@@ -177,8 +177,8 @@ const Dashboard = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate("/paths")}
-          className="text-primary hover:bg-primary/10 hover:text-primary"
+          onClick={() => navigate("/topics")}
+          className="text-muted-foreground hover:text-foreground"
         >
           <Map className="mr-2 h-4 w-4" />
           Add Learning Step
@@ -187,7 +187,7 @@ const Dashboard = () => {
           variant="ghost"
           size="sm"
           onClick={() => navigate("/documents")}
-          className="text-primary hover:bg-primary/10 hover:text-primary"
+          className="text-muted-foreground hover:text-foreground"
         >
           <FileText className="mr-2 h-4 w-4" />
           Upload Document
