@@ -34,8 +34,7 @@ const Topics = () => {
         *,
         insights:insights(count),
         documents:documents(count),
-        learning_paths:learning_paths(count),
-        experiments:experiments(count)
+        learning_paths:learning_paths(count)
       `)
       .eq("user_id", user!.id)
       .order("created_at", { ascending: false });
@@ -92,8 +91,7 @@ const Topics = () => {
     const insights = topic.insights?.[0]?.count || 0;
     const docs = topic.documents?.[0]?.count || 0;
     const paths = topic.learning_paths?.[0]?.count || 0;
-    const exps = topic.experiments?.[0]?.count || 0;
-    return insights + docs + paths + exps;
+    return insights + docs + paths;
   };
 
   return (
