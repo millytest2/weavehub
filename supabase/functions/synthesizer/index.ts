@@ -93,7 +93,20 @@ Philosophy: proof > theory, experiments > plans, identity > productivity, ease >
     }
 
     const data = await response.json();
-    const resultText = data.choices[0].message.content;
+    let resultText = data.choices[0].message.content;
+    
+    // Strip markdown code blocks if present
+    resultText = resultText.trim();
+    if (resultText.startsWith("```json")) {
+      resultText = resultText.slice(7); // Remove ```json
+    } else if (resultText.startsWith("```")) {
+      resultText = resultText.slice(3); // Remove ```
+    }
+    if (resultText.endsWith("```")) {
+      resultText = resultText.slice(0, -3); // Remove trailing ```
+    }
+    resultText = resultText.trim();
+    
     const result = JSON.parse(resultText);
 
     return new Response(
