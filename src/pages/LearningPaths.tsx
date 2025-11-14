@@ -141,42 +141,56 @@ const LearningPaths = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Paths</h1>
-          <p className="text-muted-foreground mt-2">
-            Learning paths you're following
+          <h1 className="text-3xl font-bold text-foreground">Paths</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Areas you're learning and evolving in
           </p>
         </div>
         <div className="flex gap-2">
           <Button onClick={handleGenerateStep} disabled={generating} variant="outline" size="sm">
             <Sparkles className="mr-2 h-4 w-4" />
-            {generating ? "Generating..." : "Generate"}
+            {generating ? "Generating..." : "Suggest Step"}
           </Button>
           <Button onClick={() => setIsDialogOpen(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
-            New
+            New Path
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {paths.map((path) => (
           <Collapsible
             key={path.id}
             open={expandedPaths[path.id]}
             onOpenChange={() => togglePath(path.id)}
           >
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between mb-3">
-                  <CollapsibleTrigger className="flex items-center gap-2 flex-1 text-left">
-                    {expandedPaths[path.id] ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                    <h3 className="font-medium">{path.title}</h3>
+            <Card className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200">
+              <CardContent className="pt-5">
+                <div className="flex items-start gap-3">
+                  <CollapsibleTrigger className="flex items-start gap-3 flex-1 text-left">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="12" r="8" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-base mb-2 flex items-center gap-2">
+                        {expandedPaths[path.id] ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        {path.title}
+                      </h3>
+                      {path.description && (
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                          {path.description}
+                        </p>
+                      )}
+                    </div>
                   </CollapsibleTrigger>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -184,8 +198,9 @@ const LearningPaths = () => {
                         e.stopPropagation();
                         navigate(`/paths/${path.id}`);
                       }}
+                      className="h-8 w-8 p-0"
                     >
-                      <ExternalLink className="h-4 w-4" />
+                      <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -194,15 +209,13 @@ const LearningPaths = () => {
                         e.stopPropagation();
                         handleDelete(path.id);
                       }}
+                      className="h-8 w-8 p-0"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
-                {path.description && (
-                  <p className="text-sm text-muted-foreground mb-3">{path.description}</p>
-                )}
-                
+
                 <CollapsibleContent className="space-y-2 mt-4">
                   {pathItems[path.id]?.length > 0 ? (
                     pathItems[path.id].map((item) => (
