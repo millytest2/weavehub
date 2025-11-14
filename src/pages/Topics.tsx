@@ -110,13 +110,10 @@ const Topics = () => {
           New Topic
         </Button>
       </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         {topics.map((topic) => (
-          <Card
-            key={topic.id}
-            className="cursor-pointer rounded-[10px] border-border/30 hover:border-primary/30 transition-colors"
-            onClick={() => navigate(`/topics/${topic.id}`)}
-          >
+          <Card key={topic.id} className="rounded-[10px] border-border/30">
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div
@@ -127,20 +124,14 @@ const Topics = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-base mb-2">{topic.name}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
                     {topic.description || "No description"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {getItemCount(topic)} items
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(topic.id);
-                  }}
+                  onClick={() => handleDelete(topic.id)}
                   className="h-8 w-8 p-0 shrink-0"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
