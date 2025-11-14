@@ -279,52 +279,52 @@ const Documents = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {documents.map((doc) => (
           <Card key={doc.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200">
             <CardContent className="pt-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <FileText className="h-4 w-4 text-primary" />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <FileText className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-base mb-1 truncate cursor-pointer hover:text-primary transition-colors" title={doc.title} onClick={() => handleViewDocument(doc)}>
+                      {doc.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'Unknown size'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewDocument(doc)}>
-                  <h3 className="font-medium text-base mb-2 truncate" title={doc.title}>{doc.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-                    {doc.summary || "No summary available"}
-                  </p>
-                </div>
-                <div className="flex gap-1 shrink-0">
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 cursor-pointer" onClick={() => handleViewDocument(doc)}>
+                  {doc.summary || "No summary available"}
+                </p>
+                <div className="flex gap-1 pt-2 border-t border-border/30">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewDocument(doc);
-                    }}
-                    className="h-8 w-8 p-0"
+                    onClick={() => handleViewDocument(doc)}
+                    className="flex-1 h-8 text-xs"
                   >
-                    <Eye className="h-3.5 w-3.5" />
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                    View
                   </Button>
                   {doc.file_path && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownload(doc.file_path, doc.title);
-                      }}
-                      className="h-8 w-8 p-0"
+                      onClick={() => handleDownload(doc.file_path, doc.title)}
+                      className="flex-1 h-8 text-xs"
                     >
-                      <Download className="h-3.5 w-3.5" />
+                      <Download className="h-3.5 w-3.5 mr-1" />
+                      Download
                     </Button>
                   )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(doc.id, doc.file_path);
-                    }}
+                    onClick={() => handleDelete(doc.id, doc.file_path)}
                     className="h-8 w-8 p-0"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
