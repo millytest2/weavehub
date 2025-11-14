@@ -255,6 +255,9 @@ const Documents = () => {
               documentId: docData.id,
               content: extractedContent.substring(0, 50000),
               title: uploadTitle || selectedFile.name
+            },
+            headers: {
+              Authorization: `Bearer ${ (await supabase.auth.getSession()).data.session?.access_token ?? '' }`,
             }
           });
 
