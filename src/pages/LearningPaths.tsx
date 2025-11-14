@@ -8,26 +8,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Map, Trash2 } from "lucide-react";
 
 const LearningPaths = () => {
   const { user } = useAuth();
   const [paths, setPaths] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [topicId, setTopicId] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     fetchPaths();
+    fetchTopics();
   }, [user]);
 
   const fetchPaths = async () => {
     const { data, error } = await supabase
       .from("learning_paths")
-      .select("*, path_items(count)")
+      .select("*, path_items(count), topics(name, color)")
       .eq("user_id", user!.id)
       .order("created_at", { ascending: false });
 
@@ -37,6 +41,14 @@ const LearningPaths = () => {
     }
 
     setPaths(data || []);
+  };
+
+  const fetchTopics = async () => {
+    const { data } = await supabase
+      .from("topics")
+      .select("id, name, color")
+      .eq("user_id", user!.id);
+    setTopics(data || []);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -49,6 +61,7 @@ const LearningPaths = () => {
         title,
         description,
         status: "active",
+        topic_id: topicId || null,
       });
 
       if (error) throw error;
@@ -56,6 +69,7 @@ const LearningPaths = () => {
       toast.success("Learning path created!");
       setTitle("");
       setDescription("");
+      setTopicId("");
       setOpen(false);
       fetchPaths();
     } catch (error: any) {
@@ -122,6 +136,21 @@ const LearningPaths = () => {
                   rows={4}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="topic">Topic (optional)</Label>
+                <Select value={topicId} onValueChange={setTopicId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {topics.map((topic) => (
+                      <SelectItem key={topic.id} value={topic.id}>
+                        {topic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating..." : "Create Path"}
               </Button>
@@ -157,13 +186,21 @@ const LearningPaths = () => {
                   </Button>
                 </div>
                 <CardTitle className="mt-2 text-lg">{path.title}</CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant={path.status === "active" ? "default" : "secondary"}>
                     {path.status}
                   </Badge>
                   <CardDescription className="text-xs">
                     {path.path_items?.[0]?.count || 0} items
                   </CardDescription>
+                  {path.topics && (
+                    <Badge
+                      variant="secondary"
+                      style={{ backgroundColor: path.topics.color + "20", color: path.topics.color }}
+                    >
+                      {path.topics.name}
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
               {path.description && (
