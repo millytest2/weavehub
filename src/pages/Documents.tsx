@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Trash2, Upload, Download, Plus, FileText, Eye } from "lucide-react";
 import { z } from "zod";
 import * as pdfjs from 'pdfjs-dist';
+import { createWorker } from 'tesseract.js';
 
 // Set up PDF.js worker with correct version
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/build/pdf.worker.min.mjs`;
@@ -68,6 +69,7 @@ const Documents = () => {
       
       let fullText = '';
       
+      // First, try standard text extraction
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
@@ -83,9 +85,19 @@ const Documents = () => {
       
       console.log('PDF extraction complete. Total text length:', fullText.length);
       
-      if (!fullText.trim()) {
-        toast.warning('This PDF appears to be image-based with no extractable text. Consider using OCR or a different file.');
-        throw new Error('No readable text found in PDF - may be image-based');
+      // If no text was extracted, try OCR
+      if (!fullText.trim() || fullText.trim().length < 100) {
+        console.log('No readable text found, attempting OCR...');
+        toast.info('Image-based PDF detected. Running OCR... This may take a moment.');
+        
+        fullText = await performOCR(pdf);
+        
+        if (!fullText.trim()) {
+          toast.error('Failed to extract text using OCR. The PDF may be corrupted or empty.');
+          throw new Error('No readable text found in PDF after OCR');
+        }
+        
+        toast.success('OCR completed successfully!');
       }
       
       return fullText.trim();
@@ -93,6 +105,60 @@ const Documents = () => {
       console.error('PDF extraction error:', error);
       toast.error('Failed to extract text from PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
       throw error;
+    }
+  };
+
+  const performOCR = async (pdf: any): Promise<string> => {
+    const worker = await createWorker('eng');
+    let ocrText = '';
+    
+    try {
+      const totalPages = pdf.numPages;
+      const maxPages = Math.min(totalPages, 20); // Limit to 20 pages for performance
+      
+      if (totalPages > maxPages) {
+        toast.info(`Processing first ${maxPages} of ${totalPages} pages with OCR`);
+      }
+      
+      for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        
+        // Render page to canvas
+        const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better OCR
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        
+        if (!context) {
+          console.error('Failed to get canvas context');
+          continue;
+        }
+        
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+        
+        // Convert canvas to image data and run OCR
+        const imageData = canvas.toDataURL('image/png');
+        const { data: { text } } = await worker.recognize(imageData);
+        
+        ocrText += text + '\n';
+        
+        // Update progress
+        if (i % 5 === 0 || i === maxPages) {
+          toast.info(`OCR progress: ${i}/${maxPages} pages processed`);
+        }
+        
+        console.log(`OCR page ${i}/${maxPages} complete, extracted ${text.length} characters`);
+      }
+      
+      console.log('OCR complete. Total extracted length:', ocrText.length);
+      return ocrText;
+    } finally {
+      await worker.terminate();
     }
   };
 
