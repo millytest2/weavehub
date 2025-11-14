@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Lightbulb } from "lucide-react";
 
 const Insights = () => {
   const { user } = useAuth();
@@ -77,35 +77,41 @@ const Insights = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Insights</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold">Insights</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Your identity, values, and beliefs
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} size="sm">
+        <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-primary hover:bg-primary/90">
           <Plus className="mr-2 h-4 w-4" />
           Add
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {insights.map((insight) => (
-          <Card key={insight.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-medium">{insight.title}</h3>
+          <Card key={insight.id} className="rounded-[10px] shadow-sm border-border/50">
+            <CardContent className="pt-5">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Lightbulb className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base mb-2">{insight.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{insight.content}</p>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDelete(insight.id)}
+                  className="h-8 w-8 p-0 shrink-0"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground line-clamp-2">{insight.content}</p>
             </CardContent>
           </Card>
         ))}
@@ -132,12 +138,13 @@ const Insights = () => {
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                rows={3}
                 required
+                rows={4}
+                className="mt-1.5"
               />
             </div>
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Saving..." : "Save Insight"}
+            <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
+              {loading ? "Creating..." : "Create Insight"}
             </Button>
           </form>
         </DialogContent>

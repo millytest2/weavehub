@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Trash2, Upload, Download, Plus, Sparkles } from "lucide-react";
+import { Trash2, Upload, Download, Plus, FileText } from "lucide-react";
 
 const Documents = () => {
   const { user } = useAuth();
@@ -154,54 +154,54 @@ const Documents = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Documents</h1>
-          <p className="text-muted-foreground mt-2">
-            Your active work and resources
+          <h1 className="text-3xl font-bold">Documents</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Your knowledge base
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={handleGenerateNextStep} disabled={generating} variant="outline" size="sm">
-            <Sparkles className="mr-2 h-4 w-4" />
-            {generating ? "Generating..." : "Next Step"}
-          </Button>
-          <Button onClick={() => setIsDialogOpen(true)} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add
-          </Button>
-        </div>
+        <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-primary hover:bg-primary/90">
+          <Plus className="mr-2 h-4 w-4" />
+          Add
+        </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {documents.map((doc) => (
-          <Card key={doc.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-medium">{doc.title}</h3>
-                <div className="flex gap-1">
+          <Card key={doc.id} className="rounded-[10px] shadow-sm border-border/50">
+            <CardContent className="pt-5">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <FileText className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base mb-2">{doc.title}</h3>
+                  {doc.summary && (
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-3">{doc.summary}</p>
+                  )}
                   {doc.file_path && (
                     <Button
-                      variant="ghost"
                       size="sm"
+                      variant="outline"
                       onClick={() => handleDownload(doc.file_path, doc.title)}
+                      className="h-7 text-xs border-primary/20 text-primary hover:bg-primary/10 hover:text-primary"
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="mr-1.5 h-3 w-3" />
+                      Download
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(doc.id, doc.file_path)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(doc.id, doc.file_path)}
+                  className="h-8 w-8 p-0 shrink-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
-              {doc.summary && (
-                <p className="text-sm text-muted-foreground">{doc.summary}</p>
-              )}
             </CardContent>
           </Card>
         ))}
@@ -214,15 +214,23 @@ const Documents = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="file-upload">Upload File</Label>
+              <Label htmlFor="file">Upload File</Label>
               <Input
-                id="file-upload"
+                id="file"
                 type="file"
                 onChange={handleFileUpload}
                 disabled={uploading}
+                className="mt-1.5"
               />
             </div>
-            <div className="text-center text-sm text-muted-foreground">or</div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or create manually</span>
+              </div>
+            </div>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <Label htmlFor="title">Title</Label>
@@ -231,6 +239,7 @@ const Documents = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
+                  className="mt-1.5"
                 />
               </div>
               <div>
@@ -240,9 +249,10 @@ const Documents = () => {
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   rows={3}
+                  className="mt-1.5"
                 />
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
                 Create Document
               </Button>
             </form>

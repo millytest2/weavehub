@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2, Sparkles, FlaskConical } from "lucide-react";
 
 const Experiments = () => {
   const { user } = useAuth();
@@ -114,54 +115,74 @@ const Experiments = () => {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed": return "bg-primary/10 text-primary border-primary/20";
+      case "in_progress": return "bg-accent/10 text-accent border-accent/20";
+      default: return "bg-secondary text-secondary-foreground border-border";
+    }
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Experiments</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold">Experiments</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Test, learn, evolve
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleGenerateExperiment} disabled={generating} variant="outline" size="sm">
+          <Button 
+            onClick={handleGenerateExperiment} 
+            disabled={generating} 
+            variant="outline" 
+            size="sm"
+            className="border-primary/20 text-primary hover:bg-primary/10"
+          >
             <Sparkles className="mr-2 h-4 w-4" />
             {generating ? "Generating..." : "Generate"}
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} size="sm">
+          <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-primary hover:bg-primary/90">
             <Plus className="mr-2 h-4 w-4" />
             New
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {experiments.map((experiment) => (
-          <Card key={experiment.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-medium">{experiment.title}</h3>
+      <div className="grid gap-4 md:grid-cols-3">
+        {experiments.map((exp) => (
+          <Card key={exp.id} className="rounded-[10px] shadow-sm border-border/50">
+            <CardContent className="pt-5">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <FlaskConical className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base mb-2">{exp.title}</h3>
+                  {exp.identity_shift_target && (
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-3">{exp.identity_shift_target}</p>
+                  )}
+                  <Badge variant="outline" className={getStatusColor(exp.status)}>
+                    {exp.status}
+                  </Badge>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(experiment.id)}
+                  onClick={() => handleDelete(exp.id)}
+                  className="h-8 w-8 p-0 shrink-0"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground mb-2">{experiment.description}</p>
-              {experiment.identity_shift_target && (
-                <p className="text-xs text-muted-foreground italic">
-                  → {experiment.identity_shift_target}
-                </p>
-              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>New Experiment</DialogTitle>
           </DialogHeader>
@@ -173,6 +194,7 @@ const Experiments = () => {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
+                className="mt-1.5"
               />
             </div>
             <div>
@@ -181,7 +203,8 @@ const Experiments = () => {
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                rows={2}
+                className="mt-1.5"
               />
             </div>
             <div>
@@ -190,7 +213,7 @@ const Experiments = () => {
                 id="identityShift"
                 value={identityShift}
                 onChange={(e) => setIdentityShift(e.target.value)}
-                placeholder="Who do you want to become?"
+                className="mt-1.5"
               />
             </div>
             <div>
@@ -199,7 +222,8 @@ const Experiments = () => {
                 id="steps"
                 value={steps}
                 onChange={(e) => setSteps(e.target.value)}
-                rows={4}
+                rows={3}
+                className="mt-1.5"
               />
             </div>
             <div>
@@ -208,10 +232,10 @@ const Experiments = () => {
                 id="duration"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                placeholder="e.g., 7 days"
+                className="mt-1.5"
               />
             </div>
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
               {loading ? "Creating..." : "Create Experiment"}
             </Button>
           </form>

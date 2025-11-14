@@ -103,15 +103,15 @@ const DailyFocus = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-3xl font-medium">Daily Focus</h1>
-        <p className="text-muted-foreground mt-2">
-          What's your one thing today?
+        <h1 className="text-3xl font-bold">Daily Focus</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          What's your ONE thing today?
         </p>
       </div>
 
-      <Card>
+      <Card className="rounded-[10px] shadow-sm border-border/50">
         <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-medium">Your One Thing</label>
@@ -120,35 +120,47 @@ const DailyFocus = () => {
               value={oneThing}
               onChange={(e) => setOneThing(e.target.value)}
               rows={3}
+              className="resize-none"
             />
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Why It Matters</label>
             <Textarea
-              placeholder="Why is this important?"
+              placeholder="Why is this important to you?"
               value={whyMatters}
               onChange={(e) => setWhyMatters(e.target.value)}
-              rows={2}
+              rows={3}
+              className="resize-none"
             />
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Reflection</label>
             <Textarea
-              placeholder="End-of-day reflection..."
+              placeholder="How did it go? What did you learn?"
               value={reflection}
               onChange={(e) => setReflection(e.target.value)}
-              rows={2}
+              rows={3}
+              className="resize-none"
             />
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handleGenerateDailyOne} disabled={generating} variant="outline" size="sm">
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={handleGenerateDailyOne}
+              disabled={generating}
+              variant="outline"
+              className="flex-1 border-primary/20 text-primary hover:bg-primary/10"
+            >
               <Sparkles className="mr-2 h-4 w-4" />
               {generating ? "Generating..." : "Generate"}
             </Button>
-            <Button onClick={handleSave} disabled={loading} size="sm">
+            <Button
+              onClick={handleSave}
+              disabled={loading}
+              className="flex-1 bg-primary hover:bg-primary/90"
+            >
               {loading ? "Saving..." : "Save"}
             </Button>
           </div>
