@@ -76,34 +76,27 @@ const Documents = () => {
 
       toast.success("Document uploaded! Processing with AI...");
       
-      // Read file content and process with AI
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const content = event.target?.result as string;
-        
-        try {
-          const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
-            body: {
-              documentId: docData.id,
-              content: content.substring(0, 50000), // Limit content size
-              title: file.name
-            }
-          });
-
-          if (aiError) {
-            console.error('AI processing error:', aiError);
-            toast.warning("Document uploaded but AI processing failed");
-          } else {
-            toast.success(`Document processed! Created ${aiData.insightsCreated} insights.`);
+      // Process with AI using the file path (edge function will download and parse it)
+      try {
+        const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
+          body: {
+            documentId: docData.id,
+            filePath: fileName,
+            title: file.name
           }
-        } catch (error) {
-          console.error('AI processing error:', error);
-        } finally {
-          fetchDocuments();
+        });
+
+        if (aiError) {
+          console.error('AI processing error:', aiError);
+          toast.warning("Document uploaded but AI processing failed");
+        } else {
+          toast.success(`Document processed! Created ${aiData.insightsCreated} insights.`);
         }
-      };
-      
-      reader.readAsText(file);
+      } catch (error) {
+        console.error('AI processing error:', error);
+      } finally {
+        fetchDocuments();
+      }
       
       setTitle("");
       setSummary("");
