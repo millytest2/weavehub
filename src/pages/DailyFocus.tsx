@@ -30,7 +30,7 @@ const DailyFocus = () => {
       .eq("task_date", today)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       setTodayTask(data);
