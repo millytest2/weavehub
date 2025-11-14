@@ -20,11 +20,11 @@ export default function IdentitySeed() {
 
   const fetchIdentitySeed = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("identity_seeds")
         .select("*")
         .eq("user_id", user?.id)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== "PGRST116") {
         console.error("Error fetching identity seed:", error);
@@ -49,7 +49,7 @@ export default function IdentitySeed() {
     setLoading(true);
     try {
       if (identitySeedId) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("identity_seeds")
           .update({ content })
           .eq("id", identitySeedId);
@@ -57,7 +57,7 @@ export default function IdentitySeed() {
         if (error) throw error;
         toast.success("Identity seed updated");
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from("identity_seeds")
           .insert({ user_id: user?.id, content })
           .select()
