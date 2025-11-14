@@ -218,16 +218,37 @@ const Documents = () => {
           toast.info("Analyzing with AI...");
           console.log('Sending to AI, content length:', extractedContent.length);
           
-          // Get the current session to ensure we have valid auth
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          // Verify session is valid and refresh if needed
+          const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
           
-          if (sessionError || !session) {
+          if (sessionError) {
             console.error('Session error:', sessionError);
-            toast.error("Authentication error. Please refresh the page and try again.");
+            toast.error("Session error. Please log in again.");
             return;
           }
           
-          console.log('Session valid, calling edge function...');
+          if (!currentSession) {
+            console.error('No active session found');
+            toast.error("Your session has expired. Please log in again.");
+            return;
+          }
+          
+          console.log('Session valid, token expires at:', new Date(currentSession.expires_at! * 1000).toISOString());
+          
+          // Check if session is about to expire (within 5 minutes)
+          const now = Math.floor(Date.now() / 1000);
+          if (currentSession.expires_at && (currentSession.expires_at - now) < 300) {
+            console.log('Session expiring soon, refreshing...');
+            const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (refreshError || !refreshedSession) {
+              console.error('Failed to refresh session:', refreshError);
+              toast.error("Session expired. Please log in again.");
+              return;
+            }
+            
+            console.log('Session refreshed successfully');
+          }
           
           const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
             body: {
@@ -243,8 +264,8 @@ const Documents = () => {
             console.error('AI processing error:', aiError);
             
             // Handle specific error cases
-            if (aiError.message?.includes('401') || aiError.message?.includes('Unauthorized')) {
-              toast.error("Session expired. Please refresh the page and try again.");
+            if (aiError.message?.includes('401') || aiError.message?.includes('Unauthorized') || aiError.message?.includes('Authentication failed')) {
+              toast.error("Authentication failed. Please refresh the page and log in again.");
             } else {
               toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
             }
