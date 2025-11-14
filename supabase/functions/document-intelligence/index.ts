@@ -35,74 +35,24 @@ serve(async (req) => {
       });
     }
 
-    const { documentId, content, title, isPdf } = await req.json();
+    const { documentId, content, title } = await req.json();
     
-    console.log(`Processing document ${documentId} for user ${user.id}, isPdf: ${isPdf}`);
+    console.log(`Processing document ${documentId} for user ${user.id}, content length: ${content?.length}`);
 
-    let extractedText = content;
-    
-    // If it's a PDF (base64 encoded), decode and extract text
-    if (isPdf && content) {
-      try {
-        console.log('Processing PDF content...');
-        
-        // Decode base64 to Uint8Array
-        const binaryString = atob(content);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        console.log(`PDF bytes length: ${bytes.length}`);
-        
-        // Simple PDF text extraction - look for text content streams
-        // This is a basic approach that works for most text-based PDFs
-        const decoder = new TextDecoder('utf-8', { fatal: false });
-        const pdfText = decoder.decode(bytes);
-        
-        // Extract text between "BT" (Begin Text) and "ET" (End Text) markers
-        // Also extract from stream objects
-        const textMatches = pdfText.match(/\(([^)]+)\)/g);
-        let fullText = '';
-        
-        if (textMatches) {
-          for (const match of textMatches) {
-            // Remove parentheses and unescape
-            let text = match.slice(1, -1);
-            // Replace common PDF escape sequences
-            text = text.replace(/\\n/g, '\n')
-                      .replace(/\\r/g, '\r')
-                      .replace(/\\t/g, '\t')
-                      .replace(/\\\(/g, '(')
-                      .replace(/\\\)/g, ')')
-                      .replace(/\\\\/g, '\\');
-            fullText += text + ' ';
-          }
-        }
-        
-        // Also try to extract from Tj and TJ operators
-        const tjMatches = pdfText.match(/\[(.*?)\]\s*TJ/g);
-        if (tjMatches) {
-          for (const match of tjMatches) {
-            const text = match.replace(/\[|\]\s*TJ/g, '').replace(/[()]/g, '');
-            fullText += text + ' ';
-          }
-        }
-        
-        extractedText = fullText.trim();
-        console.log(`Extracted ${extractedText.length} characters from PDF`);
-      } catch (error) {
-        console.error('PDF extraction failed:', error);
-        throw new Error(`Failed to extract PDF text: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
+    // Content is expected to be plain text extracted on the client side
+    if (!documentId || !content) {
+      return new Response(
+        JSON.stringify({ error: 'Missing documentId or content' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    if (!extractedText || extractedText.trim().length < 50) {
+    if (content.trim().length < 50) {
       throw new Error('Document appears to be empty or has insufficient content');
     }
     
     // Limit content size
-    extractedText = extractedText.substring(0, 50000);
+    const extractedText = content.substring(0, 50000);
 
     // Fetch user's identity seed and topics for context
     const { data: identitySeed } = await supabase
