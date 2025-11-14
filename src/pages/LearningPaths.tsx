@@ -43,7 +43,7 @@ const LearningPaths = () => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast.error("Failed to load topics");
+      toast.error("Failed to load paths");
       return;
     }
 
@@ -73,7 +73,7 @@ const LearningPaths = () => {
 
       if (error) throw error;
 
-      toast.success("Topic created");
+      toast.success("Path created");
       setTitle("");
       setDescription("");
       setIsDialogOpen(false);
@@ -91,7 +91,7 @@ const LearningPaths = () => {
 
       if (error) throw error;
 
-      toast.success("Topic deleted");
+      toast.success("Path deleted");
       fetchPaths();
     } catch (error: any) {
       toast.error(error.message);
@@ -141,9 +141,9 @@ const LearningPaths = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Topics</h1>
+          <h1 className="text-3xl font-medium">Paths</h1>
           <p className="text-muted-foreground mt-2">
-            Topics you're exploring
+            Learning paths you're following
           </p>
         </div>
         <div className="flex gap-2">
@@ -236,7 +236,7 @@ const LearningPaths = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Topic</DialogTitle>
+            <DialogTitle>New Path</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
@@ -258,7 +258,7 @@ const LearningPaths = () => {
               />
             </div>
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Creating..." : "Create Topic"}
+              {loading ? "Creating..." : "Create Path"}
             </Button>
           </form>
         </DialogContent>
