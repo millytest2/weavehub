@@ -8,9 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2, Sparkles, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const learningPathSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
@@ -26,6 +27,8 @@ const LearningPaths = () => {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [expandedPaths, setExpandedPaths] = useState<Record<string, boolean>>({});
+  const [pathItems, setPathItems] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -110,6 +113,30 @@ const LearningPaths = () => {
     }
   };
 
+  const fetchPathItems = async (pathId: string) => {
+    const { data, error } = await supabase
+      .from("path_items")
+      .select("*")
+      .eq("path_id", pathId)
+      .order("order_index", { ascending: true });
+
+    if (error) {
+      toast.error("Failed to load path items");
+      return;
+    }
+
+    setPathItems(prev => ({ ...prev, [pathId]: data || [] }));
+  };
+
+  const togglePath = async (pathId: string) => {
+    const isExpanding = !expandedPaths[pathId];
+    setExpandedPaths(prev => ({ ...prev, [pathId]: isExpanding }));
+    
+    if (isExpanding && !pathItems[pathId]) {
+      await fetchPathItems(pathId);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -133,26 +160,76 @@ const LearningPaths = () => {
 
       <div className="grid gap-4 md:grid-cols-2">
         {paths.map((path) => (
-          <Card key={path.id} className="cursor-pointer" onClick={() => navigate(`/paths/${path.id}`)}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-medium">{path.title}</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(path.id);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              {path.description && (
-                <p className="text-sm text-muted-foreground">{path.description}</p>
-              )}
-            </CardContent>
-          </Card>
+          <Collapsible
+            key={path.id}
+            open={expandedPaths[path.id]}
+            onOpenChange={() => togglePath(path.id)}
+          >
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between mb-3">
+                  <CollapsibleTrigger className="flex items-center gap-2 flex-1 text-left">
+                    {expandedPaths[path.id] ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                    <h3 className="font-medium">{path.title}</h3>
+                  </CollapsibleTrigger>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/paths/${path.id}`);
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(path.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                {path.description && (
+                  <p className="text-sm text-muted-foreground mb-3">{path.description}</p>
+                )}
+                
+                <CollapsibleContent className="space-y-2 mt-4">
+                  {pathItems[path.id]?.length > 0 ? (
+                    pathItems[path.id].map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-start gap-2 p-3 rounded-lg bg-muted/50"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{item.title}</p>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        {item.completed && (
+                          <span className="text-xs text-muted-foreground">✓</span>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No steps added yet</p>
+                  )}
+                </CollapsibleContent>
+              </CardContent>
+            </Card>
+          </Collapsible>
         ))}
       </div>
 
