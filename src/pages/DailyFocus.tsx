@@ -105,7 +105,7 @@ const DailyFocus = () => {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-3xl font-medium">Daily</h1>
+        <h1 className="text-3xl font-bold text-foreground">Daily</h1>
         <p className="text-sm text-muted-foreground mt-1">
           What's your ONE thing today?
         </p>

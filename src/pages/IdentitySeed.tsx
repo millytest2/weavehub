@@ -82,7 +82,7 @@ export default function IdentitySeed() {
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
             <Lightbulb className="w-5 h-5 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold">Identity Seed</h1>
+          <h1 className="text-3xl font-bold text-foreground">Identity Seed</h1>
         </div>
         <p className="text-muted-foreground text-sm">
           Your North Star — the foundation of who you are becoming and who you already are now.

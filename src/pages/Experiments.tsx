@@ -134,7 +134,7 @@ const Experiments = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Experiments</h1>
+          <h1 className="text-3xl font-bold text-foreground">Experiments</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Small tests to shift identity and build proof
           </p>
@@ -160,7 +160,7 @@ const Experiments = () => {
         {experiments.map((exp) => (
           <Card 
             key={exp.id} 
-            className="rounded-[10px] border-border/30 cursor-pointer hover:border-primary/30 transition-colors"
+            className="rounded-[10px] border-border/30 cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
             onClick={() => handleViewDetails(exp)}
           >
             <CardContent className="pt-5">

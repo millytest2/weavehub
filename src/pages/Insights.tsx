@@ -80,7 +80,7 @@ const Insights = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Insights</h1>
+          <h1 className="text-3xl font-bold text-foreground">Insights</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Capture thoughts, notes, ChatGPT snippets
           </p>
@@ -93,7 +93,7 @@ const Insights = () => {
 
       <div className="grid gap-4 md:grid-cols-3">
         {insights.map((insight) => (
-          <Card key={insight.id} className="rounded-[10px] border-border/30">
+          <Card key={insight.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
