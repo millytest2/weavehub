@@ -9,6 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Trash2, Upload, Download, Plus, FileText } from "lucide-react";
+import { z } from "zod";
+
+const documentSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  summary: z.string().trim().max(5000, "Summary must be less than 5,000 characters"),
+});
 
 const Documents = () => {
   const { user } = useAuth();
@@ -109,11 +115,19 @@ const Documents = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate input
+    const validation = documentSchema.safeParse({ title, summary });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
     try {
       const { error } = await supabase.from("documents").insert({
         user_id: user!.id,
-        title,
-        summary,
+        title: validation.data.title,
+        summary: validation.data.summary,
       });
 
       if (error) throw error;

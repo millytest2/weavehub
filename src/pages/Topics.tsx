@@ -11,6 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, BookOpen, Trash2 } from "lucide-react";
+import { z } from "zod";
+
+const topicSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  description: z.string().trim().max(1000, "Description must be less than 1,000 characters"),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid color format"),
+});
 
 const Topics = () => {
   const { user } = useAuth();
@@ -49,14 +56,23 @@ const Topics = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input
+    const validation = topicSchema.safeParse({ name, description, color });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await supabase.from("topics").insert({
         user_id: user!.id,
-        name,
-        description,
-        color,
+        name: validation.data.name,
+        description: validation.data.description,
+        color: validation.data.color,
       });
 
       if (error) throw error;

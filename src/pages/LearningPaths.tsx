@@ -10,6 +10,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Trash2, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+
+const learningPathSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  description: z.string().trim().max(2000, "Description must be less than 2,000 characters"),
+});
 
 const LearningPaths = () => {
   const { user } = useAuth();
@@ -43,13 +49,22 @@ const LearningPaths = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input
+    const validation = learningPathSchema.safeParse({ title, description });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await supabase.from("learning_paths").insert({
         user_id: user!.id,
-        title,
-        description,
+        title: validation.data.title,
+        description: validation.data.description,
         status: "active",
       });
 

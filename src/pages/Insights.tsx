@@ -9,6 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Trash2, Lightbulb } from "lucide-react";
+import { z } from "zod";
+
+const insightSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  content: z.string().trim().min(1, "Content is required").max(50000, "Content must be less than 50,000 characters"),
+});
 
 const Insights = () => {
   const { user } = useAuth();
@@ -40,13 +46,22 @@ const Insights = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input
+    const validation = insightSchema.safeParse({ title, content });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await supabase.from("insights").insert({
         user_id: user!.id,
-        title,
-        content,
+        title: validation.data.title,
+        content: validation.data.content,
       });
 
       if (error) throw error;
