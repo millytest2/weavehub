@@ -7,9 +7,12 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Dashboard from "./pages/Dashboard";
+import Topics from "./pages/Topics";
+import TopicDetail from "./pages/TopicDetail";
 import Insights from "./pages/Insights";
 import Documents from "./pages/Documents";
 import LearningPaths from "./pages/LearningPaths";
+import Experiments from "./pages/Experiments";
 import DailyFocus from "./pages/DailyFocus";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -31,6 +34,26 @@ const App = () => (
                 <ProtectedRoute>
                   <MainLayout>
                     <Dashboard />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/topics"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Topics />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/topics/:id"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <TopicDetail />
                   </MainLayout>
                 </ProtectedRoute>
               }
@@ -61,6 +84,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MainLayout>
                     <LearningPaths />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/experiments"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Experiments />
                   </MainLayout>
                 </ProtectedRoute>
               }
