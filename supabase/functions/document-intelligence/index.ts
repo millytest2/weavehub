@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
+// @ts-ignore
+import pdfParse from "https://esm.sh/pdf-parse@1.1.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,7 +37,44 @@ serve(async (req) => {
       });
     }
 
-    const { documentId, content, title } = await req.json();
+    const { documentId, filePath, title } = await req.json();
+    
+
+    // Download and extract text from the document
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('documents')
+      .download(filePath);
+
+    if (downloadError || !fileData) {
+      throw new Error(`Failed to download document: ${downloadError?.message}`);
+    }
+
+    // Extract text based on file type
+    let content = '';
+    try {
+      const arrayBuffer = await fileData.arrayBuffer();
+      
+      // Check if it's a PDF
+      if (title.toLowerCase().endsWith('.pdf')) {
+        console.log('Processing PDF file...');
+        const pdfData = await pdfParse(arrayBuffer);
+        content = pdfData.text || '';
+        console.log(`Extracted ${content.length} characters from PDF`);
+      } else {
+        // For text-based files
+        content = new TextDecoder().decode(new Uint8Array(arrayBuffer));
+      }
+    } catch (error) {
+      console.error('Text extraction failed:', error);
+      throw new Error(`Failed to extract text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    if (!content || content.trim().length < 50) {
+      throw new Error('Document appears to be empty or has insufficient content');
+    }
+    
+    // Limit content size
+    content = content.substring(0, 50000);
 
     console.log(`Processing document ${documentId} for user ${user.id}`);
 
