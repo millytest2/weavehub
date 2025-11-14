@@ -157,7 +157,7 @@ const Documents = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Documents</h1>
+          <h1 className="text-3xl font-bold text-foreground">Documents</h1>
           <p className="text-sm text-muted-foreground mt-1">
             PDFs, resources, and reference materials
           </p>
@@ -170,7 +170,7 @@ const Documents = () => {
 
       <div className="grid gap-4 md:grid-cols-3">
         {documents.map((doc) => (
-          <Card key={doc.id} className="rounded-[10px] border-border/30">
+          <Card key={doc.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">

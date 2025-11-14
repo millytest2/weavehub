@@ -98,7 +98,7 @@ const Topics = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Paths</h1>
+          <h1 className="text-3xl font-bold text-foreground">Paths</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Areas you're learning and evolving in
           </p>
@@ -111,7 +111,7 @@ const Topics = () => {
 
       <div className="grid gap-4 md:grid-cols-3">
         {topics.map((topic) => (
-          <Card key={topic.id} className="rounded-[10px] border-border/30">
+          <Card key={topic.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div

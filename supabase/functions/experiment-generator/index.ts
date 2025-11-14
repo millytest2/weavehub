@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchUserContext, formatContextForAI } from "../shared/context.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,22 +25,9 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    // Fetch user's context including Identity Seed
-    const [identitySeed, insights, userExperiments, topics] = await Promise.all([
-      supabase.from("identity_seeds").select("*").eq("user_id", user.id).maybeSingle(),
-      supabase.from("insights").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
-      supabase.from("experiments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
-      supabase.from("topics").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
-    ]);
-
-    const context = `
-Identity Seed (North Star): ${identitySeed.data?.content || "Not set"}
-
-Current State:
-- Topics Learning: ${topics.data?.map(t => t.name).join(", ") || "None"}
-- Recent Insights/Patterns: ${insights.data?.map(i => `${i.title}: ${i.content.substring(0, 100)}`).join("\n") || "None"}
-- Past Experiments: ${userExperiments.data?.map(e => `${e.title} (${e.status})`).join(", ") || "None"}
-`;
+    // Fetch user's context using shared helper
+    const userContext = await fetchUserContext(supabase, user.id);
+    const context = formatContextForAI(userContext);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
