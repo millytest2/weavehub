@@ -74,26 +74,57 @@ const Documents = () => {
 
       if (dbError) throw dbError;
 
-      toast.success("Document uploaded! Processing with AI...");
+      toast.success("Document uploaded! Extracting text...");
       
-      // Process with AI using the file path (edge function will download and parse it)
+      // For PDFs and complex documents, we need to extract text properly
+      let extractedContent = '';
+      
       try {
-        const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
-          body: {
-            documentId: docData.id,
-            filePath: fileName,
-            title: file.name
-          }
-        });
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          // For PDFs, read as array buffer and send to edge function for processing
+          const arrayBuffer = await file.arrayBuffer();
+          const base64Content = btoa(
+            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+          
+          const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
+            body: {
+              documentId: docData.id,
+              content: base64Content,
+              title: file.name,
+              isPdf: true
+            }
+          });
 
-        if (aiError) {
-          console.error('AI processing error:', aiError);
-          toast.warning("Document uploaded but AI processing failed");
+          if (aiError) {
+            console.error('AI processing error:', aiError);
+            toast.warning("Document uploaded but AI processing failed: " + aiError.message);
+          } else {
+            toast.success(`Document processed! Created ${aiData.insightsCreated} insights.`);
+          }
         } else {
-          toast.success(`Document processed! Created ${aiData.insightsCreated} insights.`);
+          // For text files, read as text
+          extractedContent = await file.text();
+          
+          const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
+            body: {
+              documentId: docData.id,
+              content: extractedContent.substring(0, 50000),
+              title: file.name,
+              isPdf: false
+            }
+          });
+
+          if (aiError) {
+            console.error('AI processing error:', aiError);
+            toast.warning("Document uploaded but AI processing failed: " + aiError.message);
+          } else {
+            toast.success(`Document processed! Created ${aiData.insightsCreated} insights.`);
+          }
         }
       } catch (error) {
         console.error('AI processing error:', error);
+        toast.error("Failed to process document");
       } finally {
         fetchDocuments();
       }
