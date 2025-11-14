@@ -218,6 +218,17 @@ const Documents = () => {
           toast.info("Analyzing with AI...");
           console.log('Sending to AI, content length:', extractedContent.length);
           
+          // Get the current session to ensure we have valid auth
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError || !session) {
+            console.error('Session error:', sessionError);
+            toast.error("Authentication error. Please refresh the page and try again.");
+            return;
+          }
+          
+          console.log('Session valid, calling edge function...');
+          
           const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
             body: {
               documentId: docData.id,
@@ -230,7 +241,13 @@ const Documents = () => {
 
           if (aiError) {
             console.error('AI processing error:', aiError);
-            toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
+            
+            // Handle specific error cases
+            if (aiError.message?.includes('401') || aiError.message?.includes('Unauthorized')) {
+              toast.error("Session expired. Please refresh the page and try again.");
+            } else {
+              toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
+            }
           } else if (aiData) {
             toast.success(`AI analysis complete! Created ${aiData.insightsCreated || 0} insights.`);
           }
