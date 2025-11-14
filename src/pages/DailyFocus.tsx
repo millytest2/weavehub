@@ -2,59 +2,82 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, ListTodo, Trash2 } from "lucide-react";
+import { Sparkles, Target } from "lucide-react";
 
 const DailyFocus = () => {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [newTask, setNewTask] = useState("");
+  const [todayTask, setTodayTask] = useState<any>(null);
+  const [oneThing, setOneThing] = useState("");
+  const [whyMatters, setWhyMatters] = useState("");
+  const [reflection, setReflection] = useState("");
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    fetchTasks();
+    fetchTodayTask();
   }, [user]);
 
-  const fetchTasks = async () => {
+  const fetchTodayTask = async () => {
     const today = new Date().toISOString().split("T")[0];
     const { data, error } = await supabase
       .from("daily_tasks")
       .select("*")
       .eq("user_id", user!.id)
       .eq("task_date", today)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
 
-    if (error) {
-      toast.error("Failed to load tasks");
+    if (!error && data) {
+      setTodayTask(data);
+      setOneThing(data.one_thing || "");
+      setWhyMatters(data.why_matters || "");
+      setReflection(data.reflection || "");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!oneThing.trim()) {
+      toast.error("Please enter your one thing");
       return;
     }
 
-    setTasks(data || []);
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTask.trim()) return;
-
     setLoading(true);
-
     try {
       const today = new Date().toISOString().split("T")[0];
-      const { error } = await supabase.from("daily_tasks").insert({
-        user_id: user!.id,
-        title: newTask,
-        task_date: today,
-        completed: false,
-      });
+      
+      if (todayTask) {
+        const { error } = await supabase
+          .from("daily_tasks")
+          .update({
+            one_thing: oneThing,
+            why_matters: whyMatters,
+            reflection: reflection,
+          })
+          .eq("id", todayTask.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        const { data: insertData, error } = await supabase.from("daily_tasks").insert([{
+          user_id: user!.id,
+          title: oneThing,
+          one_thing: oneThing,
+          why_matters: whyMatters,
+          reflection: reflection,
+          task_date: today,
+          completed: false,
+        }]).select().single();
 
-      setNewTask("");
-      fetchTasks();
+        if (error) throw error;
+      }
+
+      toast.success("Saved!");
+      fetchTodayTask();
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -62,133 +85,135 @@ const DailyFocus = () => {
     }
   };
 
-  const handleToggle = async (id: string, completed: boolean) => {
+  const handleToggleComplete = async () => {
+    if (!todayTask) return;
+
     try {
       const { error } = await supabase
         .from("daily_tasks")
-        .update({ completed: !completed })
-        .eq("id", id);
+        .update({ completed: !todayTask.completed })
+        .eq("id", todayTask.id);
 
       if (error) throw error;
 
-      fetchTasks();
+      fetchTodayTask();
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleGenerateDailyOne = async () => {
+    setGenerating(true);
     try {
-      const { error } = await supabase.from("daily_tasks").delete().eq("id", id);
+      const { data, error } = await supabase.functions.invoke("navigator", {
+        body: {}
+      });
 
       if (error) throw error;
 
-      fetchTasks();
+      setOneThing(data.one_thing);
+      setWhyMatters(data.why_matters);
+      toast.success("Generated your daily One Thing!");
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to generate");
+    } finally {
+      setGenerating(false);
     }
   };
-
-  const completedCount = tasks.filter((t) => t.completed).length;
-  const totalCount = tasks.length;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Daily Focus</h1>
         <p className="mt-1 text-muted-foreground">
-          What are you working on today?
+          What's your ONE thing for today?
         </p>
       </div>
 
-      {/* Progress Card */}
       <Card className="bg-gradient-to-br from-primary/5 to-accent/5">
         <CardHeader>
-          <CardTitle className="text-lg">Today's Progress</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="mb-2 flex justify-between text-sm">
-                <span className="text-muted-foreground">Completed</span>
-                <span className="font-medium">
-                  {completedCount} / {totalCount}
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
-                  style={{
-                    width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : "0%",
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Add Task */}
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={handleCreate} className="flex gap-2">
-            <Input
-              placeholder="Add a task for today..."
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              disabled={loading}
-            />
-            <Button type="submit" disabled={loading}>
-              <Plus className="h-4 w-4" />
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Today's One Thing</CardTitle>
+            <Button 
+              onClick={handleGenerateDailyOne}
+              disabled={generating}
+              variant="outline"
+              size="sm"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {generating ? "Generating..." : "Generate My Daily One Thing"}
             </Button>
-          </form>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              The One Thing
+            </label>
+            <Textarea
+              value={oneThing}
+              onChange={(e) => setOneThing(e.target.value)}
+              placeholder="What ONE action will you take today? (< 45 minutes)"
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Why It Matters
+            </label>
+            <Textarea
+              value={whyMatters}
+              onChange={(e) => setWhyMatters(e.target.value)}
+              placeholder="How does this connect to your identity goals and projects?"
+              rows={2}
+            />
+          </div>
+
+          {todayTask && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="completed"
+                checked={todayTask.completed}
+                onCheckedChange={handleToggleComplete}
+              />
+              <label
+                htmlFor="completed"
+                className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Completed
+              </label>
+            </div>
+          )}
+
+          {todayTask && todayTask.completed && (
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Reflection (optional)
+              </label>
+              <Textarea
+                value={reflection}
+                onChange={(e) => setReflection(e.target.value)}
+                placeholder="What did you learn?"
+                rows={2}
+              />
+            </div>
+          )}
+
+          <Button onClick={handleSave} disabled={loading} className="w-full">
+            {loading ? "Saving..." : "Save"}
+          </Button>
         </CardContent>
       </Card>
 
-      {/* Tasks List */}
-      {tasks.length === 0 ? (
+      {todayTask && todayTask.completed && (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <ListTodo className="mb-4 h-16 w-16 text-muted-foreground opacity-20" />
-            <h3 className="text-lg font-medium">No tasks for today</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Add your first task to get started
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <Target className="mb-2 h-12 w-12 text-primary" />
+            <h3 className="text-lg font-medium">Well done!</h3>
+            <p className="text-sm text-muted-foreground">
+              You completed your one thing today.
             </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-center gap-3 p-4 transition-colors hover:bg-secondary/50"
-                >
-                  <Checkbox
-                    checked={task.completed}
-                    onCheckedChange={() => handleToggle(task.id, task.completed)}
-                  />
-                  <span
-                    className={`flex-1 text-sm ${
-                      task.completed
-                        ? "text-muted-foreground line-through"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {task.title}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(task.id)}
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
           </CardContent>
         </Card>
       )}

@@ -10,34 +10,31 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, FlaskConical, Trash2 } from "lucide-react";
+import { Plus, FlaskConical, Trash2, Sparkles } from "lucide-react";
 
 const Experiments = () => {
   const { user } = useAuth();
   const [experiments, setExperiments] = useState<any[]>([]);
-  const [topics, setTopics] = useState<any[]>([]);
-  const [paths, setPaths] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [hypothesis, setHypothesis] = useState("");
-  const [topicId, setTopicId] = useState<string>("");
-  const [pathId, setPathId] = useState<string>("");
+  const [steps, setSteps] = useState("");
+  const [duration, setDuration] = useState("");
+  const [identityShift, setIdentityShift] = useState("");
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     fetchExperiments();
-    fetchTopics();
-    fetchPaths();
   }, [user]);
 
   const fetchExperiments = async () => {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("experiments")
-      .select("*, topics(name, color), learning_paths(title)")
+      .select("*")
       .eq("user_id", user!.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false});
 
     if (error) {
       toast.error("Failed to load experiments");
@@ -47,35 +44,19 @@ const Experiments = () => {
     setExperiments(data || []);
   };
 
-  const fetchTopics = async () => {
-    const { data } = await supabase
-      .from("topics")
-      .select("id, name, color")
-      .eq("user_id", user!.id);
-    setTopics(data || []);
-  };
-
-  const fetchPaths = async () => {
-    const { data } = await supabase
-      .from("learning_paths")
-      .select("id, title")
-      .eq("user_id", user!.id);
-    setPaths(data || []);
-  };
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await (supabase as any).from("experiments").insert({
+      const { error } = await supabase.from("experiments").insert({
         user_id: user!.id,
         title,
         description,
-        hypothesis,
-        topic_id: topicId || null,
-        learning_path_id: pathId || null,
-        status: "planning",
+        steps,
+        duration,
+        identity_shift_target: identityShift,
+        status: "planned",
       });
 
       if (error) throw error;
@@ -83,9 +64,9 @@ const Experiments = () => {
       toast.success("Experiment created!");
       setTitle("");
       setDescription("");
-      setHypothesis("");
-      setTopicId("");
-      setPathId("");
+      setSteps("");
+      setDuration("");
+      setIdentityShift("");
       setOpen(false);
       fetchExperiments();
     } catch (error: any) {
@@ -95,9 +76,36 @@ const Experiments = () => {
     }
   };
 
+  const handleGenerateExperiment = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("experiment-generator", {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      const generatedExperiments = data.experiments;
+      if (generatedExperiments && generatedExperiments.length > 0) {
+        const exp = generatedExperiments[0];
+        setTitle(exp.title);
+        setDescription(exp.description);
+        setSteps(exp.steps.join("\n"));
+        setDuration(exp.duration);
+        setIdentityShift(exp.identity_shift_target);
+        setOpen(true);
+        toast.success("Experiment generated! Review and save.");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate experiment");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await (supabase as any).from("experiments").delete().eq("id", id);
+      const { error } = await supabase.from("experiments").delete().eq("id", id);
 
       if (error) throw error;
 
@@ -110,7 +118,7 @@ const Experiments = () => {
 
   const handleUpdateStatus = async (id: string, status: string) => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("experiments")
         .update({ status })
         .eq("id", id);
@@ -125,10 +133,9 @@ const Experiments = () => {
   };
 
   const statusColors: Record<string, string> = {
-    planning: "secondary",
-    running: "default",
-    completed: "default",
-    failed: "destructive",
+    planned: "bg-blue-500/10 text-blue-500",
+    active: "bg-green-500/10 text-green-500",
+    completed: "bg-purple-500/10 text-purple-500",
   };
 
   return (
@@ -137,92 +144,95 @@ const Experiments = () => {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Experiments</h1>
           <p className="mt-1 text-muted-foreground">
-            Test your learning through hands-on experiments
+            Test ideas and track identity shifts
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Experiment
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create Experiment</DialogTitle>
-              <DialogDescription>
-                Define a hands-on project or test to apply your learning
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  placeholder="e.g., Build a sentiment analysis model"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="What will you build or test?"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hypothesis">Hypothesis</Label>
-                <Textarea
-                  id="hypothesis"
-                  placeholder="What do you expect to learn or achieve?"
-                  value={hypothesis}
-                  onChange={(e) => setHypothesis(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="topic">Topic (optional)</Label>
-                  <Select value={topicId} onValueChange={setTopicId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a topic" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {topics.map((topic) => (
-                        <SelectItem key={topic.id} value={topic.id}>
-                          {topic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="path">Learning Path (optional)</Label>
-                  <Select value={pathId} onValueChange={setPathId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a path" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {paths.map((path) => (
-                        <SelectItem key={path.id} value={path.id}>
-                          {path.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Creating..." : "Create Experiment"}
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleGenerateExperiment}
+            disabled={generating}
+            variant="outline"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {generating ? "Generating..." : "Generate Experiment"}
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Experiment
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create Experiment</DialogTitle>
+                <DialogDescription>
+                  Design a simple experiment to test and learn
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div>
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="What are you testing?"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Brief overview"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="steps">Steps (one per line)</Label>
+                  <Textarea
+                    id="steps"
+                    value={steps}
+                    onChange={(e) => setSteps(e.target.value)}
+                    placeholder="1. First step&#10;2. Second step"
+                    rows={3}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="duration">Duration</Label>
+                    <Input
+                      id="duration"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      placeholder="e.g., 7 days, 2 weeks"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="identity">Identity Shift Target</Label>
+                    <Input
+                      id="identity"
+                      value={identityShift}
+                      onChange={(e) => setIdentityShift(e.target.value)}
+                      placeholder="Who you're becoming"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Creating..." : "Create"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {experiments.length === 0 ? (
@@ -231,7 +241,7 @@ const Experiments = () => {
             <FlaskConical className="mb-4 h-16 w-16 text-muted-foreground opacity-20" />
             <h3 className="text-lg font-medium">No experiments yet</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create your first experiment to apply your learning
+              Create your first experiment or generate one with AI
             </p>
           </CardContent>
         </Card>
@@ -252,38 +262,43 @@ const Experiments = () => {
                   </Button>
                 </div>
                 <CardTitle className="mt-2 text-lg">{exp.title}</CardTitle>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
                   <Select
                     value={exp.status}
-                    onValueChange={(status) => handleUpdateStatus(exp.id, status)}
+                    onValueChange={(value) => handleUpdateStatus(exp.id, value)}
                   >
-                    <SelectTrigger className="h-7 w-auto text-xs">
-                      <SelectValue />
+                    <SelectTrigger className="h-7 w-auto border-0 bg-transparent p-0 hover:bg-transparent">
+                      <SelectValue>
+                        <Badge className={statusColors[exp.status]}>
+                          {exp.status}
+                        </Badge>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="planning">Planning</SelectItem>
-                      <SelectItem value="running">Running</SelectItem>
+                      <SelectItem value="planned">Planned</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
                     </SelectContent>
                   </Select>
-                  {exp.topics && (
-                    <Badge
-                      variant="secondary"
-                      style={{ backgroundColor: exp.topics.color + "20", color: exp.topics.color }}
-                    >
-                      {exp.topics.name}
-                    </Badge>
-                  )}
                 </div>
               </CardHeader>
-              {exp.description && (
-                <CardContent>
-                  <p className="line-clamp-3 text-sm text-muted-foreground">
-                    {exp.description}
-                  </p>
-                </CardContent>
-              )}
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  {exp.description && (
+                    <p className="text-muted-foreground">{exp.description}</p>
+                  )}
+                  {exp.duration && (
+                    <p className="text-xs">
+                      <span className="font-medium">Duration:</span> {exp.duration}
+                    </p>
+                  )}
+                  {exp.identity_shift_target && (
+                    <p className="text-xs">
+                      <span className="font-medium">Identity:</span> {exp.identity_shift_target}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
             </Card>
           ))}
         </div>

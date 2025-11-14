@@ -4,11 +4,12 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { FileText, Trash2 } from "lucide-react";
+import { FileText, Trash2, Sparkles } from "lucide-react";
 
 const Documents = () => {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<any[]>([]);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -43,24 +44,49 @@ const Documents = () => {
     }
   };
 
+  const handleNextStep = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("navigator", {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      toast.success(`Next step: ${data.one_thing}`);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Documents</h1>
+          <h1 className="text-3xl font-bold text-foreground">Projects</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage your PDFs and document summaries
+            Manage your active projects
           </p>
         </div>
+        <Button 
+          onClick={handleNextStep}
+          disabled={generating}
+          variant="outline"
+        >
+          <Sparkles className="mr-2 h-4 w-4" />
+          {generating ? "Generating..." : "Next Simple Step"}
+        </Button>
       </div>
 
       {documents.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <FileText className="mb-4 h-16 w-16 text-muted-foreground opacity-20" />
-            <h3 className="text-lg font-medium">No documents yet</h3>
+            <h3 className="text-lg font-medium">No projects yet</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Document management coming soon!
+              Your projects will appear here
             </p>
           </CardContent>
         </Card>
