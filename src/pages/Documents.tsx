@@ -13,8 +13,8 @@ import { Trash2, Upload, Download, Plus, FileText, Eye } from "lucide-react";
 import { z } from "zod";
 import * as pdfjs from 'pdfjs-dist';
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Set up PDF.js worker with correct version
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/build/pdf.worker.min.mjs`;
 
 const documentSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
@@ -58,8 +58,14 @@ const Documents = () => {
 
   const extractPdfText = async (file: File): Promise<string> => {
     try {
+      console.log('Starting PDF extraction for:', file.name, 'Size:', file.size);
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      console.log('ArrayBuffer loaded, length:', arrayBuffer.byteLength);
+      
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      console.log('PDF loaded successfully, pages:', pdf.numPages);
+      
       let fullText = '';
       
       for (let i = 1; i <= pdf.numPages; i++) {
@@ -69,16 +75,24 @@ const Documents = () => {
           .map((item: any) => item.str)
           .join(' ');
         fullText += pageText + '\n';
+        
+        if (i % 10 === 0) {
+          console.log(`Processed ${i}/${pdf.numPages} pages, text length so far: ${fullText.length}`);
+        }
       }
+      
+      console.log('PDF extraction complete. Total text length:', fullText.length);
       
       if (!fullText.trim()) {
-        throw new Error('No readable text found in PDF');
+        toast.warning('This PDF appears to be image-based with no extractable text. Consider using OCR or a different file.');
+        throw new Error('No readable text found in PDF - may be image-based');
       }
       
-      return fullText;
+      return fullText.trim();
     } catch (error) {
       console.error('PDF extraction error:', error);
-      throw new Error('Failed to extract text from PDF');
+      toast.error('Failed to extract text from PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      throw error;
     }
   };
 
@@ -117,16 +131,26 @@ const Documents = () => {
       
       // Only run AI analysis if toggle is ON
       if (runAnalysis) {
-        toast.info("Processing with AI...");
+        toast.info("Extracting text from document...");
         
         try {
           let extractedContent = '';
           
           if (selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')) {
             extractedContent = await extractPdfText(selectedFile);
+            console.log('Extracted content preview:', extractedContent.substring(0, 500));
           } else {
             extractedContent = await selectedFile.text();
+            console.log('Text file content length:', extractedContent.length);
           }
+          
+          if (!extractedContent || extractedContent.trim().length < 50) {
+            toast.error("Document has no readable content");
+            return;
+          }
+          
+          toast.info("Analyzing with AI...");
+          console.log('Sending to AI, content length:', extractedContent.length);
           
           const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
             body: {
@@ -136,6 +160,8 @@ const Documents = () => {
             }
           });
 
+          console.log('AI response:', { aiData, aiError });
+
           if (aiError) {
             console.error('AI processing error:', aiError);
             toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
@@ -144,7 +170,7 @@ const Documents = () => {
           }
         } catch (error) {
           console.error('Error processing document:', error);
-          toast.error("AI processing failed: " + (error instanceof Error ? error.message : 'Unknown error'));
+          toast.error("Processing failed: " + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
       
