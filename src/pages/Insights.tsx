@@ -105,7 +105,7 @@ const Insights = () => {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">{insight.content}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2">{insight.content}</p>
             </CardContent>
           </Card>
         ))}
