@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Trash2, Upload, Download, Plus, FileText } from "lucide-react";
+import { Trash2, Upload, Download, Plus, FileText, Eye } from "lucide-react";
 import { z } from "zod";
 
 const documentSchema = z.object({
@@ -20,6 +20,9 @@ const Documents = () => {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [docContent, setDocContent] = useState("");
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -179,6 +182,32 @@ const Documents = () => {
     }
   };
 
+  const handleViewDocument = async (doc: any) => {
+    setViewingDoc(doc);
+    setDocContent("");
+    setIsViewOpen(true);
+
+    if (!doc.file_path) {
+      setDocContent(doc.summary || "No content available");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      // Try to read as text for text-based files
+      const text = await data.text();
+      setDocContent(text.substring(0, 50000)); // Limit to 50k chars
+    } catch (error: any) {
+      console.error('Error reading document:', error);
+      setDocContent(doc.summary || "Cannot preview this file type. Use the download button to view it.");
+    }
+  };
+
   const handleGenerateNextStep = async () => {
     setGenerating(true);
     try {
@@ -213,19 +242,30 @@ const Documents = () => {
 
       <div className="grid gap-4 md:grid-cols-3">
         {documents.map((doc) => (
-          <Card key={doc.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
+          <Card key={doc.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200">
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <FileText className="h-4 w-4 text-primary" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewDocument(doc)}>
                   <h3 className="font-medium text-base mb-2">{doc.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
                     {doc.summary || "No summary available"}
                   </p>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDocument(doc);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                  </Button>
                   {doc.file_path && (
                     <Button
                       variant="ghost"
@@ -306,6 +346,33 @@ const Documents = () => {
                 Create Document
               </Button>
             </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{viewingDoc?.title || "View Document"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {viewingDoc?.summary && (
+              <div>
+                <Label className="text-sm font-medium">AI Summary</Label>
+                <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted rounded-md">
+                  {viewingDoc.summary}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label className="text-sm font-medium">Content Preview</Label>
+              <Textarea
+                value={docContent}
+                readOnly
+                className="mt-1.5 min-h-[400px] font-mono text-xs"
+                placeholder="Loading content..."
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
