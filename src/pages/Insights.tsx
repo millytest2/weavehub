@@ -106,26 +106,28 @@ const Insights = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         {insights.map((insight) => (
           <Card key={insight.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
             <CardContent className="pt-5 pb-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <Lightbulb className="h-4 w-4 text-primary" />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Lightbulb className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-base mb-2">{insight.title}</h3>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(insight.id)}
+                    className="h-8 w-8 p-0 shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-base mb-2">{insight.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">{insight.content}</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(insight.id)}
-                  className="h-8 w-8 p-0 shrink-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-6 pl-11">{insight.content}</p>
               </div>
             </CardContent>
           </Card>
