@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Trash2, Upload, Download, Plus, FileText, Eye } from "lucide-react";
 import { z } from "zod";
@@ -27,6 +28,9 @@ const Documents = () => {
   const [summary, setSummary] = useState("");
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [runAnalysis, setRunAnalysis] = useState(false);
 
   useEffect(() => {
     if (!user) return;
