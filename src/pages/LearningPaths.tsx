@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Map, Trash2, ArrowRight } from "lucide-react";
+import { Plus, Map, Trash2, ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const LearningPaths = () => {
@@ -23,6 +23,7 @@ const LearningPaths = () => {
   const [description, setDescription] = useState("");
   const [topicId, setTopicId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -94,6 +95,23 @@ const LearningPaths = () => {
     }
   };
 
+  const handleGenerateStep = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("synthesizer", {
+        body: { pathId: null }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Suggestion: ${data.suggestion}`);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -103,14 +121,23 @@ const LearningPaths = () => {
             Structure your learning journey and track progress
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Path
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleGenerateStep}
+            disabled={generating}
+            variant="outline"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {generating ? "Generating..." : "Generate Learning Step"}
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Path
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Learning Path</DialogTitle>
               <DialogDescription>
@@ -159,6 +186,7 @@ const LearningPaths = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {paths.length === 0 ? (
