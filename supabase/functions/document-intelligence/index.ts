@@ -39,6 +39,30 @@ serve(async (req) => {
 
     console.log(`Processing document ${documentId} for user ${user.id}`);
 
+    // Fetch user's identity seed and topics for context
+    const { data: identitySeed } = await supabase
+      .from('identity_seeds')
+      .select('content')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const { data: topics } = await supabase
+      .from('topics')
+      .select('name, description')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Build context for AI
+    let contextPrompt = '';
+    if (identitySeed?.content) {
+      contextPrompt += `\n\nUSER'S IDENTITY & GOALS:\n${identitySeed.content}\n`;
+    }
+    if (topics && topics.length > 0) {
+      const topicsList = topics.map(t => `- ${t.name}: ${t.description || 'No description'}`).join('\n');
+      contextPrompt += `\n\nUSER'S CURRENT LEARNING PATHS:\n${topicsList}\n`;
+    }
+
     // Call Lovable AI to extract intelligence from document
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -56,19 +80,20 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a document intelligence agent that extracts key insights from documents.
+            content: `You are a strategic document intelligence agent that extracts insights aligned with the user's identity and goals.
 
 CRITICAL INSTRUCTIONS:
-- Only extract 1-2 truly meaningful insights that are NOT obvious from the title
-- Each insight must have a unique, descriptive title (5-10 words) and detailed content
-- Insights should be actionable, surprising, or provide deep understanding
-- If the document is corrupted, unreadable, or contains no meaningful insights, return empty arrays
-- DO NOT create generic takeaways like "The document discusses..." - be specific and insightful
-- Focus on non-obvious patterns, strategies, frameworks, or actionable knowledge`
+- Extract 1-2 strategic insights that directly connect to the user's identity, goals, or learning paths
+- Each insight must have a descriptive title (5-10 words) and actionable content (2-4 sentences)
+- Focus on insights that help the user make progress on their daily, weekly, or monthly objectives
+- Insights should be: actionable, specific to their goals, and provide strategic value
+- If document is corrupted or has no strategic value for this user, return empty arrays
+- Connect document content to their existing learning paths when relevant
+- Think strategically: what would help this person TODAY, THIS WEEK, THIS MONTH?${contextPrompt}`
           },
           {
             role: 'user',
-            content: `Document Title: ${title}\n\nContent:\n${content}\n\nExtract key insights from this document. Remember: only 1-2 truly meaningful insights with unique titles and detailed descriptions. If there are no real insights, return empty arrays.`
+            content: `Document Title: ${title}\n\nContent:\n${content}\n\nBased on my identity and learning paths, extract 1-2 strategic insights that will help me make progress. Focus on actionable knowledge I can use daily, weekly, or monthly.`
           }
         ],
         tools: [{
@@ -85,20 +110,25 @@ CRITICAL INSTRUCTIONS:
                 },
                 insights: {
                   type: "array",
-                  description: "1-2 key insights with unique titles and detailed content. Leave empty if no meaningful insights found.",
+                  description: "1-2 strategic insights that align with user's identity and goals. Should help with daily, weekly, or monthly progress.",
                   items: {
                     type: "object",
                     properties: {
                       title: { 
                         type: "string",
-                        description: "A unique, descriptive title for this insight (5-10 words)"
+                        description: "Strategic title showing how this helps with user's goals (5-10 words)"
                       },
                       content: { 
                         type: "string",
-                        description: "Detailed explanation of the insight (2-4 sentences)"
+                        description: "Actionable explanation of how to apply this insight to daily/weekly/monthly progress (2-4 sentences)"
+                      },
+                      timeframe: {
+                        type: "string",
+                        enum: ["daily", "weekly", "monthly"],
+                        description: "When this insight is most applicable"
                       }
                     },
-                    required: ["title", "content"]
+                    required: ["title", "content", "timeframe"]
                   }
                 }
               },
@@ -155,9 +185,9 @@ CRITICAL INSTRUCTIONS:
     if (intelligence.insights && intelligence.insights.length > 0) {
       const insightsToCreate = intelligence.insights
         .slice(0, 2) // Max 2 insights
-        .map((insight: { title: string; content: string }) => ({
+        .map((insight: { title: string; content: string; timeframe?: string }) => ({
           user_id: user.id,
-          title: insight.title,
+          title: `${insight.timeframe ? `[${insight.timeframe.toUpperCase()}] ` : ''}${insight.title}`,
           content: insight.content,
           source: 'document_ai',
         }));
