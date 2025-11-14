@@ -37,10 +37,14 @@ serve(async (req) => {
 
     const { documentId, content, title } = await req.json();
     
-    console.log(`Processing document ${documentId} for user ${user.id}, content length: ${content?.length}`);
+    console.log(`Processing document ${documentId} for user ${user.id}`);
+    console.log(`Title: ${title}`);
+    console.log(`Content length: ${content?.length}`);
+    console.log(`Content preview (first 500 chars): ${content?.substring(0, 500)}`);
 
     // Content is expected to be plain text extracted on the client side
     if (!documentId || !content) {
+      console.error('Missing required fields:', { documentId: !!documentId, content: !!content });
       return new Response(
         JSON.stringify({ error: 'Missing documentId or content' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -48,11 +52,13 @@ serve(async (req) => {
     }
     
     if (content.trim().length < 50) {
+      console.error('Content too short:', content.length);
       throw new Error('Document appears to be empty or has insufficient content');
     }
     
     // Limit content size
     const extractedText = content.substring(0, 50000);
+    console.log(`Using ${extractedText.length} characters for AI analysis`);
 
     // Fetch user's identity seed and topics for context
     const { data: identitySeed } = await supabase
