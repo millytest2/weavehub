@@ -15,6 +15,8 @@ const Experiments = () => {
   const { user } = useAuth();
   const [experiments, setExperiments] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [selectedExperiment, setSelectedExperiment] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState("");
@@ -115,6 +117,11 @@ const Experiments = () => {
     }
   };
 
+  const handleViewDetails = (exp: any) => {
+    setSelectedExperiment(exp);
+    setIsDetailOpen(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed": return "bg-primary/10 text-primary border-primary/20";
@@ -151,7 +158,11 @@ const Experiments = () => {
 
       <div className="grid gap-4 md:grid-cols-2">
         {experiments.map((exp) => (
-          <Card key={exp.id} className="rounded-[10px] border-border/30">
+          <Card 
+            key={exp.id} 
+            className="rounded-[10px] border-border/30 cursor-pointer hover:border-primary/30 transition-colors"
+            onClick={() => handleViewDetails(exp)}
+          >
             <CardContent className="pt-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -174,7 +185,10 @@ const Experiments = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(exp.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(exp.id);
+                  }}
                   className="h-8 w-8 p-0 shrink-0"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -243,6 +257,69 @@ const Experiments = () => {
               {loading ? "Creating..." : "Create Experiment"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail View Dialog */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-start justify-between">
+              <DialogTitle className="text-2xl">{selectedExperiment?.title}</DialogTitle>
+              <Badge variant="outline" className={getStatusColor(selectedExperiment?.status || "planning")}>
+                {selectedExperiment?.status}
+              </Badge>
+            </div>
+          </DialogHeader>
+          <div className="space-y-6">
+            {selectedExperiment?.description && (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Description</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {selectedExperiment.description}
+                </p>
+              </div>
+            )}
+
+            {selectedExperiment?.identity_shift_target && (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Identity Shift Target</h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedExperiment.identity_shift_target}
+                </p>
+              </div>
+            )}
+
+            {selectedExperiment?.steps && (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Steps</h3>
+                <div className="space-y-2">
+                  {selectedExperiment.steps.split('\n').filter((step: string) => step.trim()).map((step: string, idx: number) => (
+                    <div key={idx} className="flex gap-2">
+                      <span className="text-sm text-muted-foreground">{idx + 1}.</span>
+                      <span className="text-sm text-muted-foreground">{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedExperiment?.duration && (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Duration</h3>
+                <p className="text-sm text-muted-foreground">{selectedExperiment.duration}</p>
+              </div>
+            )}
+
+            {selectedExperiment?.results && (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Results</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {selectedExperiment.results}
+                </p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
