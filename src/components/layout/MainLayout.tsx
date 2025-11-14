@@ -36,8 +36,8 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
                 key={item.name}
                 to={item.href}
                 end={item.href === "/"}
-                className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:text-foreground"
-                activeClassName="bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary"
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-accent/10"
+                activeClassName="bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
               >
                 <item.icon className="h-4 w-4" />
                 <span className="hidden md:inline">{item.name}</span>
