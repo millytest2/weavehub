@@ -94,7 +94,7 @@ const Documents = () => {
             console.error('AI processing error:', aiError);
             toast.warning("Document uploaded but AI processing failed");
           } else {
-            toast.success(`AI extracted ${aiData.insightsCreated} insights and ${aiData.topicsCreated} topics!`);
+            toast.success(`Document processed! Created ${aiData.insightsCreated} insights.`);
           }
         } catch (error) {
           console.error('AI processing error:', error);
