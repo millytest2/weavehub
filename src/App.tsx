@@ -12,6 +12,7 @@ import TopicDetail from "./pages/TopicDetail";
 import Insights from "./pages/Insights";
 import Documents from "./pages/Documents";
 import LearningPaths from "./pages/LearningPaths";
+import LearningPathDetail from "./pages/LearningPathDetail";
 import Experiments from "./pages/Experiments";
 import DailyFocus from "./pages/DailyFocus";
 import Auth from "./pages/Auth";
@@ -84,6 +85,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MainLayout>
                     <LearningPaths />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/paths/:id"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <LearningPathDetail />
                   </MainLayout>
                 </ProtectedRoute>
               }

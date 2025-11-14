@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Map, Trash2 } from "lucide-react";
+import { Plus, Map, Trash2, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const LearningPaths = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [paths, setPaths] = useState<any[]>([]);
   const [topics, setTopics] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -172,14 +174,17 @@ const LearningPaths = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {paths.map((path) => (
-            <Card key={path.id} className="transition-all hover:shadow-md">
+            <Card key={path.id} className="transition-all hover:shadow-md cursor-pointer" onClick={() => navigate(`/paths/${path.id}`)}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <Map className="h-5 w-5 text-success" />
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(path.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(path.id);
+                    }}
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -208,6 +213,9 @@ const LearningPaths = () => {
                   <p className="line-clamp-3 text-sm text-muted-foreground">
                     {path.description}
                   </p>
+                  <div className="mt-4 flex items-center text-sm text-primary">
+                    View details <ArrowRight className="ml-1 h-4 w-4" />
+                  </div>
                 </CardContent>
               )}
             </Card>
