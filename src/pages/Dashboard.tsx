@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sparkles, Lightbulb, FlaskConical, Map, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ const Dashboard = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string>("");
+  const [showSyncDetail, setShowSyncDetail] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -137,7 +139,15 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {syncResult ? (
-              <p className="text-sm leading-relaxed line-clamp-3">{syncResult}</p>
+              <div 
+                className="cursor-pointer" 
+                onClick={() => setShowSyncDetail(true)}
+              >
+                <p className="text-sm leading-relaxed line-clamp-3 hover:text-primary transition-colors">
+                  {syncResult}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">Click to read full</p>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">Sync your direction</p>
             )}
@@ -193,6 +203,20 @@ const Dashboard = () => {
           Upload Document
         </Button>
       </div>
+
+      {/* Direction Sync Detail Dialog */}
+      <Dialog open={showSyncDetail} onOpenChange={setShowSyncDetail}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Direction Sync</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {syncResult}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
