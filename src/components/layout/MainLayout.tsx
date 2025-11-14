@@ -10,54 +10,54 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Dashboard", href: "/", icon: Home },
     { name: "Insights", href: "/insights", icon: Lightbulb },
     { name: "Documents", href: "/documents", icon: FileText },
-    { name: "Learning Paths", href: "/paths", icon: Map },
+    { name: "Topics", href: "/paths", icon: Map },
     { name: "Experiments", href: "/experiments", icon: FlaskConical },
-    { name: "Daily Focus", href: "/daily", icon: ListTodo },
+    { name: "Daily", href: "/daily", icon: ListTodo },
   ];
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-secondary">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card p-6">
-        <div className="mb-8 flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <Brain className="h-6 w-6 text-primary-foreground" />
+    <div className="flex min-h-screen bg-background">
+      {/* Minimal Top Bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+        <div className="flex h-16 items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
+              <Brain className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold tracking-tight">Knowledge Hub</h1>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Knowledge Hub</h1>
-            <p className="text-xs text-muted-foreground">Your learning companion</p>
-          </div>
-        </div>
 
-        <nav className="space-y-1">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
-              activeClassName="bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+          <nav className="flex items-center gap-1">
+            {navigation.map((item) => (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                activeClassName="bg-primary/10 text-primary hover:bg-primary/10"
+              >
+                <item.icon className="h-4 w-4" />
+                <span className="hidden md:inline">{item.name}</span>
+              </NavLink>
+            ))}
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="ml-2 gap-2 text-muted-foreground hover:text-foreground"
             >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="mt-auto pt-6">
-          <Button
-            variant="ghost"
-            onClick={signOut}
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </Button>
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">Sign Out</span>
+            </Button>
+          </nav>
         </div>
-      </aside>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-7xl p-8">{children}</div>
+      {/* Main Content with top padding */}
+      <main className="flex-1 pt-16">
+        <div className="mx-auto max-w-7xl p-6 md:p-8">{children}</div>
       </main>
     </div>
   );
