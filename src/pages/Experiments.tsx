@@ -55,7 +55,7 @@ const Experiments = () => {
         steps,
         duration,
         identity_shift_target: identityShift,
-        status: "planned",
+        status: "planning",
       });
 
       if (error) throw error;
