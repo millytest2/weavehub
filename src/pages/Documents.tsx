@@ -174,26 +174,44 @@ const Documents = () => {
   const handleConfirmUpload = async () => {
     if (!selectedFile) return;
     
+    if (!user) {
+      toast.error("You must be logged in to upload documents");
+      return;
+    }
+    
     setUploading(true);
     try {
       const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user!.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
+      console.log('[Upload] Starting upload to bucket "documents" with path:', fileName);
+      console.log('[Upload] User ID:', user.id);
+
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, selectedFile);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[Upload] Storage error:', uploadError);
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
+
+      console.log('[Upload] File uploaded successfully, inserting DB row...');
 
       const { data: docData, error: dbError } = await supabase.from("documents").insert({
-        user_id: user!.id,
+        user_id: user.id,
         title: uploadTitle || selectedFile.name,
         file_path: fileName,
         file_type: selectedFile.type,
         file_size: selectedFile.size,
       }).select().single();
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('[Upload] DB insert error:', dbError);
+        throw new Error(`DB insert failed: ${dbError.message}`);
+      }
+
+      console.log('[Upload] Document record created:', docData.id);
 
       toast.success("Document uploaded!");
       
@@ -284,13 +302,14 @@ const Documents = () => {
         }
       }
       
-      fetchDocuments();
+      await fetchDocuments();
       setSelectedFile(null);
       setUploadTitle("");
       setRunAnalysis(false);
       setIsDialogOpen(false);
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('[Upload] Unexpected error:', error);
+      toast.error(error.message || "Failed to upload document");
     } finally {
       setUploading(false);
     }
