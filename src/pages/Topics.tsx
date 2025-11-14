@@ -41,7 +41,7 @@ const Topics = () => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast.error("Failed to load topics");
+      toast.error("Failed to load paths");
       return;
     }
 
@@ -62,7 +62,7 @@ const Topics = () => {
 
       if (error) throw error;
 
-      toast.success("Topic created!");
+      toast.success("Path created!");
       setName("");
       setDescription("");
       setColor("#3B82F6");
@@ -81,7 +81,7 @@ const Topics = () => {
 
       if (error) throw error;
 
-      toast.success("Topic deleted");
+      toast.success("Path deleted");
       fetchTopics();
     } catch (error: any) {
       toast.error(error.message);
@@ -100,14 +100,14 @@ const Topics = () => {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-medium">Topics</h1>
+          <h1 className="text-3xl font-medium">Paths</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Areas you're learning and evolving in
           </p>
         </div>
         <Button onClick={() => setOpen(true)} size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          New Topic
+          New Path
         </Button>
       </div>
 
@@ -145,9 +145,9 @@ const Topics = () => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Learning Topic</DialogTitle>
+            <DialogTitle>Create Learning Path</DialogTitle>
             <DialogDescription>
-              Define a subject area you want to learn and track
+              Define an area you want to learn and track
             </DialogDescription>
           </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
@@ -165,7 +165,7 @@ const Topics = () => {
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="What do you want to learn about this topic?"
+                  placeholder="What do you want to learn about this path?"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
@@ -189,7 +189,7 @@ const Topics = () => {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating..." : "Create Topic"}
+            {loading ? "Creating..." : "Create Path"}
           </Button>
         </form>
       </DialogContent>

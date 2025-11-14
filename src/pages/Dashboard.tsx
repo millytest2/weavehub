@@ -191,7 +191,7 @@ const Dashboard = () => {
           className="text-muted-foreground hover:text-foreground"
         >
           <Map className="mr-2 h-4 w-4" />
-          Add Learning Step
+          Add Path
         </Button>
         <Button
           variant="ghost"
