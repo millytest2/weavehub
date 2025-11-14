@@ -1,1 +1,19 @@
 project_id = "ugglogiaipbzojfrwcoe"
+
+[functions.brain]
+verify_jwt = true
+
+[functions.daily-suggestions]
+verify_jwt = true
+
+[functions.experiment-generator]
+verify_jwt = true
+
+[functions.navigator]
+verify_jwt = true
+
+[functions.synthesizer]
+verify_jwt = true
+
+[functions.document-intelligence]
+verify_jwt = true
