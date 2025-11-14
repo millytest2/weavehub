@@ -15,7 +15,7 @@ const Dashboard = () => {
   const [activeExperiment, setActiveExperiment] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<string>("");
+  const [syncResult, setSyncResult] = useState<any>(null);
   const [showSyncDetail, setShowSyncDetail] = useState(false);
 
   useEffect(() => {
@@ -63,12 +63,12 @@ const Dashboard = () => {
 
   const handleSyncLife = async () => {
     setIsSyncing(true);
-    setSyncResult("");
+    setSyncResult(null);
     try {
       const { data, error } = await supabase.functions.invoke("synthesizer");
       if (error) throw error;
-      if (data?.suggestion) {
-        setSyncResult(data.suggestion);
+      if (data) {
+        setSyncResult(data);
         toast.success("Life synced");
       }
     } catch (error: any) {
@@ -143,8 +143,9 @@ const Dashboard = () => {
                 className="cursor-pointer" 
                 onClick={() => setShowSyncDetail(true)}
               >
-                <p className="text-sm leading-relaxed line-clamp-3 hover:text-primary transition-colors">
-                  {syncResult}
+                <p className="font-medium text-sm mb-1">{syncResult.headline}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                  {syncResult.summary}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">Click to read full</p>
               </div>
@@ -210,11 +211,23 @@ const Dashboard = () => {
           <DialogHeader>
             <DialogTitle>Direction Sync</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">
-              {syncResult}
-            </p>
-          </div>
+          {syncResult && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg mb-2">{syncResult.headline}</h3>
+                <p className="text-sm leading-relaxed">{syncResult.summary}</p>
+              </div>
+              
+              {syncResult.suggested_next_step && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium mb-2">Suggested Next Step</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {syncResult.suggested_next_step}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
