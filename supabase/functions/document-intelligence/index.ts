@@ -152,13 +152,21 @@ Return JSON with this exact structure:
       throw updateError;
     }
 
-    // Create insights from key takeaways
-    const insightsToCreate = intelligence.keyTakeaways.map((takeaway: string) => ({
-      user_id: user.id,
-      title: 'Key Takeaway',
-      content: takeaway,
-      source: 'document_ai',
-    }));
+    // Create insights from key takeaways with meaningful titles
+    const insightsToCreate = intelligence.keyTakeaways.map((takeaway: string) => {
+      // Extract first sentence or first 60 chars as title
+      const firstSentence = takeaway.split(/[.!?]/)[0].trim();
+      const insightTitle = firstSentence.length > 60 
+        ? firstSentence.substring(0, 60) + '...'
+        : firstSentence;
+      
+      return {
+        user_id: user.id,
+        title: insightTitle || 'Document Insight',
+        content: takeaway,
+        source: 'document_ai',
+      };
+    });
 
     if (insightsToCreate.length > 0) {
       const { error: insightsError } = await supabase
