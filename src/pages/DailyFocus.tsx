@@ -6,6 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
+import { z } from "zod";
+
+const dailyFocusSchema = z.object({
+  oneThing: z.string().trim().min(1, "One thing is required").max(500, "One thing must be less than 500 characters"),
+  whyMatters: z.string().trim().max(2000, "Why it matters must be less than 2,000 characters"),
+  reflection: z.string().trim().max(5000, "Reflection must be less than 5,000 characters"),
+});
 
 const DailyFocus = () => {
   const { user } = useAuth();
@@ -42,8 +49,11 @@ const DailyFocus = () => {
   };
 
   const handleSave = async () => {
-    if (!oneThing.trim()) {
-      toast.error("Please enter your one thing");
+    // Validate input
+    const validation = dailyFocusSchema.safeParse({ oneThing, whyMatters, reflection });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
       return;
     }
 
@@ -55,9 +65,9 @@ const DailyFocus = () => {
         const { error } = await supabase
           .from("daily_tasks")
           .update({
-            one_thing: oneThing,
-            why_matters: whyMatters,
-            reflection: reflection,
+            one_thing: validation.data.oneThing,
+            why_matters: validation.data.whyMatters,
+            reflection: validation.data.reflection,
           } as any)
           .eq("id", todayTask.id);
 
@@ -65,10 +75,10 @@ const DailyFocus = () => {
       } else {
         const { error } = await supabase.from("daily_tasks").insert([{
           user_id: user!.id,
-          title: oneThing,
-          one_thing: oneThing,
-          why_matters: whyMatters,
-          reflection: reflection,
+          title: validation.data.oneThing,
+          one_thing: validation.data.oneThing,
+          why_matters: validation.data.whyMatters,
+          reflection: validation.data.reflection,
           task_date: today,
           completed: false,
         } as any]);

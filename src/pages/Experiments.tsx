@@ -10,6 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Sparkles, FlaskConical } from "lucide-react";
+import { z } from "zod";
+
+const experimentSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  description: z.string().trim().max(2000, "Description must be less than 2,000 characters"),
+  steps: z.string().trim().max(5000, "Steps must be less than 5,000 characters"),
+  duration: z.string().trim().max(100, "Duration must be less than 100 characters"),
+  identityShift: z.string().trim().max(500, "Identity shift must be less than 500 characters"),
+});
 
 const Experiments = () => {
   const { user } = useAuth();
@@ -47,16 +56,25 @@ const Experiments = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input
+    const validation = experimentSchema.safeParse({ title, description, steps, duration, identityShift });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await (supabase as any).from("experiments").insert({
         user_id: user!.id,
-        title,
-        description,
-        steps,
-        duration,
-        identity_shift_target: identityShift,
+        title: validation.data.title,
+        description: validation.data.description,
+        steps: validation.data.steps,
+        duration: validation.data.duration,
+        identity_shift_target: validation.data.identityShift,
         status: "planning",
       });
 

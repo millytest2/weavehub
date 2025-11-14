@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Lightbulb } from "lucide-react";
+import { z } from "zod";
+
+const identitySeedSchema = z.object({
+  content: z.string().trim().min(1, "Identity seed content is required").max(50000, "Content must be less than 50,000 characters"),
+});
 
 export default function IdentitySeed() {
   const { user } = useAuth();
@@ -41,8 +46,11 @@ export default function IdentitySeed() {
   };
 
   const handleSave = async () => {
-    if (!content.trim()) {
-      toast.error("Please write your identity seed");
+    // Validate input
+    const validation = identitySeedSchema.safeParse({ content });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
       return;
     }
 
@@ -51,7 +59,7 @@ export default function IdentitySeed() {
       if (identitySeedId) {
         const { error } = await (supabase as any)
           .from("identity_seeds")
-          .update({ content })
+          .update({ content: validation.data.content })
           .eq("id", identitySeedId);
 
         if (error) throw error;
@@ -59,7 +67,7 @@ export default function IdentitySeed() {
       } else {
         const { data, error } = await (supabase as any)
           .from("identity_seeds")
-          .insert({ user_id: user?.id, content })
+          .insert({ user_id: user?.id, content: validation.data.content })
           .select()
           .single();
 
