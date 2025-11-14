@@ -1,8 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
-// @ts-ignore
-import pdfParse from "https://esm.sh/pdf-parse@1.1.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,46 +35,52 @@ serve(async (req) => {
       });
     }
 
-    const { documentId, filePath, title } = await req.json();
+    const { documentId, content, title, isPdf } = await req.json();
     
+    console.log(`Processing document ${documentId} for user ${user.id}, isPdf: ${isPdf}`);
 
-    // Download and extract text from the document
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('documents')
-      .download(filePath);
-
-    if (downloadError || !fileData) {
-      throw new Error(`Failed to download document: ${downloadError?.message}`);
-    }
-
-    // Extract text based on file type
-    let content = '';
-    try {
-      const arrayBuffer = await fileData.arrayBuffer();
-      
-      // Check if it's a PDF
-      if (title.toLowerCase().endsWith('.pdf')) {
-        console.log('Processing PDF file...');
-        const pdfData = await pdfParse(arrayBuffer);
-        content = pdfData.text || '';
-        console.log(`Extracted ${content.length} characters from PDF`);
-      } else {
-        // For text-based files
-        content = new TextDecoder().decode(new Uint8Array(arrayBuffer));
+    let extractedText = content;
+    
+    // If it's a PDF (base64 encoded), decode and extract text
+    if (isPdf && content) {
+      try {
+        console.log('Processing PDF content...');
+        
+        // Decode base64 to Uint8Array
+        const binaryString = atob(content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Use pdf.js to extract text
+        const pdfjs = await import("https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs");
+        const loadingTask = pdfjs.getDocument({ data: bytes });
+        const pdf = await loadingTask.promise;
+        
+        let fullText = '';
+        const maxPages = Math.min(pdf.numPages, 50);
+        for (let i = 1; i <= maxPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          fullText += pageText + '\n';
+        }
+        
+        extractedText = fullText;
+        console.log(`Extracted ${extractedText.length} characters from ${maxPages} pages`);
+      } catch (error) {
+        console.error('PDF extraction failed:', error);
+        throw new Error(`Failed to extract PDF text: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error('Text extraction failed:', error);
-      throw new Error(`Failed to extract text: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
     
-    if (!content || content.trim().length < 50) {
+    if (!extractedText || extractedText.trim().length < 50) {
       throw new Error('Document appears to be empty or has insufficient content');
     }
     
     // Limit content size
-    content = content.substring(0, 50000);
-
-    console.log(`Processing document ${documentId} for user ${user.id}`);
+    extractedText = extractedText.substring(0, 50000);
 
     // Fetch user's identity seed and topics for context
     const { data: identitySeed } = await supabase
@@ -132,7 +136,7 @@ CRITICAL INSTRUCTIONS:
           },
           {
             role: 'user',
-            content: `Document Title: ${title}\n\nContent:\n${content}\n\nBased on my identity and learning paths, extract 1-2 strategic insights that will help me make progress. Focus on actionable knowledge I can use daily, weekly, or monthly.`
+            content: `Document Title: ${title}\n\nContent:\n${extractedText}\n\nBased on my identity and learning paths, extract 1-2 strategic insights that will help me make progress. Focus on actionable knowledge I can use daily, weekly, or monthly.`
           }
         ],
         tools: [{
