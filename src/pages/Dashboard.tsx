@@ -26,14 +26,14 @@ const Dashboard = () => {
           .select("*")
           .eq("user_id", user.id)
           .eq("task_date", new Date().toISOString().split("T")[0])
-          .single(),
+          .maybeSingle(),
         (supabase as any)
           .from("experiments")
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single(),
+          .maybeSingle(),
       ]);
 
       if (taskRes.data) setTodayTask(taskRes.data);
