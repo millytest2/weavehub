@@ -288,7 +288,7 @@ const Documents = () => {
                   <FileText className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleViewDocument(doc)}>
-                  <h3 className="font-medium text-base mb-2">{doc.title}</h3>
+                  <h3 className="font-medium text-base mb-2 truncate" title={doc.title}>{doc.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
                     {doc.summary || "No summary available"}
                   </p>
