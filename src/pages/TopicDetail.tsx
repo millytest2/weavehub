@@ -47,7 +47,7 @@ const TopicDetail = () => {
       supabase.from("insights").select("*").eq("topic_id", id).order("created_at", { ascending: false }),
       supabase.from("documents").select("*").eq("topic_id", id).order("created_at", { ascending: false }),
       supabase.from("learning_paths").select("*, path_items(count)").eq("topic_id", id).order("created_at", { ascending: false }),
-      supabase.from("experiments").select("*").eq("topic_id", id).order("created_at", { ascending: false }),
+      (supabase as any).from("experiments").select("*").eq("topic_id", id).order("created_at", { ascending: false }),
     ]);
 
     setInsights(insightsRes.data || []);
