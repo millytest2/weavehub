@@ -259,7 +259,8 @@ const Documents = () => {
               title: uploadTitle || selectedFile.name
             },
             headers: {
-              Authorization: `Bearer ${ (await supabase.auth.getSession()).data.session?.access_token ?? '' }`,
+              Authorization: `Bearer ${currentSession.access_token}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             }
           });
 
