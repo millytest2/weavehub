@@ -7,6 +7,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface ExperimentOutput {
+  title: string;
+  description: string;
+  steps: string[];
+  duration: string;
+  identity_shift_target: string;
+}
+
+function validateExperiments(data: any): ExperimentOutput[] {
+  if (!data.experiments || !Array.isArray(data.experiments)) {
+    throw new Error('Invalid experiments array');
+  }
+  
+  data.experiments.forEach((exp: any) => {
+    if (!exp.title || typeof exp.title !== 'string') throw new Error('Invalid experiment title');
+    if (!exp.description || typeof exp.description !== 'string') throw new Error('Invalid experiment description');
+    if (!exp.steps || !Array.isArray(exp.steps) || exp.steps.length < 2) throw new Error('Invalid experiment steps');
+    if (!exp.duration || typeof exp.duration !== 'string') throw new Error('Invalid experiment duration');
+    if (!exp.identity_shift_target || typeof exp.identity_shift_target !== 'string') throw new Error('Invalid identity_shift_target');
+  });
+  
+  return data.experiments as ExperimentOutput[];
+}
+
+function getFallbackExperiments(): ExperimentOutput[] {
+  return [
+    {
+      title: "30-Minute Daily AI Practice",
+      description: "Commit to 30 minutes of focused AI/coding work every day for 7 days. No skipping, no multi-tasking.",
+      steps: [
+        "Set a 30-minute timer each day",
+        "Work on one small AI/coding task",
+        "Log what you did in 1-2 sentences",
+        "Reflect at day 7 on what shifted"
+      ],
+      duration: "7 days",
+      identity_shift_target: "I am someone who shows up consistently for what matters, even in small doses."
+    }
+  ];
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -40,7 +81,47 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "Based on the user's Identity Seed, recent insights, and patterns, suggest 1-3 small Anti-MBA style experiments. Each should be: testable, simple (7-14 days max), focused on identity shift, actionable. Philosophy: proof > theory, experiments > plans, identity > productivity. Return JSON."
+            content: `You are an experiment designer for ONE user.
+
+Your job: propose 1–3 SMALL, testable experiments that:
+- Last 7–14 days.
+- Have 2–4 steps each.
+- Feel emotionally light and doable.
+- Target an identity shift ('I am someone who…'), not just productivity.
+
+Context: same compact 'context' object as navigator.
+
+Scan insights, reflections, and experiments for loops:
+- Overthinking, avoidance, tool hopping, performance anxiety, chaos vs ease, etc.
+
+Design experiments that:
+- Put the user into a new behavioral pattern around those loops.
+- Require at most ~30–45 minutes per day.
+- Are easy to explain and track.
+
+Each experiment MUST include:
+- title
+- description (2–3 sentences)
+- steps (2–4 clear actions)
+- duration (e.g. '7 days')
+- identity_shift_target ('I am someone who…')
+
+Avoid:
+- 'Overhaul everything' style experiments.
+- Vague 'be more X' without clear actions.
+
+OUTPUT (JSON ONLY):
+{
+  'experiments': [
+    {
+      'title': 'string',
+      'description': 'string',
+      'steps': ['string', 'string'],
+      'duration': 'string',
+      'identity_shift_target': 'string'
+    }
+  ]
+}`
           },
           {
             role: "user",
@@ -63,12 +144,20 @@ serve(async (req) => {
                       properties: {
                         title: { type: "string", description: "Short experiment title" },
                         description: { type: "string", description: "What you're testing (2-3 sentences)" },
-                        steps: { type: "array", items: { type: "string" }, description: "3-5 concrete action steps" },
+                        steps: { 
+                          type: "array", 
+                          items: { type: "string" }, 
+                          description: "2-4 concrete action steps",
+                          minItems: 2,
+                          maxItems: 4
+                        },
                         duration: { type: "string", description: "e.g., '7 days', '2 weeks'" },
-                        identity_shift_target: { type: "string", description: "The identity shift you're testing" }
+                        identity_shift_target: { type: "string", description: "The identity shift you're testing (I am someone who...)" }
                       },
                       required: ["title", "description", "steps", "duration", "identity_shift_target"]
-                    }
+                    },
+                    minItems: 1,
+                    maxItems: 3
                   }
                 },
                 required: ["experiments"]
@@ -98,16 +187,35 @@ serve(async (req) => {
 
     const data = await response.json();
     const toolCall = data.choices[0].message.tool_calls?.[0];
-    const experiments = JSON.parse(toolCall.function.arguments);
+    
+    if (!toolCall) {
+      console.error("No tool call in response, using fallback");
+      return new Response(
+        JSON.stringify({ experiments: getFallbackExperiments() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let experiments;
+    try {
+      const parsed = JSON.parse(toolCall.function.arguments);
+      experiments = validateExperiments(parsed);
+    } catch (parseError) {
+      console.error("Failed to parse/validate AI response:", parseError);
+      return new Response(
+        JSON.stringify({ experiments: getFallbackExperiments() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
-      JSON.stringify(experiments),
+      JSON.stringify({ experiments }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Experiment generator error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ experiments: getFallbackExperiments() }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

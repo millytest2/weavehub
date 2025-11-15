@@ -33,6 +33,7 @@ const Dashboard = () => {
           .from("experiments")
           .select("*")
           .eq("user_id", user.id)
+          .eq("status", "in_progress")
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -115,19 +116,20 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             {activeExperiment ? (
               <div className="space-y-2">
-                <p className="font-medium">{(activeExperiment as any).title}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{(activeExperiment as any).identity_shift_target}</p>
+                <p className="font-medium text-sm">{(activeExperiment as any).title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{(activeExperiment as any).description}</p>
+                <p className="text-xs text-muted-foreground mt-1">Duration: {(activeExperiment as any).duration || "Not set"}</p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No experiment yet</p>
+              <p className="text-sm text-muted-foreground">No experiments in progress. Start one to build momentum.</p>
             )}
             <Button
               size="sm"
-              variant="outline"
               onClick={() => navigate("/experiments")}
+              variant="outline"
               className="w-full"
             >
-              Refine Experiment
+              {activeExperiment ? "View Experiment" : "Start Experiment"}
             </Button>
           </CardContent>
         </Card>
@@ -139,28 +141,33 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {syncResult ? (
-              <div 
-                className="cursor-pointer" 
-                onClick={() => setShowSyncDetail(true)}
-              >
-                <p className="font-medium text-sm mb-1">{syncResult.headline}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                  {syncResult.summary}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">Click to read full</p>
+              <div className="space-y-2">
+                <p className="font-medium text-sm">{syncResult.headline}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{syncResult.summary}</p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Sync your direction</p>
+              <p className="text-sm text-muted-foreground">Get clarity on where you're heading</p>
             )}
-            <Button
-              size="sm"
-              onClick={handleSyncLife}
-              disabled={isSyncing}
-              className="w-full"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {isSyncing ? "Syncing..." : "Sync My Life"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleSyncLife}
+                disabled={isSyncing}
+                className="flex-1"
+              >
+                {isSyncing ? "Syncing..." : "Sync"}
+              </Button>
+              {syncResult && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowSyncDetail(true)}
+                  className="flex-1"
+                >
+                  View
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
