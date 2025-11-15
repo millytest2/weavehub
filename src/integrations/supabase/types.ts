@@ -47,33 +47,75 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          messages: Json
+          tags: string[] | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_tasks: {
         Row: {
           completed: boolean | null
           created_at: string
           description: string | null
           id: string
+          one_thing: string | null
+          reflection: string | null
           task_date: string
           title: string
           user_id: string
+          why_matters: string | null
         }
         Insert: {
           completed?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
+          one_thing?: string | null
+          reflection?: string | null
           task_date?: string
           title: string
           user_id: string
+          why_matters?: string | null
         }
         Update: {
           completed?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
+          one_thing?: string | null
+          reflection?: string | null
           task_date?: string
           title?: string
           user_id?: string
+          why_matters?: string | null
         }
         Relationships: []
       }
@@ -82,6 +124,7 @@ export type Database = {
           created_at: string
           file_path: string | null
           file_size: number | null
+          file_type: string | null
           id: string
           summary: string | null
           title: string
@@ -93,6 +136,7 @@ export type Database = {
           created_at?: string
           file_path?: string | null
           file_size?: number | null
+          file_type?: string | null
           id?: string
           summary?: string | null
           title: string
@@ -104,6 +148,7 @@ export type Database = {
           created_at?: string
           file_path?: string | null
           file_size?: number | null
+          file_type?: string | null
           id?: string
           summary?: string | null
           title?: string
@@ -120,6 +165,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      experiments: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration: string | null
+          hypothesis: string | null
+          id: string
+          identity_shift_target: string | null
+          learning_path_id: string | null
+          result_summary: string | null
+          results: string | null
+          status: string | null
+          steps: string | null
+          title: string
+          topic_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          hypothesis?: string | null
+          id?: string
+          identity_shift_target?: string | null
+          learning_path_id?: string | null
+          result_summary?: string | null
+          results?: string | null
+          status?: string | null
+          steps?: string | null
+          title: string
+          topic_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          hypothesis?: string | null
+          id?: string
+          identity_shift_target?: string | null
+          learning_path_id?: string | null
+          result_summary?: string | null
+          results?: string | null
+          status?: string | null
+          steps?: string | null
+          title?: string
+          topic_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      identity_seeds: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       insights: {
         Row: {
