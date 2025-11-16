@@ -46,6 +46,47 @@ const Dashboard = () => {
     };
 
     fetchData();
+
+    // Set up real-time subscription for experiments
+    const experimentChannel = supabase
+      .channel('dashboard-experiments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'experiments',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Refetch experiments when any change occurs
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    // Set up real-time subscription for daily tasks
+    const taskChannel = supabase
+      .channel('dashboard-tasks')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'daily_tasks',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Refetch tasks when any change occurs
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(experimentChannel);
+      supabase.removeChannel(taskChannel);
+    };
   }, [user]);
 
   const handleGenerateDailyOne = async () => {
