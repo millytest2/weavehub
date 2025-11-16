@@ -107,13 +107,22 @@ const Experiments = () => {
       const generatedExperiments = data.experiments;
       if (generatedExperiments && generatedExperiments.length > 0) {
         const exp = generatedExperiments[0];
-        setTitle(exp.title);
-        setDescription(exp.description);
-        setSteps(exp.steps.join("\n"));
-        setDuration(exp.duration);
-        setIdentityShift(exp.identity_shift_target);
-        setIsDialogOpen(true);
-        toast.success("Experiment generated");
+        
+        // Directly insert the generated experiment with status 'in_progress'
+        const { error: insertError } = await supabase.from("experiments").insert({
+          user_id: user!.id,
+          title: exp.title,
+          description: exp.description,
+          steps: exp.steps.join("\n"),
+          duration: exp.duration,
+          identity_shift_target: exp.identity_shift_target,
+          status: "in_progress",
+        });
+
+        if (insertError) throw insertError;
+
+        toast.success("Experiment generated and set as active");
+        fetchExperiments();
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to generate");
