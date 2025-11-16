@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Lightbulb, FlaskConical, Map, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [showSyncDetail, setShowSyncDetail] = useState(false);
+  const [quickInsight, setQuickInsight] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -29,7 +31,7 @@ const Dashboard = () => {
           .eq("user_id", user.id)
           .eq("task_date", new Date().toISOString().split("T")[0])
           .maybeSingle(),
-        (supabase as any)
+        supabase
           .from("experiments")
           .select("*")
           .eq("user_id", user.id)
@@ -79,14 +81,37 @@ const Dashboard = () => {
     }
   };
 
+  const handleSaveQuickInsight = async () => {
+    if (!user || !quickInsight.trim()) return;
+    
+    try {
+      const title = quickInsight.trim().substring(0, 60);
+      const { error } = await supabase
+        .from("insights")
+        .insert({
+          user_id: user.id,
+          title,
+          content: quickInsight.trim(),
+          source: "quick_capture"
+        });
+      
+      if (error) throw error;
+      
+      toast.success("Insight saved");
+      setQuickInsight("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save insight");
+    }
+  };
+
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* 3-Card Layout */}
-      <div className="grid gap-6 md:grid-cols-3">
+    <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
+      {/* 3-Card Layout - Mobile First */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         {/* Today's One Thing */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Today's One Thing</CardTitle>
+            <CardTitle className="text-base md:text-lg font-medium">Today's One Thing</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {todayTask ? (
@@ -98,10 +123,10 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">No focus set yet</p>
             )}
             <Button
-              size="sm"
+              size="default"
               onClick={handleGenerateDailyOne}
               disabled={isGenerating}
-              className="w-full"
+              className="w-full min-h-[44px]"
             >
               {isGenerating ? "Generating..." : "Generate"}
             </Button>
@@ -111,7 +136,7 @@ const Dashboard = () => {
         {/* Active Experiment */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Active Experiment</CardTitle>
+            <CardTitle className="text-base md:text-lg font-medium">Active Experiment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {activeExperiment ? (
@@ -121,13 +146,13 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground mt-1">Duration: {(activeExperiment as any).duration || "Not set"}</p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No experiments in progress. Start one to build momentum.</p>
+              <p className="text-sm text-muted-foreground">No active experiment. Pick one from Experiments or generate a new one.</p>
             )}
             <Button
-              size="sm"
+              size="default"
               onClick={() => navigate("/experiments")}
               variant="outline"
-              className="w-full"
+              className="w-full min-h-[44px]"
             >
               {activeExperiment ? "View Experiment" : "Start Experiment"}
             </Button>
@@ -137,7 +162,7 @@ const Dashboard = () => {
         {/* Direction Sync */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Direction Sync</CardTitle>
+            <CardTitle className="text-base md:text-lg font-medium">Direction Sync</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {syncResult ? (
@@ -150,19 +175,19 @@ const Dashboard = () => {
             )}
             <div className="flex gap-2">
               <Button
-                size="sm"
+                size="default"
                 onClick={handleSyncLife}
                 disabled={isSyncing}
-                className="flex-1"
+                className="flex-1 min-h-[44px]"
               >
                 {isSyncing ? "Syncing..." : "Sync"}
               </Button>
               {syncResult && (
                 <Button
-                  size="sm"
+                  size="default"
                   variant="outline"
                   onClick={() => setShowSyncDetail(true)}
-                  className="flex-1"
+                  className="flex-1 min-h-[44px]"
                 >
                   View
                 </Button>
@@ -172,40 +197,63 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Quick Insight Capture */}
+      <Card className="rounded-[10px] border-border/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg font-medium">Quick Insight</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            placeholder="Drop a thought, pattern, or realization…"
+            value={quickInsight}
+            onChange={(e) => setQuickInsight(e.target.value)}
+            className="min-h-[80px] resize-none"
+          />
+          <Button
+            size="default"
+            onClick={handleSaveQuickInsight}
+            disabled={!quickInsight.trim()}
+            className="w-full min-h-[44px]"
+          >
+            Save Insight
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Simple Actions */}
-      <div className="flex flex-wrap items-center gap-4 justify-center text-sm">
+      <div className="flex flex-wrap items-center gap-3 justify-center text-sm">
         <Button
           variant="ghost"
-          size="sm"
+          size="default"
           onClick={() => navigate("/insights")}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground min-h-[44px]"
         >
           <Lightbulb className="mr-2 h-4 w-4" />
           Add Insight
         </Button>
         <Button
           variant="ghost"
-          size="sm"
+          size="default"
           onClick={() => navigate("/experiments")}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground min-h-[44px]"
         >
           <FlaskConical className="mr-2 h-4 w-4" />
           Add Experiment
         </Button>
         <Button
           variant="ghost"
-          size="sm"
+          size="default"
           onClick={() => navigate("/topics")}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground min-h-[44px]"
         >
           <Map className="mr-2 h-4 w-4" />
           Add Path
         </Button>
         <Button
           variant="ghost"
-          size="sm"
+          size="default"
           onClick={() => navigate("/documents")}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground min-h-[44px]"
         >
           <FileText className="mr-2 h-4 w-4" />
           Upload Document
