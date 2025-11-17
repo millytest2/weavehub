@@ -20,6 +20,7 @@ const Insights = () => {
   const { user } = useAuth();
   const [insights, setInsights] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedInsight, setSelectedInsight] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -108,7 +109,11 @@ const Insights = () => {
 
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         {insights.map((insight) => (
-          <Card key={insight.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer">
+          <Card 
+            key={insight.id} 
+            className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer"
+            onClick={() => setSelectedInsight(insight)}
+          >
             <CardContent className="pt-5 pb-5">
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-3">
@@ -121,7 +126,10 @@ const Insights = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(insight.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(insight.id);
+                    }}
                     className="h-8 w-8 p-0 shrink-0"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -164,6 +172,32 @@ const Insights = () => {
               {loading ? "Creating..." : "Create Insight"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedInsight} onOpenChange={() => setSelectedInsight(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedInsight?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {selectedInsight?.content}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  handleDelete(selectedInsight.id);
+                  setSelectedInsight(null);
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

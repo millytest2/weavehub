@@ -105,7 +105,7 @@ const LearningPaths = () => {
 
       if (error) throw error;
 
-      toast.success(`Suggestion: ${data.suggestion}`);
+      toast.success(`Suggestion: ${data.suggested_next_step}`);
     } catch (error: any) {
       toast.error(error.message || "Failed to generate");
     } finally {

@@ -207,8 +207,7 @@ const Dashboard = () => {
         {/* Direction Sync */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-medium flex items-center gap-2">
-              <span>🧭</span>
+            <CardTitle className="text-base md:text-lg font-medium">
               Direction Sync
             </CardTitle>
           </CardHeader>
@@ -228,7 +227,7 @@ const Dashboard = () => {
                 disabled={isSyncing}
                 className="flex-1 min-h-[44px]"
               >
-                {isSyncing ? "Syncing..." : "Sync"}
+                {isSyncing ? "Syncing..." : "🧭 Sync"}
               </Button>
               {syncResult && (
                 <Button
