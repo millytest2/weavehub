@@ -49,37 +49,37 @@ const Dashboard = () => {
 
     // Set up real-time subscription for experiments
     const experimentChannel = supabase
-      .channel('dashboard-experiments')
+      .channel("dashboard-experiments")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'experiments',
-          filter: `user_id=eq.${user.id}`
+          event: "*",
+          schema: "public",
+          table: "experiments",
+          filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
           // Refetch experiments when any change occurs
           fetchData();
-        }
+        },
       )
       .subscribe();
 
     // Set up real-time subscription for daily tasks
     const taskChannel = supabase
-      .channel('dashboard-tasks')
+      .channel("dashboard-tasks")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'daily_tasks',
-          filter: `user_id=eq.${user.id}`
+          event: "*",
+          schema: "public",
+          table: "daily_tasks",
+          filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
           // Refetch tasks when any change occurs
           fetchData();
-        }
+        },
       )
       .subscribe();
 
@@ -124,23 +124,21 @@ const Dashboard = () => {
 
   const handleSaveSyncResult = async () => {
     if (!user || !syncResult) return;
-    
+
     setSavingSyncResult(true);
     try {
       const title = syncResult.headline || "Direction Sync";
       const content = `${syncResult.summary}\n\nNext Step: ${syncResult.suggested_next_step || "Not specified"}`;
-      
-      const { error } = await supabase
-        .from("insights")
-        .insert({
-          user_id: user.id,
-          title,
-          content,
-          source: "direction_sync"
-        });
-      
+
+      const { error } = await supabase.from("insights").insert({
+        user_id: user.id,
+        title,
+        content,
+        source: "direction_sync",
+      });
+
       if (error) throw error;
-      
+
       toast.success("Direction sync saved as insight");
     } catch (error: any) {
       toast.error(error.message || "Failed to save");
@@ -162,7 +160,9 @@ const Dashboard = () => {
             {todayTask ? (
               <div className="space-y-2">
                 <p className="font-medium text-sm">{(todayTask as any).one_thing}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{(todayTask as any).why_matters}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                  {(todayTask as any).why_matters}
+                </p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No focus set yet</p>
@@ -188,10 +188,14 @@ const Dashboard = () => {
               <div className="space-y-2 max-h-[120px] overflow-y-auto">
                 <p className="font-medium text-sm">{(activeExperiment as any).title}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">{(activeExperiment as any).description}</p>
-                <p className="text-xs text-muted-foreground mt-1">Duration: {(activeExperiment as any).duration || "Not set"}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Duration: {(activeExperiment as any).duration || "Not set"}
+                </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No active experiment. Pick one from Experiments or generate a new one.</p>
+              <p className="text-sm text-muted-foreground">
+                No active experiment. Pick one from Experiments or generate a new one.
+              </p>
             )}
             <Button
               size="default"
@@ -207,9 +211,7 @@ const Dashboard = () => {
         {/* Direction Sync */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-medium">
-              Direction Sync
-            </CardTitle>
+            <CardTitle className="text-base md:text-lg font-medium">Direction Sync</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {syncResult ? (
@@ -221,13 +223,8 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">Get clarity on where you're heading</p>
             )}
             <div className="flex gap-2">
-              <Button
-                size="default"
-                onClick={handleSyncLife}
-                disabled={isSyncing}
-                className="flex-1 min-h-[44px]"
-              >
-                {isSyncing ? "Syncing..." : "🧭 Sync"}
+              <Button size="default" onClick={handleSyncLife} disabled={isSyncing} className="flex-1 min-h-[44px]">
+                {isSyncing ? "Syncing..." : " 🔀 Sync"}
               </Button>
               {syncResult && (
                 <Button
@@ -296,29 +293,19 @@ const Dashboard = () => {
                 <h3 className="font-semibold text-lg mb-2">{syncResult.headline}</h3>
                 <p className="text-sm leading-relaxed">{syncResult.summary}</p>
               </div>
-              
+
               {syncResult.suggested_next_step && (
                 <div className="border-t pt-4">
                   <h4 className="text-sm font-medium mb-2">Suggested Next Step</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {syncResult.suggested_next_step}
-                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{syncResult.suggested_next_step}</p>
                 </div>
               )}
-              
+
               <div className="border-t pt-4 flex gap-2">
-                <Button
-                  onClick={handleSaveSyncResult}
-                  disabled={savingSyncResult}
-                  className="flex-1"
-                >
+                <Button onClick={handleSaveSyncResult} disabled={savingSyncResult} className="flex-1">
                   {savingSyncResult ? "Saving..." : "Save as Insight"}
                 </Button>
-                <Button
-                  onClick={() => setShowSyncDetail(false)}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button onClick={() => setShowSyncDetail(false)} variant="outline" className="flex-1">
                   Close
                 </Button>
               </div>
