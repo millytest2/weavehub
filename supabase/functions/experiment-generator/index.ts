@@ -64,11 +64,15 @@ serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
+    console.log("Experiment generator called for user:", user.id);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     // Fetch user's context using shared helper
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatContextForAI(userContext);
+
+    console.log("Fetched user context, calling AI gateway...");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -170,6 +174,7 @@ OUTPUT (JSON ONLY):
     });
 
     if (!response.ok) {
+      console.error("AI Gateway error:", response.status, await response.text());
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded." }),
@@ -186,6 +191,7 @@ OUTPUT (JSON ONLY):
     }
 
     const data = await response.json();
+    console.log("AI response received, tool calls:", data.choices[0].message.tool_calls);
     const toolCall = data.choices[0].message.tool_calls?.[0];
     
     if (!toolCall) {
@@ -199,7 +205,9 @@ OUTPUT (JSON ONLY):
     let experiments;
     try {
       const parsed = JSON.parse(toolCall.function.arguments);
+      console.log("Parsed tool call arguments:", parsed);
       experiments = validateExperiments(parsed);
+      console.log("Validated experiments:", experiments.length);
     } catch (parseError) {
       console.error("Failed to parse/validate AI response:", parseError);
       return new Response(

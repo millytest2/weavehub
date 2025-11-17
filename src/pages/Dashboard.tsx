@@ -18,7 +18,7 @@ const Dashboard = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [showSyncDetail, setShowSyncDetail] = useState(false);
-  const [quickInsight, setQuickInsight] = useState("");
+  const [savingSyncResult, setSavingSyncResult] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -35,7 +35,7 @@ const Dashboard = () => {
           .from("experiments")
           .select("*")
           .eq("user_id", user.id)
-          .eq("status", "in_progress")
+          .in("status", ["in_progress", "planning"])
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -122,26 +122,30 @@ const Dashboard = () => {
     }
   };
 
-  const handleSaveQuickInsight = async () => {
-    if (!user || !quickInsight.trim()) return;
+  const handleSaveSyncResult = async () => {
+    if (!user || !syncResult) return;
     
+    setSavingSyncResult(true);
     try {
-      const title = quickInsight.trim().substring(0, 60);
+      const title = syncResult.headline || "Direction Sync";
+      const content = `${syncResult.summary}\n\nNext Step: ${syncResult.suggested_next_step || "Not specified"}`;
+      
       const { error } = await supabase
         .from("insights")
         .insert({
           user_id: user.id,
           title,
-          content: quickInsight.trim(),
-          source: "quick_capture"
+          content,
+          source: "direction_sync"
         });
       
       if (error) throw error;
       
-      toast.success("Insight saved");
-      setQuickInsight("");
+      toast.success("Direction sync saved as insight");
     } catch (error: any) {
-      toast.error(error.message || "Failed to save insight");
+      toast.error(error.message || "Failed to save");
+    } finally {
+      setSavingSyncResult(false);
     }
   };
 
@@ -181,9 +185,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {activeExperiment ? (
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[120px] overflow-y-auto">
                 <p className="font-medium text-sm">{(activeExperiment as any).title}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{(activeExperiment as any).description}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{(activeExperiment as any).description}</p>
                 <p className="text-xs text-muted-foreground mt-1">Duration: {(activeExperiment as any).duration || "Not set"}</p>
               </div>
             ) : (
@@ -203,7 +207,10 @@ const Dashboard = () => {
         {/* Direction Sync */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-medium">Direction Sync</CardTitle>
+            <CardTitle className="text-base md:text-lg font-medium flex items-center gap-2">
+              <span>🧭</span>
+              Direction Sync
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {syncResult ? (
@@ -237,29 +244,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Quick Insight Capture */}
-      <Card className="rounded-[10px] border-border/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base md:text-lg font-medium">Quick Insight</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Textarea
-            placeholder="Drop a thought, pattern, or realization…"
-            value={quickInsight}
-            onChange={(e) => setQuickInsight(e.target.value)}
-            className="min-h-[80px] resize-none"
-          />
-          <Button
-            size="default"
-            onClick={handleSaveQuickInsight}
-            disabled={!quickInsight.trim()}
-            className="w-full min-h-[44px]"
-          >
-            Save Insight
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* Simple Actions */}
       <div className="flex flex-wrap items-center gap-3 justify-center text-sm">
@@ -305,7 +289,7 @@ const Dashboard = () => {
       <Dialog open={showSyncDetail} onOpenChange={setShowSyncDetail}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Direction Sync</DialogTitle>
+            <DialogTitle>🧭 Direction Sync</DialogTitle>
           </DialogHeader>
           {syncResult && (
             <div className="space-y-4">
@@ -322,6 +306,23 @@ const Dashboard = () => {
                   </p>
                 </div>
               )}
+              
+              <div className="border-t pt-4 flex gap-2">
+                <Button
+                  onClick={handleSaveSyncResult}
+                  disabled={savingSyncResult}
+                  className="flex-1"
+                >
+                  {savingSyncResult ? "Saving..." : "Save as Insight"}
+                </Button>
+                <Button
+                  onClick={() => setShowSyncDetail(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
