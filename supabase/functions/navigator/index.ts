@@ -56,6 +56,63 @@ serve(async (req) => {
     // Fetch user's context using shared helper
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatContextForAI(userContext);
+    
+    // Fetch phase info
+    const { data: identityData } = await supabase
+      .from("identity_seeds")
+      .select("current_phase, target_monthly_income, current_monthly_income, job_apps_this_week, job_apps_goal, days_to_move, weekly_focus")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const phase = identityData?.current_phase || "baseline";
+    const baselineMetrics = identityData || {} as any;
+
+    const systemPrompt = phase === "baseline"
+      ? `You are a focused coach for ONE user in BASELINE PHASE.
+
+BASELINE PHASE = Lock stable $${baselineMetrics.target_monthly_income || 4000}/month income FIRST. Everything else waits.
+
+Current metrics:
+- Income: $${baselineMetrics.current_monthly_income || 0}/$${baselineMetrics.target_monthly_income || 4000}
+- Job apps this week: ${baselineMetrics.job_apps_this_week || 0}/${baselineMetrics.job_apps_goal || 50}
+${baselineMetrics.days_to_move ? `- Days to LA move: ${baselineMetrics.days_to_move}` : ''}
+${baselineMetrics.weekly_focus ? `- This week's focus: ${baselineMetrics.weekly_focus}` : ''}
+
+Your job: Choose ONE action for TODAY that DIRECTLY serves baseline:
+1. Job applications (hospitality or tech SDR)
+2. Bartending shifts
+3. Delivering UPath reports (for cash)
+4. Content that feeds job search proof/networking
+
+RULES:
+- 15-45 minutes max
+- No "empire building" experiments unless they make money THIS WEEK
+- No deep planning, no 7-day challenges, no identity work UNLESS income is on track
+- Math-driven: 50 apps/week = job in 30 days = baseline locked = then you can experiment
+
+If job apps are below weekly goal, ALWAYS suggest job applications.
+If income is below target and no active bartending/UPath work, suggest those.
+Only suggest content/experiments if baseline is on track.`
+      : `You are a focused coach for ONE user in EMPIRE PHASE.
+
+EMPIRE PHASE = Baseline is locked. Now: scale content, experiments, UPath authority.
+
+Your job: Choose ONE action for TODAY that builds:
+- Content authority (3 buckets: Personal Proof, Clarity Systems, UPath)
+- Experiment proof (test → document → framework → offer)
+- UPath growth (reports → insights → scale)
+
+User philosophy:
+- Proof > theory
+- Small tests > big plans
+- Identity > productivity
+- Ease > force
+
+RULES:
+- 15-45 minutes max
+- Emotionally light
+- Moves needle on content/experiments/UPath
+- Clear first step`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -66,60 +123,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          {
-            role: "system",
-            content: `You are a focused coach for ONE specific user.
-
-Your job: based on the provided context, choose ONE concrete action for TODAY that:
-- Takes 15–45 minutes.
-- Is emotionally doable (low friction).
-- Moves at least ONE pillar:
-  • UPath / AI / career clarity
-  • Identity & belief rewiring / emotional stability
-  • Relationships & presence
-  • Body & energy (165 protocol)
-
-User philosophy:
-- Proof > theory.
-- Small tests > big plans.
-- Identity > productivity.
-- Ease > force.
-- Simplicity > complexity.
-
-You receive a compact JSON 'context' with:
-- identity_seed
-- topics
-- experiments (in_progress, recent_completed, planning)
-- key_insights
-- key_documents
-- recent_actions (last 7 daily tasks with reflections)
-
-Decision rules:
-1) If there is an experiment with status 'in_progress':
-   Prefer the next step of that experiment, as long as it can be done in ≤ 45 minutes.
-2) If no active experiment:
-   Prefer a move that progresses UPath/AI OR body/energy OR relationship presence.
-   Avoid vague planning. Make it specific and concrete.
-3) The action MUST be clear enough that the user knows what to do in the first 5 minutes.
-
-Avoid:
-- 'Redesign X completely.'
-- 'Plan the next 3 months.'
-- Multi-hour deep work or research.
-- Pure journaling unless it's part of an experiment.
-
-OUTPUT (JSON ONLY):
-{
-  'one_thing': '1 short imperative sentence',
-  'why_matters': '2–4 sentences tying this to identity_seed and 1–2 pillars',
-  'how_to_start': '1–2 sentences describing the first 5 minutes concretely'
-}
-No extra fields, no commentary outside this JSON.`
-          },
-          {
-            role: "user",
-            content: `Based on my Identity Seed and current context, what's my ONE thing for today?\n${context}`
-          }
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Context:\n${context}\n\nWhat is the ONE thing I should do today?` }
         ],
         tools: [
           {

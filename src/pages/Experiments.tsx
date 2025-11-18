@@ -205,6 +205,11 @@ const Experiments = () => {
                   <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-2">
                     {exp.description}
                   </p>
+                  <div className="flex gap-2 text-xs mb-2">
+                    <span className="px-2 py-1 rounded bg-primary/10 text-primary">💰 {exp.baseline_impact || 0}</span>
+                    <span className="px-2 py-1 rounded bg-secondary/10 text-secondary-foreground">🔥 {exp.content_fuel || 0}</span>
+                    <span className="px-2 py-1 rounded bg-accent/10 text-accent-foreground">✨ {exp.identity_alignment || 0}</span>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Identity shift: {exp.identity_shift_target}
                   </p>
