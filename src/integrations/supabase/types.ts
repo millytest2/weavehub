@@ -168,11 +168,14 @@ export type Database = {
       }
       experiments: {
         Row: {
+          baseline_impact: number | null
+          content_fuel: number | null
           created_at: string
           description: string | null
           duration: string | null
           hypothesis: string | null
           id: string
+          identity_alignment: number | null
           identity_shift_target: string | null
           learning_path_id: string | null
           result_summary: string | null
@@ -185,11 +188,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          baseline_impact?: number | null
+          content_fuel?: number | null
           created_at?: string
           description?: string | null
           duration?: string | null
           hypothesis?: string | null
           id?: string
+          identity_alignment?: number | null
           identity_shift_target?: string | null
           learning_path_id?: string | null
           result_summary?: string | null
@@ -202,11 +208,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          baseline_impact?: number | null
+          content_fuel?: number | null
           created_at?: string
           description?: string | null
           duration?: string | null
           hypothesis?: string | null
           id?: string
+          identity_alignment?: number | null
           identity_shift_target?: string | null
           learning_path_id?: string | null
           result_summary?: string | null
@@ -224,23 +233,44 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          current_monthly_income: number | null
+          current_phase: string | null
+          days_to_move: number | null
           id: string
+          job_apps_goal: number | null
+          job_apps_this_week: number | null
+          target_monthly_income: number | null
           updated_at: string
           user_id: string
+          weekly_focus: string | null
         }
         Insert: {
           content: string
           created_at?: string
+          current_monthly_income?: number | null
+          current_phase?: string | null
+          days_to_move?: number | null
           id?: string
+          job_apps_goal?: number | null
+          job_apps_this_week?: number | null
+          target_monthly_income?: number | null
           updated_at?: string
           user_id: string
+          weekly_focus?: string | null
         }
         Update: {
           content?: string
           created_at?: string
+          current_monthly_income?: number | null
+          current_phase?: string | null
+          days_to_move?: number | null
           id?: string
+          job_apps_goal?: number | null
+          job_apps_this_week?: number | null
+          target_monthly_income?: number | null
           updated_at?: string
           user_id?: string
+          weekly_focus?: string | null
         }
         Relationships: []
       }

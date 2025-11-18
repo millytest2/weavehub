@@ -19,12 +19,14 @@ const Dashboard = () => {
   const [syncResult, setSyncResult] = useState<any>(null);
   const [showSyncDetail, setShowSyncDetail] = useState(false);
   const [savingSyncResult, setSavingSyncResult] = useState(false);
+  const [phase, setPhase] = useState<"baseline" | "empire">("baseline");
+  const [baselineMetrics, setBaselineMetrics] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
-      const [taskRes, experimentRes] = await Promise.all([
+      const [taskRes, experimentRes, identityRes] = await Promise.all([
         supabase
           .from("daily_tasks")
           .select("*")
@@ -39,10 +41,19 @@ const Dashboard = () => {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from("identity_seeds")
+          .select("current_phase, target_monthly_income, current_monthly_income, job_apps_this_week, job_apps_goal, days_to_move, weekly_focus")
+          .eq("user_id", user.id)
+          .maybeSingle(),
       ]);
 
       if (taskRes.data) setTodayTask(taskRes.data);
       if (experimentRes.data) setActiveExperiment(experimentRes.data);
+      if (identityRes.data) {
+        setPhase((identityRes.data.current_phase || "baseline") as "baseline" | "empire");
+        setBaselineMetrics(identityRes.data);
+      }
     };
 
     fetchData();
@@ -147,10 +158,68 @@ const Dashboard = () => {
     }
   };
 
+  const incomeProgress = baselineMetrics 
+    ? Math.min(100, (baselineMetrics.current_monthly_income / baselineMetrics.target_monthly_income) * 100)
+    : 0;
+  
+  const jobAppProgress = baselineMetrics
+    ? Math.min(100, (baselineMetrics.job_apps_this_week / baselineMetrics.job_apps_goal) * 100)
+    : 0;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
-      {/* 3-Card Layout - Mobile First */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+      {/* Phase Banner */}
+      <Card className="p-4 border-l-4 border-l-primary">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {phase === "baseline" ? "🎯 Baseline Phase" : "🚀 Empire Phase"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {phase === "baseline" 
+                ? "Focus: Lock stable income. Job apps, bartending, UPath reports." 
+                : "Focus: Scale content, experiments, authority."}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate("/identity-seed")}>
+            Edit Phase
+          </Button>
+        </div>
+      </Card>
+
+      {/* Baseline Metrics (only in baseline phase) */}
+      {phase === "baseline" && baselineMetrics && (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground mb-1">Income Progress</div>
+            <div className="text-2xl font-bold">${baselineMetrics.current_monthly_income}</div>
+            <div className="text-xs text-muted-foreground">of ${baselineMetrics.target_monthly_income} goal</div>
+            <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${incomeProgress}%` }} />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground mb-1">Job Apps This Week</div>
+            <div className="text-2xl font-bold">{baselineMetrics.job_apps_this_week}</div>
+            <div className="text-xs text-muted-foreground">of {baselineMetrics.job_apps_goal} goal</div>
+            <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${jobAppProgress}%` }} />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground mb-1">This Week's Focus</div>
+            <div className="text-lg font-semibold">{baselineMetrics.weekly_focus || "Not set"}</div>
+            {baselineMetrics.days_to_move && (
+              <div className="text-xs text-muted-foreground mt-2">
+                {baselineMetrics.days_to_move} days to LA move
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* ONE Path Forward */}
+      <div className="grid gap-4 grid-cols-1">
         {/* Today's One Thing */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">

@@ -13,6 +13,9 @@ interface ExperimentOutput {
   steps: string[];
   duration: string;
   identity_shift_target: string;
+  baseline_impact: number;
+  content_fuel: number;
+  identity_alignment: number;
 }
 
 function validateExperiments(data: any): ExperimentOutput[] {
@@ -34,16 +37,19 @@ function validateExperiments(data: any): ExperimentOutput[] {
 function getFallbackExperiments(): ExperimentOutput[] {
   return [
     {
-      title: "30-Minute Daily AI Practice",
-      description: "Commit to 30 minutes of focused AI/coding work every day for 7 days. No skipping, no multi-tasking.",
+      title: "30-Minute Daily Job Application Sprint",
+      description: "Apply to 10 targeted LA hospitality jobs per day for 7 days. Track quality, speed, and interviews generated.",
       steps: [
-        "Set a 30-minute timer each day",
-        "Work on one small AI/coding task",
-        "Log what you did in 1-2 sentences",
-        "Reflect at day 7 on what shifted"
+        "Research 15 upscale LA venues each morning",
+        "Apply to 10 roles (hospitality/SDR) in 30 minutes",
+        "Log applications + response rate",
+        "Reflect on what gets responses"
       ],
       duration: "7 days",
-      identity_shift_target: "I am someone who shows up consistently for what matters, even in small doses."
+      identity_shift_target: "I am someone who takes massive, focused action on what matters most.",
+      baseline_impact: 10,
+      content_fuel: 6,
+      identity_alignment: 8
     }
   ];
 }
@@ -71,6 +77,60 @@ serve(async (req) => {
     // Fetch user's context using shared helper
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatContextForAI(userContext);
+    
+    // Fetch phase
+    const { data: identityData } = await supabase
+      .from("identity_seeds")
+      .select("current_phase, target_monthly_income, current_monthly_income")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const phase = identityData?.current_phase || "baseline";
+    const incomeGap = (identityData?.target_monthly_income || 4000) - (identityData?.current_monthly_income || 0);
+
+    const systemPrompt = phase === "baseline"
+      ? `You are an experiment designer for ONE user in BASELINE PHASE.
+
+BASELINE PHASE = Income gap: $${incomeGap}. Lock stable income FIRST.
+
+Your job: Design 1-3 experiments that SERVE BASELINE:
+
+Triple-Score System (0-10 each):
+1. Baseline Impact: Does this make money or get job offers THIS WEEK?
+2. Content Fuel: Does this create X posts, Shorts, or Thread content?
+3. Identity Alignment: Does this prove Calm Rebel thesis (peace + power + play)?
+
+BASELINE EXPERIMENT RULES:
+- Baseline Impact must be 7+ (or don't suggest it)
+- 7 days max
+- Visible, social proof, fast content
+- Examples: Job app sprints, bartending challenges, UPath report blitzes, networking experiments
+
+Each experiment MUST include:
+- title
+- description (2-3 sentences)
+- steps (2-4 clear actions)
+- duration (e.g. '7 days')
+- identity_shift_target ('I am someone who...')
+- baseline_impact (0-10)
+- content_fuel (0-10)
+- identity_alignment (0-10)`
+      : `You are an experiment designer for ONE user in EMPIRE PHASE.
+
+EMPIRE PHASE = Baseline locked. Now: scale content, authority, experiments.
+
+Triple-Score System (0-10 each):
+1. Baseline Impact: Does this maintain/grow income?
+2. Content Fuel: Does this create X posts, Shorts, Threads?
+3. Identity Alignment: Does this prove Calm Rebel thesis?
+
+EMPIRE EXPERIMENT RULES:
+- Content Fuel must be 7+
+- Identity Alignment must be 7+
+- 7-14 days
+- Examples: Presence challenges, content sprints, belief rewiring, creator rituals
+
+Each experiment MUST include all triple-score fields.`;
 
     console.log("Fetched user context, calling AI gateway...");
 
@@ -83,54 +143,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          {
-            role: "system",
-            content: `You are an experiment designer for ONE user.
-
-Your job: propose 1–3 SMALL, testable experiments that:
-- Last 7–14 days.
-- Have 2–4 steps each.
-- Feel emotionally light and doable.
-- Target an identity shift ('I am someone who…'), not just productivity.
-
-Context: same compact 'context' object as navigator.
-
-Scan insights, reflections, and experiments for loops:
-- Overthinking, avoidance, tool hopping, performance anxiety, chaos vs ease, etc.
-
-Design experiments that:
-- Put the user into a new behavioral pattern around those loops.
-- Require at most ~30–45 minutes per day.
-- Are easy to explain and track.
-
-Each experiment MUST include:
-- title
-- description (2–3 sentences)
-- steps (2–4 clear actions)
-- duration (e.g. '7 days')
-- identity_shift_target ('I am someone who…')
-
-Avoid:
-- 'Overhaul everything' style experiments.
-- Vague 'be more X' without clear actions.
-
-OUTPUT (JSON ONLY):
-{
-  'experiments': [
-    {
-      'title': 'string',
-      'description': 'string',
-      'steps': ['string', 'string'],
-      'duration': 'string',
-      'identity_shift_target': 'string'
-    }
-  ]
-}`
-          },
-          {
-            role: "user",
-            content: `Based on my Identity Seed and patterns, generate experiment suggestions:\n${context}`
-          }
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Context:\n${context}\n\nGenerate 1-3 experiments for my current phase.` }
         ],
         tools: [
           {
@@ -156,9 +170,13 @@ OUTPUT (JSON ONLY):
                           maxItems: 4
                         },
                         duration: { type: "string", description: "e.g., '7 days', '2 weeks'" },
-                        identity_shift_target: { type: "string", description: "The identity shift you're testing (I am someone who...)" }
+                        identity_shift_target: { type: "string", description: "The identity shift you're testing (I am someone who...)" },
+                        baseline_impact: { type: "integer", minimum: 0, maximum: 10 },
+                        content_fuel: { type: "integer", minimum: 0, maximum: 10 },
+                        identity_alignment: { type: "integer", minimum: 0, maximum: 10 }
                       },
-                      required: ["title", "description", "steps", "duration", "identity_shift_target"]
+                      required: ["title", "description", "steps", "duration", "identity_shift_target", "baseline_impact", "content_fuel", "identity_alignment"],
+                      additionalProperties: false
                     },
                     minItems: 1,
                     maxItems: 3
@@ -214,6 +232,22 @@ OUTPUT (JSON ONLY):
         JSON.stringify({ experiments: getFallbackExperiments() }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Insert experiments with triple scores
+    for (const exp of experiments) {
+      await supabase.from("experiments").insert({
+        user_id: user.id,
+        title: exp.title,
+        description: exp.description,
+        steps: exp.steps.join("\n"),
+        duration: exp.duration,
+        identity_shift_target: exp.identity_shift_target,
+        status: "planning",
+        baseline_impact: exp.baseline_impact,
+        content_fuel: exp.content_fuel,
+        identity_alignment: exp.identity_alignment
+      });
     }
 
     return new Response(
