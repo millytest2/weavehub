@@ -57,62 +57,94 @@ serve(async (req) => {
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatContextForAI(userContext);
     
-    // Fetch phase info
-    const { data: identityData } = await supabase
-      .from("identity_seeds")
-      .select("current_phase, target_monthly_income, current_monthly_income, job_apps_this_week, job_apps_goal, days_to_move, weekly_focus")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Fetch comprehensive context
+    const [identityRes, experimentsRes, tasksRes] = await Promise.all([
+      supabase
+        .from("identity_seeds")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("experiments")
+        .select("title, status, baseline_impact, content_fuel, identity_alignment, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("daily_tasks")
+        .select("task_date, title, one_thing, completed")
+        .eq("user_id", user.id)
+        .order("task_date", { ascending: false })
+        .limit(7)
+    ]);
+
+    const identityData = identityRes.data;
+    const recentExperiments = experimentsRes.data || [];
+    const recentTasks = tasksRes.data || [];
 
     const phase = identityData?.current_phase || "baseline";
     const baselineMetrics = identityData || {} as any;
 
-    const systemPrompt = phase === "baseline"
-      ? `You are a focused coach for ONE user in BASELINE PHASE.
+    // Build rich context
+    let contextPrompt = `## IDENTITY & PHASE
+Identity Statement: ${identityData?.content?.substring(0, 400) || 'Not set'}...
 
-BASELINE PHASE = Lock stable $${baselineMetrics.target_monthly_income || 4000}/month income FIRST. Everything else waits.
-
-Current metrics:
+Current Phase: ${phase.toUpperCase()}
+${phase === 'baseline' ? `
+BASELINE FOCUS: Lock $${baselineMetrics.target_monthly_income || 4000}/month stable income.
 - Income: $${baselineMetrics.current_monthly_income || 0}/$${baselineMetrics.target_monthly_income || 4000}
 - Job apps this week: ${baselineMetrics.job_apps_this_week || 0}/${baselineMetrics.job_apps_goal || 50}
 ${baselineMetrics.days_to_move ? `- Days to LA move: ${baselineMetrics.days_to_move}` : ''}
 ${baselineMetrics.weekly_focus ? `- This week's focus: ${baselineMetrics.weekly_focus}` : ''}
+` : 'EMPIRE FOCUS: Scale content, experiments, authority.'}`;
 
-Your job: Choose ONE action for TODAY that DIRECTLY serves baseline:
-1. Job applications (hospitality or tech SDR)
+    if (recentExperiments.length > 0) {
+      contextPrompt += `\n## RECENT EXPERIMENTS (last 5)\n`;
+      recentExperiments.forEach(exp => {
+        contextPrompt += `- "${exp.title}" (${exp.status}) | B:${exp.baseline_impact || '?'} C:${exp.content_fuel || '?'} I:${exp.identity_alignment || '?'}\n`;
+      });
+    }
+
+    if (recentTasks.length > 0) {
+      contextPrompt += `\n## RECENT DAILY FOCUS (last 7 days)\n`;
+      recentTasks.slice(0, 5).forEach(task => {
+        contextPrompt += `- ${task.task_date}: "${task.one_thing || task.title}" ${task.completed ? '✓' : '○'}\n`;
+      });
+    }
+
+    const systemPrompt = phase === "baseline"
+      ? `You are a hyper-personalized coach who replaces ChatGPT/Claude/Manus. You have FULL context on this user.
+
+${contextPrompt}
+
+YOUR JOB: Choose ONE action for TODAY (15-45 min) that serves baseline stability:
+1. Job apps (hospitality/tech SDR) - PRIORITY if below weekly goal
 2. Bartending shifts
-3. Delivering UPath reports (for cash)
-4. Content that feeds job search proof/networking
+3. UPath reports (for cash)
+4. Content that supports job search/networking
 
 RULES:
-- 15-45 minutes max
-- No "empire building" experiments unless they make money THIS WEEK
-- No deep planning, no 7-day challenges, no identity work UNLESS income is on track
-- Math-driven: 50 apps/week = job in 30 days = baseline locked = then you can experiment
+- If job apps < goal → suggest job apps
+- If income < target → suggest bartending/UPath
+- Only suggest experiments/content if baseline is on track
+- Be so specific they don't need to think
+- No generic advice - use their actual context`
+      : `You are a hyper-personalized coach who replaces ChatGPT/Claude/Manus. You have FULL context on this user.
 
-If job apps are below weekly goal, ALWAYS suggest job applications.
-If income is below target and no active bartending/UPath work, suggest those.
-Only suggest content/experiments if baseline is on track.`
-      : `You are a focused coach for ONE user in EMPIRE PHASE.
+${contextPrompt}
 
-EMPIRE PHASE = Baseline is locked. Now: scale content, experiments, UPath authority.
+YOUR JOB: Choose ONE action for TODAY (15-45 min) that builds:
+- Content (Personal Proof / Clarity Systems / UPath)
+- Experiment progress (test → document → framework)
+- UPath growth
 
-Your job: Choose ONE action for TODAY that builds:
-- Content authority (3 buckets: Personal Proof, Clarity Systems, UPath)
-- Experiment proof (test → document → framework → offer)
-- UPath growth (reports → insights → scale)
-
-User philosophy:
-- Proof > theory
-- Small tests > big plans
-- Identity > productivity
-- Ease > force
+Philosophy: Proof > theory. Ease > force. Identity > productivity.
 
 RULES:
-- 15-45 minutes max
 - Emotionally light
-- Moves needle on content/experiments/UPath
-- Clear first step`;
+- Builds momentum
+- Uses their actual patterns/experiments
+- No generic advice - hyper-specific to their context`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
