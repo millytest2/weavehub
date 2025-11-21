@@ -106,8 +106,12 @@ const Dashboard = () => {
       const { data, error } = await supabase.functions.invoke("navigator");
       if (error) throw error;
       if (data) {
-        setTodayTask({ one_thing: data.one_thing, why_matters: data.why_matters } as any);
-        toast.success("Generated your daily focus");
+        setTodayTask({ 
+          one_thing: data.do_this_now, 
+          why_matters: data.why_it_matters,
+          description: data.what_to_do_after 
+        } as any);
+        toast.success("Generated your next action");
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to generate");

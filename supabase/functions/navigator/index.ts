@@ -9,29 +9,29 @@ const corsHeaders = {
 
 // Validation schema (simple runtime check)
 interface NavigatorOutput {
-  one_thing: string;
-  why_matters: string;
-  how_to_start: string;
+  do_this_now: string;
+  why_it_matters: string;
+  what_to_do_after: string;
 }
 
 function validateNavigatorOutput(data: any): NavigatorOutput {
-  if (!data.one_thing || typeof data.one_thing !== 'string') {
-    throw new Error('Invalid one_thing');
+  if (!data.do_this_now || typeof data.do_this_now !== 'string') {
+    throw new Error('Invalid do_this_now');
   }
-  if (!data.why_matters || typeof data.why_matters !== 'string') {
-    throw new Error('Invalid why_matters');
+  if (!data.why_it_matters || typeof data.why_it_matters !== 'string') {
+    throw new Error('Invalid why_it_matters');
   }
-  if (!data.how_to_start || typeof data.how_to_start !== 'string') {
-    throw new Error('Invalid how_to_start');
+  if (!data.what_to_do_after || typeof data.what_to_do_after !== 'string') {
+    throw new Error('Invalid what_to_do_after');
   }
   return data as NavigatorOutput;
 }
 
 function getFallbackSuggestion(): NavigatorOutput {
   return {
-    one_thing: "Spend 30 minutes progressing your most important active experiment or, if none, your main UPath task.",
-    why_matters: "Small, consistent progress compounds. This keeps momentum alive and tests what you're learning.",
-    how_to_start: "Set a 30-minute timer, open the relevant doc/experiment, and do the next obvious step."
+    do_this_now: "Spend 30 minutes progressing your most important active experiment or, if none, your main UPath task.",
+    why_it_matters: "Small, consistent progress compounds. This keeps momentum alive and tests what you're learning.",
+    what_to_do_after: "Once done, mark it complete and I'll generate your next action."
   };
 }
 
@@ -112,39 +112,60 @@ ${baselineMetrics.weekly_focus ? `- This week's focus: ${baselineMetrics.weekly_
       });
     }
 
-    const systemPrompt = phase === "baseline"
-      ? `You are a hyper-personalized coach who replaces ChatGPT/Claude/Manus. You have FULL context on this user.
+    const systemPrompt = `You are my personal operating system. You replace GPT, Claude, Manus, Gemini, and all other tools.
+
+Your job: ingest all my data and return ONE clear action at a time.
 
 ${contextPrompt}
 
-YOUR JOB: Choose ONE action for TODAY (15-45 min) that serves baseline stability:
-1. Job apps (hospitality/tech SDR) - PRIORITY if below weekly goal
-2. Bartending shifts
-3. UPath reports (for cash)
-4. Content that supports job search/networking
+GOALS:
+• Remove paradox of choice
+• Give clarity and alignment
+• Give one next step
+• Keep me consistent
+• Build identity through action
+• Eliminate overwhelm
 
-RULES:
-- If job apps < goal → suggest job apps
-- If income < target → suggest bartending/UPath
-- Only suggest experiments/content if baseline is on track
-- Be so specific they don't need to think
-- No generic advice - use their actual context`
-      : `You are a hyper-personalized coach who replaces ChatGPT/Claude/Manus. You have FULL context on this user.
+HOW TO PROCESS MY DATA:
+• Read the Identity Seed first
+• Treat insights as signals of emotional state
+• Treat experiments as identity reps
+• Treat documents as knowledge input
+• Treat topics as long term skill stacks
+• Treat daily tasks as tactical execution
+• Compress all information into a single direction
+• Remove duplication and noise
+• Always move me toward my identity and outcomes
 
-${contextPrompt}
+NAVIGATOR RULES:
+Return ONE action. Not multiple. Not options. One.
 
-YOUR JOB: Choose ONE action for TODAY (15-45 min) that builds:
-- Content (Personal Proof / Clarity Systems / UPath)
-- Experiment progress (test → document → framework)
-- UPath growth
+The action must:
+• Take 15 to 45 minutes
+• Be small, clear, executable
+• Align with my identity seed
+• Push forward an active experiment or path
+• Reduce overwhelm
+• Move me toward: stable income, UPath output, content volume, presence, consistency
 
+${phase === "baseline" ? `
+BASELINE FOCUS: Prioritize actions that lock stable income:
+- Job apps (hospitality/tech SDR) if below weekly goal
+- Bartending shifts
+- UPath reports for cash
+- Content that supports job search/networking
+` : `
+EMPIRE FOCUS: Build content, experiments, and UPath growth.
 Philosophy: Proof > theory. Ease > force. Identity > productivity.
+`}
 
-RULES:
-- Emotionally light
-- Builds momentum
-- Uses their actual patterns/experiments
-- No generic advice - hyper-specific to their context`;
+OUTPUT RULES:
+• Do not overwhelm
+• Do not give theory or planning
+• Do not ask how they feel
+• Return only action
+• Be hyper-specific using their actual context
+• No generic advice`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -163,15 +184,15 @@ RULES:
             type: "function",
             function: {
               name: "choose_daily_action",
-              description: "Choose one daily action",
+              description: "Return one clear action",
               parameters: {
                 type: "object",
                 properties: {
-                  one_thing: { type: "string", description: "1 short imperative sentence" },
-                  why_matters: { type: "string", description: "2-4 sentences tying this to identity_seed and 1-2 pillars" },
-                  how_to_start: { type: "string", description: "1-2 sentences describing the first 5 minutes concretely" }
+                  do_this_now: { type: "string", description: "One clear imperative action, 15-45 minutes" },
+                  why_it_matters: { type: "string", description: "2-3 sentences connecting this action to identity seed and current goals" },
+                  what_to_do_after: { type: "string", description: "1 sentence on what happens after completion" }
                 },
-                required: ["one_thing", "why_matters", "how_to_start"]
+                required: ["do_this_now", "why_it_matters", "what_to_do_after"]
               }
             }
           }
