@@ -57,64 +57,35 @@ serve(async (req) => {
     if (!user) throw new Error("Unauthorized");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY not configured");
+    }
 
-    // Fetch user's context using shared helper
+    // Fetch comprehensive user context using shared helper
     const userContext = await fetchUserContext(supabase, user.id);
-    const context = formatContextForAI(userContext);
     
-    // Fetch comprehensive context
-    const [identityRes, experimentsRes, tasksRes] = await Promise.all([
-      supabase
-        .from("identity_seeds")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("experiments")
-        .select("title, status, baseline_impact, content_fuel, identity_alignment, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from("daily_tasks")
-        .select("task_date, title, one_thing, completed")
-        .eq("user_id", user.id)
-        .order("task_date", { ascending: false })
-        .limit(7)
-    ]);
-
-    const identityData = identityRes.data;
-    const recentExperiments = experimentsRes.data || [];
-    const recentTasks = tasksRes.data || [];
+    // Get phase info from identity_seeds
+    const { data: identityData } = await supabase
+      .from("identity_seeds")
+      .select("current_phase, target_monthly_income, current_monthly_income, job_apps_this_week, job_apps_goal, days_to_move, weekly_focus")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const phase = identityData?.current_phase || "baseline";
     const baselineMetrics = identityData || {} as any;
 
-    // Build rich context
-    let contextPrompt = `## IDENTITY & PHASE
-Identity Statement: ${identityData?.content?.substring(0, 400) || 'Not set'}...
-
-Current Phase: ${phase.toUpperCase()}
-${phase === 'baseline' ? `
-BASELINE FOCUS: Lock $${baselineMetrics.target_monthly_income || 4000}/month stable income.
+    // Build comprehensive context from shared helper
+    let contextPrompt = formatContextForAI(userContext);
+    
+    // Add phase-specific metrics
+    if (phase === 'baseline' && baselineMetrics) {
+      contextPrompt += `\n\nCURRENT PHASE: BASELINE
 - Income: $${baselineMetrics.current_monthly_income || 0}/$${baselineMetrics.target_monthly_income || 4000}
 - Job apps this week: ${baselineMetrics.job_apps_this_week || 0}/${baselineMetrics.job_apps_goal || 50}
 ${baselineMetrics.days_to_move ? `- Days to LA move: ${baselineMetrics.days_to_move}` : ''}
-${baselineMetrics.weekly_focus ? `- This week's focus: ${baselineMetrics.weekly_focus}` : ''}
-` : 'EMPIRE FOCUS: Scale content, experiments, authority.'}`;
-
-    if (recentExperiments.length > 0) {
-      contextPrompt += `\n## RECENT EXPERIMENTS (last 5)\n`;
-      recentExperiments.forEach(exp => {
-        contextPrompt += `- "${exp.title}" (${exp.status}) | B:${exp.baseline_impact || '?'} C:${exp.content_fuel || '?'} I:${exp.identity_alignment || '?'}\n`;
-      });
-    }
-
-    if (recentTasks.length > 0) {
-      contextPrompt += `\n## RECENT DAILY FOCUS (last 7 days)\n`;
-      recentTasks.slice(0, 5).forEach(task => {
-        contextPrompt += `- ${task.task_date}: "${task.one_thing || task.title}" ${task.completed ? '✓' : '○'}\n`;
-      });
+${baselineMetrics.weekly_focus ? `- This week's focus: ${baselineMetrics.weekly_focus}` : ''}`;
+    } else {
+      contextPrompt += `\n\nCURRENT PHASE: EMPIRE`;
     }
 
     const systemPrompt = `You are the user's personal operating system.
@@ -201,7 +172,7 @@ Never give:
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Context:\n${context}\n\nWhat is the ONE thing I should do today?` }
+          { role: "user", content: `Context:\n${contextPrompt}\n\nWhat is the ONE thing I should do today?` }
         ],
         tools: [
           {
