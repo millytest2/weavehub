@@ -9,12 +9,16 @@ const corsHeaders = {
 
 // Validation schema (simple runtime check)
 interface NavigatorOutput {
+  priority_for_today: string;
   do_this_now: string;
   why_it_matters: string;
   what_to_do_after: string;
 }
 
 function validateNavigatorOutput(data: any): NavigatorOutput {
+  if (!data.priority_for_today || typeof data.priority_for_today !== 'string') {
+    throw new Error('Invalid priority_for_today');
+  }
   if (!data.do_this_now || typeof data.do_this_now !== 'string') {
     throw new Error('Invalid do_this_now');
   }
@@ -29,7 +33,8 @@ function validateNavigatorOutput(data: any): NavigatorOutput {
 
 function getFallbackSuggestion(): NavigatorOutput {
   return {
-    do_this_now: "Spend 30 minutes progressing your most important active experiment or, if none, your main UPath task.",
+    priority_for_today: "Skill",
+    do_this_now: "Spend 30 minutes progressing your most important active experiment or learning path.",
     why_it_matters: "Small, consistent progress compounds. This keeps momentum alive and tests what you're learning.",
     what_to_do_after: "Once done, mark it complete and I'll generate your next action."
   };
@@ -112,60 +117,79 @@ ${baselineMetrics.weekly_focus ? `- This week's focus: ${baselineMetrics.weekly_
       });
     }
 
-    const systemPrompt = `You are my personal operating system. You replace GPT, Claude, Manus, Gemini, and all other tools.
-
-Your job: ingest all my data and return ONE clear action at a time.
+    const systemPrompt = `You are the user's personal operating system.
+Your job is to take every piece of data the user enters and return ONE clear action at a time.
 
 ${contextPrompt}
 
-GOALS:
+GUIDING PRINCIPLES:
 • Remove paradox of choice
-• Give clarity and alignment
-• Give one next step
-• Keep me consistent
-• Build identity through action
-• Eliminate overwhelm
+• Increase clarity and alignment
+• Give a single next step
+• Keep users consistent
+• Build identity proof through action
+• Handle large amounts of information without overwhelm
+• Point them toward progress in any domain of life
+• Keep everything simple and executable
 
-HOW TO PROCESS MY DATA:
-• Read the Identity Seed first
-• Treat insights as signals of emotional state
-• Treat experiments as identity reps
-• Treat documents as knowledge input
-• Treat topics as long term skill stacks
-• Treat daily tasks as tactical execution
-• Compress all information into a single direction
-• Remove duplication and noise
-• Always move me toward my identity and outcomes
+WEIGHTING RULES (combine all data into one evolving mental model):
+• Identity Seed = 40%
+• Active Experiments = 25%
+• Recent Insights (emotional patterns) = 15%
+• Weekly goals/intentions = 10%
+• Documents/Knowledge inputs = 5%
+• Rotation/Avoiding stagnation = 5%
 
-NAVIGATOR RULES:
-Return ONE action. Not multiple. Not options. One.
+DAILY PRIORITY ENGINE:
+Before generating today's action, determine which pillar is most important TODAY.
 
-The action must:
-• Take 15 to 45 minutes
-• Be small, clear, executable
-• Align with my identity seed
-• Push forward an active experiment or path
-• Reduce overwhelm
-• Move me toward: stable income, UPath output, content volume, presence, consistency
+Choose from six universal pillars:
+• Cash (career stability, income, job search)
+• Skill (project progress, learning paths, experiments)
+• Content (communication, creation, output)
+• Health (physical action, movement, nutrition)
+• Presence (emotional regulation, identity shifts, nervous system)
+• Admin (life maintenance, clearing blockers)
+
+RULES FOR CHOOSING TODAY'S PRIORITY:
+1. Rotate priority day to day, unless urgency exists
+2. If one pillar is falling behind, prioritize it
+3. If emotional instability shows up in insights, choose Presence
+4. If skill development stalled, choose Skill
+5. If behavior and identity misalign, choose identity-shifting experiment actions
+6. If nothing is urgent, choose growth-oriented tasks over maintenance
 
 ${phase === "baseline" ? `
-BASELINE FOCUS: Prioritize actions that lock stable income:
-- Job apps (hospitality/tech SDR) if below weekly goal
-- Bartending shifts
-- UPath reports for cash
+USER'S CURRENT PHASE: BASELINE
+Weight Cash and Admin pillars higher. Prioritize:
+- Job apps if below weekly goal
+- Income-generating activities (bartending, UPath reports)
 - Content that supports job search/networking
+- Actions that stabilize foundation
 ` : `
-EMPIRE FOCUS: Build content, experiments, and UPath growth.
-Philosophy: Proof > theory. Ease > force. Identity > productivity.
+USER'S CURRENT PHASE: EMPIRE
+Weight Skill, Content, and Presence pillars higher. Prioritize:
+- Content creation and distribution
+- Experiment progress (test → document → framework)
+- UPath growth and authority building
+- Identity-shifting actions
 `}
 
-OUTPUT RULES:
-• Do not overwhelm
-• Do not give theory or planning
-• Do not ask how they feel
-• Return only action
-• Be hyper-specific using their actual context
-• No generic advice`;
+ACTION RULES:
+Actions must be:
+• 15 to 45 minutes
+• Clear and frictionless
+• Identity-aligned
+• Experiment-friendly
+• Grounded in the priority of the day
+• Designed to reduce overwhelm
+
+Never give:
+• Three options
+• Long planning tasks
+• Vague suggestions
+• Theory without action
+• Emotional disclaimers`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -184,15 +208,20 @@ OUTPUT RULES:
             type: "function",
             function: {
               name: "choose_daily_action",
-              description: "Return one clear action",
+              description: "Return one clear action with priority pillar",
               parameters: {
                 type: "object",
                 properties: {
+                  priority_for_today: { 
+                    type: "string", 
+                    enum: ["Cash", "Skill", "Content", "Health", "Presence", "Admin"],
+                    description: "The pillar chosen for today's focus" 
+                  },
                   do_this_now: { type: "string", description: "One clear imperative action, 15-45 minutes" },
-                  why_it_matters: { type: "string", description: "2-3 sentences connecting this action to identity seed and current goals" },
-                  what_to_do_after: { type: "string", description: "1 sentence on what happens after completion" }
+                  why_it_matters: { type: "string", description: "Identity-level + practical reasoning in 2-3 sentences" },
+                  what_to_do_after: { type: "string", description: "The next small step after completion" }
                 },
-                required: ["do_this_now", "why_it_matters", "what_to_do_after"]
+                required: ["priority_for_today", "do_this_now", "why_it_matters", "what_to_do_after"]
               }
             }
           }

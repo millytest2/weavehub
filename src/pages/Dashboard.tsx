@@ -182,6 +182,11 @@ const Dashboard = () => {
           <CardContent className="space-y-4">
             {todayTask ? (
               <div className="space-y-2">
+                {(todayTask as any).priority_for_today && (
+                  <div className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary mb-2">
+                    {(todayTask as any).priority_for_today}
+                  </div>
+                )}
                 <p className="font-medium text-sm">{(todayTask as any).one_thing}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
                   {(todayTask as any).why_matters}
