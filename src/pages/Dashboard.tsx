@@ -105,18 +105,65 @@ const Dashboard = () => {
     try {
       const { data, error } = await supabase.functions.invoke("navigator");
       if (error) throw error;
+      
       if (data) {
-        setTodayTask({ 
-          one_thing: data.do_this_now, 
+        // Save to database for today
+        const today = new Date().toISOString().split("T")[0];
+        const { error: insertError } = await supabase
+          .from("daily_tasks")
+          .upsert({
+            user_id: user!.id,
+            task_date: today,
+            title: data.priority_for_today || "Daily Action",
+            one_thing: data.do_this_now,
+            why_matters: data.why_it_matters,
+            description: data.what_to_do_after,
+            completed: false,
+          }, {
+            onConflict: "user_id,task_date"
+          });
+
+        if (insertError) throw insertError;
+
+        setTodayTask({
+          priority_for_today: data.priority_for_today,
+          one_thing: data.do_this_now,
           why_matters: data.why_it_matters,
-          description: data.what_to_do_after 
+          description: data.what_to_do_after,
         } as any);
+        
         toast.success("Generated your next action");
       }
     } catch (error: any) {
+      console.error("Generate error:", error);
       toast.error(error.message || "Failed to generate");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleCompleteTask = async () => {
+    if (!todayTask || !user) return;
+    
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      
+      // Mark current task as completed
+      const { error: updateError } = await supabase
+        .from("daily_tasks")
+        .update({ completed: true })
+        .eq("user_id", user.id)
+        .eq("task_date", today);
+
+      if (updateError) throw updateError;
+
+      toast.success("Task completed! Generating next action...");
+      
+      // Auto-generate next action
+      await handleGenerateDailyOne();
+    } catch (error: any) {
+      console.error("Complete error:", error);
+      toast.error(error.message || "Failed to complete");
     }
   };
 
@@ -195,14 +242,26 @@ const Dashboard = () => {
             ) : (
               <p className="text-sm text-muted-foreground">No focus set yet</p>
             )}
-            <Button
-              size="default"
-              onClick={handleGenerateDailyOne}
-              disabled={isGenerating}
-              className="w-full min-h-[44px]"
-            >
-              {isGenerating ? "Generating..." : "Generate"}
-            </Button>
+            <div className="flex gap-2">
+              {todayTask && !todayTask.completed && (
+                <Button
+                  size="default"
+                  onClick={handleCompleteTask}
+                  variant="outline"
+                  className="flex-1 min-h-[44px]"
+                >
+                  Complete & Next
+                </Button>
+              )}
+              <Button
+                size="default"
+                onClick={handleGenerateDailyOne}
+                disabled={isGenerating}
+                className={todayTask && !todayTask.completed ? "flex-1 min-h-[44px]" : "w-full min-h-[44px]"}
+              >
+                {isGenerating ? "Generating..." : todayTask ? "Regenerate" : "Generate"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
