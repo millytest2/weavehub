@@ -21,18 +21,22 @@ const Dashboard = () => {
   const [savingSyncResult, setSavingSyncResult] = useState(false);
   const [phase, setPhase] = useState<"baseline" | "empire">("baseline");
   const [baselineMetrics, setBaselineMetrics] = useState<any>(null);
+  const [currentSequence, setCurrentSequence] = useState(1);
+  const [tasksForToday, setTasksForToday] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
-      const [taskRes, experimentRes, identityRes] = await Promise.all([
+      const today = new Date().toISOString().split("T")[0];
+      
+      const [tasksRes, experimentRes, identityRes] = await Promise.all([
         supabase
           .from("daily_tasks")
           .select("*")
           .eq("user_id", user.id)
-          .eq("task_date", new Date().toISOString().split("T")[0])
-          .maybeSingle(),
+          .eq("task_date", today)
+          .order("task_sequence", { ascending: true }),
         supabase
           .from("experiments")
           .select("*")
@@ -48,7 +52,18 @@ const Dashboard = () => {
           .maybeSingle(),
       ]);
 
-      if (taskRes.data) setTodayTask(taskRes.data);
+      if (tasksRes.data && tasksRes.data.length > 0) {
+        setTasksForToday(tasksRes.data);
+        // Find current sequence (first incomplete task)
+        const incomplete = tasksRes.data.find(t => !t.completed);
+        setCurrentSequence(incomplete?.task_sequence || 1);
+        setTodayTask(incomplete || tasksRes.data[tasksRes.data.length - 1]);
+      } else {
+        setTasksForToday([]);
+        setTodayTask(null);
+        setCurrentSequence(1);
+      }
+      
       if (experimentRes.data) setActiveExperiment(experimentRes.data);
       if (identityRes.data) {
         setPhase((identityRes.data.current_phase || "baseline") as "baseline" | "empire");
@@ -107,32 +122,46 @@ const Dashboard = () => {
       if (error) throw error;
       
       if (data) {
-        // Save to database for today
         const today = new Date().toISOString().split("T")[0];
+        
+        // Determine next sequence number
+        const nextSequence = tasksForToday.length + 1;
+        
+        // Only generate up to 3 tasks per day
+        if (nextSequence > 3) {
+          toast.info("You've completed all 3 tasks for today! Take a break.");
+          return;
+        }
+        
         const { error: insertError } = await supabase
           .from("daily_tasks")
-          .upsert({
+          .insert({
             user_id: user!.id,
             task_date: today,
+            task_sequence: nextSequence,
             title: data.priority_for_today || "Daily Action",
             one_thing: data.do_this_now,
             why_matters: data.why_it_matters,
             description: data.what_to_do_after,
             completed: false,
-          }, {
-            onConflict: "user_id,task_date"
           });
 
         if (insertError) throw insertError;
 
-        setTodayTask({
+        const newTask = {
+          task_sequence: nextSequence,
           priority_for_today: data.priority_for_today,
           one_thing: data.do_this_now,
           why_matters: data.why_it_matters,
           description: data.what_to_do_after,
-        } as any);
+          completed: false,
+        };
         
-        toast.success("Generated your next action");
+        setTasksForToday([...tasksForToday, newTask]);
+        setTodayTask(newTask as any);
+        setCurrentSequence(nextSequence);
+        
+        toast.success(`Task ${nextSequence} of 3 generated`);
       }
     } catch (error: any) {
       console.error("Generate error:", error);
@@ -153,14 +182,24 @@ const Dashboard = () => {
         .from("daily_tasks")
         .update({ completed: true })
         .eq("user_id", user.id)
-        .eq("task_date", today);
+        .eq("task_date", today)
+        .eq("task_sequence", currentSequence);
 
       if (updateError) throw updateError;
 
-      toast.success("Task completed! Generating next action...");
-      
-      // Auto-generate next action
-      await handleGenerateDailyOne();
+      // Update local state
+      const updatedTasks = tasksForToday.map(t => 
+        t.task_sequence === currentSequence ? { ...t, completed: true } : t
+      );
+      setTasksForToday(updatedTasks);
+
+      if (currentSequence < 3) {
+        toast.success(`Task ${currentSequence} complete! Generating task ${currentSequence + 1}...`);
+        await handleGenerateDailyOne();
+      } else {
+        toast.success("All 3 tasks complete! Great work today!");
+        setTodayTask(null);
+      }
     } catch (error: any) {
       console.error("Complete error:", error);
       toast.error(error.message || "Failed to complete");
@@ -221,46 +260,70 @@ const Dashboard = () => {
     <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
       {/* ONE Path Forward */}
       <div className="grid gap-4 grid-cols-1">
-        {/* Today's One Thing */}
+        {/* Today's Action Sequence */}
         <Card className="rounded-[10px] border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-medium">Today's One Thing</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base md:text-lg font-medium">Today's Actions</CardTitle>
+              <div className="flex gap-1">
+                {[1, 2, 3].map(num => (
+                  <div
+                    key={num}
+                    className={`h-2 w-8 rounded-full transition-colors ${
+                      tasksForToday.some(t => t.task_sequence === num && t.completed)
+                        ? 'bg-primary'
+                        : num === currentSequence
+                        ? 'bg-primary/50'
+                        : 'bg-border'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {todayTask ? (
-              <div className="space-y-2">
-                {(todayTask as any).priority_for_today && (
-                  <div className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary mb-2">
-                    {(todayTask as any).priority_for_today}
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
+                    {currentSequence}
                   </div>
-                )}
-                <p className="font-medium text-sm">{(todayTask as any).one_thing}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                  {(todayTask as any).why_matters}
-                </p>
+                  <div className="flex-1">
+                    {(todayTask as any).priority_for_today && (
+                      <div className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary mb-2">
+                        {(todayTask as any).priority_for_today}
+                      </div>
+                    )}
+                    <p className="font-medium text-sm">{(todayTask as any).one_thing}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mt-1">
+                      {(todayTask as any).why_matters}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No focus set yet</p>
+              <p className="text-sm text-muted-foreground">Ready to start? Generate your first task.</p>
             )}
             <div className="flex gap-2">
-              {todayTask && !todayTask.completed && (
+              {todayTask && !todayTask.completed && currentSequence <= 3 && (
                 <Button
                   size="default"
                   onClick={handleCompleteTask}
-                  variant="outline"
                   className="flex-1 min-h-[44px]"
                 >
-                  Complete & Next
+                  Complete ({currentSequence}/3)
                 </Button>
               )}
-              <Button
-                size="default"
-                onClick={handleGenerateDailyOne}
-                disabled={isGenerating}
-                className={todayTask && !todayTask.completed ? "flex-1 min-h-[44px]" : "w-full min-h-[44px]"}
-              >
-                {isGenerating ? "Generating..." : todayTask ? "Regenerate" : "Generate"}
-              </Button>
+              {!todayTask && (
+                <Button
+                  size="default"
+                  onClick={handleGenerateDailyOne}
+                  disabled={isGenerating}
+                  className="w-full min-h-[44px]"
+                >
+                  {isGenerating ? "Generating..." : "Start Today"}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

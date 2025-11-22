@@ -89,6 +89,7 @@ export type Database = {
           one_thing: string | null
           reflection: string | null
           task_date: string
+          task_sequence: number | null
           title: string
           user_id: string
           why_matters: string | null
@@ -101,6 +102,7 @@ export type Database = {
           one_thing?: string | null
           reflection?: string | null
           task_date?: string
+          task_sequence?: number | null
           title: string
           user_id: string
           why_matters?: string | null
@@ -113,6 +115,7 @@ export type Database = {
           one_thing?: string | null
           reflection?: string | null
           task_date?: string
+          task_sequence?: number | null
           title?: string
           user_id?: string
           why_matters?: string | null
