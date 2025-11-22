@@ -38,6 +38,8 @@ const Documents = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [runAnalysis, setRunAnalysis] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [isYoutubeMode, setIsYoutubeMode] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -169,6 +171,38 @@ const Documents = () => {
     const file = e.target.files[0];
     setSelectedFile(file);
     setUploadTitle(file.name);
+    setIsYoutubeMode(false);
+  };
+
+  const handleYoutubeSubmit = async () => {
+    if (!youtubeUrl.trim()) {
+      toast.error("Please enter a YouTube URL");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("youtube-processor", {
+        body: { youtubeUrl, title: uploadTitle }
+      });
+
+      if (error) throw error;
+
+      toast.success(data.insightsCreated 
+        ? `Video processed! Created ${data.insightsCreated} insights.`
+        : "Video saved successfully!"
+      );
+      
+      await fetchDocuments();
+      setYoutubeUrl("");
+      setUploadTitle("");
+      setIsDialogOpen(false);
+    } catch (error: any) {
+      console.error("YouTube processing error:", error);
+      toast.error(error.message || "Failed to process video");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleConfirmUpload = async () => {
@@ -494,85 +528,142 @@ const Documents = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Add Document</DialogTitle>
+            <DialogTitle>Add Content</DialogTitle>
           </DialogHeader>
+          
+          <div className="flex gap-2 border-b border-border pb-3 mb-4">
+            <Button
+              variant={!isYoutubeMode ? "default" : "outline"}
+              onClick={() => { setIsYoutubeMode(false); setYoutubeUrl(""); }}
+              size="sm"
+            >
+              Upload File
+            </Button>
+            <Button
+              variant={isYoutubeMode ? "default" : "outline"}
+              onClick={() => { setIsYoutubeMode(true); setSelectedFile(null); }}
+              size="sm"
+            >
+              YouTube Video
+            </Button>
+          </div>
+
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="file">Upload File</Label>
-              <Input
-                id="file"
-                type="file"
-                onChange={handleFileSelect}
-                disabled={uploading}
-                className="mt-1.5"
-              />
-            </div>
-            {selectedFile && (
+            {!isYoutubeMode ? (
               <>
                 <div>
-                  <Label htmlFor="uploadTitle">Document Title</Label>
+                  <Label htmlFor="file">Upload File</Label>
                   <Input
-                    id="uploadTitle"
-                    value={uploadTitle}
-                    onChange={(e) => setUploadTitle(e.target.value)}
-                    placeholder="Enter document title"
+                    id="file"
+                    type="file"
+                    onChange={handleFileSelect}
+                    disabled={uploading}
                     className="mt-1.5"
                   />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="runAnalysis" className="text-sm font-medium">
-                    Analyze with AI
-                  </Label>
-                  <Switch
-                    id="runAnalysis"
-                    checked={runAnalysis}
-                    onCheckedChange={setRunAnalysis}
+                {selectedFile && (
+                  <>
+                    <div>
+                      <Label htmlFor="uploadTitle">Document Title</Label>
+                      <Input
+                        id="uploadTitle"
+                        value={uploadTitle}
+                        onChange={(e) => setUploadTitle(e.target.value)}
+                        placeholder="Enter document title"
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="runAnalysis" className="text-sm font-medium">
+                        Analyze with AI
+                      </Label>
+                      <Switch
+                        id="runAnalysis"
+                        checked={runAnalysis}
+                        onCheckedChange={setRunAnalysis}
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleConfirmUpload} 
+                      disabled={uploading}
+                      className="w-full"
+                    >
+                      {uploading ? "Uploading..." : "Save Upload"}
+                    </Button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="youtubeUrl">YouTube URL</Label>
+                  <Input
+                    id="youtubeUrl"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="https://youtube.com/watch?v=... or https://youtu.be/..."
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="ytTitle">Title (optional)</Label>
+                  <Input
+                    id="ytTitle"
+                    value={uploadTitle}
+                    onChange={(e) => setUploadTitle(e.target.value)}
+                    placeholder="Leave empty to use video title"
+                    className="mt-1.5"
                   />
                 </div>
                 <Button 
-                  onClick={handleConfirmUpload} 
-                  disabled={uploading}
+                  onClick={handleYoutubeSubmit}
+                  disabled={uploading || !youtubeUrl.trim()} 
                   className="w-full"
                 >
-                  {uploading ? "Uploading..." : "Save Upload"}
+                  {uploading ? "Processing..." : "Process Video"}
                 </Button>
               </>
             )}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or create manually</span>
-              </div>
-            </div>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="summary">Summary</Label>
-                <Textarea
-                  id="summary"
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  rows={3}
-                  className="mt-1.5"
-                />
-              </div>
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-                Create Document
-              </Button>
-            </form>
+            
+            {!isYoutubeMode && !selectedFile && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or create manually</span>
+                  </div>
+                </div>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="summary">Summary</Label>
+                    <Textarea
+                      id="summary"
+                      value={summary}
+                      onChange={(e) => setSummary(e.target.value)}
+                      rows={3}
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
+                    Create Document
+                  </Button>
+                </form>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
