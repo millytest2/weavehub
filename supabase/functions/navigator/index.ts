@@ -169,7 +169,7 @@ Never give:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Context:\n${contextPrompt}\n\nWhat is the ONE thing I should do today?` }

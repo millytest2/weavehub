@@ -37,19 +37,19 @@ function validateExperiments(data: any): ExperimentOutput[] {
 function getFallbackExperiments(): ExperimentOutput[] {
   return [
     {
-      title: "30-Minute Daily Job Application Sprint",
-      description: "Apply to 10 targeted LA hospitality jobs per day for 7 days. Track quality, speed, and interviews generated.",
+      title: "5-Day High-Impact Job Sprint",
+      description: "Apply to 50 highly-targeted roles in 5 days using AI-assisted applications. Focus on quality, speed, and immediate follow-up to generate interviews fast.",
       steps: [
-        "Research 15 upscale LA venues each morning",
-        "Apply to 10 roles (hospitality/SDR) in 30 minutes",
-        "Log applications + response rate",
-        "Reflect on what gets responses"
+        "Identify 10 perfect-fit roles daily (hospitality/SDR/remote)",
+        "Use AI to customize each application in 5 minutes",
+        "Send personalized follow-up within 24 hours of applying",
+        "Document response rates and refine approach daily"
       ],
-      duration: "7 days",
-      identity_shift_target: "I am someone who takes massive, focused action on what matters most.",
+      duration: "5 days",
+      identity_shift_target: "I am someone who creates opportunities rapidly through focused, intelligent action.",
       baseline_impact: 10,
-      content_fuel: 6,
-      identity_alignment: 8
+      content_fuel: 7,
+      identity_alignment: 9
     }
   ];
 }
@@ -89,48 +89,67 @@ serve(async (req) => {
     const incomeGap = (identityData?.target_monthly_income || 4000) - (identityData?.current_monthly_income || 0);
 
     const systemPrompt = phase === "baseline"
-      ? `You are an experiment designer for ONE user in BASELINE PHASE.
+      ? `You are an elite experiment designer. Design ONE exceptional experiment for a user in BASELINE PHASE.
 
-BASELINE PHASE = Income gap: $${incomeGap}. Lock stable income FIRST.
+BASELINE PHASE = Income gap: $${incomeGap}. Priority: Lock stable income FIRST.
 
-Your job: Design 1-3 experiments that SERVE BASELINE:
+YOUR JOB: Design the SINGLE BEST experiment for where they are RIGHT NOW.
 
-Triple-Score System (0-10 each):
-1. Baseline Impact: Does this make money or get job offers THIS WEEK?
-2. Content Fuel: Does this create X posts, Shorts, or Thread content?
-3. Identity Alignment: Does this prove Calm Rebel thesis (peace + power + play)?
-
-BASELINE EXPERIMENT RULES:
-- Baseline Impact must be 7+ (or don't suggest it)
-- 7 days max
-- Visible, social proof, fast content
-- Examples: Job app sprints, bartending challenges, UPath report blitzes, networking experiments
-
-Each experiment MUST include:
-- title
-- description (2-3 sentences)
-- steps (2-4 clear actions)
-- duration (e.g. '7 days')
-- identity_shift_target ('I am someone who...')
-- baseline_impact (0-10)
-- content_fuel (0-10)
-- identity_alignment (0-10)`
-      : `You are an experiment designer for ONE user in EMPIRE PHASE.
-
-EMPIRE PHASE = Baseline locked. Now: scale content, authority, experiments.
+EXPERIMENT QUALITY CRITERIA:
+✓ High-leverage (maximum results, minimum time)
+✓ Immediately actionable (can start today)
+✓ Creates visible momentum (fast feedback loops)
+✓ Generates content/proof (social validation)
+✓ Aligns with their identity shift goals
 
 Triple-Score System (0-10 each):
-1. Baseline Impact: Does this maintain/grow income?
-2. Content Fuel: Does this create X posts, Shorts, Threads?
-3. Identity Alignment: Does this prove Calm Rebel thesis?
+1. Baseline Impact: Does this generate income/offers THIS WEEK? (Must be 8+)
+2. Content Fuel: Does this create 5+ pieces of content? (Must be 7+)
+3. Identity Alignment: Does this prove their identity shift?
 
-EMPIRE EXPERIMENT RULES:
-- Content Fuel must be 7+
-- Identity Alignment must be 7+
-- 7-14 days
-- Examples: Presence challenges, content sprints, belief rewiring, creator rituals
+BASELINE EXPERIMENT TYPES (choose the most urgent):
+- Job Application Sprint (if job_apps < goal)
+- Income Generation Challenge (bartending, freelance, micro-projects)
+- Network Activation (leverage existing connections for referrals/offers)
+- Authority Building Sprint (create content that attracts opportunities)
 
-Each experiment MUST include all triple-score fields.`;
+EXPERIMENT STRUCTURE:
+- Duration: 3-7 days MAX
+- Steps: 3-4 concrete, repeatable daily actions
+- Success metrics: Clear, measurable, fast
+
+Design ONE experiment that will create the most momentum RIGHT NOW.`
+      : `You are an elite experiment designer. Design ONE exceptional experiment for a user in EMPIRE PHASE.
+
+EMPIRE PHASE = Baseline locked. Priority: Scale content, authority, and creative output.
+
+YOUR JOB: Design the SINGLE BEST experiment for their growth stage.
+
+EXPERIMENT QUALITY CRITERIA:
+✓ Expands their authority/influence
+✓ Tests a new content format or distribution channel
+✓ Builds on existing strengths
+✓ Creates reusable systems or frameworks
+✓ Deepens identity alignment
+
+Triple-Score System (0-10 each):
+1. Baseline Impact: Does this maintain/grow income? (Must be 6+)
+2. Content Fuel: Does this create 10+ pieces of content? (Must be 8+)
+3. Identity Alignment: Does this prove their identity evolution? (Must be 8+)
+
+EMPIRE EXPERIMENT TYPES (choose the highest leverage):
+- Content System Sprint (daily creation challenge)
+- Authority Building (thought leadership, frameworks)
+- Audience Growth (engagement, community building)
+- Product/Service Testing (validate new offerings)
+- Creative Expression (presence, play, artistic output)
+
+EXPERIMENT STRUCTURE:
+- Duration: 5-14 days
+- Steps: 3-4 daily actions that compound
+- Success metrics: Quality + quantity
+
+Design ONE experiment that will create the most growth RIGHT NOW.`;
 
     console.log("Fetched user context, calling AI gateway...");
 
@@ -141,17 +160,17 @@ Each experiment MUST include all triple-score fields.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Context:\n${context}\n\nGenerate 1-3 experiments for my current phase.` }
+          { role: "user", content: `Context:\n${context}\n\nDesign the ONE BEST experiment for me right now. Make it exceptional.` }
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "generate_experiments",
-              description: "Generate 1-3 small experiment suggestions",
+              description: "Generate ONE exceptional experiment suggestion",
               parameters: {
                 type: "object",
                 properties: {
@@ -160,26 +179,26 @@ Each experiment MUST include all triple-score fields.`;
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string", description: "Short experiment title" },
-                        description: { type: "string", description: "What you're testing (2-3 sentences)" },
+                        title: { type: "string", description: "Short, compelling experiment title" },
+                        description: { type: "string", description: "What you're testing and why it matters now (2-3 sentences)" },
                         steps: { 
                           type: "array", 
                           items: { type: "string" }, 
-                          description: "2-4 concrete action steps",
-                          minItems: 2,
+                          description: "3-4 concrete, repeatable daily actions",
+                          minItems: 3,
                           maxItems: 4
                         },
-                        duration: { type: "string", description: "e.g., '7 days', '2 weeks'" },
-                        identity_shift_target: { type: "string", description: "The identity shift you're testing (I am someone who...)" },
-                        baseline_impact: { type: "integer", minimum: 0, maximum: 10 },
-                        content_fuel: { type: "integer", minimum: 0, maximum: 10 },
-                        identity_alignment: { type: "integer", minimum: 0, maximum: 10 }
+                        duration: { type: "string", description: "e.g., '5 days', '1 week'" },
+                        identity_shift_target: { type: "string", description: "The identity shift this experiment proves (I am someone who...)" },
+                        baseline_impact: { type: "integer", minimum: 0, maximum: 10, description: "Income/opportunity generation (0-10)" },
+                        content_fuel: { type: "integer", minimum: 0, maximum: 10, description: "Content creation potential (0-10)" },
+                        identity_alignment: { type: "integer", minimum: 0, maximum: 10, description: "Identity shift alignment (0-10)" }
                       },
                       required: ["title", "description", "steps", "duration", "identity_shift_target", "baseline_impact", "content_fuel", "identity_alignment"],
                       additionalProperties: false
                     },
                     minItems: 1,
-                    maxItems: 3
+                    maxItems: 1
                   }
                 },
                 required: ["experiments"]

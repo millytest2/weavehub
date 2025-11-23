@@ -50,38 +50,63 @@ serve(async (req) => {
 
     console.log("Processing YouTube video:", videoId);
 
-    // Fetch transcript using youtube-transcript-api
-    const transcriptResponse = await fetch(
-      `https://www.youtube.com/watch?v=${videoId}`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    // Use YouTube Transcript API endpoint
+    let transcript = "";
+    let videoTitle = title || "YouTube Video";
+    
+    try {
+      // Try to fetch transcript from a public API
+      const transcriptApiResponse = await fetch(
+        `https://youtube-transcript3.p.rapidapi.com/api/transcript?videoId=${videoId}`,
+        {
+          headers: {
+            'X-RapidAPI-Key': Deno.env.get('RAPIDAPI_KEY') || '',
+            'X-RapidAPI-Host': 'youtube-transcript3.p.rapidapi.com'
+          }
+        }
+      );
+
+      if (transcriptApiResponse.ok) {
+        const transcriptData = await transcriptApiResponse.json();
+        if (transcriptData.transcript && Array.isArray(transcriptData.transcript)) {
+          transcript = transcriptData.transcript.map((item: any) => item.text).join(' ');
+          console.log("Transcript extracted successfully, length:", transcript.length);
         }
       }
-    );
-
-    if (!transcriptResponse.ok) {
-      throw new Error("Failed to fetch video data");
+    } catch (e) {
+      console.log("RapidAPI transcript fetch failed, trying alternative method:", e);
     }
 
-    const html = await transcriptResponse.text();
-    
-    // Extract captions/transcript from YouTube's initial data
-    const captionsMatch = html.match(/"captions":({[^}]+})/);
-    let transcript = "";
-    
-    if (captionsMatch) {
-      // Parse caption tracks and fetch transcript
-      const captionsData = JSON.parse(captionsMatch[1]);
-      // For now, we'll create a basic transcript entry
-      transcript = "Video transcript processing...";
-    } else {
-      transcript = "No captions available for this video.";
+    // Fallback: Fetch video page for basic metadata
+    if (!transcript) {
+      try {
+        const pageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+        });
+        
+        if (pageResponse.ok) {
+          const html = await pageResponse.text();
+          
+          // Extract title
+          const titleMatch = html.match(/"title":"([^"]+)"/);
+          if (titleMatch) {
+            videoTitle = titleMatch[1].replace(/\\u0026/g, '&');
+          }
+          
+          // Extract description as fallback content
+          const descMatch = html.match(/"description":{"simpleText":"([^"]+)"}/);
+          if (descMatch) {
+            transcript = descMatch[1].substring(0, 2000);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch video page:", e);
+      }
     }
 
-    // Get video metadata
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/);
-    const videoTitle = title || (titleMatch ? titleMatch[1].replace(' - YouTube', '') : 'YouTube Video');
+    if (!transcript || transcript.length < 50) {
+      transcript = `YouTube video: ${videoTitle}. Full transcript not available. Please watch the video directly to extract insights.`;
+    }
 
     // Create document entry
     const { data: docData, error: docError } = await supabase
@@ -109,16 +134,25 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-pro",
           messages: [
             {
               role: "system",
-              content: `Extract 2-4 key insights from this YouTube video transcript. Each insight should be:
-- Action-oriented
-- Specific and memorable
-- Relevant to personal growth, productivity, or skill-building
+              content: `You are an insight extraction expert. Analyze this YouTube video and extract 2-4 powerful, actionable insights.
 
-Return as JSON array: [{"title": "...", "content": "..."}]`
+EACH INSIGHT MUST BE:
+- Action-oriented and immediately applicable
+- Specific with concrete examples or frameworks
+- Memorable (quotable quality)
+- Relevant to personal growth, productivity, skill-building, or mindset shifts
+
+INSIGHT QUALITY RULES:
+- Focus on unique mental models, not obvious advice
+- Extract frameworks or systems if present
+- Identify identity-level shifts (not just tactics)
+- Prioritize insights that create leverage or compound effects
+
+Return as JSON array: [{"title": "short catchy title", "content": "detailed insight with context and application"}]`
             },
             {
               role: "user",
