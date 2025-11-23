@@ -100,11 +100,25 @@ ${experiments?.map(e => `- ${e.title} (${e.status})`).join('\n') || 'None'}
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           {
             role: 'system',
-            content: `You are a learning assistant. Based on the user's learning topic, insights, documents, and progress, suggest 3-5 concrete daily actions they should take today to advance their learning. Be specific and actionable. Format as a JSON array of objects with "title", "description", and "priority" (low/medium/high) fields.`
+            content: `You are an expert learning strategist. Analyze the user's learning context and generate 3-5 high-leverage daily actions.
+
+TASK QUALITY RULES:
+- Each action must be 15-45 minutes
+- Prioritize application over consumption
+- Build on existing insights and documents
+- Create momentum through small wins
+- Balance depth (mastery) with breadth (exploration)
+
+PRIORITIZATION:
+- High: Urgent for current learning path progress
+- Medium: Important but not time-sensitive
+- Low: Enrichment or exploration
+
+Return specific, executable actions that move the needle on their learning goals.`
           },
           {
             role: 'user',
