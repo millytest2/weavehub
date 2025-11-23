@@ -160,7 +160,7 @@ Design ONE experiment that will create the most growth RIGHT NOW.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Context:\n${context}\n\nDesign the ONE BEST experiment for me right now. Make it exceptional.` }
