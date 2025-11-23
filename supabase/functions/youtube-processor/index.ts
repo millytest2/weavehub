@@ -8,14 +8,37 @@ const corsHeaders = {
 
 // Extract video ID from various YouTube URL formats
 function extractVideoId(url: string): string | null {
+  if (!url) return null;
+  
+  // Clean up the URL
+  const cleanUrl = url.trim();
+  
+  // If it's already just a video ID (11 characters, alphanumeric + _ and -)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(cleanUrl)) {
+    return cleanUrl;
+  }
+  
+  // Comprehensive patterns for all YouTube URL formats
   const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-    /^([a-zA-Z0-9_-]{11})$/ // Direct video ID
+    // Standard watch URL: youtube.com/watch?v=VIDEO_ID
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+    // Mobile URL: m.youtube.com/watch?v=VIDEO_ID
+    /(?:https?:\/\/)?(?:m\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+    // Short URL: youtu.be/VIDEO_ID
+    /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    // Embed URL: youtube.com/embed/VIDEO_ID
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    // Shorts URL: youtube.com/shorts/VIDEO_ID
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    // V parameter anywhere in URL
+    /[?&]v=([a-zA-Z0-9_-]{11})/
   ];
   
   for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
+    const match = cleanUrl.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
   }
   
   return null;
@@ -43,12 +66,15 @@ serve(async (req) => {
       throw new Error("YouTube URL is required");
     }
 
+    console.log("Received YouTube URL:", youtubeUrl);
+    
     const videoId = extractVideoId(youtubeUrl);
     if (!videoId) {
-      throw new Error("Invalid YouTube URL");
+      console.error("Failed to extract video ID from URL:", youtubeUrl);
+      throw new Error(`Invalid YouTube URL format. Please provide a valid YouTube link (e.g., https://youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID)`);
     }
 
-    console.log("Processing YouTube video:", videoId);
+    console.log("Processing YouTube video ID:", videoId);
 
     // Use YouTube Transcript API endpoint
     let transcript = "";
