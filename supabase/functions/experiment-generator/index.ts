@@ -72,6 +72,31 @@ serve(async (req) => {
 
     console.log("Experiment generator called for user:", user.id);
 
+    // Check for active experiments - enforce single active experiment rule
+    const { data: activeExperiments, error: checkError } = await supabase
+      .from("experiments")
+      .select("id, title, status")
+      .eq("user_id", user.id)
+      .in("status", ["in_progress", "planning"]);
+
+    if (checkError) {
+      console.error("Error checking active experiments:", checkError);
+    }
+
+    if (activeExperiments && activeExperiments.length > 0) {
+      console.log(`User already has ${activeExperiments.length} active experiment(s)`);
+      return new Response(
+        JSON.stringify({ 
+          error: "You already have an active experiment. Complete or pause it before starting a new one.",
+          active_experiment: activeExperiments[0]
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     // Fetch user's context using shared helper

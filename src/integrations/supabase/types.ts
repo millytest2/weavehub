@@ -87,6 +87,7 @@ export type Database = {
           description: string | null
           id: string
           one_thing: string | null
+          pillar: string | null
           reflection: string | null
           task_date: string
           task_sequence: number | null
@@ -100,6 +101,7 @@ export type Database = {
           description?: string | null
           id?: string
           one_thing?: string | null
+          pillar?: string | null
           reflection?: string | null
           task_date?: string
           task_sequence?: number | null
@@ -113,6 +115,7 @@ export type Database = {
           description?: string | null
           id?: string
           one_thing?: string | null
+          pillar?: string | null
           reflection?: string | null
           task_date?: string
           task_sequence?: number | null
@@ -242,6 +245,7 @@ export type Database = {
           id: string
           job_apps_goal: number | null
           job_apps_this_week: number | null
+          last_pillar_used: string | null
           target_monthly_income: number | null
           updated_at: string
           user_id: string
@@ -256,6 +260,7 @@ export type Database = {
           id?: string
           job_apps_goal?: number | null
           job_apps_this_week?: number | null
+          last_pillar_used?: string | null
           target_monthly_income?: number | null
           updated_at?: string
           user_id: string
@@ -270,6 +275,7 @@ export type Database = {
           id?: string
           job_apps_goal?: number | null
           job_apps_this_week?: number | null
+          last_pillar_used?: string | null
           target_monthly_income?: number | null
           updated_at?: string
           user_id?: string

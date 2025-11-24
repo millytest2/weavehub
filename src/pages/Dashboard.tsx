@@ -143,6 +143,7 @@ const Dashboard = () => {
             one_thing: data.do_this_now,
             why_matters: data.why_it_matters,
             description: data.what_to_do_after,
+            pillar: data.priority_for_today,
             completed: false,
           });
 
