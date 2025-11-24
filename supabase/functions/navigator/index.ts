@@ -64,15 +64,26 @@ serve(async (req) => {
     // Fetch comprehensive user context using shared helper
     const userContext = await fetchUserContext(supabase, user.id);
     
-    // Get phase info from identity_seeds
+    // Get phase info and last pillar from identity_seeds
     const { data: identityData } = await supabase
       .from("identity_seeds")
-      .select("current_phase, target_monthly_income, current_monthly_income, job_apps_this_week, job_apps_goal, days_to_move, weekly_focus")
+      .select("current_phase, target_monthly_income, current_monthly_income, job_apps_this_week, job_apps_goal, days_to_move, weekly_focus, last_pillar_used")
       .eq("user_id", user.id)
       .maybeSingle();
 
     const phase = identityData?.current_phase || "baseline";
     const baselineMetrics = identityData || {} as any;
+    const lastPillarUsed = identityData?.last_pillar_used || null;
+
+    // Get recent task pillars to ensure rotation
+    const { data: recentTasks } = await supabase
+      .from("daily_tasks")
+      .select("pillar")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const recentPillars = recentTasks?.map(t => t.pillar).filter(Boolean) || [];
 
     // Build comprehensive context from shared helper
     let contextPrompt = formatContextForAI(userContext);
@@ -122,13 +133,17 @@ Choose from six universal pillars:
 • Presence (emotional regulation, identity shifts, nervous system)
 • Admin (life maintenance, clearing blockers)
 
+${lastPillarUsed ? `Last pillar used: ${lastPillarUsed}` : 'No previous pillar tracked'}
+${recentPillars.length > 0 ? `Recent pillars: ${recentPillars.join(', ')}` : ''}
+
 RULES FOR CHOOSING TODAY'S PRIORITY:
-1. Rotate priority day to day, unless urgency exists
-2. If one pillar is falling behind, prioritize it
-3. If emotional instability shows up in insights, choose Presence
-4. If skill development stalled, choose Skill
-5. If behavior and identity misalign, choose identity-shifting experiment actions
-6. If nothing is urgent, choose growth-oriented tasks over maintenance
+1. MUST rotate pillars - avoid using ${lastPillarUsed || 'the same pillar'} unless critical urgency exists
+2. Prioritize pillars not used recently: ${recentPillars.length > 0 ? recentPillars.filter((p, i, a) => a.indexOf(p) === i).join(', ') : 'all available'}
+3. If one pillar is falling behind, prioritize it
+4. If emotional instability shows up in insights, choose Presence
+5. If skill development stalled, choose Skill
+6. If behavior and identity misalign, choose identity-shifting experiment actions
+7. Prefer growth-oriented tasks over maintenance unless Admin is overdue
 
 ${phase === "baseline" ? `
 USER'S CURRENT PHASE: BASELINE
@@ -232,6 +247,15 @@ Never give:
     try {
       action = JSON.parse(toolCall.function.arguments);
       action = validateNavigatorOutput(action);
+      
+      // Update last_pillar_used in identity_seeds for rotation tracking
+      const chosenPillar = action.priority_for_today;
+      await supabase
+        .from("identity_seeds")
+        .update({ last_pillar_used: chosenPillar })
+        .eq("user_id", user.id);
+        
+      console.log(`Navigator chose pillar: ${chosenPillar}`);
     } catch (parseError) {
       console.error("Failed to parse/validate AI response:", parseError);
       return new Response(

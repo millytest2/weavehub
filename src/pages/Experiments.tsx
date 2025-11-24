@@ -96,6 +96,18 @@ const Experiments = () => {
   };
 
   const handleGenerateExperiment = async () => {
+    // Check for active experiments first
+    const activeExperiments = experiments.filter(
+      e => e.status === 'in_progress' || e.status === 'planning'
+    );
+    
+    if (activeExperiments.length > 0) {
+      toast.error("You already have an active experiment. Complete or pause it first.", {
+        description: "One experiment at a time ensures focus and completion."
+      });
+      return;
+    }
+
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("experiment-generator", {
@@ -149,10 +161,27 @@ const Experiments = () => {
     setIsDetailOpen(true);
   };
 
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("experiments")
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success(`Experiment ${newStatus === 'completed' ? 'completed' : newStatus === 'in_progress' ? 'activated' : 'paused'}`);
+      fetchExperiments();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update status");
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed": return "bg-primary/10 text-primary border-primary/20";
       case "in_progress": return "bg-accent/10 text-accent border-accent/20";
+      case "paused": return "bg-muted/10 text-muted-foreground border-border";
       default: return "bg-secondary text-secondary-foreground border-border";
     }
   };
@@ -182,6 +211,24 @@ const Experiments = () => {
           </Button>
         </div>
       </div>
+
+      {/* Active Experiment Warning */}
+      {experiments.filter(e => e.status === 'in_progress' || e.status === 'planning').length > 1 && (
+        <Card className="rounded-[10px] border-orange-500/50 bg-orange-500/10">
+          <CardContent className="pt-5">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl">⚠️</div>
+              <div>
+                <h3 className="font-medium text-base mb-1">Multiple Active Experiments Detected</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  You have multiple active experiments. For best results, focus on ONE experiment at a time. 
+                  Consider pausing or completing other experiments to maintain focus and build completion momentum.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {experiments.map((exp) => (
@@ -351,6 +398,40 @@ const Experiments = () => {
                 </p>
               </div>
             )}
+
+            {/* Status Controls */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Actions</h3>
+              <div className="flex gap-2">
+                {selectedExperiment?.status !== 'in_progress' && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => handleStatusChange(selectedExperiment.id, 'in_progress')}
+                  >
+                    Activate
+                  </Button>
+                )}
+                {(selectedExperiment?.status === 'in_progress' || selectedExperiment?.status === 'planning') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusChange(selectedExperiment.id, 'paused')}
+                  >
+                    Pause
+                  </Button>
+                )}
+                {selectedExperiment?.status !== 'completed' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusChange(selectedExperiment.id, 'completed')}
+                  >
+                    Mark Complete
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
