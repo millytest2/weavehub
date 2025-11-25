@@ -12,6 +12,7 @@ interface NavigatorOutput {
   priority_for_today: string;
   do_this_now: string;
   why_it_matters: string;
+  time_required: string;
   what_to_do_after: string;
 }
 
@@ -25,6 +26,9 @@ function validateNavigatorOutput(data: any): NavigatorOutput {
   if (!data.why_it_matters || typeof data.why_it_matters !== 'string') {
     throw new Error('Invalid why_it_matters');
   }
+  if (!data.time_required || typeof data.time_required !== 'string') {
+    throw new Error('Invalid time_required');
+  }
   if (!data.what_to_do_after || typeof data.what_to_do_after !== 'string') {
     throw new Error('Invalid what_to_do_after');
   }
@@ -36,6 +40,7 @@ function getFallbackSuggestion(): NavigatorOutput {
     priority_for_today: "Skill",
     do_this_now: "Spend 30 minutes progressing your most important active experiment or learning path.",
     why_it_matters: "Small, consistent progress compounds. This keeps momentum alive and tests what you're learning.",
+    time_required: "30 minutes",
     what_to_do_after: "Once done, mark it complete and I'll generate your next action."
   };
 }
@@ -115,12 +120,11 @@ GUIDING PRINCIPLES:
 • Keep everything simple and executable
 
 WEIGHTING RULES (combine all data into one evolving mental model):
-• Identity Seed = 40%
-• Active Experiments = 25%
-• Recent Insights (emotional patterns) = 15%
-• Weekly goals/intentions = 10%
-• Documents/Knowledge inputs = 5%
-• Rotation/Avoiding stagnation = 5%
+• Recent Insights (emotional/behavioral patterns) = 30%
+• Active Experiments (identity signals) = 30%
+• Identity Seed (long-term compass, not daily command) = 20%
+• Daily Tasks (momentum patterns) = 10%
+• Documents/YouTube transcripts (knowledge context) = 10%
 
 DAILY PRIORITY ENGINE:
 Before generating today's action, determine which pillar is most important TODAY.
@@ -138,12 +142,13 @@ ${recentPillars.length > 0 ? `Recent pillars: ${recentPillars.join(', ')}` : ''}
 
 RULES FOR CHOOSING TODAY'S PRIORITY:
 1. MUST rotate pillars - avoid using ${lastPillarUsed || 'the same pillar'} unless critical urgency exists
-2. Prioritize pillars not used recently: ${recentPillars.length > 0 ? recentPillars.filter((p, i, a) => a.indexOf(p) === i).join(', ') : 'all available'}
-3. If one pillar is falling behind, prioritize it
+2. DO NOT use Cash pillar more than 2 days in a row - check recent tasks
+3. Prioritize pillars not used recently: ${recentPillars.length > 0 ? recentPillars.filter((p, i, a) => a.indexOf(p) === i).join(', ') : 'all available'}
 4. If emotional instability shows up in insights, choose Presence
-5. If skill development stalled, choose Skill
-6. If behavior and identity misalign, choose identity-shifting experiment actions
-7. Prefer growth-oriented tasks over maintenance unless Admin is overdue
+5. If skill development or experiments stalled, choose Skill
+6. If content creation low, choose Content
+7. Weight active experiments and insights HIGHER than documents
+8. Prefer growth-oriented tasks over maintenance unless Admin is overdue
 
 ${phase === "baseline" ? `
 USER'S CURRENT PHASE: BASELINE
@@ -163,16 +168,21 @@ Weight Skill, Content, and Presence pillars higher. Prioritize:
 
 ACTION RULES:
 Actions must be:
-• 15 to 45 minutes
+• 15 to 45 minutes (REQUIRED - include time_required in output)
 • Clear and frictionless
 • Identity-aligned
 • Experiment-friendly
 • Grounded in the priority of the day
 • Designed to reduce overwhelm
+• Fun and actionable
 
 Never give:
 • Three options
 • Long planning tasks
+• Vague suggestions
+• Theory without action
+• Emotional disclaimers
+• Job actions more than 2 days in a row unless crisis mode
 • Vague suggestions
 • Theory without action
 • Emotional disclaimers`;
@@ -205,9 +215,10 @@ Never give:
                   },
                   do_this_now: { type: "string", description: "One clear imperative action, 15-45 minutes" },
                   why_it_matters: { type: "string", description: "Identity-level + practical reasoning in 2-3 sentences" },
+                  time_required: { type: "string", description: "Estimated time required (e.g., '20 minutes', '30 minutes', '45 minutes')" },
                   what_to_do_after: { type: "string", description: "The next small step after completion" }
                 },
-                required: ["priority_for_today", "do_this_now", "why_it_matters", "what_to_do_after"]
+                required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required", "what_to_do_after"]
               }
             }
           }

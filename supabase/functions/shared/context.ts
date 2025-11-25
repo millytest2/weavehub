@@ -63,25 +63,38 @@ export async function fetchUserContext(
 }
 
 export function formatContextForAI(context: CompactContext): string {
-  return `
-IDENTITY SEED (North Star):
-${context.identity_seed || "Not set"}
+  let formatted = "";
 
-TOPICS/PATHS (all active):
-${context.topics.map((t: any) => `• ${t.name}${t.description ? ': ' + t.description : ''}`).join("\n") || "None"}
+  // 1. INSIGHTS (highest emotional/behavioral signal)
+  if (context.key_insights.length > 0) {
+    formatted += `🔥 RECENT INSIGHTS (emotional/behavioral patterns):\n${context.key_insights.map((i: any) => `- ${i.title}: ${i.content}`).join('\n')}\n\n`;
+  }
 
-EXPERIMENTS:
-In Progress: ${context.experiments.in_progress.map((e: any) => `• ${e.title} (${e.status})`).join("\n") || "None"}
-Recent Completed: ${context.experiments.recent_completed.map((e: any) => `• ${e.title}`).join("\n") || "None"}
-Planning: ${context.experiments.planning.map((e: any) => `• ${e.title}`).join("\n") || "None"}
+  // 2. ACTIVE EXPERIMENTS (strongest identity signal)
+  const allExperiments = [...context.experiments.in_progress, ...context.experiments.planning];
+  if (allExperiments.length > 0) {
+    formatted += `⚡ ACTIVE EXPERIMENTS (identity-in-action):\n${allExperiments.map((e: any) => `- ${e.title} (${e.status}): ${e.description || 'No description'}\n  Steps: ${e.steps || 'None defined'}`).join('\n')}\n\n`;
+  }
 
-KEY INSIGHTS (last 10 non-trivial):
-${context.key_insights.map((i: any) => `• ${i.title}: ${i.content.substring(0, 150)}...`).join("\n") || "None"}
+  // 3. IDENTITY SEED (long-term compass)
+  if (context.identity_seed) {
+    formatted += `🧭 IDENTITY SEED (long-term direction, not daily command):\n${context.identity_seed}\n\n`;
+  }
 
-KEY DOCUMENTS (title + summary only):
-${context.key_documents.map((d: any) => `• ${d.title}${d.summary ? ': ' + d.summary.substring(0, 100) : ''}`).join("\n") || "None"}
+  // 4. RECENT ACTIONS (momentum tracker)
+  if (context.recent_actions.length > 0) {
+    formatted += `📊 RECENT ACTIONS (momentum patterns):\n${context.recent_actions.map((a: any) => `- [${a.task_date}] ${a.one_thing || a.title} ${a.completed ? '✓' : '⏳'}${a.reflection ? ' | ' + a.reflection.substring(0, 80) : ''}`).join('\n')}\n\n`;
+  }
 
-RECENT ACTIONS (last 7 days):
-${context.recent_actions.map((r: any) => `• [${r.task_date}] ${r.one_thing || r.title}${r.reflection ? ' | Reflection: ' + r.reflection.substring(0, 100) : ''}${r.completed ? ' ✓' : ''}`).join("\n") || "None yet"}
-`.trim();
+  // 5. DOCUMENTS (knowledge context - lower priority)
+  if (context.key_documents.length > 0) {
+    formatted += `📚 DOCUMENTS (knowledge inputs):\n${context.key_documents.map((d: any) => `- ${d.title}: ${d.summary || 'No summary'}`).join('\n')}\n\n`;
+  }
+
+  // 6. TOPICS (organizational context)
+  if (context.topics.length > 0) {
+    formatted += `🗂️ TOPICS:\n${context.topics.map((t: any) => `- ${t.name}: ${t.description || 'No description'}`).join('\n')}\n\n`;
+  }
+
+  return formatted.trim();
 }
