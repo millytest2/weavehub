@@ -4,8 +4,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Lightbulb, FlaskConical, Map, FileText } from "lucide-react";
+import { Lightbulb, FlaskConical, Map, FileText, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -257,191 +256,178 @@ const Dashboard = () => {
     ? Math.min(100, (baselineMetrics.job_apps_this_week / baselineMetrics.job_apps_goal) * 100)
     : 0;
 
+  const completedToday = tasksForToday.filter(t => t.completed).length;
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
-      {/* ONE Path Forward */}
-      <div className="grid gap-4 grid-cols-1">
-        {/* Today's Action Sequence */}
-        <Card className="rounded-[10px] border-border/30">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base md:text-lg font-medium">Today's Actions</CardTitle>
-              <div className="flex gap-1">
-                {[1, 2, 3].map(num => (
-                  <div
-                    key={num}
-                    className={`h-2 w-8 rounded-full transition-colors ${
-                      tasksForToday.some(t => t.task_sequence === num && t.completed)
-                        ? 'bg-primary'
-                        : num === currentSequence
-                        ? 'bg-primary/50'
-                        : 'bg-border'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
+    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 py-8">
+      {/* Progress Indicator */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-muted-foreground">Today's Progress</span>
+          <span className="text-sm font-medium">{completedToday}/3</span>
+        </div>
+        <div className="h-1.5 bg-border rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary transition-all duration-500"
+            style={{ width: `${(completedToday / 3) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 space-y-6">
+        {/* Today's Action */}
+        <Card className="border-border/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold">Next Action</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {todayTask ? (
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
-                    {currentSequence}
-                  </div>
-                  <div className="flex-1">
-                    {(todayTask as any).priority_for_today && (
-                      <div className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary mb-2">
-                        {(todayTask as any).priority_for_today}
-                      </div>
-                    )}
-                    <p className="font-medium text-sm">{(todayTask as any).one_thing}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mt-1">
-                      {(todayTask as any).why_matters}
-                    </p>
-                    {(todayTask as any).description && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        ⏱️ {(todayTask as any).description}
-                      </p>
-                    )}
-                  </div>
+              <>
+                <div className="space-y-2">
+                  {(todayTask as any).pillar && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                      {(todayTask as any).pillar}
+                    </div>
+                  )}
+                  <h3 className="text-xl font-semibold leading-tight">{(todayTask as any).one_thing}</h3>
+                  {(todayTask as any).description && (
+                    <p className="text-sm text-muted-foreground">⏱️ {(todayTask as any).description}</p>
+                  )}
                 </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Ready to start? Generate your first task.</p>
-            )}
-            <div className="flex gap-2">
-              {todayTask && !todayTask.completed && currentSequence <= 3 && (
                 <Button
-                  size="default"
+                  size="lg"
                   onClick={handleCompleteTask}
-                  className="flex-1 min-h-[44px]"
+                  disabled={todayTask.completed}
+                  className="w-full"
                 >
-                  Complete ({currentSequence}/3)
+                  {todayTask.completed ? "Completed" : "Complete"} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              )}
-              {!todayTask && (
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground">Ready to start your day?</p>
                 <Button
-                  size="default"
+                  size="lg"
                   onClick={handleGenerateDailyOne}
                   disabled={isGenerating}
-                  className="w-full min-h-[44px]"
+                  className="w-full"
                 >
-                  {isGenerating ? "Generating..." : "Start Today"}
+                  {isGenerating ? "Generating..." : "Generate Next Action"}
                 </Button>
-              )}
-            </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
-        {/* Active Experiment */}
-        <Card className="rounded-[10px] border-border/30">
+        {/* Active Experiment - Compact */}
+        <Card className="border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-medium">Active Experiment</CardTitle>
+            <CardTitle className="text-base font-semibold">Active Experiment</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             {activeExperiment ? (
-              <div className="space-y-2 max-h-[120px] overflow-y-auto">
-                <p className="font-medium text-sm">{(activeExperiment as any).title}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">{(activeExperiment as any).description}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Duration: {(activeExperiment as any).duration || "Not set"}
-                </p>
+              <div className="space-y-3">
+                <div>
+                  <p className="font-medium">{(activeExperiment as any).title}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{(activeExperiment as any).description}</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/experiments")}
+                  variant="outline"
+                  className="w-full"
+                >
+                  View Details
+                </Button>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No active experiment. Pick one from Experiments or generate a new one.
-              </p>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">No active experiment</p>
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/experiments")}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Start Experiment
+                </Button>
+              </div>
             )}
-            <Button
-              size="default"
-              onClick={() => navigate("/experiments")}
-              variant="outline"
-              className="w-full min-h-[44px]"
-            >
-              {activeExperiment ? "View Experiment" : "Start Experiment"}
-            </Button>
           </CardContent>
         </Card>
 
-        {/* Direction Sync */}
-        <Card className="rounded-[10px] border-border/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-medium">Direction Sync</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {syncResult ? (
-              <div className="space-y-2">
-                <p className="font-medium text-sm">{syncResult.headline}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{syncResult.summary}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Get clarity on where you're heading</p>
+        {/* Direction Sync - Compact */}
+        <Card className="border-border/30">
+          <CardContent className="pt-6">
+            <Button
+              size="lg"
+              onClick={handleSyncLife}
+              disabled={isSyncing}
+              variant="outline"
+              className="w-full"
+            >
+              {isSyncing ? "Syncing..." : "🔀 Direction Sync"}
+            </Button>
+            {syncResult && (
+              <button
+                onClick={() => setShowSyncDetail(true)}
+                className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+              >
+                {syncResult.headline}
+              </button>
             )}
-            <div className="flex gap-2">
-              <Button size="default" onClick={handleSyncLife} disabled={isSyncing} className="flex-1 min-h-[44px]">
-                {isSyncing ? "Syncing..." : " 🔀 Sync"}
-              </Button>
-              {syncResult && (
-                <Button
-                  size="default"
-                  variant="outline"
-                  onClick={() => setShowSyncDetail(true)}
-                  className="flex-1 min-h-[44px]"
-                >
-                  View
-                </Button>
-              )}
-            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Simple Actions */}
-      <div className="flex flex-wrap items-center gap-3 justify-center text-sm">
-        <Button
-          variant="ghost"
-          size="default"
-          onClick={() => navigate("/insights")}
-          className="text-muted-foreground hover:text-foreground min-h-[44px]"
-        >
-          <Lightbulb className="mr-2 h-4 w-4" />
-          Add Insight
-        </Button>
-        <Button
-          variant="ghost"
-          size="default"
-          onClick={() => navigate("/experiments")}
-          className="text-muted-foreground hover:text-foreground min-h-[44px]"
-        >
-          <FlaskConical className="mr-2 h-4 w-4" />
-          Add Experiment
-        </Button>
-        <Button
-          variant="ghost"
-          size="default"
-          onClick={() => navigate("/topics")}
-          className="text-muted-foreground hover:text-foreground min-h-[44px]"
-        >
-          <Map className="mr-2 h-4 w-4" />
-          Add Path
-        </Button>
-        <Button
-          variant="ghost"
-          size="default"
-          onClick={() => navigate("/documents")}
-          className="text-muted-foreground hover:text-foreground min-h-[44px]"
-        >
-          <FileText className="mr-2 h-4 w-4" />
-          Upload Document
-        </Button>
+      {/* Quick Capture Bar */}
+      <div className="mt-8 pt-6 border-t border-border/30">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => navigate("/insights")}
+            className="h-14 flex-col gap-1"
+          >
+            <Lightbulb className="h-5 w-5" />
+            <span className="text-xs">Insight</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => navigate("/documents")}
+            className="h-14 flex-col gap-1"
+          >
+            <FileText className="h-5 w-5" />
+            <span className="text-xs">Document</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => navigate("/experiments")}
+            className="h-14 flex-col gap-1"
+          >
+            <FlaskConical className="h-5 w-5" />
+            <span className="text-xs">Experiment</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => navigate("/topics")}
+            className="h-14 flex-col gap-1"
+          >
+            <Map className="h-5 w-5" />
+            <span className="text-xs">Path</span>
+          </Button>
+        </div>
       </div>
 
       {/* Direction Sync Detail Dialog */}
       <Dialog open={showSyncDetail} onOpenChange={setShowSyncDetail}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>🧭 Direction Sync</DialogTitle>
+            <DialogTitle>Direction Sync</DialogTitle>
           </DialogHeader>
           {syncResult && (
             <div className="space-y-4">
