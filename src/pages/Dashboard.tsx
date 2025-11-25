@@ -142,7 +142,7 @@ const Dashboard = () => {
             title: data.priority_for_today || "Daily Action",
             one_thing: data.do_this_now,
             why_matters: data.why_it_matters,
-            description: data.what_to_do_after,
+            description: data.time_required || data.what_to_do_after,
             pillar: data.priority_for_today,
             completed: false,
           });
@@ -299,6 +299,11 @@ const Dashboard = () => {
                     <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mt-1">
                       {(todayTask as any).why_matters}
                     </p>
+                    {(todayTask as any).description && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ⏱️ {(todayTask as any).description}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

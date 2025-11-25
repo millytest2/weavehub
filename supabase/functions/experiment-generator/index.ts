@@ -111,70 +111,79 @@ serve(async (req) => {
       .maybeSingle();
 
     const phase = identityData?.current_phase || "baseline";
-    const incomeGap = (identityData?.target_monthly_income || 4000) - (identityData?.current_monthly_income || 0);
+    
+    // Check last experiment pillar to ensure rotation
+    const { data: recentExperiments } = await supabase
+      .from("experiments")
+      .select("title, status")
+      .eq("user_id", user.id)
+      .in("status", ["completed", "paused"])
+      .order("created_at", { ascending: false })
+      .limit(3);
+    
+    const recentExperimentTitles = recentExperiments?.map(e => e.title).join(", ") || "None";
 
-    const systemPrompt = phase === "baseline"
-      ? `You are an elite experiment designer. Design ONE exceptional experiment for a user in BASELINE PHASE.
+    const systemPrompt = `You are an elite experiment designer creating identity-driven experiments.
 
-BASELINE PHASE = Income gap: $${incomeGap}. Priority: Lock stable income FIRST.
+${context}
 
-YOUR JOB: Design the SINGLE BEST experiment for where they are RIGHT NOW.
+PILLAR ROTATION (CRITICAL):
+Choose from: Cash, Skill, Content, Health, Presence, Admin
 
-EXPERIMENT QUALITY CRITERIA:
-✓ High-leverage (maximum results, minimum time)
-✓ Immediately actionable (can start today)
-✓ Creates visible momentum (fast feedback loops)
-✓ Generates content/proof (social validation)
-✓ Aligns with their identity shift goals
+Recent experiments: ${recentExperimentTitles}
+DO NOT repeat the same pillar type as the most recent experiment.
+Rotate between different life domains to create balance.
 
-Triple-Score System (0-10 each):
-1. Baseline Impact: Does this generate income/offers THIS WEEK? (Must be 8+)
-2. Content Fuel: Does this create 5+ pieces of content? (Must be 7+)
-3. Identity Alignment: Does this prove their identity shift?
+PHASE: ${phase.toUpperCase()}
+${phase === "baseline" ? "Baseline = Stabilize foundation first, but ROTATE pillars" : "Build/Creator = Expand in all domains"}
 
-BASELINE EXPERIMENT TYPES (choose the most urgent):
-- Job Application Sprint (if job_apps < goal)
-- Income Generation Challenge (bartending, freelance, micro-projects)
-- Network Activation (leverage existing connections for referrals/offers)
-- Authority Building Sprint (create content that attracts opportunities)
+EXPERIMENT DESIGN PRINCIPLES:
+✓ Fun and identity-aligned
+✓ 3-7 days duration
+✓ Clear daily steps (3-4 actions)
+✓ Creates visible proof
+✓ Tests a specific hypothesis
+✓ Advances identity shift
 
-EXPERIMENT STRUCTURE:
-- Duration: 3-7 days MAX
-- Steps: 3-4 concrete, repeatable daily actions
-- Success metrics: Clear, measurable, fast
+PILLAR-SPECIFIC EXPERIMENT TYPES:
 
-Design ONE experiment that will create the most momentum RIGHT NOW.`
-      : `You are an elite experiment designer. Design ONE exceptional experiment for a user in EMPIRE PHASE.
+Cash (Stability):
+- 5-Day Job Sprint (targeted applications)
+- Income Generation Challenge (bartending, freelance)
+- Network Activation (leverage connections)
 
-EMPIRE PHASE = Baseline locked. Priority: Scale content, authority, and creative output.
+Skill (UPath/Learning):
+- Daily Build Challenge (ship 1 feature/day)
+- Learning Path Sprint (complete 1 module/day)
+- Framework Creation (document what you know)
 
-YOUR JOB: Design the SINGLE BEST experiment for their growth stage.
+Content (Creation/Communication):
+- 7-Day Content Sprint (1 post/video/day)
+- Authority Building (thought leadership series)
+- Story Documentation (daily insights)
 
-EXPERIMENT QUALITY CRITERIA:
-✓ Expands their authority/influence
-✓ Tests a new content format or distribution channel
-✓ Builds on existing strengths
-✓ Creates reusable systems or frameworks
-✓ Deepens identity alignment
+Health (Physical/Energy):
+- Morning Ritual Sprint (5 days of movement)
+- Energy Optimization (track/test routines)
+- Physical Challenge (progressive goal)
 
-Triple-Score System (0-10 each):
-1. Baseline Impact: Does this maintain/grow income? (Must be 6+)
-2. Content Fuel: Does this create 10+ pieces of content? (Must be 8+)
-3. Identity Alignment: Does this prove their identity evolution? (Must be 8+)
+Presence (Emotional/Identity):
+- Identity Shift Documentation (daily proof)
+- Nervous System Regulation (daily practice)
+- Reflection Sprint (daily journaling)
 
-EMPIRE EXPERIMENT TYPES (choose the highest leverage):
-- Content System Sprint (daily creation challenge)
-- Authority Building (thought leadership, frameworks)
-- Audience Growth (engagement, community building)
-- Product/Service Testing (validate new offerings)
-- Creative Expression (presence, play, artistic output)
+Admin (Life Maintenance):
+- System Building Sprint (automate 1 thing/day)
+- Life Clearing Challenge (remove blockers)
+- Organization Overhaul (clean 1 area/day)
 
-EXPERIMENT STRUCTURE:
-- Duration: 5-14 days
-- Steps: 3-4 daily actions that compound
-- Success metrics: Quality + quantity
+SCORING (0-10 each):
+1. baseline_impact: Does this stabilize/grow foundation?
+2. content_fuel: Does this create shareable proof?
+3. identity_alignment: Does this prove the identity shift?
 
-Design ONE experiment that will create the most growth RIGHT NOW.`;
+Use insights, documents, and transcripts to personalize the experiment.
+Make it actionable, fun, and aligned with their long-term direction.`;
 
     console.log("Fetched user context, calling AI gateway...");
 
