@@ -276,34 +276,57 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 space-y-4 sm:space-y-6">
-        {/* Today's Action */}
+        {/* Today's Actions */}
         <Card className="border-border/30">
           <CardHeader className="pb-3 sm:pb-4">
-            <CardTitle className="text-base sm:text-lg font-semibold">Next Action</CardTitle>
+            <CardTitle className="text-base sm:text-lg font-semibold">Today's Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 sm:space-y-4">
-            {todayTask ? (
-              <>
-                <div className="space-y-2">
-                  {(todayTask as any).pillar && (
-                    <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                      {(todayTask as any).pillar}
+            {tasksForToday.length > 0 ? (
+              <div className="space-y-3">
+                {tasksForToday.map((task, index) => (
+                  <div 
+                    key={task.id} 
+                    className={`p-3 sm:p-4 rounded-lg border ${
+                      task.completed 
+                        ? 'bg-muted/50 border-muted' 
+                        : index === tasksForToday.findIndex(t => !t.completed)
+                          ? 'bg-primary/5 border-primary/20'
+                          : 'bg-background border-border/50'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-1">
+                          {task.pillar && (
+                            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                              {task.pillar}
+                            </div>
+                          )}
+                          <h3 className={`text-sm sm:text-base font-semibold ${task.completed ? 'text-muted-foreground line-through' : ''}`}>
+                            {task.one_thing}
+                          </h3>
+                          {task.description && (
+                            <p className="text-xs text-muted-foreground">⏱️ {task.description}</p>
+                          )}
+                        </div>
+                        {task.completed && (
+                          <div className="text-primary text-xl">✓</div>
+                        )}
+                      </div>
+                      {!task.completed && index === tasksForToday.findIndex(t => !t.completed) && (
+                        <Button
+                          size="sm"
+                          onClick={handleCompleteTask}
+                          className="w-full"
+                        >
+                          Complete <ArrowRight className="ml-2 h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
-                  )}
-                  <h3 className="text-lg sm:text-xl font-semibold leading-tight">{(todayTask as any).one_thing}</h3>
-                  {(todayTask as any).description && (
-                    <p className="text-xs sm:text-sm text-muted-foreground">⏱️ {(todayTask as any).description}</p>
-                  )}
-                </div>
-                <Button
-                  size="lg"
-                  onClick={handleCompleteTask}
-                  disabled={todayTask.completed}
-                  className="w-full"
-                >
-                  {todayTask.completed ? "Completed" : "Complete"} <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </>
+                  </div>
+                ))}
+              </div>
             ) : (
               <>
                 <p className="text-sm sm:text-base text-muted-foreground">Ready to start your day?</p>
