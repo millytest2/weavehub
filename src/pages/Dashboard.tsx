@@ -259,12 +259,12 @@ const Dashboard = () => {
   const completedToday = tasksForToday.filter(t => t.completed).length;
 
   return (
-    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 py-8">
+    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Progress Indicator */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-muted-foreground">Today's Progress</span>
-          <span className="text-sm font-medium">{completedToday}/3</span>
+          <span className="text-xs sm:text-sm font-medium text-muted-foreground">Today's Progress</span>
+          <span className="text-xs sm:text-sm font-medium">{completedToday}/3</span>
         </div>
         <div className="h-1.5 bg-border rounded-full overflow-hidden">
           <div 
@@ -275,24 +275,24 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-4 sm:space-y-6">
         {/* Today's Action */}
         <Card className="border-border/30">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold">Next Action</CardTitle>
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="text-base sm:text-lg font-semibold">Next Action</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4">
             {todayTask ? (
               <>
                 <div className="space-y-2">
                   {(todayTask as any).pillar && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
                       {(todayTask as any).pillar}
                     </div>
                   )}
-                  <h3 className="text-xl font-semibold leading-tight">{(todayTask as any).one_thing}</h3>
+                  <h3 className="text-lg sm:text-xl font-semibold leading-tight">{(todayTask as any).one_thing}</h3>
                   {(todayTask as any).description && (
-                    <p className="text-sm text-muted-foreground">⏱️ {(todayTask as any).description}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">⏱️ {(todayTask as any).description}</p>
                   )}
                 </div>
                 <Button
@@ -306,7 +306,7 @@ const Dashboard = () => {
               </>
             ) : (
               <>
-                <p className="text-muted-foreground">Ready to start your day?</p>
+                <p className="text-sm sm:text-base text-muted-foreground">Ready to start your day?</p>
                 <Button
                   size="lg"
                   onClick={handleGenerateDailyOne}
@@ -322,15 +322,15 @@ const Dashboard = () => {
 
         {/* Active Experiment - Compact */}
         <Card className="border-border/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Active Experiment</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-sm sm:text-base font-semibold">Active Experiment</CardTitle>
           </CardHeader>
           <CardContent>
             {activeExperiment ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 <div>
-                  <p className="font-medium">{(activeExperiment as any).title}</p>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{(activeExperiment as any).description}</p>
+                  <p className="text-sm sm:text-base font-medium">{(activeExperiment as any).title}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mt-1">{(activeExperiment as any).description}</p>
                 </div>
                 <Button
                   size="sm"
@@ -342,8 +342,8 @@ const Dashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">No active experiment</p>
+              <div className="space-y-2 sm:space-y-3">
+                <p className="text-xs sm:text-sm text-muted-foreground">No active experiment</p>
                 <Button
                   size="sm"
                   onClick={() => navigate("/experiments")}
@@ -359,7 +359,7 @@ const Dashboard = () => {
 
         {/* Direction Sync - Compact */}
         <Card className="border-border/30">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6">
             <Button
               size="lg"
               onClick={handleSyncLife}
@@ -372,7 +372,7 @@ const Dashboard = () => {
             {syncResult && (
               <button
                 onClick={() => setShowSyncDetail(true)}
-                className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+                className="w-full mt-3 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
               >
                 {syncResult.headline}
               </button>
@@ -382,42 +382,42 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Capture Bar */}
-      <div className="mt-8 pt-6 border-t border-border/30">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border/30">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <Button
             variant="outline"
             size="default"
             onClick={() => navigate("/insights")}
-            className="h-14 flex-col gap-1"
+            className="h-12 sm:h-14 flex-col gap-1"
           >
-            <Lightbulb className="h-5 w-5" />
+            <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="text-xs">Insight</span>
           </Button>
           <Button
             variant="outline"
             size="default"
             onClick={() => navigate("/documents")}
-            className="h-14 flex-col gap-1"
+            className="h-12 sm:h-14 flex-col gap-1"
           >
-            <FileText className="h-5 w-5" />
+            <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="text-xs">Document</span>
           </Button>
           <Button
             variant="outline"
             size="default"
             onClick={() => navigate("/experiments")}
-            className="h-14 flex-col gap-1"
+            className="h-12 sm:h-14 flex-col gap-1"
           >
-            <FlaskConical className="h-5 w-5" />
+            <FlaskConical className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="text-xs">Experiment</span>
           </Button>
           <Button
             variant="outline"
             size="default"
             onClick={() => navigate("/topics")}
-            className="h-14 flex-col gap-1"
+            className="h-12 sm:h-14 flex-col gap-1"
           >
-            <Map className="h-5 w-5" />
+            <Map className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="text-xs">Path</span>
           </Button>
         </div>
