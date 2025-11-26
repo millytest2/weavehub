@@ -115,11 +115,10 @@ serve(async (req) => {
     // Check last experiment pillar to ensure rotation
     const { data: recentExperiments } = await supabase
       .from("experiments")
-      .select("title, status")
+      .select("title")
       .eq("user_id", user.id)
-      .in("status", ["completed", "paused"])
       .order("created_at", { ascending: false })
-      .limit(3);
+      .limit(2);
     
     const recentExperimentTitles = recentExperiments?.map(e => e.title).join(", ") || "None";
 

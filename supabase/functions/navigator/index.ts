@@ -86,7 +86,7 @@ serve(async (req) => {
       .select("pillar")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(3);
 
     const recentPillars = recentTasks?.map(t => t.pillar).filter(Boolean) || [];
 
