@@ -7,7 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Validation schema (simple runtime check)
+// ALL PILLARS - expanded for balance
+const ALL_PILLARS = ["Stability", "Skill", "Content", "Health", "Presence", "Admin", "Dating", "Learning"];
+
 interface NavigatorOutput {
   priority_for_today: string;
   do_this_now: string;
@@ -17,32 +19,113 @@ interface NavigatorOutput {
 }
 
 function validateNavigatorOutput(data: any): NavigatorOutput {
-  if (!data.priority_for_today || typeof data.priority_for_today !== 'string') {
-    throw new Error('Invalid priority_for_today');
-  }
-  if (!data.do_this_now || typeof data.do_this_now !== 'string') {
-    throw new Error('Invalid do_this_now');
-  }
-  if (!data.why_it_matters || typeof data.why_it_matters !== 'string') {
-    throw new Error('Invalid why_it_matters');
-  }
-  if (!data.time_required || typeof data.time_required !== 'string') {
-    throw new Error('Invalid time_required');
-  }
-  if (!data.what_to_do_after || typeof data.what_to_do_after !== 'string') {
-    throw new Error('Invalid what_to_do_after');
-  }
+  if (!data.priority_for_today || typeof data.priority_for_today !== 'string') throw new Error('Invalid priority_for_today');
+  if (!data.do_this_now || typeof data.do_this_now !== 'string') throw new Error('Invalid do_this_now');
+  if (!data.why_it_matters || typeof data.why_it_matters !== 'string') throw new Error('Invalid why_it_matters');
+  if (!data.time_required || typeof data.time_required !== 'string') throw new Error('Invalid time_required');
+  if (!data.what_to_do_after || typeof data.what_to_do_after !== 'string') throw new Error('Invalid what_to_do_after');
   return data as NavigatorOutput;
 }
 
-function getFallbackSuggestion(): NavigatorOutput {
-  return {
-    priority_for_today: "Skill",
-    do_this_now: "Spend 30 minutes progressing your most important active experiment or learning path.",
-    why_it_matters: "Small, consistent progress compounds. This keeps momentum alive and tests what you're learning.",
-    time_required: "30 minutes",
-    what_to_do_after: "Once done, mark it complete and I'll generate your next action."
+function getFallbackSuggestion(pillar: string): NavigatorOutput {
+  const fallbacks: { [key: string]: NavigatorOutput } = {
+    "Skill": {
+      priority_for_today: "Skill",
+      do_this_now: "Spend 30 minutes progressing your most important project or learning path.",
+      why_it_matters: "Small, consistent progress compounds. Ship something small today.",
+      time_required: "30 minutes",
+      what_to_do_after: "Mark complete and I'll give you the next action."
+    },
+    "Content": {
+      priority_for_today: "Content",
+      do_this_now: "Write and post one authentic insight about something you learned recently.",
+      why_it_matters: "Building in public attracts opportunity. Your story matters.",
+      time_required: "20 minutes",
+      what_to_do_after: "Engage with 3 people who respond, then return here."
+    },
+    "Health": {
+      priority_for_today: "Health",
+      do_this_now: "Move your body for 20 minutes - walk, stretch, workout, anything.",
+      why_it_matters: "Physical energy creates mental clarity. Your body is your operating system.",
+      time_required: "20 minutes",
+      what_to_do_after: "Hydrate, then tackle your next task with fresh energy."
+    },
+    "Presence": {
+      priority_for_today: "Presence",
+      do_this_now: "Do 5 minutes of nervous system regulation (breathwork, cold exposure, meditation).",
+      why_it_matters: "Calm creates clarity. Regulate before you act.",
+      time_required: "10 minutes",
+      what_to_do_after: "Journal one thing you're avoiding, then face it."
+    },
+    "Stability": {
+      priority_for_today: "Stability",
+      do_this_now: "Take one concrete action toward income: apply, reach out, or follow up.",
+      why_it_matters: "Stability creates freedom. One action reduces anxiety.",
+      time_required: "30 minutes",
+      what_to_do_after: "Log it and move to a non-Stability pillar."
+    },
+    "Admin": {
+      priority_for_today: "Admin",
+      do_this_now: "Clear one thing from your mental backlog (email, task, decision).",
+      why_it_matters: "Friction drains energy. Remove one blocker.",
+      time_required: "15 minutes",
+      what_to_do_after: "Celebrate the clear space, then pick your next action."
+    },
+    "Dating": {
+      priority_for_today: "Dating",
+      do_this_now: "Reach out to one person - text a friend, start a conversation, make a plan.",
+      why_it_matters: "Connection compounds. One reach-out opens doors.",
+      time_required: "10 minutes",
+      what_to_do_after: "Follow through on the next step of that connection."
+    },
+    "Learning": {
+      priority_for_today: "Learning",
+      do_this_now: "Spend 25 minutes learning something specific you need for your current project.",
+      why_it_matters: "Targeted learning accelerates everything. Learn to apply, not to know.",
+      time_required: "25 minutes",
+      what_to_do_after: "Apply what you just learned immediately."
+    }
   };
+  return fallbacks[pillar] || fallbacks["Skill"];
+}
+
+// Choose pillar with rotation enforcement
+function choosePillarForRotation(recentPillars: string[], phase: string, isInCrisis: boolean): string {
+  const last3 = recentPillars.slice(0, 3);
+  
+  // HARD RULE: Never do same pillar 3x in a row
+  if (last3.length >= 2 && last3[0] === last3[1]) {
+    const forcedAway = ALL_PILLARS.filter(p => p !== last3[0]);
+    return forcedAway[Math.floor(Math.random() * forcedAway.length)];
+  }
+  
+  // HARD RULE: Never do Stability more than 2x in a row (unless crisis)
+  if (!isInCrisis && last3.slice(0, 2).every(p => p === "Stability")) {
+    return ALL_PILLARS.filter(p => p !== "Stability")[Math.floor(Math.random() * (ALL_PILLARS.length - 1))];
+  }
+  
+  // Find underused pillars
+  const pillarCounts: { [key: string]: number } = {};
+  ALL_PILLARS.forEach(p => pillarCounts[p] = 0);
+  last3.forEach(p => { if (pillarCounts[p] !== undefined) pillarCounts[p]++; });
+  
+  // Prefer pillars not used recently
+  const unused = ALL_PILLARS.filter(p => pillarCounts[p] === 0);
+  if (unused.length > 0) {
+    // Weight by phase
+    if (phase === "baseline") {
+      const preferred = unused.filter(p => ["Stability", "Skill", "Content", "Health"].includes(p));
+      if (preferred.length > 0) return preferred[Math.floor(Math.random() * preferred.length)];
+    } else {
+      const preferred = unused.filter(p => ["Skill", "Content", "Presence", "Learning", "Dating"].includes(p));
+      if (preferred.length > 0) return preferred[Math.floor(Math.random() * preferred.length)];
+    }
+    return unused[Math.floor(Math.random() * unused.length)];
+  }
+  
+  // If all used, avoid most recent
+  const avoidRecent = ALL_PILLARS.filter(p => p !== last3[0]);
+  return avoidRecent[Math.floor(Math.random() * avoidRecent.length)];
 }
 
 serve(async (req) => {
@@ -62,130 +145,74 @@ serve(async (req) => {
     if (!user) throw new Error("Unauthorized");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Fetch comprehensive user context using shared helper
+    // Fetch context
     const userContext = await fetchUserContext(supabase, user.id);
     
-    // Get phase info and last pillar from identity_seeds
+    // Get phase and income
     const { data: identityData } = await supabase
       .from("identity_seeds")
-      .select("current_phase, target_monthly_income, current_monthly_income, job_apps_this_week, job_apps_goal, days_to_move, weekly_focus, last_pillar_used")
+      .select("current_phase, current_monthly_income, last_pillar_used")
       .eq("user_id", user.id)
       .maybeSingle();
 
     const phase = identityData?.current_phase || "baseline";
-    const baselineMetrics = identityData || {} as any;
-    const lastPillarUsed = identityData?.last_pillar_used || null;
+    const currentIncome = identityData?.current_monthly_income || 0;
+    const lastPillar = identityData?.last_pillar_used || null;
+    const isInCrisis = phase === "baseline" && currentIncome === 0;
 
-    // Get recent task pillars to ensure rotation
-    const { data: recentTasks } = await supabase
-      .from("daily_tasks")
-      .select("pillar")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(3);
+    // Get recent pillars for rotation
+    const recentPillars = [
+      ...(lastPillar ? [lastPillar] : []),
+      ...userContext.pillar_history
+    ];
 
-    const recentPillars = recentTasks?.map(t => t.pillar).filter(Boolean) || [];
+    // Choose pillar with rotation logic
+    const suggestedPillar = choosePillarForRotation(recentPillars, phase, isInCrisis);
+    console.log(`Navigator suggesting pillar: ${suggestedPillar} (recent: ${recentPillars.slice(0, 3).join(', ')})`);
 
-    // Build comprehensive context from shared helper
-    let contextPrompt = formatContextForAI(userContext);
-    
-    // Add phase-specific metrics
-    if (phase === 'baseline' && baselineMetrics) {
-      contextPrompt += `\n\nCURRENT PHASE: BASELINE
-- Income: $${baselineMetrics.current_monthly_income || 0}/$${baselineMetrics.target_monthly_income || 4000}
-- Job apps this week: ${baselineMetrics.job_apps_this_week || 0}/${baselineMetrics.job_apps_goal || 50}
-${baselineMetrics.days_to_move ? `- Days to LA move: ${baselineMetrics.days_to_move}` : ''}
-${baselineMetrics.weekly_focus ? `- This week's focus: ${baselineMetrics.weekly_focus}` : ''}`;
-    } else {
-      contextPrompt += `\n\nCURRENT PHASE: EMPIRE`;
-    }
+    const contextPrompt = formatContextForAI(userContext);
 
-    const systemPrompt = `You are the user's personal operating system.
-Your job is to take every piece of data the user enters and return ONE clear action at a time.
+    const systemPrompt = `You are a personal operating system. Return ONE clear action.
 
 ${contextPrompt}
 
-GUIDING PRINCIPLES:
-• Remove paradox of choice
-• Increase clarity and alignment
-• Give a single next step
-• Keep users consistent
-• Build identity proof through action
-• Handle large amounts of information without overwhelm
-• Point them toward progress in any domain of life
-• Keep everything simple and executable
+PHASE: ${phase.toUpperCase()}
+${isInCrisis ? "⚠️ BASELINE CRISIS (zero income) - still rotate pillars" : ""}
 
-WEIGHTING RULES (combine all data into one evolving mental model):
-• Recent Insights (emotional/behavioral patterns) = 30%
-• Active Experiments (identity signals) = 30%
-• Identity Seed (long-term compass, not daily command) = 20%
-• Daily Tasks (momentum patterns) = 10%
-• Documents/YouTube transcripts (knowledge context) = 10%
+PILLAR FOR THIS ACTION: ${suggestedPillar}
+You MUST choose "${suggestedPillar}" as the priority_for_today.
 
-DAILY PRIORITY ENGINE:
-Before generating today's action, determine which pillar is most important TODAY.
+WEIGHTING (how to process context):
+• Insights (30%): Emotional/behavioral signals - weight HIGH
+• Experiments (30%): Identity shifts - weight HIGH  
+• Identity Seed (20%): Long-term compass only - NOT daily priority
+• Daily Tasks (10%): Momentum patterns
+• Documents (10%): Reference only - weight LOW
 
-Choose from six universal pillars:
-• Cash (career stability, income, job search)
-• Skill (project progress, learning paths, experiments)
-• Content (communication, creation, output)
-• Health (physical action, movement, nutrition)
-• Presence (emotional regulation, identity shifts, nervous system)
-• Admin (life maintenance, clearing blockers)
-
-${lastPillarUsed ? `Last pillar used: ${lastPillarUsed}` : 'No previous pillar tracked'}
-${recentPillars.length > 0 ? `Recent pillars: ${recentPillars.join(', ')}` : ''}
-
-RULES FOR CHOOSING TODAY'S PRIORITY:
-1. MUST rotate pillars - avoid using ${lastPillarUsed || 'the same pillar'} unless critical urgency exists
-2. DO NOT use Cash pillar more than 2 days in a row - check recent tasks
-3. Prioritize pillars not used recently: ${recentPillars.length > 0 ? recentPillars.filter((p, i, a) => a.indexOf(p) === i).join(', ') : 'all available'}
-4. If emotional instability shows up in insights, choose Presence
-5. If skill development or experiments stalled, choose Skill
-6. If content creation low, choose Content
-7. Weight active experiments and insights HIGHER than documents
-8. Prefer growth-oriented tasks over maintenance unless Admin is overdue
-
-${phase === "baseline" ? `
-USER'S CURRENT PHASE: BASELINE
-Weight Cash and Admin pillars higher. Prioritize:
-- Job apps if below weekly goal
-- Income-generating activities (bartending, UPath reports)
-- Content that supports job search/networking
-- Actions that stabilize foundation
-` : `
-USER'S CURRENT PHASE: EMPIRE
-Weight Skill, Content, and Presence pillars higher. Prioritize:
-- Content creation and distribution
-- Experiment progress (test → document → framework)
-- UPath growth and authority building
-- Identity-shifting actions
-`}
+PILLAR DEFINITIONS:
+• Stability: Income, job search, cash flow
+• Skill: Building, shipping, UPath, projects
+• Content: Creating, posting, communication
+• Health: Movement, nutrition, energy
+• Presence: Emotional regulation, identity, confidence
+• Admin: Organization, clearing blockers
+• Dating: Social, relationships, connection
+• Learning: Education, courses, skill acquisition
 
 ACTION RULES:
-Actions must be:
-• 15 to 45 minutes (REQUIRED - include time_required in output)
+• 15-45 minutes (REQUIRED)
 • Clear and frictionless
 • Identity-aligned
-• Experiment-friendly
-• Grounded in the priority of the day
-• Designed to reduce overwhelm
-• Fun and actionable
+• FUN, not homework
+• Grounded in today's pillar
 
-Never give:
-• Three options
-• Long planning tasks
-• Vague suggestions
-• Theory without action
-• Emotional disclaimers
-• Job actions more than 2 days in a row unless crisis mode
-• Vague suggestions
-• Theory without action
-• Emotional disclaimers`;
+NEVER:
+• Give job actions 3 days in a row (check recent pillars)
+• Give multiple options
+• Give vague suggestions
+• Over-explain`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -194,29 +221,25 @@ Never give:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash", // Faster model
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Context:\n${contextPrompt}\n\nWhat is the ONE thing I should do today?` }
+          { role: "user", content: `Give me ONE "${suggestedPillar}" action for today.` }
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "choose_daily_action",
-              description: "Return one clear action with priority pillar",
+              description: "Return one clear action",
               parameters: {
                 type: "object",
                 properties: {
-                  priority_for_today: { 
-                    type: "string", 
-                    enum: ["Cash", "Skill", "Content", "Health", "Presence", "Admin"],
-                    description: "The pillar chosen for today's focus" 
-                  },
-                  do_this_now: { type: "string", description: "One clear imperative action, 15-45 minutes" },
-                  why_it_matters: { type: "string", description: "Identity-level + practical reasoning in 2-3 sentences" },
-                  time_required: { type: "string", description: "Estimated time required (e.g., '20 minutes', '30 minutes', '45 minutes')" },
-                  what_to_do_after: { type: "string", description: "The next small step after completion" }
+                  priority_for_today: { type: "string", enum: ALL_PILLARS },
+                  do_this_now: { type: "string", description: "One clear action, 15-45 minutes" },
+                  why_it_matters: { type: "string", description: "2-3 sentences max" },
+                  time_required: { type: "string" },
+                  what_to_do_after: { type: "string" }
                 },
                 required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required", "what_to_do_after"]
               }
@@ -228,30 +251,18 @@ Never give:
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      throw new Error(`AI Gateway error: ${response.status}`);
+      console.error("AI Gateway error:", response.status);
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const data = await response.json();
     const toolCall = data.choices[0].message.tool_calls?.[0];
     
     if (!toolCall) {
-      console.error("No tool call in response, using fallback");
-      return new Response(
-        JSON.stringify(getFallbackSuggestion()),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.error("No tool call, using fallback");
+      return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let action;
@@ -259,31 +270,21 @@ Never give:
       action = JSON.parse(toolCall.function.arguments);
       action = validateNavigatorOutput(action);
       
-      // Update last_pillar_used in identity_seeds for rotation tracking
-      const chosenPillar = action.priority_for_today;
+      // Update last_pillar_used
       await supabase
         .from("identity_seeds")
-        .update({ last_pillar_used: chosenPillar })
+        .update({ last_pillar_used: action.priority_for_today })
         .eq("user_id", user.id);
         
-      console.log(`Navigator chose pillar: ${chosenPillar}`);
+      console.log(`Navigator chose: ${action.priority_for_today}`);
     } catch (parseError) {
-      console.error("Failed to parse/validate AI response:", parseError);
-      return new Response(
-        JSON.stringify(getFallbackSuggestion()),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.error("Parse error:", parseError);
+      return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(
-      JSON.stringify(action),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify(action), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Navigator error:", error);
-    return new Response(
-      JSON.stringify(getFallbackSuggestion()),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify(getFallbackSuggestion("Skill")), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
