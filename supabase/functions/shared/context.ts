@@ -23,19 +23,17 @@ export async function fetchUserContext(
   // Parallel fetch - minimal data for speed
   const [identitySeed, insights, documents, experiments, dailyTasks] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used").eq("user_id", userId).maybeSingle(),
-    supabase.from("insights").select("title, content").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
-    supabase.from("documents").select("title, summary").eq("user_id", userId).order("created_at", { ascending: false }).limit(4),
+    supabase.from("insights").select("title, content").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("documents").select("title, summary").eq("user_id", userId).order("created_at", { ascending: false }).limit(5),
     supabase.from("experiments").select("title, description, status, identity_shift_target").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(3),
     supabase.from("daily_tasks").select("pillar, completed, one_thing").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(7),
   ]);
 
-  // Extract pillar history for rotation
   const pillarHistory = (dailyTasks.data || [])
     .map((t: any) => t.pillar)
     .filter(Boolean);
 
-  // Filter to meaningful insights only
-  const keyInsights = (insights.data || []).filter((i: any) => i.content && i.content.length > 30);
+  const keyInsights = (insights.data || []).filter((i: any) => i.content && i.content.length > 20);
 
   const allExperiments = experiments.data || [];
 
@@ -53,49 +51,40 @@ export async function fetchUserContext(
   };
 }
 
-// NEW: Weighted context formatter with proper priorities
+// IDENTITY-FIRST context formatter
+// Priority: Identity Seed > Insights > Experiments > Documents > Baseline
 export function formatContextForAI(context: CompactContext): string {
   let formatted = "";
 
-  // WEIGHT 1: INSIGHTS (30%) - emotional/behavioral signals, highest priority
-  if (context.key_insights.length > 0) {
-    formatted += `🔥 INSIGHTS (weight: HIGH):\n${context.key_insights.slice(0, 5).map((i: any) => `- ${i.title}: ${i.content.substring(0, 150)}`).join('\n')}\n\n`;
+  // PRIORITY 1: IDENTITY SEED (40%) - THE CORE DRIVER
+  if (context.identity_seed) {
+    formatted += `IDENTITY (PRIMARY DRIVER):\n${context.identity_seed}\n\n`;
   }
 
-  // WEIGHT 2: EXPERIMENTS (30%) - identity shift signals
+  // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals
+  if (context.key_insights.length > 0) {
+    formatted += `INSIGHTS:\n${context.key_insights.slice(0, 6).map((i: any) => `- ${i.title}: ${i.content.substring(0, 120)}`).join('\n')}\n\n`;
+  }
+
+  // PRIORITY 3: EXPERIMENTS (20%) - active identity shifts
   const allExperiments = [...context.experiments.in_progress, ...context.experiments.planning];
   if (allExperiments.length > 0) {
-    formatted += `⚡ EXPERIMENTS (weight: HIGH):\n${allExperiments.map((e: any) => `- ${e.title} (${e.status}): ${e.description?.substring(0, 100) || 'No description'}${e.identity_shift_target ? `\n  Identity: ${e.identity_shift_target.substring(0, 80)}` : ''}`).join('\n')}\n\n`;
+    formatted += `EXPERIMENTS:\n${allExperiments.map((e: any) => `- ${e.title} (${e.status})${e.identity_shift_target ? `: ${e.identity_shift_target.substring(0, 60)}` : ''}`).join('\n')}\n\n`;
   }
 
-  // WEIGHT 3: IDENTITY SEED (20%) - long-term compass, NOT daily command
-  if (context.identity_seed) {
-    formatted += `🧭 IDENTITY (weight: COMPASS ONLY - not daily priority):\n${context.identity_seed.substring(0, 300)}\n\n`;
-  }
-
-  // WEIGHT 4: RECENT ACTIONS (10%) - momentum signals
-  if (context.recent_actions.length > 0) {
-    const completed = context.recent_actions.filter((a: any) => a.completed);
-    const pillarCounts: { [key: string]: number } = {};
-    completed.forEach((a: any) => {
-      if (a.pillar) {
-        pillarCounts[a.pillar] = (pillarCounts[a.pillar] || 0) + 1;
-      }
-    });
-    if (Object.keys(pillarCounts).length > 0) {
-      formatted += `📊 MOMENTUM (weight: LOW):\n${Object.entries(pillarCounts).map(([pillar, count]) => `- ${pillar}: ${count} done`).join(', ')}\n\n`;
-    }
-  }
-
-  // WEIGHT 5: DOCUMENTS (10%) - knowledge context, lowest priority
+  // PRIORITY 4: DOCUMENTS (5%) - reference only
   if (context.key_documents.length > 0) {
-    formatted += `📚 DOCS (weight: LOW - reference only):\n${context.key_documents.slice(0, 3).map((d: any) => `- ${d.title}${d.summary ? `: ${d.summary.substring(0, 60)}` : ''}`).join('\n')}\n\n`;
+    formatted += `DOCS:\n${context.key_documents.slice(0, 3).map((d: any) => `- ${d.title}`).join('\n')}\n\n`;
   }
 
-  // Add pillar rotation context
+  // CONTEXT ONLY: Baseline phase (5%) - constraint info, not command
+  if (context.current_phase) {
+    formatted += `PHASE: ${context.current_phase} (context only, not command)\n`;
+  }
+
+  // Pillar rotation context
   if (context.pillar_history.length > 0) {
-    const recentPillars = context.pillar_history.slice(0, 5);
-    formatted += `🔄 RECENT PILLARS (for rotation): ${recentPillars.join(' → ')}\n`;
+    formatted += `RECENT PILLARS: ${context.pillar_history.slice(0, 5).join(' > ')}\n`;
   }
 
   return formatted.trim();

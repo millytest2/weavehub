@@ -10,8 +10,6 @@ const corsHeaders = {
 interface SynthesizerOutput {
   headline: string;
   summary: string;
-  recommended_topic_id: string | null;
-  recommended_experiment_id: string | null;
   suggested_next_step: string;
 }
 
@@ -24,10 +22,8 @@ function validateSynthesizerOutput(data: any): SynthesizerOutput {
 
 function getFallbackSynthesis(): SynthesizerOutput {
   return {
-    headline: "Momentum through small, consistent actions",
-    summary: "You're building. Keep showing up for experiments and insights over planning. The key is action over analysis.",
-    recommended_topic_id: null,
-    recommended_experiment_id: null,
+    headline: "Keep building momentum through small actions",
+    summary: "Focus on identity-aligned action over planning. The key is consistent proof of who you are becoming.",
     suggested_next_step: "Spend 20 minutes on your most important active experiment."
   };
 }
@@ -50,7 +46,6 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    // Fetch context
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatContextForAI(userContext);
 
@@ -61,38 +56,31 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash", // Faster model
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `You are a strategic mirror. Give a SHORT direction sync.
+            content: `You are a strategic mirror. Give a SHORT direction check.
 
-WEIGHTING:
-• Insights (30%): Emotional/behavioral signals - weight HIGH
-• Experiments (30%): Identity shifts - weight HIGH
-• Identity Seed (20%): Compass only, not daily command
-• Tasks/Docs (20%): Reference only
+CORE QUESTION: Is behavior aligned with identity? What's the gap?
+
+${context}
 
 Your job:
-1. What themes emerge from insights + experiments?
-2. Is behavior aligned with identity seed?
-3. What's the ONE focus now?
-4. ONE concrete next step (15-45 min)
+1. See patterns in identity + insights + experiments
+2. Identify if actions match identity direction
+3. Name the ONE focus now
+4. Give ONE concrete next step (15-45 min)
 
-OUTPUT (JSON only):
-{
-  "headline": "short phrase <= 80 chars",
-  "summary": "3-5 sentences max",
-  "recommended_topic_id": null,
-  "recommended_experiment_id": null,
-  "suggested_next_step": "one clear 15-45 min action"
-}
-
-Keep it SHORT. No fluff.`
+RULES:
+- No emojis
+- No fluff
+- Keep it short
+- Identity-first, not productivity-first`
           },
           {
             role: "user",
-            content: `Synthesize:\n${context}`
+            content: `Give me my direction check.`
           }
         ],
         tools: [
@@ -104,11 +92,9 @@ Keep it SHORT. No fluff.`
               parameters: {
                 type: "object",
                 properties: {
-                  headline: { type: "string", maxLength: 80 },
-                  summary: { type: "string" },
-                  recommended_topic_id: { type: "string", nullable: true },
-                  recommended_experiment_id: { type: "string", nullable: true },
-                  suggested_next_step: { type: "string" }
+                  headline: { type: "string", maxLength: 80, description: "Short phrase, no emojis" },
+                  summary: { type: "string", description: "3-4 sentences max, no emojis" },
+                  suggested_next_step: { type: "string", description: "One action, 15-45 min, no emojis" }
                 },
                 required: ["headline", "summary", "suggested_next_step"]
               }
@@ -130,7 +116,6 @@ Keep it SHORT. No fluff.`
     const toolCall = data.choices[0].message.tool_calls?.[0];
     
     if (!toolCall) {
-      console.error("No tool call");
       return new Response(JSON.stringify(getFallbackSynthesis()), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
