@@ -4,13 +4,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Lightbulb, FlaskConical, Map, FileText, ArrowRight, Check } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowRight, Check, Compass } from "lucide-react";
 import { toast } from "sonner";
+import { QuickCapture } from "@/components/dashboard/QuickCapture";
+import { ContextMirror } from "@/components/dashboard/ContextMirror";
+import { ExperimentConnection } from "@/components/dashboard/ExperimentConnection";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [todayTask, setTodayTask] = useState<any>(null);
   const [activeExperiment, setActiveExperiment] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -180,7 +181,7 @@ const Dashboard = () => {
       if (error) throw error;
       if (data) {
         setSyncResult(data);
-        toast.success("Synced");
+        setShowSyncDetail(true);
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sync");
@@ -217,7 +218,7 @@ const Dashboard = () => {
   const allDone = completedCount >= 3;
 
   // Progress indicator component
-  const ProgressDots = ({ current, total }: { current: number; total: number }) => (
+  const ProgressDots = ({ current }: { current: number }) => (
     <div className="flex items-center gap-1.5">
       {[1, 2, 3].map((num) => {
         const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
@@ -242,18 +243,28 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      {/* Quick Capture FAB */}
+      <QuickCapture />
+
       {/* Main Content */}
       <div className="flex-1 space-y-4 sm:space-y-6">
+        {/* Context Mirror - What the AI sees */}
+        <ContextMirror />
+
         {/* Today's Action Card */}
         <Card className="border-border/30">
           <CardHeader className="pb-3 sm:pb-4 flex flex-row items-center justify-between">
-            <CardTitle className="text-base sm:text-lg font-semibold">Today's Action</CardTitle>
-            <ProgressDots current={currentSequence} total={3} />
+            <CardTitle className="text-base sm:text-lg font-semibold">Today's Focus</CardTitle>
+            <ProgressDots current={currentSequence} />
           </CardHeader>
           <CardContent>
             {allDone ? (
-              <div className="py-4 text-center">
-                <p className="text-sm text-muted-foreground">All 3 actions complete for today</p>
+              <div className="py-6 text-center space-y-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                  <Check className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-medium">All 3 actions complete</p>
+                <p className="text-xs text-muted-foreground">Great work today. Rest or reflect.</p>
               </div>
             ) : todayTask ? (
               <div className="space-y-4">
@@ -263,11 +274,11 @@ const Dashboard = () => {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <h3 className="text-sm sm:text-base font-semibold leading-snug">
+                  <h3 className="text-base sm:text-lg font-semibold leading-snug">
                     {todayTask.one_thing}
                   </h3>
                   {todayTask.why_matters && (
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       {todayTask.why_matters}
                     </p>
                   )}
@@ -275,66 +286,38 @@ const Dashboard = () => {
                     <p className="text-xs text-muted-foreground">{todayTask.description}</p>
                   )}
                 </div>
-                <Button onClick={handleCompleteTask} className="w-full">
-                  Complete <ArrowRight className="ml-2 h-3 w-3" />
+                <Button onClick={handleCompleteTask} className="w-full" size="lg">
+                  Done <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Ready to start your day?</p>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-muted-foreground text-center">
+                  Ready to start? I'll pick your first action based on your context.
+                </p>
                 <Button
                   onClick={handleGenerateDailyOne}
                   disabled={isGenerating}
                   className="w-full"
+                  size="lg"
                 >
-                  {isGenerating ? "Generating..." : "Generate Action"}
+                  {isGenerating ? "Analyzing..." : "Start My Day"}
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Active Experiment Card */}
-        <Card className="border-border/30">
-          <CardHeader className="pb-3 sm:pb-4">
-            <CardTitle className="text-base sm:text-lg font-semibold">Active Experiment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activeExperiment ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm sm:text-base font-medium">{activeExperiment.title}</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mt-1">
-                    {activeExperiment.description}
-                  </p>
-                </div>
-                <Button
-                  onClick={() => navigate("/experiments")}
-                  variant="outline"
-                  className="w-full"
-                >
-                  View Details
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">No active experiment</p>
-                <Button
-                  onClick={() => navigate("/experiments")}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Start Experiment
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Experiment Connection */}
+        <ExperimentConnection experiment={activeExperiment} currentTask={todayTask} />
 
-        {/* Direction Sync Card */}
+        {/* Direction Sync */}
         <Card className="border-border/30">
-          <CardHeader className="pb-3 sm:pb-4">
-            <CardTitle className="text-base sm:text-lg font-semibold">Direction Sync</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+              <Compass className="h-4 w-4" />
+              Direction Check
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Button
@@ -343,63 +326,17 @@ const Dashboard = () => {
               variant="outline"
               className="w-full"
             >
-              {isSyncing ? "Syncing..." : "Sync Now"}
+              {isSyncing ? "Analyzing..." : "See the Big Picture"}
             </Button>
-            {syncResult && (
-              <button
-                onClick={() => setShowSyncDetail(true)}
-                className="w-full mt-3 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
-              >
-                {syncResult.headline}
-              </button>
-            )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Quick Capture Bar */}
-      <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border/30">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <Button
-            variant="outline"
-            onClick={() => navigate("/insights")}
-            className="h-12 sm:h-14 flex-col gap-1"
-          >
-            <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs">Insight</span>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/documents")}
-            className="h-12 sm:h-14 flex-col gap-1"
-          >
-            <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs">Document</span>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/experiments")}
-            className="h-12 sm:h-14 flex-col gap-1"
-          >
-            <FlaskConical className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs">Experiment</span>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/topics")}
-            className="h-12 sm:h-14 flex-col gap-1"
-          >
-            <Map className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs">Path</span>
-          </Button>
-        </div>
       </div>
 
       {/* Direction Sync Detail Dialog */}
       <Dialog open={showSyncDetail} onOpenChange={setShowSyncDetail}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Direction Sync</DialogTitle>
+            <DialogTitle>Your Direction</DialogTitle>
           </DialogHeader>
           {syncResult && (
             <div className="space-y-4">
@@ -408,7 +345,7 @@ const Dashboard = () => {
                 <p className="text-sm leading-relaxed">{syncResult.summary}</p>
               </div>
               {syncResult.suggested_next_step && (
-                <div className="border-t pt-4">
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
                   <h4 className="text-sm font-medium mb-2">Suggested Next Step</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {syncResult.suggested_next_step}
