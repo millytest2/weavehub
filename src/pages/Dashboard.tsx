@@ -1,24 +1,23 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, Check, Compass } from "lucide-react";
+import { ArrowRight, Check, FlaskConical, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
-import { ContextMirror } from "@/components/dashboard/ContextMirror";
-import { ExperimentConnection } from "@/components/dashboard/ExperimentConnection";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [todayTask, setTodayTask] = useState<any>(null);
   const [activeExperiment, setActiveExperiment] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [showSyncDetail, setShowSyncDetail] = useState(false);
-  const [savingSyncResult, setSavingSyncResult] = useState(false);
   const [currentSequence, setCurrentSequence] = useState(1);
   const [tasksForToday, setTasksForToday] = useState<any[]>([]);
 
@@ -96,7 +95,7 @@ const Dashboard = () => {
         const nextSequence = tasksForToday.length + 1;
         
         if (nextSequence > 3) {
-          toast.info("All 3 tasks complete for today");
+          toast.info("All 3 actions complete for today");
           return;
         }
         
@@ -106,10 +105,10 @@ const Dashboard = () => {
             user_id: user!.id,
             task_date: today,
             task_sequence: nextSequence,
-            title: data.priority_for_today || "Daily Action",
+            title: data.priority_for_today || "Action",
             one_thing: data.do_this_now,
             why_matters: data.why_it_matters,
-            description: data.time_required || data.what_to_do_after,
+            description: data.time_required,
             pillar: data.priority_for_today,
             completed: false,
           });
@@ -161,10 +160,10 @@ const Dashboard = () => {
       setTasksForToday(updatedTasks);
 
       if (currentSequence < 3) {
-        toast.success(`Done. Generating action ${currentSequence + 1}...`);
+        toast.success("Done. Generating next...");
         await handleGenerateDailyOne();
       } else {
-        toast.success("All 3 done. Great work today.");
+        toast.success("All 3 done. Great work.");
         setTodayTask(null);
       }
     } catch (error: any) {
@@ -190,91 +189,57 @@ const Dashboard = () => {
     }
   };
 
-  const handleSaveSyncResult = async () => {
-    if (!user || !syncResult) return;
-
-    setSavingSyncResult(true);
-    try {
-      const title = syncResult.headline || "Direction Sync";
-      const content = `${syncResult.summary}\n\nNext Step: ${syncResult.suggested_next_step || "Not specified"}`;
-
-      const { error } = await supabase.from("insights").insert({
-        user_id: user.id,
-        title,
-        content,
-        source: "direction_sync",
-      });
-
-      if (error) throw error;
-      toast.success("Saved as insight");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save");
-    } finally {
-      setSavingSyncResult(false);
-    }
-  };
-
   const completedCount = tasksForToday.filter(t => t.completed).length;
   const allDone = completedCount >= 3;
 
-  // Progress indicator component
   const ProgressDots = ({ current }: { current: number }) => (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       {[1, 2, 3].map((num) => {
         const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
         const isCurrent = num === current && !allDone;
         return (
           <div
             key={num}
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+            className={`w-2 h-2 rounded-full transition-all ${
               isCompleted
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-primary'
                 : isCurrent
-                  ? 'bg-primary/20 text-primary border border-primary'
-                  : 'bg-muted text-muted-foreground'
+                  ? 'bg-primary/40'
+                  : 'bg-muted'
             }`}
-          >
-            {isCompleted ? <Check className="h-3 w-3" /> : num}
-          </div>
+          />
         );
       })}
     </div>
   );
 
   return (
-    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-      {/* Quick Capture FAB */}
+    <div className="min-h-screen flex flex-col max-w-2xl mx-auto px-4 py-8">
       <QuickCapture />
 
-      {/* Main Content */}
-      <div className="flex-1 space-y-4 sm:space-y-6">
-        {/* Context Mirror - What the AI sees */}
-        <ContextMirror />
-
-        {/* Today's Action Card */}
+      <div className="flex-1 space-y-4">
+        {/* Card 1: Today's Action */}
         <Card className="border-border/30">
-          <CardHeader className="pb-3 sm:pb-4 flex flex-row items-center justify-between">
-            <CardTitle className="text-base sm:text-lg font-semibold">Today's Focus</CardTitle>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-medium">Today's Action</CardTitle>
             <ProgressDots current={currentSequence} />
           </CardHeader>
           <CardContent>
             {allDone ? (
-              <div className="py-6 text-center space-y-2">
-                <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                  <Check className="h-6 w-6 text-primary" />
-                </div>
+              <div className="py-8 text-center space-y-2">
+                <Check className="h-8 w-8 mx-auto text-primary" />
                 <p className="text-sm font-medium">All 3 actions complete</p>
-                <p className="text-xs text-muted-foreground">Great work today. Rest or reflect.</p>
+                <p className="text-xs text-muted-foreground">Great work today.</p>
               </div>
             ) : todayTask ? (
               <div className="space-y-4">
                 {todayTask.pillar && (
-                  <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                  <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
                     {todayTask.pillar}
-                  </div>
+                  </span>
                 )}
                 <div className="space-y-2">
-                  <h3 className="text-base sm:text-lg font-semibold leading-snug">
+                  <h3 className="text-lg font-semibold leading-snug">
                     {todayTask.one_thing}
                   </h3>
                   {todayTask.why_matters && (
@@ -286,37 +251,83 @@ const Dashboard = () => {
                     <p className="text-xs text-muted-foreground">{todayTask.description}</p>
                   )}
                 </div>
-                <Button onClick={handleCompleteTask} className="w-full" size="lg">
+                <Button onClick={handleCompleteTask} className="w-full">
                   Done <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4 py-2">
+              <div className="space-y-4 py-4">
                 <p className="text-sm text-muted-foreground text-center">
-                  Ready to start? I'll pick your first action based on your context.
+                  Ready to start?
                 </p>
                 <Button
                   onClick={handleGenerateDailyOne}
                   disabled={isGenerating}
                   className="w-full"
-                  size="lg"
                 >
-                  {isGenerating ? "Analyzing..." : "Start My Day"}
+                  {isGenerating ? "Generating..." : "Start My Day"}
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Experiment Connection */}
-        <ExperimentConnection experiment={activeExperiment} currentTask={todayTask} />
-
-        {/* Direction Sync */}
+        {/* Card 2: Active Experiment */}
         <Card className="border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <FlaskConical className="h-4 w-4" />
+              Active Experiment
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activeExperiment ? (
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold">{activeExperiment.title}</h3>
+                  {activeExperiment.description && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {activeExperiment.description}
+                    </p>
+                  )}
+                </div>
+                {activeExperiment.identity_shift_target && (
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground mb-1">Becoming:</p>
+                    <p className="text-sm font-medium">{activeExperiment.identity_shift_target}</p>
+                  </div>
+                )}
+                <Button
+                  onClick={() => navigate("/experiments")}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between"
+                >
+                  View Details
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="py-6 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">No active experiment</p>
+                <Button
+                  onClick={() => navigate("/experiments")}
+                  variant="outline"
+                  size="sm"
+                >
+                  Start One
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Direction Sync */}
+        <Card className="border-border/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
               <Compass className="h-4 w-4" />
-              Direction Check
+              Direction Sync
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -326,40 +337,35 @@ const Dashboard = () => {
               variant="outline"
               className="w-full"
             >
-              {isSyncing ? "Analyzing..." : "See the Big Picture"}
+              {isSyncing ? "Analyzing..." : "Check Direction"}
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Direction Sync Detail Dialog */}
+      {/* Direction Sync Dialog */}
       <Dialog open={showSyncDetail} onOpenChange={setShowSyncDetail}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Your Direction</DialogTitle>
+            <DialogTitle>Direction Check</DialogTitle>
           </DialogHeader>
           {syncResult && (
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold text-lg mb-2">{syncResult.headline}</h3>
-                <p className="text-sm leading-relaxed">{syncResult.summary}</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">{syncResult.summary}</p>
               </div>
               {syncResult.suggested_next_step && (
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                  <h4 className="text-sm font-medium mb-2">Suggested Next Step</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <h4 className="text-sm font-medium mb-2">Next Step</h4>
+                  <p className="text-sm text-muted-foreground">
                     {syncResult.suggested_next_step}
                   </p>
                 </div>
               )}
-              <div className="border-t pt-4 flex gap-2">
-                <Button onClick={handleSaveSyncResult} disabled={savingSyncResult} className="flex-1">
-                  {savingSyncResult ? "Saving..." : "Save as Insight"}
-                </Button>
-                <Button onClick={() => setShowSyncDetail(false)} variant="outline" className="flex-1">
-                  Close
-                </Button>
-              </div>
+              <Button onClick={() => setShowSyncDetail(false)} className="w-full">
+                Close
+              </Button>
             </div>
           )}
         </DialogContent>

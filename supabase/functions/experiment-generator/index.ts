@@ -7,17 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ALL PILLARS - expanded for life balance
-const ALL_PILLARS = [
-  "Stability",   // Cash, job, income
-  "Skill",       // UPath, learning, education, projects
-  "Content",     // Creation, communication, output
-  "Health",      // Physical, nutrition, movement
-  "Presence",    // Emotional, identity, nervous system
-  "Admin",       // Life maintenance, organization
-  "Dating",      // Relationships, social, dating
-  "Learning"     // Education, courses, skill development
-];
+const ALL_PILLARS = ["Stability", "Skill", "Content", "Health", "Presence", "Admin", "Connection", "Learning"];
 
 interface ExperimentOutput {
   title: string;
@@ -26,9 +16,6 @@ interface ExperimentOutput {
   duration: string;
   identity_shift_target: string;
   pillar: string;
-  baseline_impact: number;
-  content_fuel: number;
-  identity_alignment: number;
 }
 
 function validateExperiments(data: any): ExperimentOutput[] {
@@ -47,127 +34,88 @@ function validateExperiments(data: any): ExperimentOutput[] {
   return data.experiments as ExperimentOutput[];
 }
 
-function getFallbackExperiments(forcedPillar: string): ExperimentOutput[] {
+function getFallbackExperiment(pillar: string): ExperimentOutput[] {
   const fallbacks: { [key: string]: ExperimentOutput } = {
     "Stability": {
-      title: "3-Day Income Generation Sprint",
-      description: "Generate income through any available channel. The goal is proof of resourcefulness, not perfection.",
+      title: "3-Day Income Sprint",
+      description: "Generate income through any available channel. Proof of resourcefulness.",
       steps: ["Day 1: Identify 3 immediate income opportunities", "Day 2: Execute on the fastest one", "Day 3: Double down or pivot"],
       duration: "3 days",
       identity_shift_target: "I am someone who creates income from nothing.",
-      pillar: "Stability",
-      baseline_impact: 9, content_fuel: 5, identity_alignment: 8
+      pillar: "Stability"
     },
     "Skill": {
       title: "5-Day Build Challenge",
-      description: "Ship one visible feature or project milestone each day. Small wins compound into momentum.",
-      steps: ["Define 5 micro-deliverables", "Ship one per day no matter what", "Document what you learned", "Share progress publicly"],
+      description: "Ship one visible feature or milestone each day.",
+      steps: ["Define 5 micro-deliverables", "Ship one per day", "Document learnings", "Share progress"],
       duration: "5 days",
-      identity_shift_target: "I am someone who ships, not someone who plans.",
-      pillar: "Skill",
-      baseline_impact: 6, content_fuel: 8, identity_alignment: 9
+      identity_shift_target: "I am someone who ships, not plans.",
+      pillar: "Skill"
     },
     "Content": {
       title: "7-Day Story Sprint",
-      description: "Post one authentic story daily about your journey. Build in public, attract your tribe.",
-      steps: ["Write one insight/story daily", "Post to your main platform", "Engage with 5 people in your space", "Track what resonates"],
+      description: "Post one authentic story daily. Build in public.",
+      steps: ["Write one insight daily", "Post to main platform", "Engage with 5 people", "Track what resonates"],
       duration: "7 days",
-      identity_shift_target: "I am someone who shares openly and attracts opportunity.",
-      pillar: "Content",
-      baseline_impact: 5, content_fuel: 10, identity_alignment: 8
+      identity_shift_target: "I am someone who shares openly.",
+      pillar: "Content"
     },
     "Health": {
       title: "5-Day Movement Reset",
-      description: "Move your body intentionally every day. Energy creates clarity.",
-      steps: ["30 min movement daily (any form)", "Track energy levels before/after", "No screens first hour of waking", "Sleep by 11pm"],
+      description: "Move intentionally every day. Energy creates clarity.",
+      steps: ["30 min movement daily", "Track energy levels", "No screens first hour", "Sleep by 11pm"],
       duration: "5 days",
       identity_shift_target: "I am someone who prioritizes physical energy.",
-      pillar: "Health",
-      baseline_impact: 4, content_fuel: 3, identity_alignment: 7
+      pillar: "Health"
     },
     "Presence": {
       title: "3-Day Presence Practice",
-      description: "Train presence through tiny real-world reps. Confidence comes from action, not affirmation.",
-      steps: ["One presence rep daily (eye contact, slower speech, direct truth)", "5 min nervous system regulation", "Journal what shifted"],
+      description: "Train presence through real-world reps.",
+      steps: ["One presence rep daily", "5 min nervous system regulation", "Journal what shifted"],
       duration: "3 days",
-      identity_shift_target: "I am someone who is calm, grounded, and present.",
-      pillar: "Presence",
-      baseline_impact: 3, content_fuel: 6, identity_alignment: 10
+      identity_shift_target: "I am someone who is calm and grounded.",
+      pillar: "Presence"
     },
     "Admin": {
       title: "4-Day Life Clear",
-      description: "Remove friction from one life system daily. Clarity comes from removing, not adding.",
-      steps: ["Day 1: Clear physical space", "Day 2: Clear digital clutter", "Day 3: Automate one recurring task", "Day 4: Cancel/end one draining commitment"],
+      description: "Remove friction from one life system daily.",
+      steps: ["Clear physical space", "Clear digital clutter", "Automate one task", "End one draining commitment"],
       duration: "4 days",
       identity_shift_target: "I am someone who removes friction ruthlessly.",
-      pillar: "Admin",
-      baseline_impact: 5, content_fuel: 4, identity_alignment: 7
+      pillar: "Admin"
     },
-    "Dating": {
+    "Connection": {
       title: "5-Day Social Expansion",
-      description: "Expand your social presence through small daily interactions. Confidence compounds.",
-      steps: ["Start one conversation with a stranger daily", "Reach out to one person you admire", "Say yes to one social invitation", "Practice one vulnerable share"],
+      description: "Expand social presence through daily interactions.",
+      steps: ["One conversation with stranger daily", "Reach out to someone you admire", "Say yes to one invitation", "Practice one vulnerable share"],
       duration: "5 days",
-      identity_shift_target: "I am someone who connects easily and authentically.",
-      pillar: "Dating",
-      baseline_impact: 3, content_fuel: 5, identity_alignment: 8
+      identity_shift_target: "I am someone who connects easily.",
+      pillar: "Connection"
     },
     "Learning": {
       title: "5-Day Deep Dive",
-      description: "Learn one new skill intensively. Compress months into days through focused immersion.",
-      steps: ["Choose one specific skill to acquire", "1 hour focused learning daily", "Apply what you learn immediately", "Teach one concept to someone"],
+      description: "Learn one skill intensively through focused immersion.",
+      steps: ["Choose one specific skill", "1 hour focused learning daily", "Apply immediately", "Teach one concept"],
       duration: "5 days",
-      identity_shift_target: "I am someone who learns fast and applies immediately.",
-      pillar: "Learning",
-      baseline_impact: 5, content_fuel: 7, identity_alignment: 8
+      identity_shift_target: "I am someone who learns fast and applies.",
+      pillar: "Learning"
     }
   };
   
-  return [fallbacks[forcedPillar] || fallbacks["Skill"]];
+  return [fallbacks[pillar] || fallbacks["Skill"]];
 }
 
-// Determine which pillar to use based on rotation and recent history
-function choosePillarForRotation(recentPillars: string[], phase: string, isInCrisis: boolean): string {
-  // If in crisis mode (zero income, unstable), allow Stability
-  if (isInCrisis) {
-    // Even in crisis, don't do Stability 3x in a row
-    const last2 = recentPillars.slice(0, 2);
-    if (last2.every(p => p === "Stability")) {
-      const nonStability = ALL_PILLARS.filter(p => p !== "Stability");
-      return nonStability[Math.floor(Math.random() * nonStability.length)];
-    }
-    return "Stability";
-  }
+function choosePillar(recentPillars: string[]): string {
+  const last3 = recentPillars.slice(0, 3);
+  const recentUnique = [...new Set(last3)];
+  const available = ALL_PILLARS.filter(p => !recentUnique.includes(p));
   
-  // Find pillars used in last 3 experiments/tasks
-  const recentUnique = [...new Set(recentPillars.slice(0, 3))];
-  
-  // Filter out recently used pillars
-  const availablePillars = ALL_PILLARS.filter(p => !recentUnique.includes(p));
-  
-  // If all pillars used recently, just avoid the most recent one
-  if (availablePillars.length === 0) {
-    const filtered = ALL_PILLARS.filter(p => p !== recentPillars[0]);
+  if (available.length === 0) {
+    const filtered = ALL_PILLARS.filter(p => p !== last3[0]);
     return filtered[Math.floor(Math.random() * filtered.length)];
   }
   
-  // Weight pillars based on phase
-  let weighted = availablePillars;
-  if (phase === "baseline") {
-    // In baseline, slightly prefer Stability, Skill, Content
-    const preferred = availablePillars.filter(p => ["Stability", "Skill", "Content"].includes(p));
-    if (preferred.length > 0 && Math.random() > 0.4) {
-      weighted = preferred;
-    }
-  } else {
-    // In empire, prefer Skill, Content, Presence, Learning
-    const preferred = availablePillars.filter(p => ["Skill", "Content", "Presence", "Learning"].includes(p));
-    if (preferred.length > 0 && Math.random() > 0.4) {
-      weighted = preferred;
-    }
-  }
-  
-  return weighted[Math.floor(Math.random() * weighted.length)];
+  return available[Math.floor(Math.random() * available.length)];
 }
 
 serve(async (req) => {
@@ -185,8 +133,6 @@ serve(async (req) => {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
-
-    console.log("Experiment generator called for user:", user.id);
 
     // Check for active experiments
     const { data: activeExperiments } = await supabase
@@ -208,90 +154,38 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    // Fetch context
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatContextForAI(userContext);
     
-    // Get phase and income info
-    const { data: identityData } = await supabase
-      .from("identity_seeds")
-      .select("current_phase, current_monthly_income")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const recentPillars = userContext.pillar_history;
+    const forcedPillar = choosePillar(recentPillars);
+    console.log(`Experiment pillar: ${forcedPillar}`);
 
-    const phase = identityData?.current_phase || "baseline";
-    const currentIncome = identityData?.current_monthly_income || 0;
-    
-    // Crisis mode = zero income AND in baseline
-    const isInCrisis = phase === "baseline" && currentIncome === 0;
-    
-    // Get recent experiment pillars for rotation
-    const { data: recentExperiments } = await supabase
-      .from("experiments")
-      .select("title")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(3);
-    
-    // Also get recent task pillars
-    const recentPillars = [
-      ...userContext.pillar_history,
-      ...(recentExperiments?.map(e => {
-        // Try to infer pillar from title
-        const title = e.title.toLowerCase();
-        if (title.includes("job") || title.includes("income") || title.includes("cash")) return "Stability";
-        if (title.includes("build") || title.includes("ship") || title.includes("upath")) return "Skill";
-        if (title.includes("content") || title.includes("post") || title.includes("story")) return "Content";
-        if (title.includes("health") || title.includes("move") || title.includes("physical")) return "Health";
-        if (title.includes("presence") || title.includes("identity") || title.includes("calm")) return "Presence";
-        if (title.includes("dating") || title.includes("social") || title.includes("connect")) return "Dating";
-        if (title.includes("learn") || title.includes("course") || title.includes("study")) return "Learning";
-        if (title.includes("admin") || title.includes("clear") || title.includes("organize")) return "Admin";
-        return null;
-      }).filter(Boolean) || [])
-    ];
-
-    // Choose pillar for this experiment
-    const forcedPillar = choosePillarForRotation(recentPillars as string[], phase, isInCrisis);
-    console.log(`Forcing pillar: ${forcedPillar} (recent: ${recentPillars.slice(0, 3).join(', ')})`);
-
-    const systemPrompt = `You are an experiment designer creating FUN, identity-driven experiments.
+    const systemPrompt = `You are an experiment designer. Create ONE identity-driven experiment.
 
 ${context}
 
-PILLAR FOR THIS EXPERIMENT: ${forcedPillar}
-You MUST design an experiment in the "${forcedPillar}" pillar.
+PILLAR: ${forcedPillar}
 
-${isInCrisis ? "⚠️ USER IN BASELINE CRISIS (zero income). Even so, rotate pillars." : ""}
+CORE QUESTION: What experiment proves the user's identity shift?
 
-PILLAR DEFINITIONS:
-• Stability: Income, cash flow, job search, financial security
-• Skill: Building projects, UPath, shipping features, technical skills
-• Content: Creating posts, videos, stories, building in public
-• Health: Movement, nutrition, sleep, physical energy
-• Presence: Emotional regulation, identity shifts, confidence, nervous system
-• Admin: Life organization, clearing blockers, systems
-• Dating: Social expansion, relationships, connection, dating
-• Learning: Courses, education, acquiring new knowledge
+PILLARS:
+- Stability: Income, cash flow, financial security
+- Skill: Building projects, shipping features
+- Content: Creating posts, building in public
+- Health: Movement, nutrition, physical energy
+- Presence: Emotional regulation, confidence
+- Admin: Life organization, systems
+- Connection: Social expansion, relationships
+- Learning: Education, skill acquisition
 
-EXPERIMENT DESIGN PRINCIPLES:
-✓ FUN and engaging (not homework)
-✓ 3-7 days duration
-✓ Clear daily actions (3-4 steps)
-✓ Creates visible proof
-✓ Identity-shifting ("I am someone who...")
-✓ Actionable and simple
-
-DO NOT:
-✗ Create job-focused experiments unless pillar is Stability
-✗ Make it feel like work
-✗ Over-complicate
-✗ Give vague steps
-
-SCORING (0-10):
-• baseline_impact: Does this stabilize/grow foundation?
-• content_fuel: Does this create shareable proof?
-• identity_alignment: Does this prove the identity shift?`;
+RULES:
+- 3-7 days duration
+- Clear daily actions (3-4 steps)
+- Creates visible proof
+- Identity-shifting ("I am someone who...")
+- Fun, not homework
+- No emojis`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -303,14 +197,14 @@ SCORING (0-10):
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Design ONE exceptional "${forcedPillar}" experiment for me. Make it fun and identity-shifting.` }
+          { role: "user", content: `Design ONE "${forcedPillar}" experiment. Make it identity-shifting.` }
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "generate_experiments",
-              description: "Generate ONE experiment in the specified pillar",
+              description: "Generate ONE experiment",
               parameters: {
                 type: "object",
                 properties: {
@@ -319,15 +213,12 @@ SCORING (0-10):
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string", description: "Short, compelling title" },
-                        description: { type: "string", description: "What you're testing (2-3 sentences)" },
+                        title: { type: "string", description: "Short title, no emojis" },
+                        description: { type: "string", description: "2-3 sentences, no emojis" },
                         steps: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 },
                         duration: { type: "string" },
                         identity_shift_target: { type: "string", description: "I am someone who..." },
-                        pillar: { type: "string", enum: ALL_PILLARS },
-                        baseline_impact: { type: "integer", minimum: 0, maximum: 10 },
-                        content_fuel: { type: "integer", minimum: 0, maximum: 10 },
-                        identity_alignment: { type: "integer", minimum: 0, maximum: 10 }
+                        pillar: { type: "string", enum: ALL_PILLARS }
                       },
                       required: ["title", "description", "steps", "duration", "identity_shift_target", "pillar"]
                     },
@@ -345,35 +236,27 @@ SCORING (0-10):
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      // Use fallback
-      return new Response(JSON.stringify({ experiments: getFallbackExperiments(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.error("AI Gateway error:", response.status);
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const data = await response.json();
     const toolCall = data.choices[0].message.tool_calls?.[0];
     
     if (!toolCall) {
-      console.error("No tool call, using fallback");
-      return new Response(JSON.stringify({ experiments: getFallbackExperiments(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let experiments;
     try {
       const parsed = JSON.parse(toolCall.function.arguments);
       experiments = validateExperiments(parsed);
-      // Ensure pillar is set
       experiments = experiments.map(exp => ({ ...exp, pillar: exp.pillar || forcedPillar }));
     } catch (parseError) {
       console.error("Parse error:", parseError);
-      return new Response(JSON.stringify({ experiments: getFallbackExperiments(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Insert experiment
@@ -385,18 +268,15 @@ SCORING (0-10):
         steps: exp.steps.join("\n"),
         duration: exp.duration,
         identity_shift_target: exp.identity_shift_target,
-        status: "planning",
-        baseline_impact: exp.baseline_impact || 5,
-        content_fuel: exp.content_fuel || 5,
-        identity_alignment: exp.identity_alignment || 5
+        status: "planning"
       });
     }
 
-    console.log(`Generated ${forcedPillar} experiment: ${experiments[0].title}`);
+    console.log(`Generated: ${experiments[0].title}`);
 
     return new Response(JSON.stringify({ experiments }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Experiment generator error:", error);
-    return new Response(JSON.stringify({ experiments: getFallbackExperiments("Skill") }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ experiments: getFallbackExperiment("Skill") }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
