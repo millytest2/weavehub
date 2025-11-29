@@ -17,13 +17,14 @@ const identitySeedSchema = z.object({
 export default function IdentitySeed() {
   const { user } = useAuth();
   const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
   const [currentPhase, setCurrentPhase] = useState<"baseline" | "empire">("baseline");
-  const [targetMonthlyIncome, setTargetMonthlyIncome] = useState(4000);
-  const [currentMonthlyIncome, setCurrentMonthlyIncome] = useState(0);
-  const [jobAppsThisWeek, setJobAppsThisWeek] = useState(0);
-  const [jobAppsGoal, setJobAppsGoal] = useState(50);
+  const [targetMonthlyIncome, setTargetMonthlyIncome] = useState<number>(4000);
+  const [currentMonthlyIncome, setCurrentMonthlyIncome] = useState<number>(0);
+  const [jobAppsThisWeek, setJobAppsThisWeek] = useState<number>(0);
+  const [jobAppsGoal, setJobAppsGoal] = useState<number>(50);
   const [daysToMove, setDaysToMove] = useState<number | undefined>();
   const [weeklyFocus, setWeeklyFocus] = useState("");
 
@@ -34,8 +35,9 @@ export default function IdentitySeed() {
   }, [user]);
 
   const fetchIdentitySeed = async () => {
+    setInitialLoading(true);
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("identity_seeds")
         .select("*")
         .eq("user_id", user?.id)
@@ -47,18 +49,20 @@ export default function IdentitySeed() {
       }
 
       if (data) {
-        setContent(data.content);
+        setContent(data.content || "");
         setIdentitySeedId(data.id);
-        setCurrentPhase(data.current_phase || "baseline");
-        setTargetMonthlyIncome(data.target_monthly_income || 4000);
-        setCurrentMonthlyIncome(data.current_monthly_income || 0);
-        setJobAppsThisWeek(data.job_apps_this_week || 0);
-        setJobAppsGoal(data.job_apps_goal || 50);
-        setDaysToMove(data.days_to_move);
+        setCurrentPhase((data.current_phase as "baseline" | "empire") || "baseline");
+        setTargetMonthlyIncome(data.target_monthly_income ?? 4000);
+        setCurrentMonthlyIncome(data.current_monthly_income ?? 0);
+        setJobAppsThisWeek(data.job_apps_this_week ?? 0);
+        setJobAppsGoal(data.job_apps_goal ?? 50);
+        setDaysToMove(data.days_to_move ?? undefined);
         setWeeklyFocus(data.weekly_focus || "");
       }
     } catch (error) {
       console.error("Error:", error);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -71,7 +75,7 @@ export default function IdentitySeed() {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     try {
       const updateData = {
         content: validation.data.content,
@@ -85,7 +89,7 @@ export default function IdentitySeed() {
       };
 
       if (identitySeedId) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("identity_seeds")
           .update(updateData)
           .eq("id", identitySeedId);
@@ -93,7 +97,7 @@ export default function IdentitySeed() {
         if (error) throw error;
         toast.success("Identity seed updated");
       } else {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from("identity_seeds")
           .insert({ user_id: user?.id, ...updateData })
           .select()
@@ -107,7 +111,7 @@ export default function IdentitySeed() {
       console.error("Error saving identity seed:", error);
       toast.error("Failed to save identity seed");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -234,11 +238,11 @@ export default function IdentitySeed() {
         <div className="flex justify-end">
           <Button
             onClick={handleSave}
-            disabled={loading}
+            disabled={saving || initialLoading}
             size="lg"
             className="gap-2"
           >
-            {loading ? "Saving..." : "Save All"}
+            {saving ? "Saving..." : "Save All"}
           </Button>
         </div>
       </div>
