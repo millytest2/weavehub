@@ -85,10 +85,16 @@ const Dashboard = () => {
   }, [user]);
 
   const handleGenerateDailyOne = async () => {
+    if (!user) return;
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("navigator");
       if (error) throw error;
+      
+      if (!data || !data.do_this_now) {
+        toast.error("No action generated. Try again.");
+        return;
+      }
       
       if (data) {
         const today = new Date().toISOString().split("T")[0];

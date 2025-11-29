@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_history: {
+        Row: {
+          action_date: string
+          action_text: string
+          completed_at: string
+          created_at: string
+          id: string
+          pillar: string | null
+          task_id: string | null
+          task_sequence: number | null
+          time_required: string | null
+          user_id: string
+          why_it_mattered: string | null
+        }
+        Insert: {
+          action_date?: string
+          action_text: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          pillar?: string | null
+          task_id?: string | null
+          task_sequence?: number | null
+          time_required?: string | null
+          user_id: string
+          why_it_mattered?: string | null
+        }
+        Update: {
+          action_date?: string
+          action_text?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          pillar?: string | null
+          task_id?: string | null
+          task_sequence?: number | null
+          time_required?: string | null
+          user_id?: string
+          why_it_mattered?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "daily_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       connections: {
         Row: {
           created_at: string
