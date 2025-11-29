@@ -32,7 +32,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
               <Brain className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-sm font-semibold hidden sm:inline">Knowledge Hub</span>
+            <span className="text-sm font-semibold hidden sm:inline">Weave</span>
           </div>
 
           {/* Desktop Nav */}
@@ -75,7 +75,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
                       <Brain className="h-4 w-4 text-primary-foreground" />
                     </div>
-                    <span className="text-sm font-semibold">Knowledge Hub</span>
+                    <span className="text-sm font-semibold">Weave</span>
                   </div>
                 </div>
                 <nav className="flex-1 p-2">
