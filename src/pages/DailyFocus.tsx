@@ -81,6 +81,7 @@ const DailyFocus = () => {
           reflection: validation.data.reflection,
           task_date: today,
           completed: false,
+          pillar: "Admin",
         } as any]);
 
         if (error) throw error;
