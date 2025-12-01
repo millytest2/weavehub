@@ -20,12 +20,12 @@ export default function IdentitySeed() {
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
-  const [currentPhase, setCurrentPhase] = useState<"baseline" | "empire">("baseline");
-  const [targetMonthlyIncome, setTargetMonthlyIncome] = useState<number>(4000);
-  const [currentMonthlyIncome, setCurrentMonthlyIncome] = useState<number>(0);
-  const [jobAppsThisWeek, setJobAppsThisWeek] = useState<number>(0);
-  const [jobAppsGoal, setJobAppsGoal] = useState<number>(50);
-  const [daysToMove, setDaysToMove] = useState<number | undefined>();
+  const [currentPhase, setCurrentPhase] = useState<"baseline" | "empire" | "">("");
+  const [targetMonthlyIncome, setTargetMonthlyIncome] = useState<number | "">("");
+  const [currentMonthlyIncome, setCurrentMonthlyIncome] = useState<number | "">("");
+  const [jobAppsThisWeek, setJobAppsThisWeek] = useState<number | "">("");
+  const [jobAppsGoal, setJobAppsGoal] = useState<number | "">("");
+  const [daysToMove, setDaysToMove] = useState<number | "">("");
   const [weeklyFocus, setWeeklyFocus] = useState("");
 
   useEffect(() => {
@@ -51,12 +51,12 @@ export default function IdentitySeed() {
       if (data) {
         setContent(data.content || "");
         setIdentitySeedId(data.id);
-        setCurrentPhase((data.current_phase as "baseline" | "empire") || "baseline");
-        setTargetMonthlyIncome(data.target_monthly_income ?? 4000);
-        setCurrentMonthlyIncome(data.current_monthly_income ?? 0);
-        setJobAppsThisWeek(data.job_apps_this_week ?? 0);
-        setJobAppsGoal(data.job_apps_goal ?? 50);
-        setDaysToMove(data.days_to_move ?? undefined);
+        setCurrentPhase((data.current_phase as "baseline" | "empire") || "");
+        setTargetMonthlyIncome(data.target_monthly_income ?? "");
+        setCurrentMonthlyIncome(data.current_monthly_income ?? "");
+        setJobAppsThisWeek(data.job_apps_this_week ?? "");
+        setJobAppsGoal(data.job_apps_goal ?? "");
+        setDaysToMove(data.days_to_move ?? "");
         setWeeklyFocus(data.weekly_focus || "");
       }
     } catch (error) {
@@ -79,13 +79,13 @@ export default function IdentitySeed() {
     try {
       const updateData = {
         content: validation.data.content,
-        current_phase: currentPhase,
-        target_monthly_income: targetMonthlyIncome,
-        current_monthly_income: currentMonthlyIncome,
-        job_apps_this_week: jobAppsThisWeek,
-        job_apps_goal: jobAppsGoal,
-        days_to_move: daysToMove,
-        weekly_focus: weeklyFocus,
+        current_phase: currentPhase || "baseline",
+        target_monthly_income: targetMonthlyIncome === "" ? null : targetMonthlyIncome,
+        current_monthly_income: currentMonthlyIncome === "" ? null : currentMonthlyIncome,
+        job_apps_this_week: jobAppsThisWeek === "" ? null : jobAppsThisWeek,
+        job_apps_goal: jobAppsGoal === "" ? null : jobAppsGoal,
+        days_to_move: daysToMove === "" ? null : daysToMove,
+        weekly_focus: weeklyFocus || null,
       };
 
       if (identitySeedId) {
@@ -136,9 +136,9 @@ export default function IdentitySeed() {
             <Target className="w-5 h-5 text-primary" />
             <h2 className="text-xl font-semibold">Current Phase</h2>
           </div>
-          <Select value={currentPhase} onValueChange={(v) => setCurrentPhase(v as "baseline" | "empire")}>
+          <Select value={currentPhase} onValueChange={(v) => setCurrentPhase(v as "baseline" | "empire" | "")}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Select your current phase" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="baseline">Baseline Phase (Stability First)</SelectItem>
@@ -152,8 +152,8 @@ export default function IdentitySeed() {
           </p>
         </Card>
 
-        {/* Baseline Tracking (only show in baseline phase) */}
-        {currentPhase === "baseline" && (
+        {/* Baseline Tracking (show in baseline phase or when no phase selected yet) */}
+        {(currentPhase === "baseline" || currentPhase === "") && (
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
               <TrendingUp className="w-5 h-5 text-primary" />
@@ -165,8 +165,8 @@ export default function IdentitySeed() {
                 <Input
                   type="number"
                   value={targetMonthlyIncome}
-                  onChange={(e) => setTargetMonthlyIncome(Number(e.target.value))}
-                  placeholder="4000"
+                  onChange={(e) => setTargetMonthlyIncome(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="e.g., 4000"
                 />
               </div>
               <div>
@@ -174,8 +174,8 @@ export default function IdentitySeed() {
                 <Input
                   type="number"
                   value={currentMonthlyIncome}
-                  onChange={(e) => setCurrentMonthlyIncome(Number(e.target.value))}
-                  placeholder="0"
+                  onChange={(e) => setCurrentMonthlyIncome(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="e.g., 0"
                 />
               </div>
               <div>
@@ -183,8 +183,8 @@ export default function IdentitySeed() {
                 <Input
                   type="number"
                   value={jobAppsThisWeek}
-                  onChange={(e) => setJobAppsThisWeek(Number(e.target.value))}
-                  placeholder="0"
+                  onChange={(e) => setJobAppsThisWeek(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="e.g., 10"
                 />
               </div>
               <div>
@@ -192,16 +192,16 @@ export default function IdentitySeed() {
                 <Input
                   type="number"
                   value={jobAppsGoal}
-                  onChange={(e) => setJobAppsGoal(Number(e.target.value))}
-                  placeholder="50"
+                  onChange={(e) => setJobAppsGoal(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="e.g., 50"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Days Until LA Move</label>
+                <label className="text-sm font-medium mb-2 block">Days Until Move</label>
                 <Input
                   type="number"
-                  value={daysToMove || ""}
-                  onChange={(e) => setDaysToMove(e.target.value ? Number(e.target.value) : undefined)}
+                  value={daysToMove}
+                  onChange={(e) => setDaysToMove(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="Optional"
                 />
               </div>
