@@ -45,8 +45,18 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
   }, [userId]);
 
   const checkIfFirstTime = async () => {
-    const hasSeenWelcome = localStorage.getItem(`welcome_seen_${userId}`);
-    if (!hasSeenWelcome) {
+    // Check if user has ANY existing data in the system
+    const [identityRes, tasksRes, topicsRes, experimentsRes] = await Promise.all([
+      supabase.from("identity_seeds").select("id").eq("user_id", userId).maybeSingle(),
+      supabase.from("daily_tasks").select("id").eq("user_id", userId).limit(1).maybeSingle(),
+      supabase.from("topics").select("id").eq("user_id", userId).limit(1).maybeSingle(),
+      supabase.from("experiments").select("id").eq("user_id", userId).limit(1).maybeSingle(),
+    ]);
+
+    // If user has any data, they're not new - don't show wizard
+    const hasAnyData = identityRes.data || tasksRes.data || topicsRes.data || experimentsRes.data;
+    
+    if (!hasAnyData) {
       setOpen(true);
     }
   };

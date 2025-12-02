@@ -9,6 +9,7 @@ import { ArrowRight, Check, FlaskConical, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
+import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -222,7 +223,12 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col max-w-2xl mx-auto px-4 py-8">
-      {user && <WelcomeWizard userId={user.id} onComplete={() => {}} />}
+      {user && (
+        <>
+          <WelcomeWizard userId={user.id} onComplete={() => {}} />
+          <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
+        </>
+      )}
       <QuickCapture />
 
       <div className="flex-1 space-y-4">
