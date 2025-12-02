@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ArrowRight, Check, FlaskConical, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
+import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -221,6 +222,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col max-w-2xl mx-auto px-4 py-8">
+      {user && <WelcomeWizard userId={user.id} onComplete={() => {}} />}
       <QuickCapture />
 
       <div className="flex-1 space-y-4">
