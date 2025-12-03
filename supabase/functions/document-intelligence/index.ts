@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
+import { fetchDocumentContext, formatDocumentContext } from "../shared/context.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,9 +60,7 @@ serve(async (req) => {
     console.log(`Processing document ${documentId} for user ${user.id}`);
     console.log(`Title: ${title}`);
     console.log(`Content length: ${content?.length}`);
-    console.log(`Content preview (first 500 chars): ${content?.substring(0, 500)}`);
 
-    // Content is expected to be plain text extracted on the client side
     if (!documentId || !content) {
       console.error('Missing required fields:', { documentId: !!documentId, content: !!content });
       return new Response(
@@ -75,39 +74,20 @@ serve(async (req) => {
       throw new Error('Document appears to be empty or has insufficient content');
     }
     
-    // Limit content size
-    const extractedText = content.substring(0, 50000);
+    // Limit content size for processing
+    const extractedText = content.substring(0, 60000);
     console.log(`Using ${extractedText.length} characters for AI analysis`);
 
-    // Fetch user's identity seed and topics for context
-    const { data: identitySeed } = await supabase
-      .from('identity_seeds')
-      .select('content')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // Fetch rich user context for intelligent processing
+    const userContext = await fetchDocumentContext(supabase, user.id);
+    const contextPrompt = formatDocumentContext(userContext);
 
-    const { data: topics } = await supabase
-      .from('topics')
-      .select('name, description')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    // Build context for AI
-    let contextPrompt = '';
-    if (identitySeed?.content) {
-      contextPrompt += `\n\nUSER'S IDENTITY & GOALS:\n${identitySeed.content}\n`;
-    }
-    if (topics && topics.length > 0) {
-      const topicsList = topics.map(t => `- ${t.name}: ${t.description || 'No description'}`).join('\n');
-      contextPrompt += `\n\nUSER'S CURRENT LEARNING PATHS:\n${topicsList}\n`;
-    }
-
-    // Call Lovable AI to extract intelligence from document
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
+
+    console.log('Calling AI for document intelligence...');
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -116,63 +96,91 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
-            content: `You are a strategic document intelligence agent that extracts insights aligned with the user's identity and goals.
+            content: `You are a strategic document intelligence agent. Your job is to extract insights that directly help this specific user make progress.
 
-CRITICAL INSTRUCTIONS:
-- Extract 1-2 strategic insights that directly connect to the user's identity, goals, or learning paths
-- Each insight must have a descriptive title (5-10 words) and actionable content (2-4 sentences)
-- Focus on insights that help the user make progress on their daily, weekly, or monthly objectives
-- Insights should be: actionable, specific to their goals, and provide strategic value
-- If document is corrupted or has no strategic value for this user, return empty arrays
-- Connect document content to their existing learning paths when relevant
-- Think strategically: what would help this person TODAY, THIS WEEK, THIS MONTH?${contextPrompt}`
+${contextPrompt}
+
+EXTRACTION RULES:
+1. Connect document content to user's identity, experiments, or weekly focus
+2. Extract 1-3 insights that are ACTIONABLE within the next 7 days
+3. Each insight should answer: "What can I DO with this information?"
+4. Prefer insights that compound with user's existing knowledge
+5. Flag if document relates to any existing topic/experiment
+6. If document has no strategic value for THIS user, return minimal/empty insights
+7. Timeframes: daily (can apply today), weekly (this week), monthly (long-term value)
+
+INSIGHT QUALITY:
+- Title: Action-oriented, 5-10 words, shows the "so what"
+- Content: 2-3 sentences explaining HOW to apply this
+- Never generic advice - always specific to document + user context`
           },
           {
             role: 'user',
-            content: `Document Title: ${title}\n\nContent:\n${extractedText}\n\nBased on my identity and learning paths, extract 1-2 strategic insights that will help me make progress. Focus on actionable knowledge I can use daily, weekly, or monthly.`
+            content: `Document: "${title}"\n\nContent:\n${extractedText}\n\nExtract strategic insights that help me make progress on my identity shift and current focus.`
           }
         ],
         tools: [{
           type: "function",
           function: {
             name: "extract_document_intelligence",
-            description: "Extract meaningful insights from a document",
+            description: "Extract strategic insights from a document aligned with user's goals",
             parameters: {
               type: "object",
               properties: {
                 summary: { 
                   type: "string",
-                  description: "A concise 2-3 sentence summary of the document's main content"
+                  description: "2-3 sentence summary of document's core value proposition"
+                },
+                relevance_score: {
+                  type: "number",
+                  description: "How relevant is this document to user's current focus (1-10)"
+                },
+                related_topic: {
+                  type: "string",
+                  description: "Which of user's topics this relates to most (or 'none')"
                 },
                 insights: {
                   type: "array",
-                  description: "1-2 strategic insights that align with user's identity and goals. Should help with daily, weekly, or monthly progress.",
+                  description: "1-3 actionable insights",
                   items: {
                     type: "object",
                     properties: {
                       title: { 
                         type: "string",
-                        description: "Strategic title showing how this helps with user's goals (5-10 words)"
+                        description: "Action-oriented title (5-10 words)"
                       },
                       content: { 
                         type: "string",
-                        description: "Actionable explanation of how to apply this insight to daily/weekly/monthly progress (2-4 sentences)"
+                        description: "How to apply this insight (2-3 sentences)"
                       },
                       timeframe: {
                         type: "string",
                         enum: ["daily", "weekly", "monthly"],
                         description: "When this insight is most applicable"
+                      },
+                      connects_to: {
+                        type: "string",
+                        description: "What existing insight/experiment/topic this builds on"
                       }
                     },
                     required: ["title", "content", "timeframe"]
                   }
+                },
+                suggested_experiment: {
+                  type: "object",
+                  description: "Optional: suggest a 3-7 day experiment based on this document",
+                  properties: {
+                    title: { type: "string" },
+                    hypothesis: { type: "string" },
+                    duration: { type: "string" }
+                  }
                 }
               },
-              required: ["summary", "insights"]
+              required: ["summary", "relevance_score", "insights"]
             }
           }
         }],
@@ -202,34 +210,58 @@ CRITICAL INSTRUCTIONS:
     }
 
     const aiData = await aiResponse.json();
-    console.log('AI Response:', JSON.stringify(aiData));
+    console.log('AI Response received');
 
-    const intelligence = JSON.parse(
-      aiData.choices[0].message.tool_calls[0].function.arguments
-    );
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) {
+      throw new Error('No tool call in AI response');
+    }
 
-    // Update document with summary
+    const intelligence = JSON.parse(toolCall.function.arguments);
+    console.log('Intelligence extracted:', JSON.stringify(intelligence, null, 2));
+
+    // Update document with summary and relevance
     const { error: updateError } = await supabase
       .from('documents')
-      .update({ summary: intelligence.summary })
+      .update({ 
+        summary: intelligence.summary 
+      })
       .eq('id', documentId)
       .eq('user_id', user.id);
 
     if (updateError) {
       console.error('Error updating document:', updateError);
-      throw updateError;
     }
 
-    // Create insights only if there are meaningful ones
+    // Link document to topic if relevant
+    if (intelligence.related_topic && intelligence.related_topic !== 'none' && intelligence.relevance_score >= 6) {
+      const { data: matchingTopic } = await supabase
+        .from('topics')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('name', `%${intelligence.related_topic}%`)
+        .maybeSingle();
+      
+      if (matchingTopic) {
+        await supabase
+          .from('documents')
+          .update({ topic_id: matchingTopic.id })
+          .eq('id', documentId)
+          .eq('user_id', user.id);
+        console.log(`Linked document to topic: ${matchingTopic.id}`);
+      }
+    }
+
+    // Create insights if there are meaningful ones
     let insightsCreated = 0;
     if (intelligence.insights && intelligence.insights.length > 0) {
       const insightsToCreate = intelligence.insights
-        .slice(0, 2) // Max 2 insights
-        .map((insight: { title: string; content: string; timeframe?: string }) => ({
+        .slice(0, 3)
+        .map((insight: any) => ({
           user_id: user.id,
-          title: `${insight.timeframe ? `[${insight.timeframe.toUpperCase()}] ` : ''}${insight.title}`,
-          content: insight.content,
-          source: 'document_ai',
+          title: `[${insight.timeframe?.toUpperCase() || 'INSIGHT'}] ${insight.title}`,
+          content: insight.content + (insight.connects_to ? `\n\nBuilds on: ${insight.connects_to}` : ''),
+          source: `document:${title.substring(0, 50)}`,
         }));
 
       if (insightsToCreate.length > 0) {
@@ -241,7 +273,28 @@ CRITICAL INSTRUCTIONS:
           console.error('Error creating insights:', insightsError);
         } else {
           insightsCreated = insightsToCreate.length;
+          console.log(`Created ${insightsCreated} insights`);
         }
+      }
+    }
+
+    // Create suggested experiment if provided and high relevance
+    let experimentCreated = false;
+    if (intelligence.suggested_experiment && intelligence.relevance_score >= 7) {
+      const { error: expError } = await supabase
+        .from('experiments')
+        .insert({
+          user_id: user.id,
+          title: intelligence.suggested_experiment.title,
+          hypothesis: intelligence.suggested_experiment.hypothesis,
+          duration: intelligence.suggested_experiment.duration || '7 days',
+          status: 'planning',
+          description: `Generated from document: ${title}`,
+        });
+      
+      if (!expError) {
+        experimentCreated = true;
+        console.log('Created suggested experiment');
       }
     }
 
@@ -250,7 +303,10 @@ CRITICAL INSTRUCTIONS:
     return new Response(JSON.stringify({
       success: true,
       summary: intelligence.summary,
-      insightsCreated
+      relevance_score: intelligence.relevance_score,
+      insightsCreated,
+      experimentCreated,
+      related_topic: intelligence.related_topic,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

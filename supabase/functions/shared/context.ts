@@ -1,8 +1,11 @@
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Use generic type to avoid version conflicts across functions
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = any;
 
 export interface CompactContext {
   identity_seed: string | null;
   current_phase: string | null;
+  weekly_focus: string | null;
   experiments: {
     in_progress: any[];
     planning: any[];
@@ -11,6 +14,16 @@ export interface CompactContext {
   key_documents: any[];
   recent_actions: any[];
   pillar_history: string[];
+  topics: any[];
+  connections: any[];
+}
+
+export interface DocumentContext {
+  identity_seed: string | null;
+  weekly_focus: string | null;
+  topics: any[];
+  recent_insights: any[];
+  active_experiments: any[];
 }
 
 export async function fetchUserContext(
@@ -21,25 +34,31 @@ export async function fetchUserContext(
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   // Parallel fetch - minimal data for speed
-  const [identitySeed, insights, documents, experiments, dailyTasks] = await Promise.all([
-    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used").eq("user_id", userId).maybeSingle(),
-    supabase.from("insights").select("title, content").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
-    supabase.from("documents").select("title, summary").eq("user_id", userId).order("created_at", { ascending: false }).limit(5),
-    supabase.from("experiments").select("title, description, status, identity_shift_target").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(3),
-    supabase.from("daily_tasks").select("pillar, completed, one_thing").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(7),
+  const [identitySeed, insights, documents, experiments, dailyTasks, topics, connections] = await Promise.all([
+    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus").eq("user_id", userId).maybeSingle(),
+    supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
+    supabase.from("documents").select("id, title, summary, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
+    supabase.from("daily_tasks").select("pillar, completed, one_thing, why_matters, task_date").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(10),
+    supabase.from("topics").select("id, name, description").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("connections").select("source_type, source_id, target_type, target_id, note").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
 
   const pillarHistory = (dailyTasks.data || [])
     .map((t: any) => t.pillar)
     .filter(Boolean);
 
-  const keyInsights = (insights.data || []).filter((i: any) => i.content && i.content.length > 20);
+  // Filter high-quality insights (longer content = more signal)
+  const keyInsights = (insights.data || [])
+    .filter((i: any) => i.content && i.content.length > 30)
+    .slice(0, 10);
 
   const allExperiments = experiments.data || [];
 
   return {
     identity_seed: identitySeed.data?.content || null,
     current_phase: identitySeed.data?.current_phase || "baseline",
+    weekly_focus: identitySeed.data?.weekly_focus || null,
     experiments: {
       in_progress: allExperiments.filter((e: any) => e.status === "in_progress"),
       planning: allExperiments.filter((e: any) => e.status === "planning"),
@@ -48,11 +67,34 @@ export async function fetchUserContext(
     key_documents: documents.data || [],
     recent_actions: dailyTasks.data || [],
     pillar_history: pillarHistory,
+    topics: topics.data || [],
+    connections: connections.data || [],
+  };
+}
+
+// Lighter context fetch for document processing
+export async function fetchDocumentContext(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<DocumentContext> {
+  const [identitySeed, topics, insights, experiments] = await Promise.all([
+    supabase.from("identity_seeds").select("content, weekly_focus").eq("user_id", userId).maybeSingle(),
+    supabase.from("topics").select("id, name, description").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("insights").select("id, title, content").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("experiments").select("id, title, identity_shift_target").eq("user_id", userId).eq("status", "in_progress").limit(3),
+  ]);
+
+  return {
+    identity_seed: identitySeed.data?.content || null,
+    weekly_focus: identitySeed.data?.weekly_focus || null,
+    topics: topics.data || [],
+    recent_insights: (insights.data || []).filter((i: any) => i.content?.length > 30),
+    active_experiments: experiments.data || [],
   };
 }
 
 // IDENTITY-FIRST context formatter
-// Priority: Identity Seed > Insights > Experiments > Documents > Baseline
+// Priority: Identity Seed (40%) > Insights (30%) > Experiments (20%) > Documents (5%) > Phase (5%)
 export function formatContextForAI(context: CompactContext): string {
   let formatted = "";
 
@@ -61,23 +103,45 @@ export function formatContextForAI(context: CompactContext): string {
     formatted += `IDENTITY (PRIMARY DRIVER):\n${context.identity_seed}\n\n`;
   }
 
+  // Weekly focus if set
+  if (context.weekly_focus) {
+    formatted += `WEEKLY FOCUS: ${context.weekly_focus}\n\n`;
+  }
+
   // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals
   if (context.key_insights.length > 0) {
-    formatted += `INSIGHTS:\n${context.key_insights.slice(0, 6).map((i: any) => `- ${i.title}: ${i.content.substring(0, 120)}`).join('\n')}\n\n`;
+    const insightText = context.key_insights.slice(0, 8).map((i: any) => {
+      const source = i.source ? ` [${i.source}]` : '';
+      return `- ${i.title}${source}: ${i.content.substring(0, 150)}`;
+    }).join('\n');
+    formatted += `INSIGHTS:\n${insightText}\n\n`;
   }
 
   // PRIORITY 3: EXPERIMENTS (20%) - active identity shifts
   const allExperiments = [...context.experiments.in_progress, ...context.experiments.planning];
   if (allExperiments.length > 0) {
-    formatted += `EXPERIMENTS:\n${allExperiments.map((e: any) => `- ${e.title} (${e.status})${e.identity_shift_target ? `: ${e.identity_shift_target.substring(0, 60)}` : ''}`).join('\n')}\n\n`;
+    const expText = allExperiments.map((e: any) => {
+      const shift = e.identity_shift_target ? `: ${e.identity_shift_target.substring(0, 80)}` : '';
+      return `- ${e.title} (${e.status})${shift}`;
+    }).join('\n');
+    formatted += `EXPERIMENTS:\n${expText}\n\n`;
   }
 
   // PRIORITY 4: DOCUMENTS (5%) - reference only
   if (context.key_documents.length > 0) {
-    formatted += `DOCS:\n${context.key_documents.slice(0, 3).map((d: any) => `- ${d.title}`).join('\n')}\n\n`;
+    const docText = context.key_documents.slice(0, 5).map((d: any) => {
+      const summary = d.summary ? `: ${d.summary.substring(0, 80)}` : '';
+      return `- ${d.title}${summary}`;
+    }).join('\n');
+    formatted += `DOCUMENTS:\n${docText}\n\n`;
   }
 
-  // CONTEXT ONLY: Baseline phase (5%) - constraint info, not command
+  // Topics for context
+  if (context.topics.length > 0) {
+    formatted += `TOPICS: ${context.topics.map((t: any) => t.name).join(', ')}\n`;
+  }
+
+  // CONTEXT ONLY: Phase (5%) - constraint info, not command
   if (context.current_phase) {
     formatted += `PHASE: ${context.current_phase} (context only, not command)\n`;
   }
@@ -85,6 +149,48 @@ export function formatContextForAI(context: CompactContext): string {
   // Pillar rotation context
   if (context.pillar_history.length > 0) {
     formatted += `RECENT PILLARS: ${context.pillar_history.slice(0, 5).join(' > ')}\n`;
+  }
+
+  // Recent completed actions for momentum
+  const completedActions = context.recent_actions.filter((a: any) => a.completed);
+  if (completedActions.length > 0) {
+    formatted += `RECENT WINS: ${completedActions.slice(0, 3).map((a: any) => a.one_thing).join('; ')}\n`;
+  }
+
+  return formatted.trim();
+}
+
+// Format context specifically for document intelligence
+export function formatDocumentContext(context: DocumentContext): string {
+  let formatted = "";
+
+  if (context.identity_seed) {
+    formatted += `USER'S IDENTITY & DIRECTION:\n${context.identity_seed}\n\n`;
+  }
+
+  if (context.weekly_focus) {
+    formatted += `THIS WEEK'S FOCUS: ${context.weekly_focus}\n\n`;
+  }
+
+  if (context.active_experiments.length > 0) {
+    const expText = context.active_experiments.map((e: any) => 
+      `- ${e.title}${e.identity_shift_target ? `: ${e.identity_shift_target}` : ''}`
+    ).join('\n');
+    formatted += `ACTIVE EXPERIMENTS:\n${expText}\n\n`;
+  }
+
+  if (context.topics.length > 0) {
+    const topicText = context.topics.map((t: any) => 
+      `- ${t.name}${t.description ? `: ${t.description}` : ''}`
+    ).join('\n');
+    formatted += `LEARNING AREAS:\n${topicText}\n\n`;
+  }
+
+  if (context.recent_insights.length > 0) {
+    const insightText = context.recent_insights.slice(0, 5).map((i: any) => 
+      `- ${i.title}: ${i.content.substring(0, 100)}`
+    ).join('\n');
+    formatted += `RECENT INSIGHTS:\n${insightText}\n`;
   }
 
   return formatted.trim();

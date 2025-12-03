@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
+import { fetchUserContext, formatContextForAI } from "../shared/context.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +15,7 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
 
     const authHeader = req.headers.get('Authorization');
@@ -30,68 +31,66 @@ serve(async (req) => {
       });
     }
 
-    const { topicId } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { topicId, mode = 'topic' } = body;
 
-    // Fetch topic details
-    const { data: topic } = await supabase
-      .from('topics')
-      .select('*')
-      .eq('id', topicId)
-      .single();
+    // Fetch full user context using shared module
+    const userContext = await fetchUserContext(supabase, user.id);
+    const contextPrompt = formatContextForAI(userContext);
 
-    if (!topic) {
-      return new Response(JSON.stringify({ error: 'Topic not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    let additionalContext = '';
+
+    // If topic-specific, fetch topic details
+    if (mode === 'topic' && topicId) {
+      const { data: topic } = await supabase
+        .from('topics')
+        .select('*')
+        .eq('id', topicId)
+        .single();
+
+      if (topic) {
+        const { data: topicInsights } = await supabase
+          .from('insights')
+          .select('title, content')
+          .eq('topic_id', topicId)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        const { data: topicDocs } = await supabase
+          .from('documents')
+          .select('title, summary')
+          .eq('topic_id', topicId)
+          .limit(3);
+
+        additionalContext = `
+SPECIFIC TOPIC: ${topic.name}
+${topic.description ? `Description: ${topic.description}` : ''}
+${topicInsights?.length ? `Topic Insights:\n${topicInsights.map(i => `- ${i.title}`).join('\n')}` : ''}
+${topicDocs?.length ? `Topic Documents:\n${topicDocs.map(d => `- ${d.title}`).join('\n')}` : ''}
+`;
+      }
     }
 
-    // Fetch recent insights for this topic
-    const { data: insights } = await supabase
-      .from('insights')
-      .select('title, content, created_at')
-      .eq('topic_id', topicId)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    // For general mode, use broader context
+    if (mode === 'general') {
+      // Get recent insights not tied to specific topics
+      const { data: recentInsights } = await supabase
+        .from('insights')
+        .select('title, content, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(8);
 
-    // Fetch documents for this topic
-    const { data: documents } = await supabase
-      .from('documents')
-      .select('title, summary')
-      .eq('topic_id', topicId)
-      .limit(5);
-
-    // Fetch learning paths for this topic
-    const { data: paths } = await supabase
-      .from('learning_paths')
-      .select('title, description, status')
-      .eq('topic_id', topicId);
-
-    // Fetch experiments for this topic
-    const { data: experiments } = await supabase
-      .from('experiments')
-      .select('title, status, results')
-      .eq('topic_id', topicId);
-
-    // Build context for AI
-    const context = `
-Topic: ${topic.name}
-Description: ${topic.description || 'None'}
-
-Recent Insights (${insights?.length || 0}):
-${insights?.map(i => `- ${i.title}: ${i.content.substring(0, 200)}`).join('\n') || 'None'}
-
-Documents (${documents?.length || 0}):
-${documents?.map(d => `- ${d.title}: ${d.summary?.substring(0, 200) || 'No summary'}`).join('\n') || 'None'}
-
-Learning Paths (${paths?.length || 0}):
-${paths?.map(p => `- ${p.title} (${p.status}): ${p.description?.substring(0, 100) || ''}`).join('\n') || 'None'}
-
-Experiments (${experiments?.length || 0}):
-${experiments?.map(e => `- ${e.title} (${e.status})`).join('\n') || 'None'}
+      if (recentInsights?.length) {
+        additionalContext = `
+RECENT INSIGHTS TO BUILD ON:
+${recentInsights.map(i => `- ${i.title}: ${i.content.substring(0, 100)}`).join('\n')}
 `;
+      }
+    }
 
-    console.log('Calling Lovable AI with context:', context);
+    console.log('Generating context-aware suggestions...');
+    console.log('Mode:', mode);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -100,37 +99,47 @@ ${experiments?.map(e => `- ${e.title} (${e.status})`).join('\n') || 'None'}
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
-            content: `You are an expert learning strategist. Analyze the user's learning context and generate 3-5 high-leverage daily actions.
+            content: `You are an expert personal operating system. Generate 3-5 high-leverage actions based on the user's full context.
 
-TASK QUALITY RULES:
-- Each action must be 15-45 minutes
-- Prioritize application over consumption
-- Build on existing insights and documents
-- Create momentum through small wins
-- Balance depth (mastery) with breadth (exploration)
+${contextPrompt}
+${additionalContext}
+
+TASK GENERATION RULES:
+1. Each action must be 15-45 minutes and completable TODAY
+2. Prioritize IDENTITY-ALIGNED actions over generic productivity
+3. Build on existing insights, experiments, and documents
+4. Create momentum through small wins
+5. Balance application (doing) over consumption (learning)
+6. Consider pillar rotation - avoid same pillar 3x in a row
 
 PRIORITIZATION:
-- High: Urgent for current learning path progress
-- Medium: Important but not time-sensitive
-- Low: Enrichment or exploration
+- High: Directly advances active experiment or identity shift
+- Medium: Builds on recent insight or document
+- Low: General improvement or exploration
 
-Return specific, executable actions that move the needle on their learning goals.`
+OUTPUT RULES:
+- No emojis
+- Specific and actionable
+- Reference specific insights/documents when relevant
+- Each task should feel like progress, not homework`
           },
           {
             role: 'user',
-            content: context
+            content: mode === 'topic' && topicId 
+              ? `Generate 3-5 specific actions for this topic that advance my identity shift.`
+              : `Generate 3-5 context-aware actions based on my full profile. Prioritize what will create the most momentum today.`
           }
         ],
         tools: [
           {
             type: "function",
             function: {
-              name: "suggest_daily_tasks",
-              description: "Suggest 3-5 daily learning tasks based on the user's topic and progress",
+              name: "suggest_contextual_tasks",
+              description: "Suggest 3-5 contextual tasks based on user's full profile",
               parameters: {
                 type: "object",
                 properties: {
@@ -139,13 +148,38 @@ Return specific, executable actions that move the needle on their learning goals
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string" },
-                        description: { type: "string" },
-                        priority: { type: "string", enum: ["low", "medium", "high"] }
+                        title: { 
+                          type: "string",
+                          description: "Clear, action-oriented title (no emojis)"
+                        },
+                        description: { 
+                          type: "string",
+                          description: "1-2 sentences on what to do and why"
+                        },
+                        priority: { 
+                          type: "string", 
+                          enum: ["low", "medium", "high"] 
+                        },
+                        pillar: {
+                          type: "string",
+                          enum: ["Stability", "Skill", "Content", "Health", "Presence", "Admin", "Connection", "Learning"]
+                        },
+                        time_estimate: {
+                          type: "string",
+                          description: "Estimated time (e.g., '20 min', '30 min')"
+                        },
+                        builds_on: {
+                          type: "string",
+                          description: "What existing insight/experiment/document this builds on"
+                        }
                       },
-                      required: ["title", "description", "priority"],
+                      required: ["title", "description", "priority", "pillar", "time_estimate"],
                       additionalProperties: false
                     }
+                  },
+                  reasoning: {
+                    type: "string",
+                    description: "Brief explanation of why these tasks were chosen (1-2 sentences)"
                   }
                 },
                 required: ["suggestions"],
@@ -154,7 +188,7 @@ Return specific, executable actions that move the needle on their learning goals
             }
           }
         ],
-        tool_choice: { type: "function", function: { name: "suggest_daily_tasks" } }
+        tool_choice: { type: "function", function: { name: "suggest_contextual_tasks" } }
       }),
     });
 
@@ -183,7 +217,7 @@ Return specific, executable actions that move the needle on their learning goals
     }
 
     const data = await response.json();
-    console.log('Lovable AI response:', JSON.stringify(data, null, 2));
+    console.log('AI response received');
 
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
@@ -193,9 +227,13 @@ Return specific, executable actions that move the needle on their learning goals
       });
     }
 
-    const suggestions = JSON.parse(toolCall.function.arguments).suggestions;
+    const result = JSON.parse(toolCall.function.arguments);
 
-    return new Response(JSON.stringify({ suggestions, topic: topic.name }), {
+    return new Response(JSON.stringify({ 
+      suggestions: result.suggestions,
+      reasoning: result.reasoning,
+      mode,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
