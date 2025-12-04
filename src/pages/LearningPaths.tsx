@@ -29,6 +29,8 @@ const LearningPaths = () => {
   const [generating, setGenerating] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<Record<string, boolean>>({});
   const [pathItems, setPathItems] = useState<Record<string, any[]>>({});
+  const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
+  const [suggestion, setSuggestion] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -105,7 +107,8 @@ const LearningPaths = () => {
 
       if (error) throw error;
 
-      toast.success(`Suggestion: ${data.suggested_next_step}`);
+      setSuggestion(data);
+      setSuggestionDialogOpen(true);
     } catch (error: any) {
       toast.error(error.message || "Failed to generate");
     } finally {
@@ -274,6 +277,31 @@ const LearningPaths = () => {
               {loading ? "Creating..." : "Create Path"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suggestion Dialog */}
+      <Dialog open={suggestionDialogOpen} onOpenChange={setSuggestionDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{suggestion?.headline || "Suggestion"}</DialogTitle>
+          </DialogHeader>
+          {suggestion && (
+            <div className="space-y-4">
+              <p className="text-sm leading-relaxed text-muted-foreground">{suggestion.summary}</p>
+              {suggestion.suggested_next_step && (
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <h4 className="text-sm font-medium mb-2">Next Step</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {suggestion.suggested_next_step}
+                  </p>
+                </div>
+              )}
+              <Button onClick={() => setSuggestionDialogOpen(false)} className="w-full">
+                Close
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
