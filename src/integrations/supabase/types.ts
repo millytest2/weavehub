@@ -177,11 +177,15 @@ export type Database = {
       }
       documents: {
         Row: {
+          access_count: number | null
           created_at: string
+          embedding: string | null
           file_path: string | null
           file_size: number | null
           file_type: string | null
           id: string
+          last_accessed: string | null
+          relevance_score: number | null
           summary: string | null
           title: string
           topic_id: string | null
@@ -189,11 +193,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_count?: number | null
           created_at?: string
+          embedding?: string | null
           file_path?: string | null
           file_size?: number | null
           file_type?: string | null
           id?: string
+          last_accessed?: string | null
+          relevance_score?: number | null
           summary?: string | null
           title: string
           topic_id?: string | null
@@ -201,11 +209,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_count?: number | null
           created_at?: string
+          embedding?: string | null
           file_path?: string | null
           file_size?: number | null
           file_type?: string | null
           id?: string
+          last_accessed?: string | null
+          relevance_score?: number | null
           summary?: string | null
           title?: string
           topic_id?: string | null
@@ -335,9 +347,13 @@ export type Database = {
       }
       insights: {
         Row: {
+          access_count: number | null
           content: string
           created_at: string
+          embedding: string | null
           id: string
+          last_accessed: string | null
+          relevance_score: number | null
           source: string | null
           title: string
           topic_id: string | null
@@ -345,9 +361,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_count?: number | null
           content: string
           created_at?: string
+          embedding?: string | null
           id?: string
+          last_accessed?: string | null
+          relevance_score?: number | null
           source?: string | null
           title: string
           topic_id?: string | null
@@ -355,9 +375,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_count?: number | null
           content?: string
           created_at?: string
+          embedding?: string | null
           id?: string
+          last_accessed?: string | null
+          relevance_score?: number | null
           source?: string | null
           title?: string
           topic_id?: string | null
@@ -512,7 +536,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_relevance_decay: {
+        Args: {
+          access_count: number
+          base_relevance?: number
+          created_at: string
+          last_accessed: string
+        }
+        Returns: number
+      }
+      search_documents_semantic: {
+        Args: {
+          match_count?: number
+          query_embedding: string
+          similarity_threshold?: number
+          user_uuid: string
+        }
+        Returns: {
+          created_at: string
+          final_relevance: number
+          id: string
+          similarity: number
+          summary: string
+          title: string
+        }[]
+      }
+      search_insights_semantic: {
+        Args: {
+          match_count?: number
+          query_embedding: string
+          similarity_threshold?: number
+          user_uuid: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          final_relevance: number
+          id: string
+          similarity: number
+          source: string
+          title: string
+        }[]
+      }
+      update_item_access: {
+        Args: { item_id: string; table_name: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
