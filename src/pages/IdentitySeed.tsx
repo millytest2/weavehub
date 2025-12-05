@@ -29,10 +29,18 @@ export default function IdentitySeed() {
   const fetchIdentitySeed = async () => {
     setInitialLoading(true);
     try {
+      // Verify we have correct auth state - RLS will filter, but this prevents stale state
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser || authUser.id !== user?.id) {
+        console.warn("Auth state mismatch");
+        setInitialLoading(false);
+        return;
+      }
+
+      // RLS ensures we only get our own data - no need for explicit user_id filter
       const { data, error } = await supabase
         .from("identity_seeds")
         .select("*")
-        .eq("user_id", user?.id)
         .maybeSingle();
 
       if (error && error.code !== "PGRST116") {
@@ -43,7 +51,6 @@ export default function IdentitySeed() {
       if (data) {
         setContent(data.content || "");
         setIdentitySeedId(data.id);
-        // Use weekly_focus as current_reality storage
         setCurrentReality(data.weekly_focus || "");
       }
     } catch (error) {
