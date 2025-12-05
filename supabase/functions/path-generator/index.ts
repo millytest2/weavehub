@@ -53,11 +53,15 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Get request body for focus area
+    // Get and validate request body
     let focusArea = "";
     try {
       const body = await req.json();
-      focusArea = body.focus || "";
+      // Input validation: limit focus area length to prevent resource exhaustion
+      const rawFocus = body.focus;
+      if (typeof rawFocus === 'string') {
+        focusArea = rawFocus.trim().slice(0, 1000); // Max 1000 chars
+      }
     } catch {
       // No body provided
     }

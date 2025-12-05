@@ -60,10 +60,23 @@ serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
-    const { youtubeUrl, title } = await req.json();
+    const body = await req.json();
     
-    if (!youtubeUrl) {
+    // Input validation
+    const rawUrl = body.youtubeUrl;
+    const rawTitle = body.title;
+    
+    if (!rawUrl || typeof rawUrl !== 'string') {
       throw new Error("YouTube URL is required");
+    }
+    
+    // Validate URL length and format (prevent excessive input)
+    const youtubeUrl = rawUrl.trim().slice(0, 500);
+    const title = (typeof rawTitle === 'string') ? rawTitle.trim().slice(0, 200) : undefined;
+    
+    // Validate it looks like a YouTube URL
+    if (!youtubeUrl.includes('youtube.com') && !youtubeUrl.includes('youtu.be') && !/^[a-zA-Z0-9_-]{11}$/.test(youtubeUrl)) {
+      throw new Error("Invalid YouTube URL format. Please provide a valid YouTube link.");
     }
 
     console.log("Received YouTube URL:", youtubeUrl);
