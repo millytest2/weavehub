@@ -115,7 +115,7 @@ export const DayCompleteRecommendations = ({ userId, isComplete }: DayCompleteRe
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>All 3 Actions Complete! 🎉</DialogTitle>
+          <DialogTitle>All 3 Actions Complete</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6 py-4">

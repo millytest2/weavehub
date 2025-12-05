@@ -4,7 +4,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -456,17 +456,17 @@ const Documents = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-6xl mx-auto px-4 sm:px-0">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Documents</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Documents</h1>
           <p className="text-sm text-muted-foreground mt-1">
             PDFs, resources, and reference materials
           </p>
         </div>
         <Button onClick={() => setIsDialogOpen(true)} size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          Upload Document
+          Upload
         </Button>
       </div>
 
@@ -528,9 +528,10 @@ const Documents = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="w-full max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Content</DialogTitle>
+            <DialogDescription>Upload files, YouTube videos, or create documents</DialogDescription>
           </DialogHeader>
           
           <div className="flex gap-2 border-b border-border pb-3 mb-4">
@@ -669,9 +670,10 @@ const Documents = () => {
       </Dialog>
 
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogContent className="w-full max-w-4xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>{viewingDoc?.title || "View Document"}</DialogTitle>
+            <DialogTitle className="truncate pr-8">{viewingDoc?.title || "View Document"}</DialogTitle>
+            <DialogDescription>Document preview and AI summary</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {viewingDoc?.summary && (
@@ -687,7 +689,7 @@ const Documents = () => {
               <Textarea
                 value={docContent}
                 readOnly
-                className="mt-1.5 min-h-[400px] font-mono text-xs"
+                className="mt-1.5 min-h-[200px] sm:min-h-[400px] font-mono text-xs"
                 placeholder="Loading content..."
               />
             </div>

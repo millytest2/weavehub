@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowRight, Check, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
@@ -196,7 +196,7 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-6">
+    <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-6">
       {user && (
         <>
           <WelcomeWizard userId={user.id} onComplete={() => {}} />
@@ -293,6 +293,7 @@ const Dashboard = () => {
               <Zap className="h-4 w-4 text-primary" />
               {nextRep?.bucket || "Your Rep"}
             </DialogTitle>
+            <DialogDescription>One aligned action to break the drift</DialogDescription>
           </DialogHeader>
           {nextRep && (
             <div className="space-y-4">

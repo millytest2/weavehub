@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Trash2, Sparkles, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Sparkles, ChevronDown, ChevronRight, ExternalLink, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -29,8 +29,8 @@ const LearningPaths = () => {
   const [generating, setGenerating] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<Record<string, boolean>>({});
   const [pathItems, setPathItems] = useState<Record<string, any[]>>({});
-  const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
-  const [suggestion, setSuggestion] = useState<any>(null);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [focusArea, setFocusArea] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -100,17 +100,26 @@ const LearningPaths = () => {
     }
   };
 
-  const handleGenerateStep = async () => {
+  const handleGeneratePath = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("synthesizer");
+      const { data, error } = await supabase.functions.invoke("path-generator", {
+        body: { focus: focusArea }
+      });
 
       if (error) throw error;
 
-      setSuggestion(data);
-      setSuggestionDialogOpen(true);
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      toast.success(`Path created with ${data.steps_created} steps`);
+      setGenerateDialogOpen(false);
+      setFocusArea("");
+      fetchPaths();
     } catch (error: any) {
-      toast.error(error.message || "Failed to generate");
+      toast.error(error.message || "Failed to generate path");
     } finally {
       setGenerating(false);
     }
@@ -150,9 +159,9 @@ const LearningPaths = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleGenerateStep} disabled={generating} variant="outline" size="sm">
+          <Button onClick={() => setGenerateDialogOpen(true)} disabled={generating} variant="outline" size="sm">
             <Sparkles className="mr-2 h-4 w-4" />
-            {generating ? "Generating..." : "Suggest Step"}
+            {generating ? "Generating..." : "Generate Path"}
           </Button>
           <Button onClick={() => setIsDialogOpen(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
@@ -235,7 +244,7 @@ const LearningPaths = () => {
                           )}
                         </div>
                         {item.completed && (
-                          <span className="text-xs text-muted-foreground">✓</span>
+                          <Check className="h-4 w-4 text-primary shrink-0" />
                         )}
                       </div>
                     ))
@@ -253,6 +262,7 @@ const LearningPaths = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New Path</DialogTitle>
+            <DialogDescription>Create a manual learning path</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
@@ -280,28 +290,38 @@ const LearningPaths = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Suggestion Dialog */}
-      <Dialog open={suggestionDialogOpen} onOpenChange={setSuggestionDialogOpen}>
-        <DialogContent className="max-w-lg">
+      {/* Generate Path Dialog */}
+      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{suggestion?.headline || "Suggestion"}</DialogTitle>
+            <DialogTitle>Generate Learning Path</DialogTitle>
+            <DialogDescription>
+              AI will synthesize your identity, insights, and experiments into actionable steps
+            </DialogDescription>
           </DialogHeader>
-          {suggestion && (
-            <div className="space-y-4">
-              <p className="text-sm leading-relaxed text-muted-foreground">{suggestion.summary}</p>
-              {suggestion.suggested_next_step && (
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <h4 className="text-sm font-medium mb-2">Next Step</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {suggestion.suggested_next_step}
-                  </p>
-                </div>
-              )}
-              <Button onClick={() => setSuggestionDialogOpen(false)} className="w-full">
-                Close
-              </Button>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="focus">Focus Area (optional)</Label>
+              <Input
+                id="focus"
+                value={focusArea}
+                onChange={(e) => setFocusArea(e.target.value)}
+                placeholder="e.g., business skills, health, charisma..."
+                className="mt-1.5"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave empty to generate based on all your data
+              </p>
             </div>
-          )}
+            <Button 
+              onClick={handleGeneratePath} 
+              disabled={generating} 
+              className="w-full"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {generating ? "Generating..." : "Generate Path"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
