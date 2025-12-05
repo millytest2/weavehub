@@ -32,7 +32,18 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { topicId, mode = 'topic' } = body;
+    
+    // Input validation
+    const rawTopicId = body.topicId;
+    const rawMode = body.mode;
+    
+    // Validate topicId is a valid UUID format if provided
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const topicId = (typeof rawTopicId === 'string' && uuidRegex.test(rawTopicId)) ? rawTopicId : null;
+    
+    // Validate mode is one of allowed values
+    const allowedModes = ['topic', 'general'];
+    const mode = (typeof rawMode === 'string' && allowedModes.includes(rawMode)) ? rawMode : 'topic';
 
     // Fetch full user context using shared module
     const userContext = await fetchUserContext(supabase, user.id);
