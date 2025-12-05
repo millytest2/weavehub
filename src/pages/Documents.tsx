@@ -511,17 +511,17 @@ const Documents = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {documents.map((doc) => (
           <Card key={doc.id} className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200">
-            <CardContent className="pt-5">
-              <div className="flex flex-col gap-3">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-2">
                 <div className="flex items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                     <FileText className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-base mb-1 truncate cursor-pointer hover:text-primary transition-colors" title={doc.title} onClick={() => handleViewDocument(doc)}>
+                    <h3 className="font-medium text-sm sm:text-base mb-0.5 truncate cursor-pointer hover:text-primary transition-colors" title={doc.title} onClick={() => handleViewDocument(doc)}>
                       {doc.title}
                     </h3>
                     <p className="text-xs text-muted-foreground">
@@ -529,7 +529,7 @@ const Documents = () => {
                     </p>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 cursor-pointer" onClick={() => handleViewDocument(doc)}>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2 cursor-pointer" onClick={() => handleViewDocument(doc)}>
                   {doc.summary || "No summary available"}
                 </p>
                 <div className="flex gap-1 pt-2 border-t border-border/30">
@@ -537,7 +537,7 @@ const Documents = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleViewDocument(doc)}
-                    className="flex-1 h-8 text-xs"
+                    className="flex-1 h-8 text-xs px-2"
                   >
                     <Eye className="h-3.5 w-3.5 mr-1" />
                     View
@@ -547,7 +547,7 @@ const Documents = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDownload(doc.file_path, doc.title)}
-                      className="flex-1 h-8 text-xs"
+                      className="flex-1 h-8 text-xs px-2"
                     >
                       <Download className="h-3.5 w-3.5 mr-1" />
                       Download
@@ -557,7 +557,7 @@ const Documents = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(doc.id, doc.file_path)}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 shrink-0"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
