@@ -40,6 +40,7 @@ const Documents = () => {
   const [runAnalysis, setRunAnalysis] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeMode, setIsYoutubeMode] = useState(false);
+  const [isReExtracting, setIsReExtracting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -383,13 +384,7 @@ const Documents = () => {
       return;
     }
 
-    // Priority 2: Use summary if no extracted content
-    if (doc.summary) {
-      setDocContent(doc.summary);
-      return;
-    }
-
-    // Priority 3: Try to download and read text files only
+    // Priority 2: Try to download and read text files
     if (doc.file_path) {
       const isTextFile = doc.file_type?.startsWith('text/') || 
                          doc.file_path.match(/\.(txt|md|json|xml|csv)$/i);
@@ -411,7 +406,76 @@ const Documents = () => {
       }
     }
 
-    setDocContent("No preview available. Use the download button to view the file.");
+    // Priority 3: Show message that extraction is needed
+    setDocContent(doc.file_path 
+      ? "Full content not extracted yet. Click 'Re-extract' to load the complete document."
+      : "No content available.");
+  };
+
+  const handleReExtract = async () => {
+    if (!viewingDoc || !viewingDoc.file_path) return;
+    
+    setIsReExtracting(true);
+    try {
+      // Download file
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('documents')
+        .download(viewingDoc.file_path);
+
+      if (downloadError) throw downloadError;
+
+      let extractedContent = '';
+      const isPdf = viewingDoc.file_type === 'application/pdf' || viewingDoc.file_path.toLowerCase().endsWith('.pdf');
+
+      if (isPdf) {
+        toast.info("Extracting text from PDF...");
+        const arrayBuffer = await fileData.arrayBuffer();
+        const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          extractedContent += pageText + '\n';
+        }
+
+        // If no text, try OCR
+        if (!extractedContent.trim() || extractedContent.trim().length < 100) {
+          toast.info("Running OCR on image-based PDF...");
+          extractedContent = await performOCR(pdf);
+        }
+      } else {
+        extractedContent = await fileData.text();
+      }
+
+      if (!extractedContent.trim()) {
+        toast.error("Could not extract content from this file");
+        return;
+      }
+
+      // Save to database
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({ extracted_content: extractedContent.substring(0, 100000) })
+        .eq('id', viewingDoc.id);
+
+      if (updateError) throw updateError;
+
+      // Update view
+      setDocContent(extractedContent);
+      setViewingDoc({ ...viewingDoc, extracted_content: extractedContent });
+      
+      // Refresh documents list
+      await fetchDocuments();
+      
+      toast.success("Content extracted successfully!");
+    } catch (error: any) {
+      console.error('Re-extract error:', error);
+      toast.error("Failed to extract: " + (error.message || 'Unknown error'));
+    } finally {
+      setIsReExtracting(false);
+    }
   };
 
   const handleGenerateNextStep = async () => {
@@ -646,29 +710,45 @@ const Documents = () => {
       </Dialog>
 
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="w-full max-w-4xl max-h-[80vh]">
+        <DialogContent className="w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="truncate pr-8">{viewingDoc?.title || "View Document"}</DialogTitle>
-            <DialogDescription>Document preview and AI summary</DialogDescription>
+            <DialogDescription>Full document content and AI analysis</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4">
+            {/* Full Content Section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-medium">Full Content</Label>
+                {viewingDoc?.file_path && !viewingDoc?.extracted_content && (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleReExtract}
+                    disabled={isReExtracting}
+                  >
+                    {isReExtracting ? "Extracting..." : "Re-extract"}
+                  </Button>
+                )}
+              </div>
+              <div className="bg-muted/50 rounded-md p-3 max-h-[300px] overflow-y-auto">
+                <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/80">
+                  {docContent || "Loading..."}
+                </pre>
+              </div>
+            </div>
+            
+            {/* AI Summary Section */}
             {viewingDoc?.summary && (
               <div>
                 <Label className="text-sm font-medium">AI Summary</Label>
-                <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted rounded-md">
-                  {viewingDoc.summary}
-                </p>
+                <div className="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-md">
+                  <p className="text-sm text-foreground/90 leading-relaxed">
+                    {viewingDoc.summary}
+                  </p>
+                </div>
               </div>
             )}
-            <div>
-              <Label className="text-sm font-medium">Content Preview</Label>
-              <Textarea
-                value={docContent}
-                readOnly
-                className="mt-1.5 min-h-[200px] sm:min-h-[400px] font-mono text-xs"
-                placeholder="Loading content..."
-              />
-            </div>
           </div>
         </DialogContent>
       </Dialog>
