@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, Lightbulb, Link, FileText, Mic } from "lucide-react";
+import { Plus, X, Lightbulb, Link, FileText, Mic, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,8 +9,9 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { toast } from "sonner";
 import { detectCareerKeywords } from "@/lib/careerDetection";
 import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
+import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
 
-type CaptureType = "insight" | "link" | "note" | null;
+type CaptureType = "insight" | "link" | "note" | "decision" | null;
 
 export const QuickCapture = () => {
   const { user } = useAuth();
@@ -22,6 +23,8 @@ export const QuickCapture = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCareerPrompt, setShowCareerPrompt] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [showMirrorResponse, setShowMirrorResponse] = useState(false);
+  const [mirrorText, setMirrorText] = useState("");
 
   const handleOpen = () => setIsOpen(true);
   
@@ -107,6 +110,21 @@ export const QuickCapture = () => {
           source: "quick_capture",
         });
         toast.success("Note saved");
+      } else if (captureType === "decision") {
+        // Call decision-mirror edge function
+        setIsProcessing(true);
+        const { data, error } = await supabase.functions.invoke("decision-mirror", {
+          body: { decision: content },
+        });
+        
+        if (error) throw error;
+        
+        setMirrorText(data.mirror);
+        setShowMirrorResponse(true);
+        // Don't close main dialog yet - wait for mirror response to be closed
+        setIsSubmitting(false);
+        setIsProcessing(false);
+        return;
       }
       
       handleClose();
@@ -198,12 +216,12 @@ export const QuickCapture = () => {
               </button>
               
               <button
-                disabled
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border opacity-50 cursor-not-allowed"
+                onClick={() => handleQuickCapture("decision")}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <Mic className="h-6 w-6 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Voice</span>
-                <span className="text-xs text-muted-foreground">Coming soon</span>
+                <Scale className="h-6 w-6 text-primary" />
+                <span className="text-sm font-medium">Decision</span>
+                <span className="text-xs text-muted-foreground">Mirror your identity</span>
               </button>
             </div>
           ) : (
@@ -222,6 +240,8 @@ export const QuickCapture = () => {
                     ? "Paste YouTube URL or any link..."
                     : captureType === "insight"
                     ? "What did you learn or realize?"
+                    : captureType === "decision"
+                    ? "What are you about to do?"
                     : "What's on your mind?"
                 }
                 value={content}
@@ -241,7 +261,7 @@ export const QuickCapture = () => {
                 disabled={!content.trim() || isSubmitting}
                 className="w-full"
               >
-                {isSubmitting ? "Saving..." : "Capture"}
+                {isSubmitting ? (captureType === "decision" ? "Reflecting..." : "Saving...") : (captureType === "decision" ? "Mirror" : "Capture")}
               </Button>
             </div>
           )}
@@ -258,6 +278,17 @@ export const QuickCapture = () => {
           }
         }}
         onContinue={handleCareerPromptContinue}
+      />
+
+      <DecisionMirrorResponse
+        open={showMirrorResponse}
+        onOpenChange={(open) => {
+          setShowMirrorResponse(open);
+          if (!open) {
+            handleClose();
+          }
+        }}
+        mirror={mirrorText}
       />
     </>
   );

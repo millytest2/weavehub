@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.daily-suggestions]
 verify_jwt = true
 
+[functions.decision-mirror]
+verify_jwt = true
+
 [functions.document-intelligence]
 verify_jwt = true
 
@@ -19,6 +22,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.next-rep]
+verify_jwt = true
+
+[functions.path-generator]
 verify_jwt = true
 
 [functions.synthesizer]
