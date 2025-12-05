@@ -103,9 +103,9 @@ export function formatContextForAI(context: CompactContext): string {
     formatted += `IDENTITY (PRIMARY DRIVER):\n${context.identity_seed}\n\n`;
   }
 
-  // Weekly focus if set
+  // Current reality - user's situation in natural language
   if (context.weekly_focus) {
-    formatted += `WEEKLY FOCUS: ${context.weekly_focus}\n\n`;
+    formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
   }
 
   // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals
@@ -169,7 +169,7 @@ export function formatDocumentContext(context: DocumentContext): string {
   }
 
   if (context.weekly_focus) {
-    formatted += `THIS WEEK'S FOCUS: ${context.weekly_focus}\n\n`;
+    formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
   }
 
   if (context.active_experiments.length > 0) {
