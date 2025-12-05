@@ -21,6 +21,9 @@ const Dashboard = () => {
   const [isGettingRep, setIsGettingRep] = useState(false);
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
+  
+  // Active experiment state
+  const [activeExperiment, setActiveExperiment] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -28,6 +31,7 @@ const Dashboard = () => {
     const fetchData = async () => {
       const today = new Date().toISOString().split("T")[0];
       
+      // Fetch tasks
       const { data: tasksRes } = await supabase
         .from("daily_tasks")
         .select("*")
@@ -45,6 +49,18 @@ const Dashboard = () => {
         setTodayTask(null);
         setCurrentSequence(1);
       }
+      
+      // Fetch active experiment
+      const { data: expRes } = await supabase
+        .from("experiments")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "in_progress")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      setActiveExperiment(expRes);
     };
 
     fetchData();
@@ -264,6 +280,29 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Active Experiment Card */}
+        {activeExperiment && (
+          <Card className="border-0 shadow-sm bg-card/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Experiment</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                <h3 className="font-semibold">{activeExperiment.title}</h3>
+                {activeExperiment.identity_shift_target && (
+                  <p className="text-sm text-muted-foreground">{activeExperiment.identity_shift_target}</p>
+                )}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+                  <span>{activeExperiment.duration || "7 days"}</span>
+                  <span className="px-2 py-0.5 rounded bg-primary/10 text-primary">
+                    Day {Math.ceil((Date.now() - new Date(activeExperiment.created_at).getTime()) / (1000 * 60 * 60 * 24))}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Next Best Rep - Drift Breaker */}
         <button

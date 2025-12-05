@@ -232,12 +232,27 @@ const Documents = () => {
 
       console.log('[Upload] File uploaded successfully, inserting DB row...');
 
+      // Extract content first for storage
+      let extractedContent = '';
+      try {
+        if (selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')) {
+          toast.info("Extracting text from PDF...");
+          extractedContent = await extractPdfText(selectedFile);
+        } else if (selectedFile.type.startsWith('text/') || selectedFile.name.match(/\.(txt|md|json|xml|csv)$/i)) {
+          extractedContent = await selectedFile.text();
+        }
+      } catch (extractError) {
+        console.error('Content extraction error:', extractError);
+        // Continue without extracted content
+      }
+
       const { data: docData, error: dbError } = await supabase.from("documents").insert({
         user_id: user.id,
         title: uploadTitle || selectedFile.name,
         file_path: fileName,
         file_type: selectedFile.type,
         file_size: selectedFile.size,
+        extracted_content: extractedContent ? extractedContent.substring(0, 100000) : null, // Store up to 100KB
       }).select().single();
 
       if (dbError) {
@@ -250,60 +265,11 @@ const Documents = () => {
       toast.success("Document uploaded!");
       
       // Only run AI analysis if toggle is ON
-      if (runAnalysis) {
-        toast.info("Extracting text from document...");
+      if (runAnalysis && extractedContent && extractedContent.trim().length >= 50) {
+        toast.info("Analyzing with AI...");
+        console.log('Sending to AI, content length:', extractedContent.length);
         
         try {
-          let extractedContent = '';
-          
-          if (selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')) {
-            extractedContent = await extractPdfText(selectedFile);
-            console.log('Extracted content preview:', extractedContent.substring(0, 500));
-          } else {
-            extractedContent = await selectedFile.text();
-            console.log('Text file content length:', extractedContent.length);
-          }
-          
-          if (!extractedContent || extractedContent.trim().length < 50) {
-            toast.error("Document has no readable content");
-            return;
-          }
-          
-          toast.info("Analyzing with AI...");
-          console.log('Sending to AI, content length:', extractedContent.length);
-          
-          // Verify session is valid and refresh if needed
-          const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-          
-          if (sessionError) {
-            console.error('Session error:', sessionError);
-            toast.error("Session error. Please log in again.");
-            return;
-          }
-          
-          if (!currentSession) {
-            console.error('No active session found');
-            toast.error("Your session has expired. Please log in again.");
-            return;
-          }
-          
-          console.log('Session valid, token expires at:', new Date(currentSession.expires_at! * 1000).toISOString());
-          
-          // Check if session is about to expire (within 5 minutes)
-          const now = Math.floor(Date.now() / 1000);
-          if (currentSession.expires_at && (currentSession.expires_at - now) < 300) {
-            console.log('Session expiring soon, refreshing...');
-            const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (refreshError || !refreshedSession) {
-              console.error('Failed to refresh session:', refreshError);
-              toast.error("Session expired. Please log in again.");
-              return;
-            }
-            
-            console.log('Session refreshed successfully');
-          }
-          
           const { data: aiData, error: aiError } = await supabase.functions.invoke('document-intelligence', {
             body: {
               documentId: docData.id,
@@ -316,13 +282,7 @@ const Documents = () => {
 
           if (aiError) {
             console.error('AI processing error:', aiError);
-            
-            // Handle specific error cases
-            if (aiError.message?.includes('401') || aiError.message?.includes('Unauthorized') || aiError.message?.includes('Authentication failed')) {
-              toast.error("Authentication failed. Please refresh the page and log in again.");
-            } else {
-              toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
-            }
+            toast.error("AI processing failed: " + (aiError.message || JSON.stringify(aiError)));
           } else if (aiData) {
             toast.success(`AI analysis complete! Created ${aiData.insightsCreated || 0} insights.`);
           }
@@ -417,25 +377,41 @@ const Documents = () => {
     setDocContent("");
     setIsViewOpen(true);
 
-    if (!doc.file_path) {
-      setDocContent(doc.summary || "No content available");
+    // Priority 1: Use extracted_content if available (works for PDFs, transcripts)
+    if (doc.extracted_content) {
+      setDocContent(doc.extracted_content);
       return;
     }
 
-    try {
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .download(doc.file_path);
-
-      if (error) throw error;
-
-      // Try to read as text for text-based files
-      const text = await data.text();
-      setDocContent(text.substring(0, 50000)); // Limit to 50k chars
-    } catch (error: any) {
-      console.error('Error reading document:', error);
-      setDocContent(doc.summary || "Cannot preview this file type. Use the download button to view it.");
+    // Priority 2: Use summary if no extracted content
+    if (doc.summary) {
+      setDocContent(doc.summary);
+      return;
     }
+
+    // Priority 3: Try to download and read text files only
+    if (doc.file_path) {
+      const isTextFile = doc.file_type?.startsWith('text/') || 
+                         doc.file_path.match(/\.(txt|md|json|xml|csv)$/i);
+      
+      if (isTextFile) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('documents')
+            .download(doc.file_path);
+
+          if (!error && data) {
+            const text = await data.text();
+            setDocContent(text.substring(0, 50000));
+            return;
+          }
+        } catch (error) {
+          console.error('Error reading document:', error);
+        }
+      }
+    }
+
+    setDocContent("No preview available. Use the download button to view the file.");
   };
 
   const handleGenerateNextStep = async () => {

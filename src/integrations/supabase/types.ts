@@ -180,6 +180,7 @@ export type Database = {
           access_count: number | null
           created_at: string
           embedding: string | null
+          extracted_content: string | null
           file_path: string | null
           file_size: number | null
           file_type: string | null
@@ -196,6 +197,7 @@ export type Database = {
           access_count?: number | null
           created_at?: string
           embedding?: string | null
+          extracted_content?: string | null
           file_path?: string | null
           file_size?: number | null
           file_type?: string | null
@@ -212,6 +214,7 @@ export type Database = {
           access_count?: number | null
           created_at?: string
           embedding?: string | null
+          extracted_content?: string | null
           file_path?: string | null
           file_size?: number | null
           file_type?: string | null
