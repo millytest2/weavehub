@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, Check, FlaskConical, Compass } from "lucide-react";
+import { ArrowRight, Check, FlaskConical, Compass, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
@@ -22,6 +22,11 @@ const Dashboard = () => {
   const [showSyncDetail, setShowSyncDetail] = useState(false);
   const [currentSequence, setCurrentSequence] = useState(1);
   const [tasksForToday, setTasksForToday] = useState<any[]>([]);
+  
+  // Next Best Rep state
+  const [isGettingRep, setIsGettingRep] = useState(false);
+  const [nextRep, setNextRep] = useState<any>(null);
+  const [showRepDialog, setShowRepDialog] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -67,7 +72,7 @@ const Dashboard = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "experiments", filter: `user_id=eq.${user.id}` },
-        () => fetchData(),
+        () => fetchData()
       )
       .subscribe();
 
@@ -197,6 +202,23 @@ const Dashboard = () => {
     }
   };
 
+  // Next Best Rep - replacement loop breaker
+  const handleNextRep = async () => {
+    setIsGettingRep(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("next-rep");
+      if (error) throw error;
+      if (data) {
+        setNextRep(data);
+        setShowRepDialog(true);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to get rep");
+    } finally {
+      setIsGettingRep(false);
+    }
+  };
+
   const completedCount = tasksForToday.filter(t => t.completed).length;
   const allDone = completedCount >= 3;
 
@@ -230,6 +252,17 @@ const Dashboard = () => {
         </>
       )}
       <QuickCapture />
+
+      {/* Next Best Rep - Primary CTA */}
+      <Button
+        onClick={handleNextRep}
+        disabled={isGettingRep}
+        size="lg"
+        className="w-full mb-6 h-14 text-lg font-semibold"
+      >
+        <Zap className="mr-2 h-5 w-5" />
+        {isGettingRep ? "Finding your rep..." : "Next Best Rep"}
+      </Button>
 
       <div className="flex-1 space-y-4">
         {/* Card 1: Today's Action */}
@@ -379,6 +412,33 @@ const Dashboard = () => {
               )}
               <Button onClick={() => setShowSyncDetail(false)} className="w-full">
                 Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Next Best Rep Dialog */}
+      <Dialog open={showRepDialog} onOpenChange={setShowRepDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              {nextRep?.bucket || "Next Rep"}
+            </DialogTitle>
+          </DialogHeader>
+          {nextRep && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                <p className="text-lg font-medium leading-relaxed">{nextRep.rep}</p>
+              </div>
+              <p className="text-sm text-muted-foreground">{nextRep.why}</p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{nextRep.time}</span>
+                <span className="px-2 py-1 rounded bg-muted">{nextRep.bucket}</span>
+              </div>
+              <Button onClick={() => setShowRepDialog(false)} className="w-full">
+                Got it
               </Button>
             </div>
           )}
