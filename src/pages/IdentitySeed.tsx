@@ -21,26 +21,34 @@ export default function IdentitySeed() {
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Clear state when user changes to prevent showing stale data
+    setContent("");
+    setCurrentReality("");
+    setIdentitySeedId(null);
+    
     if (user) {
       fetchIdentitySeed();
     }
-  }, [user]);
+  }, [user?.id]); // Track user.id specifically
 
   const fetchIdentitySeed = async () => {
+    if (!user?.id) return;
+    
     setInitialLoading(true);
     try {
-      // Verify we have correct auth state - RLS will filter, but this prevents stale state
+      // Always verify fresh auth state from server
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser || authUser.id !== user?.id) {
-        console.warn("Auth state mismatch");
+      if (!authUser) {
+        console.warn("No authenticated user");
         setInitialLoading(false);
         return;
       }
 
-      // RLS ensures we only get our own data - no need for explicit user_id filter
+      // Explicit user_id filter as additional safety layer on top of RLS
       const { data, error } = await supabase
         .from("identity_seeds")
         .select("*")
+        .eq("user_id", authUser.id)
         .maybeSingle();
 
       if (error && error.code !== "PGRST116") {
@@ -52,6 +60,11 @@ export default function IdentitySeed() {
         setContent(data.content || "");
         setIdentitySeedId(data.id);
         setCurrentReality(data.weekly_focus || "");
+      } else {
+        // Ensure clean state for new users
+        setContent("");
+        setCurrentReality("");
+        setIdentitySeedId(null);
       }
     } catch (error) {
       console.error("Error:", error);

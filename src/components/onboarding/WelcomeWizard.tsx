@@ -82,18 +82,21 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
   }, [userId]);
 
   const checkIfFirstTime = async () => {
-    // Verify auth state matches before checking - prevents stale session issues
+    // Get fresh auth state from server
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id !== userId) {
-      console.warn("Auth mismatch - skipping wizard check");
+    if (!user) {
+      console.warn("No authenticated user - skipping wizard check");
       return;
     }
 
+    // Always use fresh user ID from auth, not stale prop
+    const currentUserId = user.id;
+
     const [identityRes, tasksRes, topicsRes, experimentsRes] = await Promise.all([
-      supabase.from("identity_seeds").select("id").maybeSingle(),
-      supabase.from("daily_tasks").select("id").limit(1).maybeSingle(),
-      supabase.from("topics").select("id").limit(1).maybeSingle(),
-      supabase.from("experiments").select("id").limit(1).maybeSingle(),
+      supabase.from("identity_seeds").select("id").eq("user_id", currentUserId).maybeSingle(),
+      supabase.from("daily_tasks").select("id").eq("user_id", currentUserId).limit(1).maybeSingle(),
+      supabase.from("topics").select("id").eq("user_id", currentUserId).limit(1).maybeSingle(),
+      supabase.from("experiments").select("id").eq("user_id", currentUserId).limit(1).maybeSingle(),
     ]);
 
     const hasAnyData = identityRes.data || tasksRes.data || topicsRes.data || experimentsRes.data;
