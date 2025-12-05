@@ -23,6 +23,17 @@ function stripEmojis(text: string): string {
   return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25AA}-\u{25AB}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{2614}-\u{2615}]|[\u{2648}-\u{2653}]|[\u{267F}]|[\u{2693}]|[\u{26A1}]|[\u{26AA}-\u{26AB}]|[\u{26BD}-\u{26BE}]|[\u{26C4}-\u{26C5}]|[\u{26CE}]|[\u{26D4}]|[\u{26EA}]|[\u{26F2}-\u{26F3}]|[\u{26F5}]|[\u{26FA}]|[\u{26FD}]|[\u{2702}]|[\u{2705}]|[\u{2708}-\u{270D}]|[\u{270F}]|[\u{2712}]|[\u{2714}]|[\u{2716}]|[\u{271D}]|[\u{2721}]|[\u{2728}]|[\u{2733}-\u{2734}]|[\u{2744}]|[\u{2747}]|[\u{274C}]|[\u{274E}]|[\u{2753}-\u{2755}]|[\u{2757}]|[\u{2763}-\u{2764}]|[\u{2795}-\u{2797}]|[\u{27A1}]|[\u{27B0}]|[\u{27BF}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{2B50}]|[\u{2B55}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{1F191}-\u{1F19A}]|[\u{1F201}-\u{1F202}]|[\u{1F21A}]|[\u{1F22F}]|[\u{1F232}-\u{1F23A}]|[\u{1F250}-\u{1F251}]/gu, '').trim();
 }
 
+// Extract keywords from text for matching
+function extractKeywords(text: string): string[] {
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'whom', 'this', 'that', 'am', 'your', 'my', 'our']);
+  
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(word => word.length > 3 && !stopWords.has(word));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -181,16 +192,125 @@ RULES:
       completed: false
     }));
 
-    const { error: itemsError } = await supabase
+    const { data: createdItems, error: itemsError } = await supabase
       .from("path_items")
-      .insert(pathItems);
+      .insert(pathItems)
+      .select();
 
     if (itemsError) throw itemsError;
+
+    // Auto-connect related content
+    console.log("Auto-connecting related content...");
+    
+    // Get all path text for keyword extraction
+    const allPathText = `${pathData.path_title} ${pathData.path_description} ${pathData.steps.map(s => `${s.title} ${s.description}`).join(' ')}`;
+    const pathKeywords = extractKeywords(allPathText);
+    console.log("Path keywords:", pathKeywords.slice(0, 10));
+
+    // Fetch user's insights
+    const { data: userInsights } = await supabase
+      .from("insights")
+      .select("id, title, content")
+      .eq("user_id", user.id);
+
+    // Fetch user's documents
+    const { data: userDocuments } = await supabase
+      .from("documents")
+      .select("id, title, summary")
+      .eq("user_id", user.id);
+
+    // Fetch user's experiments
+    const { data: userExperiments } = await supabase
+      .from("experiments")
+      .select("id, title, description, hypothesis")
+      .eq("user_id", user.id);
+
+    const connections: Array<{
+      user_id: string;
+      source_type: string;
+      source_id: string;
+      target_type: string;
+      target_id: string;
+    }> = [];
+
+    // Match insights to path
+    if (userInsights) {
+      for (const insight of userInsights) {
+        const insightText = `${insight.title} ${insight.content}`;
+        const insightKeywords = extractKeywords(insightText);
+        const overlap = pathKeywords.filter(k => insightKeywords.includes(k));
+        
+        if (overlap.length >= 2) {
+          connections.push({
+            user_id: user.id,
+            source_type: "learning_path",
+            source_id: newPath.id,
+            target_type: "insight",
+            target_id: insight.id
+          });
+          console.log(`Matched insight: ${insight.title} (${overlap.length} keywords)`);
+        }
+      }
+    }
+
+    // Match documents to path
+    if (userDocuments) {
+      for (const doc of userDocuments) {
+        const docText = `${doc.title} ${doc.summary || ''}`;
+        const docKeywords = extractKeywords(docText);
+        const overlap = pathKeywords.filter(k => docKeywords.includes(k));
+        
+        if (overlap.length >= 2) {
+          connections.push({
+            user_id: user.id,
+            source_type: "learning_path",
+            source_id: newPath.id,
+            target_type: "document",
+            target_id: doc.id
+          });
+          console.log(`Matched document: ${doc.title} (${overlap.length} keywords)`);
+        }
+      }
+    }
+
+    // Match experiments to path
+    if (userExperiments) {
+      for (const exp of userExperiments) {
+        const expText = `${exp.title} ${exp.description || ''} ${exp.hypothesis || ''}`;
+        const expKeywords = extractKeywords(expText);
+        const overlap = pathKeywords.filter(k => expKeywords.includes(k));
+        
+        if (overlap.length >= 2) {
+          connections.push({
+            user_id: user.id,
+            source_type: "learning_path",
+            source_id: newPath.id,
+            target_type: "experiment",
+            target_id: exp.id
+          });
+          console.log(`Matched experiment: ${exp.title} (${overlap.length} keywords)`);
+        }
+      }
+    }
+
+    // Insert all connections
+    if (connections.length > 0) {
+      const { error: connectError } = await supabase
+        .from("connections")
+        .insert(connections);
+      
+      if (connectError) {
+        console.error("Failed to create connections:", connectError);
+      } else {
+        console.log(`Created ${connections.length} connections`);
+      }
+    }
 
     return new Response(JSON.stringify({ 
       success: true,
       path: newPath,
-      steps_created: pathItems.length
+      steps_created: pathItems.length,
+      connections_created: connections.length
     }), { 
       headers: { ...corsHeaders, "Content-Type": "application/json" } 
     });

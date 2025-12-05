@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, Circle, Lightbulb, FileText, BookOpen, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle2, Circle, Lightbulb, FileText, FlaskConical, Link as LinkIcon, ChevronDown, Layers } from "lucide-react";
 
 const LearningPathDetail = () => {
   const { id } = useParams();
@@ -31,6 +32,7 @@ const LearningPathDetail = () => {
   const [itemTitle, setItemTitle] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user || !id) return;
@@ -76,14 +78,20 @@ const LearningPathDetail = () => {
       if (insightIds.length > 0) {
         const { data } = await supabase.from("insights").select("*").in("id", insightIds);
         setInsights(data || []);
+      } else {
+        setInsights([]);
       }
       if (documentIds.length > 0) {
         const { data } = await supabase.from("documents").select("*").in("id", documentIds);
         setDocuments(data || []);
+      } else {
+        setDocuments([]);
       }
       if (experimentIds.length > 0) {
         const { data } = await (supabase as any).from("experiments").select("*").in("id", experimentIds);
         setExperiments(data || []);
+      } else {
+        setExperiments([]);
       }
     }
   };
@@ -188,11 +196,49 @@ const LearningPathDetail = () => {
     }
   };
 
+  const toggleItemExpanded = (itemId: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  // Get sources that might relate to a step (simple keyword matching)
+  const getRelatedSources = (stepTitle: string, stepDescription: string) => {
+    const stepText = `${stepTitle} ${stepDescription}`.toLowerCase();
+    const words = stepText.split(/\s+/).filter(w => w.length > 4);
+    
+    const relatedInsights = insights.filter(i => {
+      const insightText = `${i.title} ${i.content}`.toLowerCase();
+      return words.some(w => insightText.includes(w));
+    });
+
+    const relatedDocs = documents.filter(d => {
+      const docText = `${d.title} ${d.summary || ''}`.toLowerCase();
+      return words.some(w => docText.includes(w));
+    });
+
+    const relatedExps = experiments.filter(e => {
+      const expText = `${e.title} ${e.description || ''}`.toLowerCase();
+      return words.some(w => expText.includes(w));
+    });
+
+    return { relatedInsights, relatedDocs, relatedExps };
+  };
+
   if (!path) return null;
 
   const connectedInsightIds = insights.map(i => i.id);
   const connectedDocumentIds = documents.map(d => d.id);
   const connectedExperimentIds = experiments.map(e => e.id);
+  
+  const totalSources = insights.length + documents.length + experiments.length;
+  const completedSteps = items.filter(i => i.completed).length;
 
   return (
     <div className="space-y-6">
@@ -205,7 +251,7 @@ const LearningPathDetail = () => {
           {path.description && (
             <p className="mt-1 text-muted-foreground">{path.description}</p>
           )}
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
             <Badge variant={path.status === "active" ? "default" : "secondary"}>
               {path.status}
             </Badge>
@@ -217,6 +263,15 @@ const LearningPathDetail = () => {
                 {path.topics.name}
               </Badge>
             )}
+            {totalSources > 0 && (
+              <Badge variant="outline" className="gap-1">
+                <Layers className="h-3 w-3" />
+                Built from {totalSources} source{totalSources !== 1 ? 's' : ''}
+              </Badge>
+            )}
+            <Badge variant="outline">
+              {completedSteps}/{items.length} steps complete
+            </Badge>
           </div>
         </div>
       </div>
@@ -283,34 +338,76 @@ const LearningPathDetail = () => {
             </Card>
           ) : (
             <div className="space-y-2">
-              {items.map((item) => (
-                <Card key={item.id} className={item.completed ? "opacity-60" : ""}>
-                  <CardContent className="flex items-start gap-3 p-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleItemComplete(item.id, item.completed)}
-                      className="mt-0.5 shrink-0"
-                    >
-                      {item.completed ? (
-                        <CheckCircle2 className="h-5 w-5 text-success" />
-                      ) : (
-                        <Circle className="h-5 w-5" />
-                      )}
-                    </Button>
-                    <div className="flex-1">
-                      <h3 className={`font-medium ${item.completed ? "line-through" : ""}`}>
-                        {item.title}
-                      </h3>
-                      {item.description && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {item.description}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {items.map((item) => {
+                const { relatedInsights, relatedDocs, relatedExps } = getRelatedSources(item.title, item.description || '');
+                const hasSources = relatedInsights.length > 0 || relatedDocs.length > 0 || relatedExps.length > 0;
+                const isExpanded = expandedItems.has(item.id);
+
+                return (
+                  <Card key={item.id} className={item.completed ? "opacity-60" : ""}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleItemComplete(item.id, item.completed)}
+                          className="mt-0.5 shrink-0"
+                        >
+                          {item.completed ? (
+                            <CheckCircle2 className="h-5 w-5 text-primary" />
+                          ) : (
+                            <Circle className="h-5 w-5" />
+                          )}
+                        </Button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-medium ${item.completed ? "line-through" : ""}`}>
+                            {item.title}
+                          </h3>
+                          {item.description && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {item.description}
+                            </p>
+                          )}
+                          
+                          {hasSources && (
+                            <Collapsible open={isExpanded} onOpenChange={() => toggleItemExpanded(item.id)}>
+                              <CollapsibleTrigger asChild>
+                                <button className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                  <LinkIcon className="h-3 w-3" />
+                                  <span>
+                                    {relatedInsights.length + relatedDocs.length + relatedExps.length} related source{relatedInsights.length + relatedDocs.length + relatedExps.length !== 1 ? 's' : ''}
+                                  </span>
+                                  <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                </button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="mt-2 space-y-1">
+                                {relatedInsights.map(insight => (
+                                  <div key={insight.id} className="flex items-center gap-2 text-xs text-muted-foreground pl-1">
+                                    <Lightbulb className="h-3 w-3 text-yellow-500" />
+                                    <span className="truncate">{insight.title}</span>
+                                  </div>
+                                ))}
+                                {relatedDocs.map(doc => (
+                                  <div key={doc.id} className="flex items-center gap-2 text-xs text-muted-foreground pl-1">
+                                    <FileText className="h-3 w-3 text-blue-500" />
+                                    <span className="truncate">{doc.title}</span>
+                                  </div>
+                                ))}
+                                {relatedExps.map(exp => (
+                                  <div key={exp.id} className="flex items-center gap-2 text-xs text-muted-foreground pl-1">
+                                    <FlaskConical className="h-3 w-3 text-purple-500" />
+                                    <span className="truncate">{exp.title}</span>
+                                  </div>
+                                ))}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -474,11 +571,8 @@ const LearningPathDetail = () => {
                   {availableExperiments.filter(e => !connectedExperimentIds.includes(e.id)).map((exp) => (
                     <Card key={exp.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleConnect(exp.id, "experiment")}>
                       <CardHeader className="p-4">
-                        <div className="flex items-start justify-between">
-                          <CardTitle className="text-sm">{exp.title}</CardTitle>
-                          <Badge>{exp.status}</Badge>
-                        </div>
-                        <CardDescription className="text-xs line-clamp-2">{exp.description}</CardDescription>
+                        <CardTitle className="text-sm">{exp.title}</CardTitle>
+                        <CardDescription className="text-xs line-clamp-2">{exp.description || "No description"}</CardDescription>
                       </CardHeader>
                     </Card>
                   ))}
@@ -490,7 +584,7 @@ const LearningPathDetail = () => {
           {experiments.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <BookOpen className="mb-4 h-12 w-12 text-muted-foreground opacity-20" />
+                <FlaskConical className="mb-4 h-12 w-12 text-muted-foreground opacity-20" />
                 <p className="text-sm text-muted-foreground">No connected experiments</p>
               </CardContent>
             </Card>
@@ -501,29 +595,26 @@ const LearningPathDetail = () => {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{exp.title}</CardTitle>
-                      <div className="flex gap-2">
-                        <Badge>{exp.status}</Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDisconnect(exp.id, "experiment")}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDisconnect(exp.id, "experiment")}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    {exp.description && (
-                      <CardDescription>{exp.description}</CardDescription>
-                    )}
                   </CardHeader>
-                  {exp.results && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium">Results:</span> {exp.results}
-                      </p>
-                    </CardContent>
-                  )}
+                  <CardContent>
+                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                      {exp.description || "No description"}
+                    </p>
+                    {exp.status && (
+                      <Badge variant="outline" className="mt-2">
+                        {exp.status}
+                      </Badge>
+                    )}
+                  </CardContent>
                 </Card>
               ))}
             </div>
