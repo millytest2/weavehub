@@ -18,6 +18,10 @@ interface ExperimentOutput {
   pillar: string;
 }
 
+function stripEmojis(text: string): string {
+  return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25AA}-\u{25AB}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{2614}-\u{2615}]|[\u{2648}-\u{2653}]|[\u{267F}]|[\u{2693}]|[\u{26A1}]|[\u{26AA}-\u{26AB}]|[\u{26BD}-\u{26BE}]|[\u{26C4}-\u{26C5}]|[\u{26CE}]|[\u{26D4}]|[\u{26EA}]|[\u{26F2}-\u{26F3}]|[\u{26F5}]|[\u{26FA}]|[\u{26FD}]|[\u{2702}]|[\u{2705}]|[\u{2708}-\u{270D}]|[\u{270F}]|[\u{2712}]|[\u{2714}]|[\u{2716}]|[\u{271D}]|[\u{2721}]|[\u{2728}]|[\u{2733}-\u{2734}]|[\u{2744}]|[\u{2747}]|[\u{274C}]|[\u{274E}]|[\u{2753}-\u{2755}]|[\u{2757}]|[\u{2763}-\u{2764}]|[\u{2795}-\u{2797}]|[\u{27A1}]|[\u{27B0}]|[\u{27BF}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{2B50}]|[\u{2B55}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{1F191}-\u{1F19A}]|[\u{1F201}-\u{1F202}]|[\u{1F21A}]|[\u{1F22F}]|[\u{1F232}-\u{1F23A}]|[\u{1F250}-\u{1F251}]/gu, '').trim();
+}
+
 function validateExperiments(data: any): ExperimentOutput[] {
   if (!data.experiments || !Array.isArray(data.experiments)) {
     throw new Error('Invalid experiments array');
@@ -31,7 +35,15 @@ function validateExperiments(data: any): ExperimentOutput[] {
     if (!exp.identity_shift_target || typeof exp.identity_shift_target !== 'string') throw new Error('Invalid identity_shift_target');
   });
   
-  return data.experiments as ExperimentOutput[];
+  // Strip emojis from all text fields
+  return data.experiments.map((exp: any) => ({
+    title: stripEmojis(exp.title),
+    description: stripEmojis(exp.description),
+    steps: exp.steps.map((s: string) => stripEmojis(s)),
+    duration: stripEmojis(exp.duration),
+    identity_shift_target: stripEmojis(exp.identity_shift_target),
+    pillar: exp.pillar
+  })) as ExperimentOutput[];
 }
 
 function getFallbackExperiment(pillar: string): ExperimentOutput[] {
@@ -152,6 +164,17 @@ serve(async (req) => {
       );
     }
 
+    // Fetch past experiment titles to avoid duplicates
+    const { data: pastExperiments } = await supabase
+      .from("experiments")
+      .select("title")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    const pastTitles = pastExperiments?.map(e => e.title.toLowerCase()) || [];
+    console.log(`Past experiments to avoid: ${pastTitles.length}`);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     const userContext = await fetchUserContext(supabase, user.id);
@@ -161,11 +184,16 @@ serve(async (req) => {
     const forcedPillar = choosePillar(recentPillars);
     console.log(`Experiment pillar: ${forcedPillar}`);
 
-    const systemPrompt = `You are an experiment designer. Create ONE identity-driven experiment.
+    const avoidList = pastTitles.length > 0 
+      ? `\n\nAVOID THESE PAST EXPERIMENTS (do not repeat similar titles or concepts):\n${pastTitles.slice(0, 10).map(t => `- ${t}`).join('\n')}`
+      : '';
+
+    const systemPrompt = `You are an experiment designer. Create ONE unique identity-driven experiment.
 
 ${context}
 
 PILLAR: ${forcedPillar}
+${avoidList}
 
 CORE QUESTION: What experiment proves the user's identity shift?
 
@@ -185,7 +213,8 @@ RULES:
 - Creates visible proof
 - Identity-shifting ("I am someone who...")
 - Fun, not homework
-- No emojis`;
+- ABSOLUTELY NO EMOJIS anywhere in the output
+- Must be UNIQUE - different from past experiments listed above`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -197,14 +226,14 @@ RULES:
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Design ONE "${forcedPillar}" experiment. Make it identity-shifting.` }
+          { role: "user", content: `Design ONE unique "${forcedPillar}" experiment. Make it identity-shifting. No emojis. Must be different from any past experiments.` }
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "generate_experiments",
-              description: "Generate ONE experiment",
+              description: "Generate ONE unique experiment with NO emojis",
               parameters: {
                 type: "object",
                 properties: {
@@ -213,8 +242,8 @@ RULES:
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string", description: "Short title, no emojis" },
-                        description: { type: "string", description: "2-3 sentences, no emojis" },
+                        title: { type: "string", description: "Short title, NO emojis, must be unique" },
+                        description: { type: "string", description: "2-3 sentences, NO emojis" },
                         steps: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 },
                         duration: { type: "string" },
                         identity_shift_target: { type: "string", description: "I am someone who..." },
@@ -254,6 +283,18 @@ RULES:
       const parsed = JSON.parse(toolCall.function.arguments);
       experiments = validateExperiments(parsed);
       experiments = experiments.map(exp => ({ ...exp, pillar: exp.pillar || forcedPillar }));
+      
+      // Check if generated experiment is too similar to past ones
+      const newTitle = experiments[0].title.toLowerCase();
+      const isDuplicate = pastTitles.some((past: string) => {
+        const similarity = past.split(' ').filter((word: string) => newTitle.includes(word)).length;
+        return similarity >= 3 || past === newTitle;
+      });
+      
+      if (isDuplicate) {
+        console.log("Generated experiment too similar to past, using fallback");
+        return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     } catch (parseError) {
       console.error("Parse error:", parseError);
       return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
