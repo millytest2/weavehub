@@ -10,7 +10,6 @@ const corsHeaders = {
 function extractVideoId(url: string): string | null {
   if (!url) return null;
   
-  // Clean up the URL
   const cleanUrl = url.trim();
   
   // If it's already just a video ID (11 characters, alphanumeric + _ and -)
@@ -20,17 +19,11 @@ function extractVideoId(url: string): string | null {
   
   // Comprehensive patterns for all YouTube URL formats
   const patterns = [
-    // Standard watch URL: youtube.com/watch?v=VIDEO_ID
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-    // Mobile URL: m.youtube.com/watch?v=VIDEO_ID
     /(?:https?:\/\/)?(?:m\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-    // Short URL: youtu.be/VIDEO_ID
     /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/,
-    // Embed URL: youtube.com/embed/VIDEO_ID
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-    // Shorts URL: youtube.com/shorts/VIDEO_ID
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-    // V parameter anywhere in URL
     /[?&]v=([a-zA-Z0-9_-]{11})/
   ];
   
@@ -42,6 +35,116 @@ function extractVideoId(url: string): string | null {
   }
   
   return null;
+}
+
+// Fetch transcript using YouTube's internal API (no key required)
+async function fetchTranscript(videoId: string): Promise<{ transcript: string; title: string }> {
+  console.log("Fetching transcript for video:", videoId);
+  
+  // Method 1: Try youtubetranscript.com (free, no API key)
+  try {
+    const response = await fetch(`https://www.youtubetranscript.com/?server_vid2=${videoId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    if (response.ok) {
+      const html = await response.text();
+      // Parse the transcript text from the response
+      const textMatch = html.match(/<text[^>]*>([^<]+)<\/text>/g);
+      if (textMatch && textMatch.length > 0) {
+        const transcript = textMatch
+          .map(t => t.replace(/<\/?text[^>]*>/g, ''))
+          .join(' ')
+          .replace(/&#39;/g, "'")
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .trim();
+        
+        if (transcript.length > 50) {
+          console.log("Transcript fetched via youtubetranscript.com, length:", transcript.length);
+          return { transcript, title: "" };
+        }
+      }
+    }
+  } catch (e) {
+    console.log("youtubetranscript.com failed:", e);
+  }
+
+  // Method 2: Try to extract from YouTube page directly using timedtext API
+  try {
+    const watchResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+    
+    if (watchResponse.ok) {
+      const html = await watchResponse.text();
+      
+      // Extract title
+      let title = "";
+      const titleMatch = html.match(/"title":"([^"]+)"/);
+      if (titleMatch) {
+        title = titleMatch[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"');
+      }
+      
+      // Extract caption track URL
+      const captionMatch = html.match(/"captionTracks":\[(.*?)\]/);
+      if (captionMatch) {
+        const trackData = captionMatch[1];
+        const urlMatch = trackData.match(/"baseUrl":"([^"]+)"/);
+        
+        if (urlMatch) {
+          const captionUrl = urlMatch[1].replace(/\\u0026/g, '&');
+          console.log("Found caption URL, fetching...");
+          
+          const captionResponse = await fetch(captionUrl);
+          if (captionResponse.ok) {
+            const captionXml = await captionResponse.text();
+            
+            // Parse XML to extract text
+            const textMatches = captionXml.match(/<text[^>]*>([^<]*)<\/text>/g);
+            if (textMatches) {
+              const transcript = textMatches
+                .map(t => {
+                  const content = t.replace(/<\/?text[^>]*>/g, '');
+                  return content
+                    .replace(/&#39;/g, "'")
+                    .replace(/&quot;/g, '"')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/\n/g, ' ');
+                })
+                .join(' ')
+                .trim();
+              
+              if (transcript.length > 50) {
+                console.log("Transcript extracted from YouTube captions, length:", transcript.length);
+                return { transcript, title };
+              }
+            }
+          }
+        }
+      }
+      
+      // Fallback: Extract description
+      const descMatch = html.match(/"description":{"simpleText":"([^"]+)"}/);
+      if (descMatch) {
+        const description = descMatch[1].substring(0, 3000);
+        console.log("Using video description as fallback, length:", description.length);
+        return { transcript: description, title };
+      }
+      
+      return { transcript: "", title };
+    }
+  } catch (e) {
+    console.error("YouTube page fetch failed:", e);
+  }
+
+  return { transcript: "", title: "" };
 }
 
 serve(async (req) => {
@@ -70,99 +173,50 @@ serve(async (req) => {
       throw new Error("YouTube URL is required");
     }
     
-    // Validate URL length and format (prevent excessive input)
     const youtubeUrl = rawUrl.trim().slice(0, 500);
-    const title = (typeof rawTitle === 'string') ? rawTitle.trim().slice(0, 200) : undefined;
+    const providedTitle = (typeof rawTitle === 'string') ? rawTitle.trim().slice(0, 200) : undefined;
     
-    // Validate it looks like a YouTube URL
     if (!youtubeUrl.includes('youtube.com') && !youtubeUrl.includes('youtu.be') && !/^[a-zA-Z0-9_-]{11}$/.test(youtubeUrl)) {
       throw new Error("Invalid YouTube URL format. Please provide a valid YouTube link.");
     }
 
-    console.log("Received YouTube URL:", youtubeUrl);
+    console.log("Processing YouTube URL:", youtubeUrl);
     
     const videoId = extractVideoId(youtubeUrl);
     if (!videoId) {
-      console.error("Failed to extract video ID from URL:", youtubeUrl);
-      throw new Error(`Invalid YouTube URL format. Please provide a valid YouTube link (e.g., https://youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID)`);
+      throw new Error(`Invalid YouTube URL format. Please provide a valid YouTube link.`);
     }
 
-    console.log("Processing YouTube video ID:", videoId);
+    console.log("Video ID:", videoId);
 
-    // Use YouTube Transcript API endpoint
-    let transcript = "";
-    let videoTitle = title || "YouTube Video";
+    // Fetch transcript
+    const { transcript, title: fetchedTitle } = await fetchTranscript(videoId);
+    const videoTitle = providedTitle || fetchedTitle || "YouTube Video";
     
-    try {
-      // Try to fetch transcript from a public API
-      const transcriptApiResponse = await fetch(
-        `https://youtube-transcript3.p.rapidapi.com/api/transcript?videoId=${videoId}`,
-        {
-          headers: {
-            'X-RapidAPI-Key': Deno.env.get('RAPIDAPI_KEY') || '',
-            'X-RapidAPI-Host': 'youtube-transcript3.p.rapidapi.com'
-          }
-        }
-      );
+    console.log("Transcript length:", transcript.length, "Title:", videoTitle);
 
-      if (transcriptApiResponse.ok) {
-        const transcriptData = await transcriptApiResponse.json();
-        if (transcriptData.transcript && Array.isArray(transcriptData.transcript)) {
-          transcript = transcriptData.transcript.map((item: any) => item.text).join(' ');
-          console.log("Transcript extracted successfully, length:", transcript.length);
-        }
-      }
-    } catch (e) {
-      console.log("RapidAPI transcript fetch failed, trying alternative method:", e);
-    }
+    // Store the full transcript in extracted_content
+    const extractedContent = transcript.length > 50 
+      ? transcript.substring(0, 100000)  // Store up to 100KB
+      : `Video: ${videoTitle}. Transcript not available - captions may be disabled.`;
 
-    // Fallback: Fetch video page for basic metadata
-    if (!transcript) {
-      try {
-        const pageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-        });
-        
-        if (pageResponse.ok) {
-          const html = await pageResponse.text();
-          
-          // Extract title
-          const titleMatch = html.match(/"title":"([^"]+)"/);
-          if (titleMatch) {
-            videoTitle = titleMatch[1].replace(/\\u0026/g, '&');
-          }
-          
-          // Extract description as fallback content
-          const descMatch = html.match(/"description":{"simpleText":"([^"]+)"}/);
-          if (descMatch) {
-            transcript = descMatch[1].substring(0, 2000);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch video page:", e);
-      }
-    }
-
-    if (!transcript || transcript.length < 50) {
-      transcript = `YouTube video: ${videoTitle}. Full transcript not available. Please watch the video directly to extract insights.`;
-    }
-
-    // Create document entry
+    // Create document entry with transcript stored
     const { data: docData, error: docError } = await supabase
       .from("documents")
       .insert({
         user_id: user.id,
         title: videoTitle,
-        summary: `YouTube video: ${youtubeUrl}\n\n${transcript.substring(0, 500)}`,
+        summary: `YouTube video: ${youtubeUrl}`,
         file_type: "youtube_video",
         file_path: youtubeUrl,
+        extracted_content: extractedContent,
       })
       .select()
       .single();
 
     if (docError) throw docError;
 
-    // Process with AI if we have transcript
+    // Process with AI if we have substantial transcript
     if (transcript && transcript.length > 100) {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       
@@ -173,7 +227,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [
             {
               role: "system",
@@ -195,7 +249,7 @@ Return as JSON array: [{"title": "short catchy title", "content": "detailed insi
             },
             {
               role: "user",
-              content: `Video: ${videoTitle}\n\nTranscript: ${transcript.substring(0, 10000)}`
+              content: `Video: ${videoTitle}\n\nTranscript: ${transcript.substring(0, 15000)}`
             }
           ],
         }),
@@ -222,18 +276,23 @@ Return as JSON array: [{"title": "short catchy title", "content": "detailed insi
             insightsCreated++;
           }
           
+          console.log("Created", insightsCreated, "insights from video");
+          
           return new Response(
             JSON.stringify({ 
               success: true, 
               documentId: docData.id,
               insightsCreated,
-              videoId 
+              videoId,
+              transcriptLength: transcript.length
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } catch (e) {
           console.error("Failed to parse AI insights:", e);
         }
+      } else {
+        console.error("AI request failed:", response.status, await response.text());
       }
     }
 
@@ -242,7 +301,10 @@ Return as JSON array: [{"title": "short catchy title", "content": "detailed insi
         success: true, 
         documentId: docData.id,
         videoId,
-        message: "Video saved. Transcript processing limited."
+        transcriptLength: transcript.length,
+        message: transcript.length > 100 
+          ? "Video processed successfully."
+          : "Video saved. Transcript not available (captions may be disabled)."
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
