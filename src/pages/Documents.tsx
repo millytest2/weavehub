@@ -472,7 +472,8 @@ const Documents = () => {
       toast.success("Content extracted successfully!");
     } catch (error: any) {
       console.error('Re-extract error:', error);
-      toast.error("Failed to extract: " + (error.message || 'Unknown error'));
+      const errorMsg = error?.message || error?.name || (typeof error === 'string' ? error : 'PDF extraction failed - try re-uploading');
+      toast.error("Failed to extract: " + errorMsg);
     } finally {
       setIsReExtracting(false);
     }
@@ -713,14 +714,26 @@ const Documents = () => {
         <DialogContent className="w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="truncate pr-8">{viewingDoc?.title || "View Document"}</DialogTitle>
-            <DialogDescription>Full document content and AI analysis</DialogDescription>
+            <DialogDescription>AI analysis and full document content</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-4">
+            {/* AI Summary Section - First */}
+            {viewingDoc?.summary && (
+              <div>
+                <Label className="text-sm font-medium">AI Summary</Label>
+                <div className="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-md">
+                  <p className="text-sm text-foreground/90 leading-relaxed">
+                    {viewingDoc.summary}
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Full Content Section */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-sm font-medium">Full Content</Label>
-                {viewingDoc?.file_path && !viewingDoc?.extracted_content && (
+                {viewingDoc?.file_path && !viewingDoc?.extracted_content && viewingDoc?.file_type !== 'youtube_video' && (
                   <Button 
                     size="sm" 
                     variant="outline" 
@@ -736,19 +749,17 @@ const Documents = () => {
                   {docContent || "Loading..."}
                 </pre>
               </div>
+              {viewingDoc?.file_type === 'youtube_video' && viewingDoc?.file_path && (
+                <a 
+                  href={viewingDoc.file_path} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-sm text-primary hover:underline"
+                >
+                  Watch on YouTube
+                </a>
+              )}
             </div>
-            
-            {/* AI Summary Section */}
-            {viewingDoc?.summary && (
-              <div>
-                <Label className="text-sm font-medium">AI Summary</Label>
-                <div className="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-md">
-                  <p className="text-sm text-foreground/90 leading-relaxed">
-                    {viewingDoc.summary}
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
