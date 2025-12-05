@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, X, Lightbulb, Link, FileText, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,7 +120,7 @@ export const QuickCapture = () => {
       {/* Floating Action Button */}
       <button
         onClick={handleOpen}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center"
+        className="fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center"
         aria-label="Quick capture"
       >
         <Plus className="h-6 w-6" />
@@ -142,6 +142,7 @@ export const QuickCapture = () => {
                 <X className="h-4 w-4" />
               </button>
             </DialogTitle>
+            <DialogDescription>Capture insights, links, or notes</DialogDescription>
           </DialogHeader>
 
           {!captureType ? (
