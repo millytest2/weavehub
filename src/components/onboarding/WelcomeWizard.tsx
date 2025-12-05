@@ -76,15 +76,24 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    checkIfFirstTime();
+    if (userId) {
+      checkIfFirstTime();
+    }
   }, [userId]);
 
   const checkIfFirstTime = async () => {
+    // Verify auth state matches before checking - prevents stale session issues
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) {
+      console.warn("Auth mismatch - skipping wizard check");
+      return;
+    }
+
     const [identityRes, tasksRes, topicsRes, experimentsRes] = await Promise.all([
-      supabase.from("identity_seeds").select("id").eq("user_id", userId).maybeSingle(),
-      supabase.from("daily_tasks").select("id").eq("user_id", userId).limit(1).maybeSingle(),
-      supabase.from("topics").select("id").eq("user_id", userId).limit(1).maybeSingle(),
-      supabase.from("experiments").select("id").eq("user_id", userId).limit(1).maybeSingle(),
+      supabase.from("identity_seeds").select("id").maybeSingle(),
+      supabase.from("daily_tasks").select("id").limit(1).maybeSingle(),
+      supabase.from("topics").select("id").limit(1).maybeSingle(),
+      supabase.from("experiments").select("id").limit(1).maybeSingle(),
     ]);
 
     const hasAnyData = identityRes.data || tasksRes.data || topicsRes.data || experimentsRes.data;
