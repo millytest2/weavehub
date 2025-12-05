@@ -196,10 +196,10 @@ const Experiments = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-6xl mx-auto px-4 sm:px-0">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Experiments</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Experiments</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Small tests to shift identity and build proof
           </p>
@@ -212,11 +212,13 @@ const Experiments = () => {
             size="sm"
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            {generating ? "Generating..." : "Generate"}
+            <span className="hidden sm:inline">{generating ? "Generating..." : "Generate"}</span>
+            <span className="sm:hidden">{generating ? "..." : ""}</span>
           </Button>
           <Button onClick={() => setIsDialogOpen(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
-            Add Experiment
+            <span className="hidden sm:inline">Add Experiment</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         </div>
       </div>
@@ -238,34 +240,36 @@ const Experiments = () => {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
         {experiments.map((exp) => (
           <Card 
             key={exp.id} 
             className="rounded-[10px] border-border/30 cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
             onClick={() => handleViewDetails(exp)}
           >
-            <CardContent className="pt-5">
+            <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                   <FlaskConical className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium text-base">{exp.title}</h3>
-                    <Badge variant="outline" className={getStatusColor(exp.status)}>
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <h3 className="font-medium text-sm sm:text-base leading-tight">{exp.title}</h3>
+                    <Badge variant="outline" className={`${getStatusColor(exp.status)} text-xs shrink-0`}>
                       {exp.status}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-1.5">
                     {exp.description}
                   </p>
                   {exp.duration && (
-                    <p className="text-xs text-muted-foreground mb-2">{exp.duration}</p>
+                    <p className="text-xs text-muted-foreground mb-1">{exp.duration}</p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    Identity shift: {exp.identity_shift_target}
-                  </p>
+                  {exp.identity_shift_target && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      Identity: {exp.identity_shift_target}
+                    </p>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
