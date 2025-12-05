@@ -130,11 +130,54 @@ serve(async (req) => {
 
     const userContext = await fetchUserContext(supabase, user.id);
     
+    // Fetch identity seed with content for semantic search
     const { data: identityData } = await supabase
       .from("identity_seeds")
-      .select("last_pillar_used")
+      .select("last_pillar_used, content")
       .eq("user_id", user.id)
       .maybeSingle();
+    
+    // Perform semantic search on insights using identity content
+    let semanticInsights: string[] = [];
+    if (identityData?.content) {
+      try {
+        // Get embedding for identity seed
+        const embedResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'text-embedding-3-small',
+            input: identityData.content.substring(0, 2000)
+          }),
+        });
+        
+        if (embedResponse.ok) {
+          const embedData = await embedResponse.json();
+          const embedding = embedData.data?.[0]?.embedding;
+          
+          if (embedding) {
+            // Search semantically relevant insights
+            const { data: relevantInsights } = await supabase.rpc('search_insights_semantic', {
+              user_uuid: user.id,
+              query_embedding: `[${embedding.join(',')}]`,
+              match_count: 5,
+              similarity_threshold: 0.4
+            });
+            
+            if (relevantInsights && relevantInsights.length > 0) {
+              semanticInsights = relevantInsights.map((i: any) => `[${i.source || 'insight'}] ${i.title}: ${i.content.substring(0, 150)}`);
+              console.log(`Found ${semanticInsights.length} semantically relevant insights`);
+            }
+          }
+        }
+      } catch (embedError) {
+        console.error('Semantic search error (non-fatal):', embedError);
+        // Continue without semantic insights
+      }
+    }
 
     const lastPillar = identityData?.last_pillar_used || null;
     const recentPillars = [
@@ -146,10 +189,15 @@ serve(async (req) => {
     console.log(`Navigator: ${suggestedPillar}`);
 
     const contextPrompt = formatContextForAI(userContext);
+    
+    // Add semantic insights to context
+    const semanticContext = semanticInsights.length > 0 
+      ? `\n\nSEMANTICALLY RELEVANT INSIGHTS (from across all your knowledge):\n${semanticInsights.join('\n')}`
+      : '';
 
     const systemPrompt = `You are a personal operating system. Return ONE concrete action.
 
-${contextPrompt}
+${contextPrompt}${semanticContext}
 
 CORE QUESTION: What action today reinforces the user's identity shift?
 

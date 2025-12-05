@@ -81,6 +81,16 @@ serve(async (req) => {
     // Fetch rich user context for intelligent processing
     const userContext = await fetchDocumentContext(supabase, user.id);
     const contextPrompt = formatDocumentContext(userContext);
+    
+    // Fetch ALL user topics for semantic matching
+    const { data: allTopics } = await supabase
+      .from('topics')
+      .select('name, description')
+      .eq('user_id', user.id);
+    
+    const topicList = allTopics && allTopics.length > 0
+      ? allTopics.map(t => `- ${t.name}${t.description ? `: ${t.description}` : ''}`).join('\n')
+      : 'No topics defined yet';
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -104,12 +114,15 @@ serve(async (req) => {
 
 ${contextPrompt}
 
+USER'S EXISTING TOPICS (use these for semantic matching - pick the MOST relevant one or 'none'):
+${topicList}
+
 EXTRACTION RULES:
 1. Connect document content to user's identity, experiments, or weekly focus
 2. Extract 1-3 insights that are ACTIONABLE within the next 7 days
 3. Each insight should answer: "What can I DO with this information?"
 4. Prefer insights that compound with user's existing knowledge
-5. Flag if document relates to any existing topic/experiment
+5. For related_topic: Match semantically to user's topics above. A document about "masculinity" might relate to a "Confidence" topic. Return the EXACT topic name from the list, or 'none' if no match.
 6. If document has no strategic value for THIS user, return minimal/empty insights
 7. Timeframes: daily (can apply today), weekly (this week), monthly (long-term value)
 
@@ -233,13 +246,13 @@ INSIGHT QUALITY:
       console.error('Error updating document:', updateError);
     }
 
-    // Link document to topic if relevant
-    if (intelligence.related_topic && intelligence.related_topic !== 'none' && intelligence.relevance_score >= 6) {
+    // Link document to topic if relevant - use exact match since AI returns exact name
+    if (intelligence.related_topic && intelligence.related_topic !== 'none' && intelligence.relevance_score >= 5) {
       const { data: matchingTopic } = await supabase
         .from('topics')
         .select('id')
         .eq('user_id', user.id)
-        .ilike('name', `%${intelligence.related_topic}%`)
+        .eq('name', intelligence.related_topic)
         .maybeSingle();
       
       if (matchingTopic) {
@@ -249,6 +262,23 @@ INSIGHT QUALITY:
           .eq('id', documentId)
           .eq('user_id', user.id);
         console.log(`Linked document to topic: ${matchingTopic.id}`);
+      } else {
+        // Fallback to ilike if exact match fails
+        const { data: fuzzyTopic } = await supabase
+          .from('topics')
+          .select('id')
+          .eq('user_id', user.id)
+          .ilike('name', `%${intelligence.related_topic}%`)
+          .maybeSingle();
+        
+        if (fuzzyTopic) {
+          await supabase
+            .from('documents')
+            .update({ topic_id: fuzzyTopic.id })
+            .eq('id', documentId)
+            .eq('user_id', user.id);
+          console.log(`Linked document to topic (fuzzy): ${fuzzyTopic.id}`);
+        }
       }
     }
 
