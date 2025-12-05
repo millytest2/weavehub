@@ -116,24 +116,33 @@ const Experiments = () => {
 
       if (error) throw error;
 
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
       const generatedExperiments = data.experiments;
       if (generatedExperiments && generatedExperiments.length > 0) {
-        const exp = generatedExperiments[0];
-        
-        // Directly insert the generated experiment with status 'in_progress'
-        const { error: insertError } = await supabase.from("experiments").insert({
-          user_id: user!.id,
-          title: exp.title,
-          description: exp.description,
-          steps: exp.steps.join("\n"),
-          duration: exp.duration,
-          identity_shift_target: exp.identity_shift_target,
-          status: "in_progress",
-        });
+        // Edge function already inserted - just update status to in_progress
+        // Find the newly created experiment (it was inserted with 'planning' status)
+        const { data: newExp } = await supabase
+          .from("experiments")
+          .select("id")
+          .eq("user_id", user!.id)
+          .eq("title", generatedExperiments[0].title)
+          .eq("status", "planning")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        if (insertError) throw insertError;
+        if (newExp) {
+          await supabase
+            .from("experiments")
+            .update({ status: "in_progress" })
+            .eq("id", newExp.id);
+        }
 
-        toast.success("Experiment generated and set as active");
+        toast.success("Experiment generated and activated");
         fetchExperiments();
       }
     } catch (error: any) {
@@ -217,12 +226,11 @@ const Experiments = () => {
         <Card className="rounded-[10px] border-orange-500/50 bg-orange-500/10">
           <CardContent className="pt-5">
             <div className="flex items-start gap-3">
-              <div className="text-2xl">⚠️</div>
+              <FlaskConical className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-medium text-base mb-1">Multiple Active Experiments Detected</h3>
+                <h3 className="font-medium text-base mb-1">Multiple Active Experiments</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  You have multiple active experiments. For best results, focus on ONE experiment at a time. 
-                  Consider pausing or completing other experiments to maintain focus and build completion momentum.
+                  Focus on ONE experiment at a time. Pause or complete others to build completion momentum.
                 </p>
               </div>
             </div>
@@ -252,11 +260,9 @@ const Experiments = () => {
                   <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-2">
                     {exp.description}
                   </p>
-                  <div className="flex gap-2 text-xs mb-2">
-                    <span className="px-2 py-1 rounded bg-primary/10 text-primary">💰 {exp.baseline_impact || 0}</span>
-                    <span className="px-2 py-1 rounded bg-secondary/10 text-secondary-foreground">🔥 {exp.content_fuel || 0}</span>
-                    <span className="px-2 py-1 rounded bg-accent/10 text-accent-foreground">✨ {exp.identity_alignment || 0}</span>
-                  </div>
+                  {exp.duration && (
+                    <p className="text-xs text-muted-foreground mb-2">{exp.duration}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Identity shift: {exp.identity_shift_target}
                   </p>
