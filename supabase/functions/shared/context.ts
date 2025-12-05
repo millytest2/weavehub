@@ -26,6 +26,58 @@ export interface DocumentContext {
   active_experiments: any[];
 }
 
+export interface SemanticContext extends CompactContext {
+  semantic_insights: any[];
+  semantic_documents: any[];
+}
+
+// Generate embedding using Lovable AI Gateway
+async function generateEmbedding(text: string): Promise<number[]> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY || !text) {
+    console.log("No API key or text for embedding generation");
+    return [];
+  }
+  
+  try {
+    // Use Gemini to generate a semantic understanding, then use it for search
+    // Since direct embedding API may not be available, we'll use a workaround
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { 
+            role: "system", 
+            content: "Extract 5-10 key semantic concepts from this text. Return only comma-separated keywords/phrases, nothing else." 
+          },
+          { role: "user", content: text.substring(0, 2000) }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to generate semantic keywords:", response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const keywords = data.choices?.[0]?.message?.content || "";
+    console.log("Semantic keywords extracted:", keywords.substring(0, 100));
+    
+    // Return keywords as a searchable string (will be used for text matching)
+    return keywords.split(',').map((k: string) => k.trim().toLowerCase());
+  } catch (error) {
+    console.error("Embedding generation error:", error);
+    return [];
+  }
+}
+
 export async function fetchUserContext(
   supabase: SupabaseClient,
   userId: string
@@ -70,6 +122,78 @@ export async function fetchUserContext(
     topics: topics.data || [],
     connections: connections.data || [],
   };
+}
+
+// Fetch context with semantic relevance (for scale: 100K+ items)
+export async function fetchSemanticContext(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<SemanticContext> {
+  // First get base context
+  const baseContext = await fetchUserContext(supabase, userId);
+  
+  // If no identity seed, fall back to chronological
+  if (!baseContext.identity_seed) {
+    console.log("No identity seed - using chronological context");
+    return { ...baseContext, semantic_insights: [], semantic_documents: [] };
+  }
+
+  // Generate semantic keywords from identity seed
+  const semanticKeywords = await generateEmbedding(baseContext.identity_seed);
+  
+  if (semanticKeywords.length === 0) {
+    console.log("No semantic keywords - using chronological context");
+    return { ...baseContext, semantic_insights: [], semantic_documents: [] };
+  }
+
+  // Try to use vector search if embeddings exist
+  try {
+    // Check if we have any embedded insights
+    const { data: embeddedCheck } = await supabase
+      .from("insights")
+      .select("id")
+      .eq("user_id", userId)
+      .not("embedding", "is", null)
+      .limit(1);
+
+    if (embeddedCheck && embeddedCheck.length > 0) {
+      // We have embeddings - but we can't generate query embedding without proper API
+      // Fall back to keyword-based relevance search
+      console.log("Embeddings exist but using keyword search for now");
+    }
+
+    // Text-based semantic search using keywords
+    const keywordPattern = semanticKeywords.slice(0, 5).join('|');
+    
+    // Search insights by content relevance
+    const { data: semanticInsights } = await supabase
+      .from("insights")
+      .select("id, title, content, source, created_at, relevance_score")
+      .eq("user_id", userId)
+      .or(`title.ilike.%${semanticKeywords[0]}%,content.ilike.%${semanticKeywords[0]}%`)
+      .order("relevance_score", { ascending: false, nullsFirst: false })
+      .limit(10);
+
+    // Search documents by relevance
+    const { data: semanticDocs } = await supabase
+      .from("documents")
+      .select("id, title, summary, created_at, relevance_score")
+      .eq("user_id", userId)
+      .or(`title.ilike.%${semanticKeywords[0]}%,summary.ilike.%${semanticKeywords[0]}%`)
+      .order("relevance_score", { ascending: false, nullsFirst: false })
+      .limit(5);
+
+    console.log(`Semantic search found: ${semanticInsights?.length || 0} insights, ${semanticDocs?.length || 0} documents`);
+
+    return {
+      ...baseContext,
+      semantic_insights: semanticInsights || [],
+      semantic_documents: semanticDocs || [],
+    };
+  } catch (error) {
+    console.error("Semantic search error:", error);
+    return { ...baseContext, semantic_insights: [], semantic_documents: [] };
+  }
 }
 
 // Lighter context fetch for document processing
@@ -158,6 +282,31 @@ export function formatContextForAI(context: CompactContext): string {
   }
 
   return formatted.trim();
+}
+
+// Format context with semantic results included
+export function formatSemanticContextForAI(context: SemanticContext): string {
+  let formatted = formatContextForAI(context);
+  
+  // Add semantically relevant insights (may be older but highly relevant)
+  if (context.semantic_insights && context.semantic_insights.length > 0) {
+    const semanticText = context.semantic_insights
+      .slice(0, 5)
+      .map((i: any) => `- ${i.title}: ${i.content?.substring(0, 120) || ''}`)
+      .join('\n');
+    formatted += `\n\nRELEVANT FROM HISTORY (semantically matched):\n${semanticText}`;
+  }
+  
+  // Add semantically relevant documents
+  if (context.semantic_documents && context.semantic_documents.length > 0) {
+    const docText = context.semantic_documents
+      .slice(0, 3)
+      .map((d: any) => `- ${d.title}: ${d.summary?.substring(0, 80) || ''}`)
+      .join('\n');
+    formatted += `\n\nRELEVANT DOCUMENTS:\n${docText}`;
+  }
+  
+  return formatted;
 }
 
 // Format context specifically for document intelligence
