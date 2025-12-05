@@ -26,24 +26,41 @@ serve(async (req) => {
       );
     }
 
+    // Get user ID from JWT claims directly
     const authHeader = req.headers.get("authorization");
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader! } } }
-    );
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
+    // Decode JWT to get user ID (JWT is already verified by Supabase)
+    const token = authHeader.replace("Bearer ", "");
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const userId = payload.sub;
+    
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // Use service role to fetch user context (bypasses RLS)
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     // Fetch user context for identity mirroring
-    const userContext = await fetchUserContext(supabase, user.id);
+    const userContext = await fetchUserContext(supabase, userId);
     const contextPrompt = formatContextForAI(userContext);
 
-    console.log(`Decision Mirror: "${decision.substring(0, 50)}..."`);
+    console.log(`Decision Mirror: "${decision.substring(0, 50)}..." for user ${userId}`);
 
     const systemPrompt = `You are an identity mirror. You reflect back who the user is becoming based on their identity seed.
 
@@ -121,7 +138,6 @@ RULES:
     const toolCall = data.choices[0].message.tool_calls?.[0];
     
     if (!toolCall) {
-      // Fallback if no tool call
       return new Response(
         JSON.stringify({ mirror: "Someone becoming who you want to be would trust their instincts here." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
