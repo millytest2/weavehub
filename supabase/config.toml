@@ -9,10 +9,16 @@ verify_jwt = true
 [functions.document-intelligence]
 verify_jwt = true
 
+[functions.embed]
+verify_jwt = true
+
 [functions.experiment-generator]
 verify_jwt = true
 
 [functions.navigator]
+verify_jwt = true
+
+[functions.next-rep]
 verify_jwt = true
 
 [functions.synthesizer]
