@@ -288,18 +288,27 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium text-muted-foreground">Active Experiment</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="space-y-2">
-                <h3 className="font-semibold">{activeExperiment.title}</h3>
-                {activeExperiment.identity_shift_target && (
-                  <p className="text-sm text-muted-foreground">{activeExperiment.identity_shift_target}</p>
-                )}
-                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-                  <span>{activeExperiment.duration || "7 days"}</span>
-                  <span className="px-2 py-0.5 rounded bg-primary/10 text-primary">
-                    Day {Math.ceil((Date.now() - new Date(activeExperiment.created_at).getTime()) / (1000 * 60 * 60 * 24))}
-                  </span>
-                </div>
-              </div>
+              {(() => {
+                const dayNumber = Math.ceil((Date.now() - new Date(activeExperiment.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
+                const todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)];
+                const totalDays = steps.length || 7;
+                
+                return (
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">{activeExperiment.title}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {todayStep || activeExperiment.description}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+                      <span>{activeExperiment.duration || `${totalDays} days`}</span>
+                      <span className="px-2 py-0.5 rounded bg-primary/10 text-primary">
+                        Day {dayNumber} of {totalDays}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}

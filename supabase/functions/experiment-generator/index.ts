@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { fetchUserContext, formatContextForAI } from "../shared/context.ts";
+import { fetchUserContext, formatContextForAI, CompactContext } from "../shared/context.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +9,18 @@ const corsHeaders = {
 
 const ALL_PILLARS = ["Stability", "Skill", "Content", "Health", "Presence", "Admin", "Connection", "Learning"];
 
+type SprintType = "standard" | "blitz_48h" | "challenge_24h" | "deep_dive" | "recovery";
+type Intensity = "chill" | "push" | "extreme";
+
+interface SprintConfig {
+  type: SprintType;
+  duration: string;
+  intensity: Intensity;
+  reason: string;
+  topicId?: string;
+  topicName?: string;
+}
+
 interface ExperimentOutput {
   title: string;
   description: string;
@@ -16,6 +28,8 @@ interface ExperimentOutput {
   duration: string;
   identity_shift_target: string;
   pillar: string;
+  sprint_type?: SprintType;
+  intensity?: Intensity;
 }
 
 function stripEmojis(text: string): string {
@@ -35,19 +49,139 @@ function validateExperiments(data: any): ExperimentOutput[] {
     if (!exp.identity_shift_target || typeof exp.identity_shift_target !== 'string') throw new Error('Invalid identity_shift_target');
   });
   
-  // Strip emojis from all text fields
   return data.experiments.map((exp: any) => ({
     title: stripEmojis(exp.title),
     description: stripEmojis(exp.description),
     steps: exp.steps.map((s: string) => stripEmojis(s)),
     duration: stripEmojis(exp.duration),
     identity_shift_target: stripEmojis(exp.identity_shift_target),
-    pillar: exp.pillar
+    pillar: exp.pillar,
+    sprint_type: exp.sprint_type,
+    intensity: exp.intensity
   })) as ExperimentOutput[];
 }
 
-function getFallbackExperiment(pillar: string): ExperimentOutput[] {
-  const fallbacks: { [key: string]: ExperimentOutput } = {
+// Sprint-specific fallbacks
+function getFallbackExperiment(pillar: string, sprint: SprintConfig): ExperimentOutput[] {
+  const sprintFallbacks: { [key: string]: { [key: string]: ExperimentOutput } } = {
+    blitz_48h: {
+      "Stability": {
+        title: "48-Hour Cash Sprint",
+        description: "Generate any income in 48 hours. Prove you can create money from nothing.",
+        steps: ["Hour 0-6: List 5 ways to make money today", "Hour 6-24: Execute fastest option", "Hour 24-48: Double down or try option 2"],
+        duration: "48 hours",
+        identity_shift_target: "I am someone who creates income on demand.",
+        pillar: "Stability",
+        sprint_type: "blitz_48h",
+        intensity: "extreme"
+      },
+      "Content": {
+        title: "48-Hour Content Blitz",
+        description: "Create and publish 10 pieces of content in 48 hours.",
+        steps: ["Hour 0-12: Batch create 5 pieces", "Hour 12-36: Publish and engage", "Hour 36-48: Create 5 more, schedule"],
+        duration: "48 hours",
+        identity_shift_target: "I am someone who creates relentlessly.",
+        pillar: "Content",
+        sprint_type: "blitz_48h",
+        intensity: "extreme"
+      },
+      "default": {
+        title: "48-Hour Intensity Sprint",
+        description: "Push your limits with focused intensity for 48 hours.",
+        steps: ["Define one aggressive goal", "Work in 4-hour blocks", "Rest minimally, execute maximally"],
+        duration: "48 hours",
+        identity_shift_target: "I am someone who can push when needed.",
+        pillar: pillar,
+        sprint_type: "blitz_48h",
+        intensity: "extreme"
+      }
+    },
+    challenge_24h: {
+      "Presence": {
+        title: "24-Hour Social Challenge",
+        description: "Talk to 10 strangers in 24 hours. Break your comfort zone.",
+        steps: ["Morning: 3 conversations", "Afternoon: 4 conversations", "Evening: 3 conversations, reflect"],
+        duration: "24 hours",
+        identity_shift_target: "I am someone who connects fearlessly.",
+        pillar: "Presence",
+        sprint_type: "challenge_24h",
+        intensity: "push"
+      },
+      "Health": {
+        title: "24-Hour Movement Challenge",
+        description: "Move every hour for 24 hours. Reset your relationship with your body.",
+        steps: ["Set hourly reminders", "10 min movement each hour (except sleep)", "Track energy shifts"],
+        duration: "24 hours",
+        identity_shift_target: "I am someone who moves constantly.",
+        pillar: "Health",
+        sprint_type: "challenge_24h",
+        intensity: "push"
+      },
+      "default": {
+        title: "24-Hour Pattern Break",
+        description: "Do the opposite of your default for 24 hours.",
+        steps: ["Identify your default avoidance", "Do the opposite all day", "Journal what shifted"],
+        duration: "24 hours",
+        identity_shift_target: "I am someone who breaks patterns.",
+        pillar: pillar,
+        sprint_type: "challenge_24h",
+        intensity: "push"
+      }
+    },
+    deep_dive: {
+      "Learning": {
+        title: "5-Day Deep Immersion",
+        description: "Master one skill through intense daily practice.",
+        steps: ["Day 1: Foundations + first project", "Day 2-3: Build something real", "Day 4: Refine and polish", "Day 5: Ship and share"],
+        duration: "5 days",
+        identity_shift_target: "I am someone who masters through immersion.",
+        pillar: "Learning",
+        sprint_type: "deep_dive",
+        intensity: "push"
+      },
+      "default": {
+        title: "5-Day Knowledge Application",
+        description: "Take accumulated knowledge and apply it intensively.",
+        steps: ["Day 1: Synthesize key insights", "Day 2-3: Build based on insights", "Day 4: Test and iterate", "Day 5: Share learnings"],
+        duration: "5 days",
+        identity_shift_target: "I am someone who applies what I learn.",
+        pillar: pillar,
+        sprint_type: "deep_dive",
+        intensity: "push"
+      }
+    },
+    recovery: {
+      "Health": {
+        title: "3-Day Gentle Reset",
+        description: "Restore energy through intentional rest and gentle movement.",
+        steps: ["Day 1: Sleep 9+ hours, light walk", "Day 2: Gentle stretching, no screens after 8pm", "Day 3: One energizing activity"],
+        duration: "3 days",
+        identity_shift_target: "I am someone who rests strategically.",
+        pillar: "Health",
+        sprint_type: "recovery",
+        intensity: "chill"
+      },
+      "default": {
+        title: "3-Day Slow Rebuild",
+        description: "Rebuild momentum through small, easy wins.",
+        steps: ["Day 1: One tiny task", "Day 2: Two small tasks", "Day 3: Three tasks, celebrate"],
+        duration: "3 days",
+        identity_shift_target: "I am someone who rebuilds patiently.",
+        pillar: pillar,
+        sprint_type: "recovery",
+        intensity: "chill"
+      }
+    }
+  };
+
+  // Try sprint-specific fallback first
+  if (sprint.type !== "standard" && sprintFallbacks[sprint.type]) {
+    const sprintGroup = sprintFallbacks[sprint.type];
+    return [sprintGroup[pillar] || sprintGroup["default"]];
+  }
+
+  // Standard fallbacks
+  const standardFallbacks: { [key: string]: ExperimentOutput } = {
     "Stability": {
       title: "3-Day Income Sprint",
       description: "Generate income through any available channel. Proof of resourcefulness.",
@@ -114,7 +248,7 @@ function getFallbackExperiment(pillar: string): ExperimentOutput[] {
     }
   };
   
-  return [fallbacks[pillar] || fallbacks["Skill"]];
+  return [standardFallbacks[pillar] || standardFallbacks["Skill"]];
 }
 
 function choosePillar(recentPillars: string[]): string {
@@ -128,6 +262,96 @@ function choosePillar(recentPillars: string[]): string {
   }
   
   return available[Math.floor(Math.random() * available.length)];
+}
+
+// Determine sprint type based on user momentum and patterns
+async function selectSprintType(
+  supabase: any, 
+  userId: string, 
+  context: CompactContext
+): Promise<SprintConfig> {
+  const recentCompleted = context.recent_actions.filter((a: any) => a.completed).length;
+  const recentPillars = context.pillar_history;
+  
+  // HIGH MOMENTUM: 5+ completed actions recently → Blitz mode
+  if (recentCompleted >= 5) {
+    console.log("High momentum detected - suggesting 48h Blitz");
+    return { 
+      type: "blitz_48h", 
+      duration: "48 hours", 
+      intensity: "extreme", 
+      reason: "High momentum - time to push hard" 
+    };
+  }
+  
+  // STUCK IN PATTERN: Same pillar 3+ times → Challenge to break pattern
+  if (recentPillars.length >= 3) {
+    const lastPillar = recentPillars[0];
+    const sameCount = recentPillars.slice(0, 5).filter(p => p === lastPillar).length;
+    if (sameCount >= 3) {
+      console.log(`Stuck in ${lastPillar} pattern - suggesting 24h Challenge`);
+      return { 
+        type: "challenge_24h", 
+        duration: "24 hours", 
+        intensity: "push", 
+        reason: `Break the ${lastPillar} loop` 
+      };
+    }
+  }
+  
+  // TOPIC CLUSTERING: 10+ insights in one topic → Deep Dive
+  const { data: topicCounts } = await supabase
+    .from("insights")
+    .select("topic_id")
+    .eq("user_id", userId)
+    .not("topic_id", "is", null);
+  
+  if (topicCounts && topicCounts.length > 0) {
+    const counts: { [key: string]: number } = {};
+    topicCounts.forEach((i: any) => {
+      counts[i.topic_id] = (counts[i.topic_id] || 0) + 1;
+    });
+    
+    const hotTopicEntry = Object.entries(counts).find(([_, count]) => count >= 10);
+    if (hotTopicEntry) {
+      const [topicId, count] = hotTopicEntry;
+      // Get topic name
+      const { data: topic } = await supabase
+        .from("topics")
+        .select("name")
+        .eq("id", topicId)
+        .maybeSingle();
+      
+      console.log(`Hot topic detected: ${topic?.name || topicId} (${count} insights) - suggesting Deep Dive`);
+      return { 
+        type: "deep_dive", 
+        duration: "5 days", 
+        intensity: "push", 
+        reason: `Apply accumulated knowledge in ${topic?.name || 'this area'}`,
+        topicId,
+        topicName: topic?.name
+      };
+    }
+  }
+  
+  // LOW MOMENTUM: Less than 2 completed actions → Recovery mode
+  if (recentCompleted < 2) {
+    console.log("Low momentum detected - suggesting Recovery");
+    return { 
+      type: "recovery", 
+      duration: "3 days", 
+      intensity: "chill", 
+      reason: "Rebuild momentum gently" 
+    };
+  }
+  
+  // DEFAULT: Standard experiment
+  return { 
+    type: "standard", 
+    duration: "3-7 days", 
+    intensity: "push", 
+    reason: "Steady identity-building" 
+  };
 }
 
 serve(async (req) => {
@@ -180,6 +404,10 @@ serve(async (req) => {
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatContextForAI(userContext);
     
+    // Select sprint type based on momentum
+    const sprintConfig = await selectSprintType(supabase, user.id, userContext);
+    console.log(`Sprint type: ${sprintConfig.type} (${sprintConfig.intensity}) - ${sprintConfig.reason}`);
+    
     const recentPillars = userContext.pillar_history;
     const forcedPillar = choosePillar(recentPillars);
     console.log(`Experiment pillar: ${forcedPillar}`);
@@ -188,11 +416,26 @@ serve(async (req) => {
       ? `\n\nAVOID THESE PAST EXPERIMENTS (do not repeat similar titles or concepts):\n${pastTitles.slice(0, 10).map(t => `- ${t}`).join('\n')}`
       : '';
 
+    // Build sprint-specific instructions
+    const sprintInstructions = sprintConfig.type !== "standard" ? `
+SPRINT MODE: ${sprintConfig.type.toUpperCase().replace('_', ' ')}
+Duration: ${sprintConfig.duration}
+Intensity: ${sprintConfig.intensity.toUpperCase()}
+Reason: ${sprintConfig.reason}
+${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
+
+INTENSITY RULES:
+- CHILL: Low stakes, easy wins, gentle stretch. Build confidence.
+- PUSH: Moderate discomfort, growth edge. 1-2 uncomfortable actions per day.
+- EXTREME: High stakes, identity-challenging. Daily discomfort required. No easy days.
+` : '';
+
     const systemPrompt = `You are an experiment designer. Create ONE unique identity-driven experiment.
 
 ${context}
 
 PILLAR: ${forcedPillar}
+${sprintInstructions}
 ${avoidList}
 
 CORE QUESTION: What experiment proves the user's identity shift?
@@ -208,7 +451,8 @@ PILLARS:
 - Learning: Education, skill acquisition
 
 RULES:
-- 3-7 days duration
+- Duration must match sprint mode (${sprintConfig.duration})
+- Intensity must match: ${sprintConfig.intensity}
 - Clear daily actions (3-4 steps)
 - Creates visible proof
 - Identity-shifting ("I am someone who...")
@@ -226,7 +470,7 @@ RULES:
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Design ONE unique "${forcedPillar}" experiment. Make it identity-shifting. No emojis. Must be different from any past experiments.` }
+          { role: "user", content: `Design ONE unique "${forcedPillar}" experiment. Sprint mode: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}. Duration: ${sprintConfig.duration}. Make it identity-shifting. No emojis. Must be different from any past experiments.` }
         ],
         tools: [
           {
@@ -244,7 +488,7 @@ RULES:
                       properties: {
                         title: { type: "string", description: "Short title, NO emojis, must be unique" },
                         description: { type: "string", description: "2-3 sentences, NO emojis" },
-                        steps: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 },
+                        steps: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
                         duration: { type: "string" },
                         identity_shift_target: { type: "string", description: "I am someone who..." },
                         pillar: { type: "string", enum: ALL_PILLARS }
@@ -268,21 +512,26 @@ RULES:
       console.error("AI Gateway error:", response.status);
       if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const data = await response.json();
     const toolCall = data.choices[0].message.tool_calls?.[0];
     
     if (!toolCall) {
-      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let experiments;
     try {
       const parsed = JSON.parse(toolCall.function.arguments);
       experiments = validateExperiments(parsed);
-      experiments = experiments.map(exp => ({ ...exp, pillar: exp.pillar || forcedPillar }));
+      experiments = experiments.map(exp => ({ 
+        ...exp, 
+        pillar: exp.pillar || forcedPillar,
+        sprint_type: sprintConfig.type,
+        intensity: sprintConfig.intensity
+      }));
       
       // Check if generated experiment is too similar to past ones
       const newTitle = experiments[0].title.toLowerCase();
@@ -293,14 +542,14 @@ RULES:
       
       if (isDuplicate) {
         console.log("Generated experiment too similar to past, using fallback");
-        return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     } catch (parseError) {
       console.error("Parse error:", parseError);
-      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Insert experiment
+    // Insert experiment with sprint metadata
     for (const exp of experiments) {
       await supabase.from("experiments").insert({
         user_id: user.id,
@@ -309,15 +558,20 @@ RULES:
         steps: exp.steps.join("\n"),
         duration: exp.duration,
         identity_shift_target: exp.identity_shift_target,
+        hypothesis: `Sprint: ${sprintConfig.type} | Intensity: ${sprintConfig.intensity} | ${sprintConfig.reason}`,
         status: "planning"
       });
     }
 
-    console.log(`Generated: ${experiments[0].title}`);
+    console.log(`Generated ${sprintConfig.type} experiment: ${experiments[0].title}`);
 
-    return new Response(JSON.stringify({ experiments }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ 
+      experiments,
+      sprint: sprintConfig
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Experiment generator error:", error);
-    return new Response(JSON.stringify({ experiments: getFallbackExperiment("Skill") }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const defaultSprint: SprintConfig = { type: "standard", duration: "3-7 days", intensity: "push", reason: "Default" };
+    return new Response(JSON.stringify({ experiments: getFallbackExperiment("Skill", defaultSprint) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
