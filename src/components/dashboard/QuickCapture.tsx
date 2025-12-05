@@ -169,68 +169,69 @@ export const QuickCapture = () => {
 
       {/* Capture Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-xl p-4 sm:p-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="flex items-center justify-between text-base sm:text-lg">
               {captureType ? (
-                <button onClick={() => setCaptureType(null)} className="text-muted-foreground hover:text-foreground">
+                <button onClick={() => setCaptureType(null)} className="text-muted-foreground hover:text-foreground text-sm">
                   ← Back
                 </button>
               ) : (
                 "Quick Capture"
               )}
-              <button onClick={handleClose} className="text-muted-foreground hover:text-foreground">
+              <button onClick={handleClose} className="text-muted-foreground hover:text-foreground p-1">
                 <X className="h-4 w-4" />
               </button>
             </DialogTitle>
-            <DialogDescription>Capture insights, links, or notes</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">Capture insights, links, or notes</DialogDescription>
           </DialogHeader>
 
           {!captureType ? (
-            <div className="grid grid-cols-2 gap-3 py-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 py-3">
               <button
                 onClick={() => handleQuickCapture("insight")}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <Lightbulb className="h-6 w-6 text-primary" />
-                <span className="text-sm font-medium">Insight</span>
-                <span className="text-xs text-muted-foreground">Thought or learning</span>
+                <Lightbulb className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <span className="text-xs sm:text-sm font-medium">Insight</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">Thought or learning</span>
               </button>
               
               <button
                 onClick={() => handleQuickCapture("link")}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <Link className="h-6 w-6 text-primary" />
-                <span className="text-sm font-medium">Link</span>
-                <span className="text-xs text-muted-foreground">YouTube, article, etc</span>
+                <Link className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <span className="text-xs sm:text-sm font-medium">Link</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">YouTube, article</span>
               </button>
               
               <button
                 onClick={() => handleQuickCapture("note")}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <FileText className="h-6 w-6 text-primary" />
-                <span className="text-sm font-medium">Note</span>
-                <span className="text-xs text-muted-foreground">Quick thought</span>
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <span className="text-xs sm:text-sm font-medium">Note</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">Quick thought</span>
               </button>
               
               <button
                 onClick={() => handleQuickCapture("decision")}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
               >
-                <Scale className="h-6 w-6 text-primary" />
-                <span className="text-sm font-medium">Decision</span>
-                <span className="text-xs text-muted-foreground">Mirror your identity</span>
+                <Scale className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <span className="text-xs sm:text-sm font-medium">Decision</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">Mirror identity</span>
               </button>
             </div>
           ) : (
-            <div className="space-y-4 py-4">
+            <div className="space-y-3 py-3">
               {captureType !== "link" && (
                 <Input
                   placeholder="Title (optional)"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  className="h-10 text-sm"
                 />
               )}
               
@@ -246,7 +247,7 @@ export const QuickCapture = () => {
                 }
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="min-h-[120px]"
+                className="min-h-[100px] sm:min-h-[120px] text-sm"
                 autoFocus
               />
               
@@ -259,7 +260,7 @@ export const QuickCapture = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={!content.trim() || isSubmitting}
-                className="w-full"
+                className="w-full h-10"
               >
                 {isSubmitting ? (captureType === "decision" ? "Reflecting..." : "Saving...") : (captureType === "decision" ? "Mirror" : "Capture")}
               </Button>
