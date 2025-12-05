@@ -40,15 +40,31 @@ serve(async (req) => {
   }
 
   try {
+    // Get user ID from JWT claims directly
     const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const userId = payload.sub;
+    
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use service role for database operations
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader! } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -66,7 +82,7 @@ serve(async (req) => {
       // No body provided
     }
 
-    const userContext = await fetchUserContext(supabase, user.id);
+    const userContext = await fetchUserContext(supabase, userId);
     const contextPrompt = formatContextForAI(userContext);
 
     const systemPrompt = `You are a learning path architect. Create a structured learning path with 5-8 concrete steps.
@@ -177,7 +193,7 @@ RULES:
     const { data: newPath, error: pathError } = await supabase
       .from("learning_paths")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         title: pathData.path_title,
         description: pathData.path_description,
         status: "active"
@@ -215,19 +231,19 @@ RULES:
     const { data: userInsights } = await supabase
       .from("insights")
       .select("id, title, content")
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     // Fetch user's documents
     const { data: userDocuments } = await supabase
       .from("documents")
       .select("id, title, summary")
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     // Fetch user's experiments
     const { data: userExperiments } = await supabase
       .from("experiments")
       .select("id, title, description, hypothesis")
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     const connections: Array<{
       user_id: string;
@@ -246,7 +262,7 @@ RULES:
         
         if (overlap.length >= 2) {
           connections.push({
-            user_id: user.id,
+            user_id: userId,
             source_type: "learning_path",
             source_id: newPath.id,
             target_type: "insight",
@@ -266,7 +282,7 @@ RULES:
         
         if (overlap.length >= 2) {
           connections.push({
-            user_id: user.id,
+            user_id: userId,
             source_type: "learning_path",
             source_id: newPath.id,
             target_type: "document",
@@ -286,7 +302,7 @@ RULES:
         
         if (overlap.length >= 2) {
           connections.push({
-            user_id: user.id,
+            user_id: userId,
             source_type: "learning_path",
             source_id: newPath.id,
             target_type: "experiment",
