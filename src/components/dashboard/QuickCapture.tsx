@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { toast } from "sonner";
+import { detectCareerKeywords } from "@/lib/careerDetection";
+import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 
 type CaptureType = "insight" | "link" | "note" | null;
 
@@ -18,6 +20,8 @@ export const QuickCapture = () => {
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCareerPrompt, setShowCareerPrompt] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
 
   const handleOpen = () => setIsOpen(true);
   
@@ -44,7 +48,7 @@ export const QuickCapture = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const executeSubmit = async () => {
     if (!user || !content.trim()) return;
     
     setIsSubmitting(true);
@@ -113,6 +117,25 @@ export const QuickCapture = () => {
       setIsSubmitting(false);
       setIsProcessing(false);
     }
+  };
+
+  const handleSubmit = () => {
+    if (!user || !content.trim()) return;
+    
+    // Check for career-related keywords
+    const textToCheck = `${title} ${content}`;
+    if (detectCareerKeywords(textToCheck)) {
+      setPendingSubmit(true);
+      setShowCareerPrompt(true);
+      return;
+    }
+    
+    executeSubmit();
+  };
+
+  const handleCareerPromptContinue = () => {
+    setPendingSubmit(false);
+    executeSubmit();
   };
 
   return (
@@ -224,6 +247,18 @@ export const QuickCapture = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <CareerRedirectPrompt
+        open={showCareerPrompt}
+        onOpenChange={(open) => {
+          setShowCareerPrompt(open);
+          if (!open && !pendingSubmit) {
+            // User closed without choosing, reset
+            setPendingSubmit(false);
+          }
+        }}
+        onContinue={handleCareerPromptContinue}
+      />
     </>
   );
 };
