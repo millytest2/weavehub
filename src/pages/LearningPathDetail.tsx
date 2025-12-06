@@ -241,47 +241,65 @@ const LearningPathDetail = () => {
   const completedSteps = items.filter(i => i.completed).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/paths")}>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex items-start gap-3 sm:gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/paths")} className="shrink-0 mt-1">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-foreground">{path.title}</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-3xl font-bold text-foreground leading-tight">{path.title}</h1>
           {path.description && (
-            <p className="mt-1 text-muted-foreground">{path.description}</p>
+            <p className="mt-1 text-sm sm:text-base text-muted-foreground line-clamp-2">{path.description}</p>
           )}
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <Badge variant={path.status === "active" ? "default" : "secondary"}>
+          <div className="mt-2 flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <Badge variant={path.status === "active" ? "default" : "secondary"} className="text-xs">
               {path.status}
             </Badge>
             {path.topics && (
               <Badge
                 variant="secondary"
+                className="text-xs"
                 style={{ backgroundColor: path.topics.color + "20", color: path.topics.color }}
               >
                 {path.topics.name}
               </Badge>
             )}
             {totalSources > 0 && (
-              <Badge variant="outline" className="gap-1">
+              <Badge variant="outline" className="gap-1 text-xs hidden sm:inline-flex">
                 <Layers className="h-3 w-3" />
-                Built from {totalSources} source{totalSources !== 1 ? 's' : ''}
+                {totalSources} source{totalSources !== 1 ? 's' : ''}
               </Badge>
             )}
-            <Badge variant="outline">
-              {completedSteps}/{items.length} steps complete
+            <Badge variant="outline" className="text-xs">
+              {completedSteps}/{items.length} done
             </Badge>
           </div>
         </div>
       </div>
 
-      <Tabs defaultValue="items" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="items">Steps ({items.length})</TabsTrigger>
-          <TabsTrigger value="insights">Insights ({insights.length})</TabsTrigger>
-          <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
-          <TabsTrigger value="experiments">Experiments ({experiments.length})</TabsTrigger>
+      <Tabs defaultValue="items" className="space-y-3 sm:space-y-4">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger value="items" className="text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <span className="hidden sm:inline">Steps</span>
+            <span className="sm:hidden">Steps</span>
+            <span className="ml-1">({items.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="insights" className="text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <span className="hidden sm:inline">Insights</span>
+            <span className="sm:hidden">Ins</span>
+            <span className="ml-1">({insights.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <span className="hidden sm:inline">Documents</span>
+            <span className="sm:hidden">Docs</span>
+            <span className="ml-1">({documents.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="experiments" className="text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <span className="hidden sm:inline">Experiments</span>
+            <span className="sm:hidden">Exp</span>
+            <span className="ml-1">({experiments.length})</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="space-y-4">
@@ -337,7 +355,7 @@ const LearningPathDetail = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 sm:space-y-3">
               {items.map((item) => {
                 const { relatedInsights, relatedDocs, relatedExps } = getRelatedSources(item.title, item.description || '');
                 const hasSources = relatedInsights.length > 0 || relatedDocs.length > 0 || relatedExps.length > 0;
@@ -345,7 +363,7 @@ const LearningPathDetail = () => {
 
                 return (
                   <Card key={item.id} className={item.completed ? "opacity-60" : ""}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                       <div className="flex items-start gap-3">
                         <Button
                           variant="ghost"
@@ -453,24 +471,24 @@ const LearningPathDetail = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               {insights.map((insight) => (
                 <Card key={insight.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{insight.title}</CardTitle>
+                  <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base sm:text-lg leading-tight">{insight.title}</CardTitle>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDisconnect(insight.id, "insight")}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                  <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+                    <p className="line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm text-muted-foreground">
                       {insight.content}
                     </p>
                   </CardContent>
@@ -521,24 +539,24 @@ const LearningPathDetail = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               {documents.map((doc) => (
                 <Card key={doc.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{doc.title}</CardTitle>
+                  <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base sm:text-lg leading-tight">{doc.title}</CardTitle>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDisconnect(doc.id, "document")}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                  <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+                    <p className="line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm text-muted-foreground">
                       {doc.summary || "No summary"}
                     </p>
                   </CardContent>
@@ -589,28 +607,28 @@ const LearningPathDetail = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               {experiments.map((exp) => (
                 <Card key={exp.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{exp.title}</CardTitle>
+                  <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base sm:text-lg leading-tight">{exp.title}</CardTitle>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDisconnect(exp.id, "experiment")}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                  <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+                    <p className="line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm text-muted-foreground">
                       {exp.description || "No description"}
                     </p>
                     {exp.status && (
-                      <Badge variant="outline" className="mt-2">
+                      <Badge variant="outline" className="mt-2 text-xs">
                         {exp.status}
                       </Badge>
                     )}
