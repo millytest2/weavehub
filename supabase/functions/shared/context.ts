@@ -13,6 +13,7 @@ export interface CompactContext {
   key_insights: any[];
   key_documents: any[];
   recent_actions: any[];
+  completed_actions: any[];
   pillar_history: string[];
   topics: any[];
   connections: any[];
@@ -86,12 +87,17 @@ export async function fetchUserContext(
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   // Parallel fetch - minimal data for speed
-  const [identitySeed, insights, documents, experiments, dailyTasks, topics, connections] = await Promise.all([
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [identitySeed, insights, documents, experiments, dailyTasks, actionHistory, topics, connections] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
     supabase.from("daily_tasks").select("pillar, completed, one_thing, why_matters, task_date").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(10),
+    // Fetch completed action history to avoid repetition
+    supabase.from("action_history").select("action_text, pillar, action_date").eq("user_id", userId).gte("action_date", thirtyDaysAgo.toISOString().split("T")[0]).order("action_date", { ascending: false }).limit(30),
     supabase.from("topics").select("id, name, description").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
     supabase.from("connections").select("source_type, source_id, target_type, target_id, note").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
@@ -118,6 +124,7 @@ export async function fetchUserContext(
     key_insights: keyInsights,
     key_documents: documents.data || [],
     recent_actions: dailyTasks.data || [],
+    completed_actions: actionHistory.data || [],
     pillar_history: pillarHistory,
     topics: topics.data || [],
     connections: connections.data || [],
@@ -279,6 +286,14 @@ export function formatContextForAI(context: CompactContext): string {
   const completedActions = context.recent_actions.filter((a: any) => a.completed);
   if (completedActions.length > 0) {
     formatted += `RECENT WINS: ${completedActions.slice(0, 3).map((a: any) => a.one_thing).join('; ')}\n`;
+  }
+
+  // CRITICAL: Actions already done in last 30 days - DO NOT REPEAT
+  if (context.completed_actions && context.completed_actions.length > 0) {
+    const doneActions = context.completed_actions.slice(0, 15).map((a: any) => a.action_text).filter(Boolean);
+    if (doneActions.length > 0) {
+      formatted += `\nALREADY DONE (DO NOT REPEAT THESE):\n${doneActions.join('\n')}\n`;
+    }
   }
 
   return formatted.trim();

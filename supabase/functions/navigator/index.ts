@@ -204,32 +204,40 @@ CORE QUESTION: What action today reinforces the user's identity shift?
 PILLAR FOR THIS ACTION: ${suggestedPillar}
 
 PILLARS:
-- Stability: Income, job, cash flow
-- Skill: Building, shipping, projects
-- Content: Creating, posting, sharing
-- Health: Movement, nutrition, energy
-- Presence: Emotional regulation, confidence
-- Admin: Organization, clearing blockers
-- Connection: Social, relationships
-- Learning: Education, skill acquisition
+- Stability: Income, job applications, interviews, networking for work
+- Skill: Building, shipping, coding, projects
+- Content: Creating posts, writing threads, making videos
+- Health: Working out, walking, nutrition, sleep
+- Presence: Emotional regulation, meditation, breathing
+- Admin: Clearing backlog, emails, organization
+- Connection: Texting friends, dating, social plans
+- Learning: Courses, reading, skill acquisition
 
 CRITICAL RULES:
 - 15-45 minutes
-- MUST BE SPECIFIC AND ACTIONABLE - not vague
-- Identity-aligned (not just productive)
-- Fun, not homework
+- MUST BE ULTRA SPECIFIC - not vague generics
+- MUST be different from "ALREADY DONE" list above - NEVER repeat those
+- MUST connect to the user's actual identity/situation
+- Reference specific things from their insights, experiments, or documents
+- Fun and exciting, not boring homework
 - NO EMOJIS anywhere
 - NO multiple options
-- NO over-explaining
+- NO "review" or "read" tasks
+- NO generic tasks like "send a text" without knowing WHO they'd text
+- If suggesting reaching out to someone, it must be based on user's actual relationships mentioned in their data
 
-DOCUMENT RULES - VERY IMPORTANT:
-- NEVER tell user to "read" or "review" a document/PDF
-- NEVER suggest "spend X minutes with document Y"
-- Instead, use the document SUMMARIES to create SPECIFIC actions
-- If a document has insights, extract ONE specific thing to DO based on it
-- Example BAD: "Review the action plan PDF for 20 minutes"
-- Example GOOD: "Write down 3 specific ways you handled stress well this week"
-- The system already digests documents - your job is to give concrete actions`;
+BAD EXAMPLES:
+- "Send girlfriend a text about your project" (too generic, assumes relationship exists)
+- "Work on your goals" (vague)
+- "Practice your skill" (what skill?)
+- Anything in the "ALREADY DONE" list
+
+GOOD EXAMPLES:
+- "Write a LinkedIn post about [specific insight from their data]"
+- "Do 50 pushups then cold shower" (specific, actionable)
+- "Apply to 3 jobs on Indeed for [role they mentioned]"
+- "Draft the intro section of [specific project they're working on]"`;
+
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

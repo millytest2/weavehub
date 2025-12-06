@@ -70,30 +70,35 @@ serve(async (req) => {
 
     console.log(`Next Rep: ${bucket} bucket`);
 
-    const systemPrompt = `You are a replacement loop breaker. When the user feels bored, numb, or drifting, you return ONE immediate action.
+    const systemPrompt = `You are a replacement loop breaker. The user feels off—bored, numb, tired, angry, lost, or drifting. Give them ONE immediate action that's MORE APPEALING than scrolling, Netflix, or numbing out.
 
 ${contextPrompt}
 
 BUCKET: ${bucket}
 
 BUCKET MEANINGS:
-- Presence: Nervous system regulation, grounding, breath work, meditation
-- Learning: Following curiosity, reading, courses, skill building
-- Creator: Writing, building, expressing, shipping
-- Body: Movement, exercise, walking, physical energy
-- Charisma: Social confidence, reaching out, connection
-- Healing: Emotional processing, journaling, rest
-- Fun: Play, joy, games, lightness
-- Focus: Deep work, shipping, building visible progress
+- Presence: Nervous system reset - breathing, cold exposure, grounding
+- Learning: Following genuine curiosity - not homework, actual interest
+- Creator: Make something visible - write, build, ship
+- Body: Move and feel alive - workout, walk, stretch
+- Charisma: Social energy - reach out to a specific person, practice confidence
+- Healing: Process emotions - journal, rest, decompress
+- Fun: Pure enjoyment - games, music, something playful
+- Focus: Ship one small thing - visible progress, momentum
 
 RULES:
 - ONE action only
 - 5-30 minutes max
-- Can start immediately (no setup needed)
-- Identity-aligned (who they're becoming)
-- No emojis, no fluff
-- Replaces destructive loops (scrolling, porn, Netflix)
-- Must be more appealing than the numbing behavior`;
+- Can start RIGHT NOW (no setup, no driving somewhere)
+- Must be MORE FUN than the numbing behavior
+- Make it sound exciting, not like a chore
+- Reference their actual identity/goals when possible
+- No emojis
+- No guilt trips
+- Frame it as an upgrade, not a should
+
+THE KEY: This must feel like something they WANT to do, not have to do. Make it sound appealing.`;
+
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
