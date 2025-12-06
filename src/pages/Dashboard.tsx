@@ -25,13 +25,19 @@ const Dashboard = () => {
   // Active experiment state
   const [activeExperiment, setActiveExperiment] = useState<any>(null);
 
+  // Get today's date in local timezone (YYYY-MM-DD format)
+  const getLocalToday = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalToday();
       
-      // Fetch tasks
+      // Fetch tasks for today only
       const { data: tasksRes } = await supabase
         .from("daily_tasks")
         .select("*")
@@ -45,6 +51,7 @@ const Dashboard = () => {
         setCurrentSequence(incomplete?.task_sequence || tasksRes.length);
         setTodayTask(incomplete || tasksRes[tasksRes.length - 1]);
       } else {
+        // No tasks for today - fresh start
         setTasksForToday([]);
         setTodayTask(null);
         setCurrentSequence(1);
@@ -65,6 +72,17 @@ const Dashboard = () => {
 
     fetchData();
 
+    // Check for date change every minute to auto-reset at midnight
+    const midnightCheck = setInterval(() => {
+      const today = getLocalToday();
+      if (tasksForToday.length > 0 && tasksForToday[0]?.task_date !== today) {
+        // Date changed - reset
+        setTasksForToday([]);
+        setTodayTask(null);
+        setCurrentSequence(1);
+      }
+    }, 60000);
+
     const taskChannel = supabase
       .channel("dashboard-tasks")
       .on(
@@ -75,15 +93,16 @@ const Dashboard = () => {
       .subscribe();
 
     return () => {
+      clearInterval(midnightCheck);
       supabase.removeChannel(taskChannel);
     };
-  }, [user]);
+  }, [user, tasksForToday]);
 
   const handleGenerateDailyOne = async () => {
     if (!user) return;
     
     // Check task count BEFORE generating to prevent extra tasks
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalToday();
     const { data: existingTasks } = await supabase
       .from("daily_tasks")
       .select("id")
@@ -150,7 +169,7 @@ const Dashboard = () => {
     if (!todayTask || !user) return;
     
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalToday();
       
       const { error: updateError } = await supabase
         .from("daily_tasks")
