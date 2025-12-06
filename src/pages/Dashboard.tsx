@@ -81,6 +81,20 @@ const Dashboard = () => {
 
   const handleGenerateDailyOne = async () => {
     if (!user) return;
+    
+    // Check task count BEFORE generating to prevent extra tasks
+    const today = new Date().toISOString().split("T")[0];
+    const { data: existingTasks } = await supabase
+      .from("daily_tasks")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("task_date", today);
+    
+    if (existingTasks && existingTasks.length >= 3) {
+      toast.info("All 3 actions complete for today. Come back tomorrow.");
+      return;
+    }
+    
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("navigator");
@@ -91,13 +105,7 @@ const Dashboard = () => {
         return;
       }
       
-      const today = new Date().toISOString().split("T")[0];
-      const nextSequence = tasksForToday.length + 1;
-      
-      if (nextSequence > 3) {
-        toast.info("All 3 actions complete for today");
-        return;
-      }
+      const nextSequence = (existingTasks?.length || 0) + 1;
       
       const { error: insertError } = await supabase
         .from("daily_tasks")
@@ -313,22 +321,25 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Next Best Rep - Drift Breaker */}
+        {/* Next Best Rep - Main Drift Breaker */}
         <button
           onClick={handleNextRep}
           disabled={isGettingRep}
-          className="w-full p-4 rounded-xl border border-dashed border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all text-left group"
+          className="w-full p-5 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 hover:border-primary/40 hover:from-primary/15 hover:to-primary/10 transition-all text-left group"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-muted/50 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-              <Zap className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/20 group-hover:bg-primary/30 flex items-center justify-center transition-colors">
+              <Zap className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <p className="font-medium text-sm">
-                {isGettingRep ? "Finding your rep..." : "Drifting? Tap here."}
+            <div className="flex-1">
+              <p className="font-semibold text-base">
+                {isGettingRep ? "Finding your next move..." : "Feeling off?"}
               </p>
-              <p className="text-xs text-muted-foreground">Get one aligned action</p>
+              <p className="text-sm text-muted-foreground">
+                Bored, tired, lost, angry? Tap for one aligned action.
+              </p>
             </div>
+            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
         </button>
       </div>
