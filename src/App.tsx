@@ -17,6 +17,7 @@ import Experiments from "./pages/Experiments";
 import DailyFocus from "./pages/DailyFocus";
 import IdentitySeed from "./pages/IdentitySeed";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -126,7 +127,15 @@ const App = () => (
                 <ProtectedRoute>
                   <MainLayout>
                     <IdentitySeed />
-                  </MainLayout>
+              </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <Admin />
                 </ProtectedRoute>
               }
             />
