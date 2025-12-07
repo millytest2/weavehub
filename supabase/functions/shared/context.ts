@@ -93,7 +93,7 @@ export async function fetchUserContext(
   const [identitySeed, insights, documents, experiments, dailyTasks, actionHistory, topics, connections] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
-    supabase.from("documents").select("id, title, summary, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
     supabase.from("daily_tasks").select("pillar, completed, one_thing, why_matters, task_date").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(10),
     // Fetch completed action history to avoid repetition
@@ -239,13 +239,14 @@ export function formatContextForAI(context: CompactContext): string {
     formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
   }
 
-  // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals
+  // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals with FULL content
   if (context.key_insights.length > 0) {
-    const insightText = context.key_insights.slice(0, 8).map((i: any) => {
+    const insightText = context.key_insights.slice(0, 6).map((i: any) => {
       const source = i.source ? ` [${i.source}]` : '';
-      return `- ${i.title}${source}: ${i.content.substring(0, 150)}`;
+      // 400 chars to capture actual concepts, techniques, and frameworks
+      return `- ${i.title}${source}: ${i.content.substring(0, 400)}`;
     }).join('\n');
-    formatted += `INSIGHTS:\n${insightText}\n\n`;
+    formatted += `INSIGHTS (your captured knowledge):\n${insightText}\n\n`;
   }
 
   // PRIORITY 3: EXPERIMENTS (20%) - active identity shifts
@@ -258,13 +259,16 @@ export function formatContextForAI(context: CompactContext): string {
     formatted += `EXPERIMENTS:\n${expText}\n\n`;
   }
 
-  // PRIORITY 4: DOCUMENTS (5%) - reference only
+  // PRIORITY 4: DOCUMENTS - include actual extracted content, not just titles
   if (context.key_documents.length > 0) {
-    const docText = context.key_documents.slice(0, 5).map((d: any) => {
-      const summary = d.summary ? `: ${d.summary.substring(0, 80)}` : '';
-      return `- ${d.title}${summary}`;
+    const docText = context.key_documents.slice(0, 4).map((d: any) => {
+      // Use extracted content if available (actual learnings), otherwise summary
+      const content = d.extracted_content 
+        ? d.extracted_content.substring(0, 500) 
+        : (d.summary || '').substring(0, 150);
+      return `- ${d.title}: ${content}`;
     }).join('\n');
-    formatted += `DOCUMENTS:\n${docText}\n\n`;
+    formatted += `FROM YOUR DOCUMENTS:\n${docText}\n\n`;
   }
 
   // Topics for context
