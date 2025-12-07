@@ -247,7 +247,25 @@ EXAMPLES OF GOOD SPECIFICITY:
 - "Build the signup form component for [their project name]"
 - "Record a 60-second video explaining [topic from their experiments]"
 - "Do 50 pushups, cold shower, then 5 minutes of box breathing"
-- "Draft 3 cold emails to [type of company] for [role they want]"`;
+- "Draft 3 cold emails to [type of company] for [role they want]"
+
+GROUNDING REQUIREMENT (CRITICAL - YOUR ACTIONS MUST BE PERSONAL):
+Your action MUST directly reference at least ONE of these from the user's ACTUAL data above:
+- A specific concept/phrase from their IDENTITY SEED (quote their language)
+- A specific insight they captured (by title or core concept)
+- A specific project/product they mentioned (e.g., "UPath", "Weave")
+- A specific technique or method from their documents (e.g., "Break-Loop protocol", "physiological sighs")
+- A specific identity they're building (e.g., "Creator-Athlete", "Full-Stack Human")
+
+DO NOT generate generic actions. QUOTE their own language back to them.
+
+EXAMPLE IF USER HAS INSIGHT "Break-Loop protocol: name the pattern, three sighs, label sensation":
+- BAD: "Practice emotional regulation when stressed"
+- GOOD: "Run the Break-Loop protocol next time you feel a spike: name the pattern, three sighs, label the body sensation, 60-second somatic ride, then 10 pushups"
+
+EXAMPLE IF USER HAS PROJECT "UPath" and identity about "anti-MBA career guidance":
+- BAD: "Work on your career platform"
+- GOOD: "Write the UPath landing page section explaining why the anti-MBA approach solves career paralysis"`;
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
