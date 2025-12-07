@@ -231,7 +231,8 @@ export const QuickCapture = () => {
                   placeholder="Title (optional)"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="h-10 text-sm"
+                  className="h-10 text-base"
+                  style={{ fontSize: '16px' }}
                 />
               )}
               
@@ -247,7 +248,8 @@ export const QuickCapture = () => {
                 }
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="min-h-[100px] sm:min-h-[120px] text-sm"
+                className="min-h-[100px] sm:min-h-[120px] text-base"
+                style={{ fontSize: '16px' }}
                 autoFocus
               />
               

@@ -215,28 +215,39 @@ PILLARS:
 
 CRITICAL RULES:
 - 15-45 minutes
-- MUST BE ULTRA SPECIFIC - not vague generics
+- MUST BE ULTRA SPECIFIC - include exact details from their data
 - MUST be different from "ALREADY DONE" list above - NEVER repeat those
 - MUST connect to the user's actual identity/situation
-- Reference specific things from their insights, experiments, or documents
+- Reference SPECIFIC things from their insights, experiments, or documents by NAME
 - Fun and exciting, not boring homework
 - NO EMOJIS anywhere
 - NO multiple options
 - NO "review" or "read" tasks
-- NO generic tasks like "send a text" without knowing WHO they'd text
-- If suggesting reaching out to someone, it must be based on user's actual relationships mentioned in their data
+- NO generic tasks - every action must include a SPECIFIC detail
 
-BAD EXAMPLES:
-- "Send girlfriend a text about your project" (too generic, assumes relationship exists)
-- "Work on your goals" (vague)
-- "Practice your skill" (what skill?)
+SPECIFICITY IS MANDATORY:
+The action MUST include at least ONE of:
+- A specific project/product name from their data
+- A specific topic they're learning about
+- A specific platform (LinkedIn, Twitter, YouTube)
+- A specific number (3 applications, 50 pushups, 20 minutes)
+- A specific technique or method they mentioned
+
+BANNED PATTERNS (too generic):
+- "Work on your project" → Instead: "Write the landing page copy for [specific project]"
+- "Create content" → Instead: "Write a Twitter thread about [specific insight they captured]"
+- "Apply to jobs" → Instead: "Apply to 3 [specific role] positions on LinkedIn"
+- "Exercise" → Instead: "Do 30 pushups, 20 squats, and 2-minute plank"
+- "Reach out to someone" → Instead: "Send a value-add DM to [specific person/type from their network goals]"
 - Anything in the "ALREADY DONE" list
+- Any action without concrete specifics
 
-GOOD EXAMPLES:
-- "Write a LinkedIn post about [specific insight from their data]"
-- "Do 50 pushups then cold shower" (specific, actionable)
-- "Apply to 3 jobs on Indeed for [role they mentioned]"
-- "Draft the intro section of [specific project they're working on]"`;
+EXAMPLES OF GOOD SPECIFICITY:
+- "Write a LinkedIn post explaining why [concept from their recent insight] matters for [their industry]"
+- "Build the signup form component for [their project name]"
+- "Record a 60-second video explaining [topic from their experiments]"
+- "Do 50 pushups, cold shower, then 5 minutes of box breathing"
+- "Draft 3 cold emails to [type of company] for [role they want]"`;
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
