@@ -38,8 +38,8 @@ const Documents = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [runAnalysis, setRunAnalysis] = useState(false);
-  const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [isYoutubeMode, setIsYoutubeMode] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoMode, setVideoMode] = useState<"file" | "youtube" | "instagram">("file");
   const [isReExtracting, setIsReExtracting] = useState(false);
 
   useEffect(() => {
@@ -172,34 +172,45 @@ const Documents = () => {
     const file = e.target.files[0];
     setSelectedFile(file);
     setUploadTitle(file.name);
-    setIsYoutubeMode(false);
+    setVideoMode("file");
   };
 
-  const handleYoutubeSubmit = async () => {
-    if (!youtubeUrl.trim()) {
-      toast.error("Please enter a YouTube URL");
+  const handleVideoSubmit = async () => {
+    if (!videoUrl.trim()) {
+      toast.error("Please enter a video URL");
+      return;
+    }
+
+    const isInstagram = videoUrl.includes('instagram.com');
+    const isYoutube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
+
+    if (!isInstagram && !isYoutube) {
+      toast.error("Please enter a valid YouTube or Instagram URL");
       return;
     }
 
     setUploading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("youtube-processor", {
-        body: { youtubeUrl, title: uploadTitle }
+      const functionName = isInstagram ? "instagram-processor" : "youtube-processor";
+      const bodyKey = isInstagram ? "instagramUrl" : "youtubeUrl";
+      
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { [bodyKey]: videoUrl, title: uploadTitle }
       });
 
       if (error) throw error;
 
       toast.success(data.insightsCreated 
         ? `Video processed! Created ${data.insightsCreated} insights.`
-        : "Video saved successfully!"
+        : data.message || "Video saved successfully!"
       );
       
       await fetchDocuments();
-      setYoutubeUrl("");
+      setVideoUrl("");
       setUploadTitle("");
       setIsDialogOpen(false);
     } catch (error: any) {
-      console.error("YouTube processing error:", error);
+      console.error("Video processing error:", error);
       toast.error(error.message || "Failed to process video");
     } finally {
       setUploading(false);
@@ -572,28 +583,35 @@ const Documents = () => {
         <DialogContent className="w-full max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Content</DialogTitle>
-            <DialogDescription>Upload files, YouTube videos, or create documents</DialogDescription>
+            <DialogDescription>Upload files, videos, or create documents</DialogDescription>
           </DialogHeader>
           
-          <div className="flex gap-2 border-b border-border pb-3 mb-4">
+          <div className="flex gap-2 border-b border-border pb-3 mb-4 flex-wrap">
             <Button
-              variant={!isYoutubeMode ? "default" : "outline"}
-              onClick={() => { setIsYoutubeMode(false); setYoutubeUrl(""); }}
+              variant={videoMode === "file" ? "default" : "outline"}
+              onClick={() => { setVideoMode("file"); setVideoUrl(""); }}
               size="sm"
             >
               Upload File
             </Button>
             <Button
-              variant={isYoutubeMode ? "default" : "outline"}
-              onClick={() => { setIsYoutubeMode(true); setSelectedFile(null); }}
+              variant={videoMode === "youtube" ? "default" : "outline"}
+              onClick={() => { setVideoMode("youtube"); setSelectedFile(null); }}
               size="sm"
             >
-              YouTube Video
+              YouTube
+            </Button>
+            <Button
+              variant={videoMode === "instagram" ? "default" : "outline"}
+              onClick={() => { setVideoMode("instagram"); setSelectedFile(null); }}
+              size="sm"
+            >
+              Instagram
             </Button>
           </div>
 
           <div className="space-y-4">
-            {!isYoutubeMode ? (
+            {videoMode === "file" ? (
               <>
                 <div>
                   <Label htmlFor="file">Upload File</Label>
@@ -637,16 +655,17 @@ const Documents = () => {
                   </>
                 )}
               </>
-            ) : (
+            ) : videoMode === "youtube" ? (
               <>
                 <div>
-                  <Label htmlFor="youtubeUrl">YouTube URL</Label>
+                  <Label htmlFor="videoUrl">YouTube URL</Label>
                   <Input
-                    id="youtubeUrl"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    id="videoUrl"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
                     placeholder="https://youtube.com/watch?v=... or https://youtu.be/..."
                     className="mt-1.5"
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
                 <div>
@@ -657,19 +676,55 @@ const Documents = () => {
                     onChange={(e) => setUploadTitle(e.target.value)}
                     placeholder="Leave empty to use video title"
                     className="mt-1.5"
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
                 <Button 
-                  onClick={handleYoutubeSubmit}
-                  disabled={uploading || !youtubeUrl.trim()} 
+                  onClick={handleVideoSubmit}
+                  disabled={uploading || !videoUrl.trim()} 
                   className="w-full"
                 >
-                  {uploading ? "Processing..." : "Process Video"}
+                  {uploading ? "Processing..." : "Process YouTube Video"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="instagramUrl">Instagram URL</Label>
+                  <Input
+                    id="instagramUrl"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    placeholder="https://instagram.com/p/... or https://instagram.com/reel/..."
+                    className="mt-1.5"
+                    style={{ fontSize: '16px' }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="igTitle">Title (optional)</Label>
+                  <Input
+                    id="igTitle"
+                    value={uploadTitle}
+                    onChange={(e) => setUploadTitle(e.target.value)}
+                    placeholder="Leave empty to use post title"
+                    className="mt-1.5"
+                    style={{ fontSize: '16px' }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Instagram videos are saved with metadata. Full transcription requires OpenAI API key.
+                </p>
+                <Button 
+                  onClick={handleVideoSubmit}
+                  disabled={uploading || !videoUrl.trim()} 
+                  className="w-full"
+                >
+                  {uploading ? "Processing..." : "Process Instagram"}
                 </Button>
               </>
             )}
             
-            {!isYoutubeMode && !selectedFile && (
+            {videoMode === "file" && !selectedFile && (
               <>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">

@@ -18,6 +18,9 @@ verify_jwt = true
 [functions.experiment-generator]
 verify_jwt = true
 
+[functions.instagram-processor]
+verify_jwt = true
+
 [functions.navigator]
 verify_jwt = true
 
