@@ -319,7 +319,6 @@ const Dashboard = () => {
                 const dayNumber = Math.ceil((Date.now() - new Date(activeExperiment.created_at).getTime()) / (1000 * 60 * 60 * 24));
                 const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
                 const todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)];
-                const totalDays = steps.length || 7;
                 
                 return (
                   <div className="space-y-2">
@@ -327,12 +326,9 @@ const Dashboard = () => {
                     <p className="text-sm text-muted-foreground">
                       {todayStep || activeExperiment.description}
                     </p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-                      <span>{activeExperiment.duration || `${totalDays} days`}</span>
-                      <span className="px-2 py-0.5 rounded bg-primary/10 text-primary">
-                        Day {dayNumber} of {totalDays}
-                      </span>
-                    </div>
+                    <p className="text-xs text-muted-foreground/70 pt-1">
+                      {activeExperiment.duration || "In progress"}
+                    </p>
                   </div>
                 );
               })()}

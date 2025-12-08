@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User, Heart } from "lucide-react";
+import { Compass, User, Star } from "lucide-react";
 import { z } from "zod";
 
 const identitySeedSchema = z.object({
@@ -156,13 +156,13 @@ export default function IdentitySeed() {
         {/* Core Values */}
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3">
-            <Heart className="w-4 h-4 text-muted-foreground" />
+            <Star className="w-4 h-4 text-muted-foreground" />
             <h2 className="text-sm font-medium text-muted-foreground">Core Values</h2>
           </div>
           <Textarea
             value={coreValues}
             onChange={(e) => setCoreValues(e.target.value)}
-            placeholder="What do you stand for? What principles guide your decisions? (e.g., Freedom, Growth, Authenticity, Impact, Creation, Health)"
+            placeholder="What do you stand for? (e.g. Freedom, Growth, Health, Creation, Impact)"
             className="min-h-[100px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
           />
           <p className="text-xs text-muted-foreground mt-2">
