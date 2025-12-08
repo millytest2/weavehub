@@ -779,9 +779,6 @@ const Documents = () => {
                     style={{ fontSize: '16px' }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Instagram videos are saved with metadata. Full transcription requires OpenAI API key.
-                </p>
                 <Button 
                   onClick={handleVideoSubmit}
                   disabled={uploading || !videoUrl.trim()} 
