@@ -44,7 +44,7 @@ const Experiments = () => {
       .from("experiments")
       .select("*")
       .eq("user_id", user!.id)
-      .order("created_at", { ascending: false});
+      .order("created_at", { ascending: false });
 
     if (error) {
       toast.error("Failed to load experiments");
@@ -56,7 +56,7 @@ const Experiments = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate input
     const validation = experimentSchema.safeParse({ title, description, steps, duration, identityShift });
     if (!validation.success) {
@@ -97,13 +97,11 @@ const Experiments = () => {
 
   const handleGenerateExperiment = async () => {
     // Check for active experiments first
-    const activeExperiments = experiments.filter(
-      e => e.status === 'in_progress' || e.status === 'planning'
-    );
-    
+    const activeExperiments = experiments.filter((e) => e.status === "in_progress" || e.status === "planning");
+
     if (activeExperiments.length > 0) {
       toast.error("You already have an active experiment. Complete or pause it first.", {
-        description: "One experiment at a time ensures focus and completion."
+        description: "One experiment at a time ensures focus and completion.",
       });
       return;
     }
@@ -111,7 +109,7 @@ const Experiments = () => {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("experiment-generator", {
-        body: {}
+        body: {},
       });
 
       if (error) throw error;
@@ -136,10 +134,7 @@ const Experiments = () => {
           .maybeSingle();
 
         if (newExp) {
-          await supabase
-            .from("experiments")
-            .update({ status: "in_progress" })
-            .eq("id", newExp.id);
+          await supabase.from("experiments").update({ status: "in_progress" }).eq("id", newExp.id);
         }
 
         toast.success("Experiment generated and activated");
@@ -172,14 +167,13 @@ const Experiments = () => {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from("experiments")
-        .update({ status: newStatus })
-        .eq("id", id);
+      const { error } = await supabase.from("experiments").update({ status: newStatus }).eq("id", id);
 
       if (error) throw error;
 
-      toast.success(`Experiment ${newStatus === 'completed' ? 'completed' : newStatus === 'in_progress' ? 'activated' : 'paused'}`);
+      toast.success(
+        `Experiment ${newStatus === "completed" ? "completed" : newStatus === "in_progress" ? "activated" : "paused"}`,
+      );
       fetchExperiments();
     } catch (error: any) {
       toast.error(error.message || "Failed to update status");
@@ -188,10 +182,14 @@ const Experiments = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed": return "bg-primary/10 text-primary border-primary/20";
-      case "in_progress": return "bg-accent/10 text-accent border-accent/20";
-      case "paused": return "bg-muted/10 text-muted-foreground border-border";
-      default: return "bg-secondary text-secondary-foreground border-border";
+      case "completed":
+        return "bg-primary/10 text-primary border-primary/20";
+      case "in_progress":
+        return "bg-accent/10 text-accent border-accent/20";
+      case "paused":
+        return "bg-muted/10 text-muted-foreground border-border";
+      default:
+        return "bg-secondary text-secondary-foreground border-border";
     }
   };
 
@@ -200,17 +198,10 @@ const Experiments = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Experiments</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Small tests to try something cool
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Small tests to do cool stuff</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleGenerateExperiment}
-            disabled={generating}
-            variant="outline"
-            size="sm"
-          >
+          <Button onClick={handleGenerateExperiment} disabled={generating} variant="outline" size="sm">
             <Sparkles className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">{generating ? "Generating..." : "Generate"}</span>
             <span className="sm:hidden">{generating ? "..." : ""}</span>
@@ -224,7 +215,7 @@ const Experiments = () => {
       </div>
 
       {/* Active Experiment Warning */}
-      {experiments.filter(e => e.status === 'in_progress' || e.status === 'planning').length > 1 && (
+      {experiments.filter((e) => e.status === "in_progress" || e.status === "planning").length > 1 && (
         <Card className="rounded-[10px] border-orange-500/50 bg-orange-500/10">
           <CardContent className="pt-5">
             <div className="flex items-start gap-3">
@@ -242,8 +233,8 @@ const Experiments = () => {
 
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
         {experiments.map((exp) => (
-          <Card 
-            key={exp.id} 
+          <Card
+            key={exp.id}
             className="rounded-[10px] border-border/30 cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
             onClick={() => handleViewDetails(exp)}
           >
@@ -262,13 +253,9 @@ const Experiments = () => {
                   <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-1.5">
                     {exp.description}
                   </p>
-                  {exp.duration && (
-                    <p className="text-xs text-muted-foreground mb-1">{exp.duration}</p>
-                  )}
+                  {exp.duration && <p className="text-xs text-muted-foreground mb-1">{exp.duration}</p>}
                   {exp.identity_shift_target && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      Identity: {exp.identity_shift_target}
-                    </p>
+                    <p className="text-xs text-muted-foreground truncate">Identity: {exp.identity_shift_target}</p>
                   )}
                 </div>
                 <Button
@@ -296,13 +283,7 @@ const Experiments = () => {
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
               <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                className="mt-1.5"
-              />
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required className="mt-1.5" />
             </div>
             <div>
               <Label htmlFor="description">Description</Label>
@@ -335,12 +316,7 @@ const Experiments = () => {
             </div>
             <div>
               <Label htmlFor="duration">Duration</Label>
-              <Input
-                id="duration"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                className="mt-1.5"
-              />
+              <Input id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-1.5" />
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
               {loading ? "Creating..." : "Create Experiment"}
@@ -364,18 +340,14 @@ const Experiments = () => {
             {selectedExperiment?.description && (
               <div>
                 <h3 className="text-sm font-medium mb-2">Description</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {selectedExperiment.description}
-                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{selectedExperiment.description}</p>
               </div>
             )}
 
             {selectedExperiment?.identity_shift_target && (
               <div>
                 <h3 className="text-sm font-medium mb-2">Identity Shift Target</h3>
-                <p className="text-sm text-muted-foreground">
-                  {selectedExperiment.identity_shift_target}
-                </p>
+                <p className="text-sm text-muted-foreground">{selectedExperiment.identity_shift_target}</p>
               </div>
             )}
 
@@ -383,12 +355,15 @@ const Experiments = () => {
               <div>
                 <h3 className="text-sm font-medium mb-2">Steps</h3>
                 <div className="space-y-2">
-                  {selectedExperiment.steps.split('\n').filter((step: string) => step.trim()).map((step: string, idx: number) => (
-                    <div key={idx} className="flex gap-2">
-                      <span className="text-sm text-muted-foreground">{idx + 1}.</span>
-                      <span className="text-sm text-muted-foreground">{step}</span>
-                    </div>
-                  ))}
+                  {selectedExperiment.steps
+                    .split("\n")
+                    .filter((step: string) => step.trim())
+                    .map((step: string, idx: number) => (
+                      <div key={idx} className="flex gap-2">
+                        <span className="text-sm text-muted-foreground">{idx + 1}.</span>
+                        <span className="text-sm text-muted-foreground">{step}</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
@@ -403,9 +378,7 @@ const Experiments = () => {
             {selectedExperiment?.results && (
               <div>
                 <h3 className="text-sm font-medium mb-2">Results</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {selectedExperiment.results}
-                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{selectedExperiment.results}</p>
               </div>
             )}
 
@@ -413,29 +386,29 @@ const Experiments = () => {
             <div className="border-t pt-4">
               <h3 className="text-sm font-medium mb-3">Actions</h3>
               <div className="flex gap-2">
-                {selectedExperiment?.status !== 'in_progress' && (
+                {selectedExperiment?.status !== "in_progress" && (
                   <Button
                     size="sm"
                     variant="default"
-                    onClick={() => handleStatusChange(selectedExperiment.id, 'in_progress')}
+                    onClick={() => handleStatusChange(selectedExperiment.id, "in_progress")}
                   >
                     Activate
                   </Button>
                 )}
-                {(selectedExperiment?.status === 'in_progress' || selectedExperiment?.status === 'planning') && (
+                {(selectedExperiment?.status === "in_progress" || selectedExperiment?.status === "planning") && (
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleStatusChange(selectedExperiment.id, 'paused')}
+                    onClick={() => handleStatusChange(selectedExperiment.id, "paused")}
                   >
                     Pause
                   </Button>
                 )}
-                {selectedExperiment?.status !== 'completed' && (
+                {selectedExperiment?.status !== "completed" && (
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleStatusChange(selectedExperiment.id, 'completed')}
+                    onClick={() => handleStatusChange(selectedExperiment.id, "completed")}
                   >
                     Mark Complete
                   </Button>
