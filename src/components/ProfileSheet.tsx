@@ -3,7 +3,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, CheckCircle2 } from "lucide-react";
+import { LogOut, ChevronDown, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ActionHistoryItem {
   id: string;
@@ -22,6 +23,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const { user, signOut } = useAuth();
   const [weeklyActions, setWeeklyActions] = useState<ActionHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (open && user) {
@@ -58,10 +60,25 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     onOpenChange(false);
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const togglePillar = (pillar: string) => {
+    const newSet = new Set(expandedPillars);
+    if (newSet.has(pillar)) {
+      newSet.delete(pillar);
+    } else {
+      newSet.add(pillar);
+    }
+    setExpandedPillars(newSet);
   };
+
+  // Group actions by pillar
+  const pillarGroups = weeklyActions.reduce((acc, action) => {
+    const pillar = action.pillar || "Other";
+    if (!acc[pillar]) acc[pillar] = [];
+    acc[pillar].push(action);
+    return acc;
+  }, {} as Record<string, ActionHistoryItem[]>);
+
+  const pillarCount = Object.keys(pillarGroups).length;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -69,7 +86,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
         <SheetHeader className="p-4 border-b border-border/30">
           <SheetTitle className="text-left">This Week</SheetTitle>
           <SheetDescription className="text-left text-sm">
-            {weeklyActions.length} action{weeklyActions.length !== 1 ? 's' : ''} completed
+            {weeklyActions.length} action{weeklyActions.length !== 1 ? 's' : ''} across {pillarCount} area{pillarCount !== 1 ? 's' : ''}
           </SheetDescription>
         </SheetHeader>
 
@@ -80,22 +97,41 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
             <p className="text-sm text-muted-foreground">No actions completed yet this week.</p>
           ) : (
             <div className="space-y-2">
-              {weeklyActions.slice(0, 15).map((action) => (
-                <div key={action.id} className="flex items-start gap-2 py-2 border-b border-border/20 last:border-0">
-                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug">{action.action_text}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {formatDate(action.action_date)}{action.pillar ? ` · ${action.pillar}` : ''}
-                    </p>
-                  </div>
-                </div>
+              {Object.entries(pillarGroups).map(([pillar, actions]) => (
+                <Collapsible 
+                  key={pillar} 
+                  open={expandedPillars.has(pillar)}
+                  onOpenChange={() => togglePillar(pillar)}
+                >
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-3 rounded-md hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{pillar}</span>
+                      <span className="text-xs text-muted-foreground">({actions.length})</span>
+                    </div>
+                    {expandedPillars.has(pillar) ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="pl-3 py-1 space-y-1">
+                      {actions.slice(0, 3).map((action) => (
+                        <p key={action.id} className="text-xs text-muted-foreground leading-snug py-1">
+                          {action.action_text}
+                        </p>
+                      ))}
+                      {actions.length > 3 && (
+                        <p className="text-xs text-muted-foreground/60">+{actions.length - 3} more</p>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               ))}
             </div>
           )}
         </div>
 
-        {/* Sign Out */}
         <div className="p-4 border-t border-border/30 mt-auto">
           <Button
             variant="ghost"
