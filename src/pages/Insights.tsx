@@ -137,7 +137,7 @@ const Insights = () => {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Insights</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {totalCount > 0 ? `${totalCount} insights captured` : "Capture thoughts, notes, ChatGPT snippets"}
+            Capture thoughts, notes, ChatGPT snippets
           </p>
         </div>
         <Button onClick={() => setIsDialogOpen(true)} size="sm">

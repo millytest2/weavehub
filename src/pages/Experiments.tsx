@@ -201,7 +201,7 @@ const Experiments = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Experiments</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Small tests to shift identity and build proof
+            Small tests to try something cool
           </p>
         </div>
         <div className="flex gap-2">

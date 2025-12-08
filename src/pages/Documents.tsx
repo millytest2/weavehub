@@ -552,7 +552,7 @@ const Documents = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Documents</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {totalCount > 0 ? `${totalCount} documents stored` : "PDFs, resources, and reference materials"}
+            PDFs, resources, and reference materials
           </p>
         </div>
         <Button onClick={() => setIsDialogOpen(true)} size="sm">
