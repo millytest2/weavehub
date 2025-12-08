@@ -12,6 +12,23 @@ serve(async (req) => {
 
   try {
     const { input } = await req.json();
+    
+    // Input validation
+    if (!input || typeof input !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Input is required and must be a string' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (input.length > 5000) {
+      return new Response(
+        JSON.stringify({ error: 'Input exceeds maximum length of 5000 characters' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const sanitizedInput = input.trim();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -37,7 +54,7 @@ Only include this recommendation when the topic is genuinely career-related.`
           },
           {
             role: "user",
-            content: input
+            content: sanitizedInput
           }
         ],
       }),
