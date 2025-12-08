@@ -3,8 +3,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Card } from "@/components/ui/card";
-import { LogOut, CheckCircle2, Calendar } from "lucide-react";
+import { LogOut, CheckCircle2 } from "lucide-react";
 
 interface ActionHistoryItem {
   id: string;
@@ -23,7 +22,6 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const { user, signOut } = useAuth();
   const [weeklyActions, setWeeklyActions] = useState<ActionHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [pillarStats, setPillarStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (open && user) {
@@ -47,17 +45,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
         .order("action_date", { ascending: false });
 
       if (error) throw error;
-
       setWeeklyActions(data || []);
-
-      // Calculate pillar distribution
-      const stats: Record<string, number> = {};
-      (data || []).forEach((action) => {
-        if (action.pillar) {
-          stats[action.pillar] = (stats[action.pillar] || 0) + 1;
-        }
-      });
-      setPillarStats(stats);
     } catch (error) {
       console.error("Error fetching weekly actions:", error);
     } finally {
@@ -75,88 +63,36 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   };
 
-  const uniquePillars = Object.keys(pillarStats).length;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-80 sm:w-96 p-0 flex flex-col">
         <SheetHeader className="p-4 border-b border-border/30">
-          <SheetTitle className="text-left">Weekly Digest</SheetTitle>
+          <SheetTitle className="text-left">This Week</SheetTitle>
           <SheetDescription className="text-left text-sm">
-            Your progress over the last 7 days
+            {weeklyActions.length} action{weeklyActions.length !== 1 ? 's' : ''} completed
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Stats Summary */}
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="p-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                <span className="text-xs text-muted-foreground">Actions</span>
-              </div>
-              <p className="text-2xl font-bold mt-1">{weeklyActions.length}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                <span className="text-xs text-muted-foreground">Pillars</span>
-              </div>
-              <p className="text-2xl font-bold mt-1">{uniquePillars}</p>
-            </Card>
-          </div>
-
-          {/* Pillar Distribution */}
-          {Object.keys(pillarStats).length > 0 && (
-            <Card className="p-3">
-              <p className="text-xs text-muted-foreground mb-2">Pillar Distribution</p>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(pillarStats)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([pillar, count]) => (
-                    <span
-                      key={pillar}
-                      className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary"
-                    >
-                      {pillar}: {count}
-                    </span>
-                  ))}
-              </div>
-            </Card>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : weeklyActions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No actions completed yet this week.</p>
+          ) : (
+            <div className="space-y-2">
+              {weeklyActions.slice(0, 15).map((action) => (
+                <div key={action.id} className="flex items-start gap-2 py-2 border-b border-border/20 last:border-0">
+                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-snug">{action.action_text}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {formatDate(action.action_date)}{action.pillar ? ` · ${action.pillar}` : ''}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
-
-          {/* Recent Actions */}
-          <div>
-            <p className="text-xs text-muted-foreground mb-2">Recent Actions</p>
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : weeklyActions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No actions completed this week yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {weeklyActions.slice(0, 10).map((action) => (
-                  <Card key={action.id} className="p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm leading-snug line-clamp-2">{action.action_text}</p>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          {action.pillar && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                              {action.pillar}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-muted-foreground">
-                            {formatDate(action.action_date)}
-                          </span>
-                        </div>
-                      </div>
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Sign Out */}

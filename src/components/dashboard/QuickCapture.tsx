@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, Lightbulb, Link, FileText, Mic, Scale } from "lucide-react";
+import { Plus, Lightbulb, Link, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,7 @@ import { detectCareerKeywords } from "@/lib/careerDetection";
 import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
 
-type CaptureType = "insight" | "link" | "note" | "decision" | null;
+type CaptureType = "insight" | "link" | "decision" | null;
 
 export const QuickCapture = () => {
   const { user } = useAuth();
@@ -101,15 +101,6 @@ export const QuickCapture = () => {
           source: "quick_capture",
         });
         toast.success("Insight captured");
-      } else if (captureType === "note") {
-        // Quick note goes to insights
-        await supabase.from("insights").insert({
-          user_id: user.id,
-          title: title || "Quick Note",
-          content: content,
-          source: "quick_capture",
-        });
-        toast.success("Note saved");
       } else if (captureType === "decision") {
         // Call decision-mirror edge function
         setIsProcessing(true);
@@ -171,7 +162,7 @@ export const QuickCapture = () => {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-xl p-4 sm:p-6">
           <DialogHeader className="pb-2">
-            <DialogTitle className="flex items-center justify-between text-base sm:text-lg">
+            <DialogTitle className="text-base sm:text-lg">
               {captureType ? (
                 <button onClick={() => setCaptureType(null)} className="text-muted-foreground hover:text-foreground text-sm">
                   ← Back
@@ -179,15 +170,12 @@ export const QuickCapture = () => {
               ) : (
                 "Quick Capture"
               )}
-              <button onClick={handleClose} className="text-muted-foreground hover:text-foreground p-1">
-                <X className="h-4 w-4" />
-              </button>
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Capture insights, links, or notes</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">Capture thoughts, links, or decisions</DialogDescription>
           </DialogHeader>
 
           {!captureType ? (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 py-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 py-3">
               <button
                 onClick={() => handleQuickCapture("insight")}
                 className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
@@ -204,15 +192,6 @@ export const QuickCapture = () => {
                 <Link className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 <span className="text-xs sm:text-sm font-medium">Link</span>
                 <span className="text-[10px] sm:text-xs text-muted-foreground text-center">YouTube, article</span>
-              </button>
-              
-              <button
-                onClick={() => handleQuickCapture("note")}
-                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-              >
-                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <span className="text-xs sm:text-sm font-medium">Note</span>
-                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">Quick thought</span>
               </button>
               
               <button
@@ -240,11 +219,9 @@ export const QuickCapture = () => {
                 placeholder={
                   captureType === "link"
                     ? "Paste YouTube URL or any link..."
-                    : captureType === "insight"
-                    ? "What did you learn or realize?"
                     : captureType === "decision"
                     ? "What are you about to do?"
-                    : "What's on your mind?"
+                    : "What did you learn or realize?"
                 }
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
