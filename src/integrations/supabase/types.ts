@@ -303,6 +303,7 @@ export type Database = {
       identity_seeds: {
         Row: {
           content: string
+          core_values: string | null
           created_at: string
           current_monthly_income: number | null
           current_phase: string | null
@@ -318,6 +319,7 @@ export type Database = {
         }
         Insert: {
           content: string
+          core_values?: string | null
           created_at?: string
           current_monthly_income?: number | null
           current_phase?: string | null
@@ -333,6 +335,7 @@ export type Database = {
         }
         Update: {
           content?: string
+          core_values?: string | null
           created_at?: string
           current_monthly_income?: number | null
           current_phase?: string | null

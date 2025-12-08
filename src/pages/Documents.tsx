@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Trash2, Upload, Download, Plus, FileText, Eye } from "lucide-react";
+import { Trash2, Upload, Download, Plus, FileText, Eye, Loader2 } from "lucide-react";
 import { z } from "zod";
 import * as pdfjs from 'pdfjs-dist';
 import { createWorker } from 'tesseract.js';
@@ -23,6 +23,8 @@ const documentSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
   summary: z.string().trim().max(5000, "Summary must be less than 5,000 characters"),
 });
+
+const PAGE_SIZE = 50;
 
 const Documents = () => {
   const { user } = useAuth();
@@ -41,26 +43,63 @@ const Documents = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [videoMode, setVideoMode] = useState<"file" | "youtube" | "instagram">("file");
   const [isReExtracting, setIsReExtracting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     if (!user) return;
-    fetchDocuments();
+    fetchDocuments(true);
   }, [user]);
 
-  const fetchDocuments = async () => {
-    const { data, error } = await supabase
-      .from("documents")
-      .select("*")
-      .eq("user_id", user!.id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast.error("Failed to load documents");
-      return;
+  const fetchDocuments = useCallback(async (reset = false) => {
+    if (!user) return;
+    
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
     }
 
-    setDocuments(data || []);
-  };
+    const offset = reset ? 0 : documents.length;
+
+    try {
+      // Get total count first (only on reset)
+      if (reset) {
+        const { count } = await supabase
+          .from("documents")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        setTotalCount(count || 0);
+      }
+
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) {
+        toast.error("Failed to load documents");
+        return;
+      }
+
+      const newDocs = data || [];
+      
+      if (reset) {
+        setDocuments(newDocs);
+      } else {
+        setDocuments(prev => [...prev, ...newDocs]);
+      }
+
+      setHasMore(newDocs.length === PAGE_SIZE);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [user, documents.length]);
 
   const extractPdfText = async (file: File): Promise<string> => {
     try {
@@ -513,7 +552,7 @@ const Documents = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Documents</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            PDFs, resources, and reference materials
+            {totalCount > 0 ? `${totalCount} documents stored` : "PDFs, resources, and reference materials"}
           </p>
         </div>
         <Button onClick={() => setIsDialogOpen(true)} size="sm">
@@ -521,6 +560,13 @@ const Documents = () => {
           Upload
         </Button>
       </div>
+
+      {loading && documents.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
 
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {documents.map((doc) => (
@@ -578,6 +624,28 @@ const Documents = () => {
           </Card>
         ))}
       </div>
+
+      {/* Load More Button */}
+      {hasMore && documents.length > 0 && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => fetchDocuments(false)}
+            disabled={loadingMore}
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              `Load More (${documents.length} of ${totalCount})`
+            )}
+          </Button>
+        </div>
+      )}
+      </>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="w-full max-w-xl">

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User } from "lucide-react";
+import { Compass, User, Heart } from "lucide-react";
 import { z } from "zod";
 
 const identitySeedSchema = z.object({
@@ -16,6 +16,7 @@ export default function IdentitySeed() {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [currentReality, setCurrentReality] = useState("");
+  const [coreValues, setCoreValues] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
@@ -24,6 +25,7 @@ export default function IdentitySeed() {
     // Clear state when user changes to prevent showing stale data
     setContent("");
     setCurrentReality("");
+    setCoreValues("");
     setIdentitySeedId(null);
     
     if (user) {
@@ -60,10 +62,12 @@ export default function IdentitySeed() {
         setContent(data.content || "");
         setIdentitySeedId(data.id);
         setCurrentReality(data.weekly_focus || "");
+        setCoreValues(data.core_values || "");
       } else {
         // Ensure clean state for new users
         setContent("");
         setCurrentReality("");
+        setCoreValues("");
         setIdentitySeedId(null);
       }
     } catch (error) {
@@ -86,6 +90,7 @@ export default function IdentitySeed() {
       const updateData = {
         content: validation.data.content,
         weekly_focus: currentReality || null,
+        core_values: coreValues || null,
         current_phase: "baseline",
       };
 
@@ -145,6 +150,23 @@ export default function IdentitySeed() {
           />
           <p className="text-xs text-muted-foreground mt-2">
             Just write naturally. The system extracts what it needs.
+          </p>
+        </Card>
+
+        {/* Core Values */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Heart className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-medium text-muted-foreground">Core Values</h2>
+          </div>
+          <Textarea
+            value={coreValues}
+            onChange={(e) => setCoreValues(e.target.value)}
+            placeholder="What do you stand for? What principles guide your decisions? (e.g., Freedom, Growth, Authenticity, Impact, Creation, Health)"
+            className="min-h-[100px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            3-5 values that define how you want to live.
           </p>
         </Card>
 
