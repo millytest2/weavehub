@@ -328,6 +328,99 @@ export function formatSemanticContextForAI(context: SemanticContext): string {
   return formatted;
 }
 
+// Build a standardized context pack for agents (token-capped)
+export interface ContextPack {
+  identity: string | null;
+  current_reality: string | null;
+  core_values: string | null;
+  date_context: string;
+  insights: Array<{ title: string; content: string; source?: string }>;
+  experiments: Array<{ title: string; status: string; identity_shift?: string }>;
+  documents: Array<{ title: string; summary?: string }>;
+  completed_actions: string[];
+  pillar_history: string[];
+}
+
+export function buildContextPack(
+  context: CompactContext,
+  options: { maxInsights?: number; maxDocs?: number; maxActions?: number } = {}
+): ContextPack {
+  const { maxInsights = 8, maxDocs = 5, maxActions = 15 } = options;
+  
+  // Get current date context
+  const now = new Date();
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const hour = now.getHours();
+  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+  const dateContext = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()} (${timeOfDay})`;
+
+  return {
+    identity: context.identity_seed,
+    current_reality: context.weekly_focus,
+    core_values: null, // Would need to be fetched separately if needed
+    date_context: dateContext,
+    insights: context.key_insights.slice(0, maxInsights).map((i: any) => ({
+      title: i.title,
+      content: i.content?.substring(0, 300) || '',
+      source: i.source
+    })),
+    experiments: [...context.experiments.in_progress, ...context.experiments.planning].slice(0, 5).map((e: any) => ({
+      title: e.title,
+      status: e.status,
+      identity_shift: e.identity_shift_target?.substring(0, 100)
+    })),
+    documents: context.key_documents.slice(0, maxDocs).map((d: any) => ({
+      title: d.title,
+      summary: d.summary?.substring(0, 150) || d.extracted_content?.substring(0, 150)
+    })),
+    completed_actions: (context.completed_actions || []).slice(0, maxActions).map((a: any) => a.action_text).filter(Boolean),
+    pillar_history: context.pillar_history.slice(0, 5)
+  };
+}
+
+// Format context pack for AI prompt (token-efficient)
+export function formatContextPack(pack: ContextPack): string {
+  let formatted = `TODAY: ${pack.date_context}\n\n`;
+
+  if (pack.identity) {
+    formatted += `IDENTITY:\n${pack.identity}\n\n`;
+  }
+
+  if (pack.current_reality) {
+    formatted += `CURRENT REALITY:\n${pack.current_reality}\n\n`;
+  }
+
+  if (pack.core_values) {
+    formatted += `CORE VALUES: ${pack.core_values}\n\n`;
+  }
+
+  if (pack.insights.length > 0) {
+    const insightText = pack.insights.map(i => `- ${i.title}: ${i.content}`).join('\n');
+    formatted += `INSIGHTS:\n${insightText}\n\n`;
+  }
+
+  if (pack.experiments.length > 0) {
+    const expText = pack.experiments.map(e => `- ${e.title} (${e.status})${e.identity_shift ? `: ${e.identity_shift}` : ''}`).join('\n');
+    formatted += `EXPERIMENTS:\n${expText}\n\n`;
+  }
+
+  if (pack.documents.length > 0) {
+    const docText = pack.documents.map(d => `- ${d.title}${d.summary ? `: ${d.summary}` : ''}`).join('\n');
+    formatted += `DOCUMENTS:\n${docText}\n\n`;
+  }
+
+  if (pack.completed_actions.length > 0) {
+    formatted += `ALREADY DONE (DO NOT REPEAT):\n${pack.completed_actions.join('\n')}\n\n`;
+  }
+
+  if (pack.pillar_history.length > 0) {
+    formatted += `RECENT PILLARS: ${pack.pillar_history.join(' > ')}\n`;
+  }
+
+  return formatted.trim();
+}
+
 // Format context specifically for document intelligence
 export function formatDocumentContext(context: DocumentContext): string {
   let formatted = "";

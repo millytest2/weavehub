@@ -1,13 +1,13 @@
-import { Brain, Home, Lightbulb, FileText, Map, ListTodo, LogOut, FlaskConical, Compass, Menu } from "lucide-react";
+import { Brain, Home, Lightbulb, FileText, Map, ListTodo, FlaskConical, Compass, Menu, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/components/auth/AuthProvider";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ProfileSheet } from "@/components/ProfileSheet";
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
-  const { signOut } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
@@ -54,15 +54,15 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={signOut}
+              onClick={() => setProfileOpen(true)}
               className="h-7 px-2 text-muted-foreground hover:text-foreground"
             >
-              <LogOut className="h-4 w-4" />
+              <User className="h-4 w-4" />
             </Button>
           </nav>
 
           {/* Mobile Menu */}
-          <Sheet open={open} onOpenChange={setOpen}>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Menu className="h-5 w-5" />
@@ -84,7 +84,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
                       key={item.name}
                       to={item.href}
                       end={item.href === "/"}
-                      onClick={() => setOpen(false)}
+                      onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
                       activeClassName="bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
                     >
@@ -97,11 +97,11 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => { signOut(); setOpen(false); }}
+                    onClick={() => { setMenuOpen(false); setProfileOpen(true); }}
                     className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
                   >
-                    <LogOut className="h-4 w-4" />
-                    <span>Sign Out</span>
+                    <User className="h-4 w-4" />
+                    <span>Profile</span>
                   </Button>
                 </div>
               </div>
@@ -125,7 +125,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
               <span className="text-[10px] font-medium">{item.name}</span>
             </NavLink>
           ))}
-          <Sheet open={open} onOpenChange={setOpen}>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <button className="flex flex-col items-center gap-0.5 py-1.5 px-3 text-muted-foreground">
                 <Menu className="h-5 w-5" />
@@ -135,6 +135,9 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
           </Sheet>
         </nav>
       </div>
+
+      {/* Profile Sheet */}
+      <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
 
       {/* Main Content */}
       <main className="flex-1 pt-12 pb-16 md:pb-0">

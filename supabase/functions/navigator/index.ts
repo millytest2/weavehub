@@ -109,6 +109,35 @@ function choosePillar(recentPillars: string[]): string {
   return available[Math.floor(Math.random() * available.length)];
 }
 
+// Get current date/time context
+function getDateTimeContext(): { dayOfWeek: string; date: string; timeOfDay: string; fullContext: string } {
+  const now = new Date();
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  const dayOfWeek = days[now.getDay()];
+  const date = `${months[now.getMonth()]} ${now.getDate()}`;
+  const hour = now.getHours();
+  
+  let timeOfDay: string;
+  if (hour < 12) {
+    timeOfDay = 'morning';
+  } else if (hour < 17) {
+    timeOfDay = 'afternoon';
+  } else if (hour < 21) {
+    timeOfDay = 'evening';
+  } else {
+    timeOfDay = 'night';
+  }
+  
+  return {
+    dayOfWeek,
+    date,
+    timeOfDay,
+    fullContext: `${dayOfWeek}, ${date} (${timeOfDay})`
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -127,6 +156,10 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    
+    // Get date/time context
+    const dateTime = getDateTimeContext();
+    console.log(`Navigator: ${dateTime.fullContext}`);
 
     const userContext = await fetchUserContext(supabase, user.id);
     
@@ -197,6 +230,8 @@ serve(async (req) => {
 
     const systemPrompt = `You are a personal operating system. Return ONE concrete action.
 
+TODAY: ${dateTime.fullContext}
+
 ${contextPrompt}${semanticContext}
 
 CORE QUESTION: What action today reinforces the user's identity shift?
@@ -214,7 +249,7 @@ PILLARS:
 - Learning: Courses, reading, skill acquisition
 
 CRITICAL RULES:
-- 15-45 minutes
+- 15-90 minutes (vary based on day and context - weekends can have longer deep work, weekday mornings might be shorter)
 - MUST BE ULTRA SPECIFIC - include exact details from their data
 - MUST be different from "ALREADY DONE" list above - NEVER repeat those
 - MUST connect to the user's actual identity/situation
@@ -290,7 +325,7 @@ EXAMPLE IF USER HAS PROJECT "UPath" and identity about "anti-MBA career guidance
                 type: "object",
                 properties: {
                   priority_for_today: { type: "string", enum: ALL_PILLARS },
-                  do_this_now: { type: "string", description: "One specific action to DO, 15-45 minutes, no emojis, never 'read' or 'review' something" },
+                  do_this_now: { type: "string", description: "One specific action to DO, 15-90 minutes, no emojis, never 'read' or 'review' something" },
                   why_it_matters: { type: "string", description: "1-2 sentences max, no emojis" },
                   time_required: { type: "string" }
                 },
