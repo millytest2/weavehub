@@ -109,15 +109,30 @@ function choosePillar(recentPillars: string[]): string {
   return available[Math.floor(Math.random() * available.length)];
 }
 
-// Get current date/time context
-function getDateTimeContext(): { dayOfWeek: string; date: string; timeOfDay: string; fullContext: string } {
+// Get current date/time context using user's timezone
+function getDateTimeContext(timezone?: string): { dayOfWeek: string; date: string; timeOfDay: string; fullContext: string } {
   const now = new Date();
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
-  const dayOfWeek = days[now.getDay()];
-  const date = `${months[now.getMonth()]} ${now.getDate()}`;
-  const hour = now.getHours();
+  // Use user's timezone if provided, otherwise fallback to UTC
+  const options: Intl.DateTimeFormatOptions = { 
+    timeZone: timezone || 'UTC',
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    hour12: false
+  };
+  
+  const formatter = new Intl.DateTimeFormat('en-US', options);
+  const parts = formatter.formatToParts(now);
+  
+  const dayOfWeek = parts.find(p => p.type === 'weekday')?.value || 'Monday';
+  const month = parts.find(p => p.type === 'month')?.value || 'Jan';
+  const day = parts.find(p => p.type === 'day')?.value || '1';
+  const hourStr = parts.find(p => p.type === 'hour')?.value || '12';
+  const hour = parseInt(hourStr, 10);
+  
+  const date = `${month} ${day}`;
   
   let timeOfDay: string;
   if (hour < 12) {
@@ -144,6 +159,15 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body for timezone
+    let timezone: string | undefined;
+    try {
+      const body = await req.json();
+      timezone = body?.timezone;
+    } catch {
+      // No body or invalid JSON, continue with default
+    }
+
     const authHeader = req.headers.get("authorization");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -157,8 +181,8 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
     
-    // Get date/time context
-    const dateTime = getDateTimeContext();
+    // Get date/time context using user's timezone
+    const dateTime = getDateTimeContext(timezone);
     console.log(`Navigator: ${dateTime.fullContext}`);
 
     const userContext = await fetchUserContext(supabase, user.id);

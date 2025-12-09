@@ -44,6 +44,15 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body for timezone
+    let timezone: string | undefined;
+    try {
+      const body = await req.json();
+      timezone = body?.timezone;
+    } catch {
+      // No body or invalid JSON, continue with default
+    }
+
     const authHeader = req.headers.get("authorization");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -68,7 +77,19 @@ serve(async (req) => {
       ? availableBuckets[Math.floor(Math.random() * availableBuckets.length)]
       : BUCKETS[Math.floor(Math.random() * BUCKETS.length)];
 
-    console.log(`Next Rep: ${bucket} bucket`);
+    // Get time context for appropriate suggestions
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      timeZone: timezone || 'UTC',
+      hour: 'numeric',
+      hour12: false
+    };
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const hourStr = formatter.format(now);
+    const hour = parseInt(hourStr, 10);
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+
+    console.log(`Next Rep: ${bucket} bucket (${timeOfDay})`);
 
     const systemPrompt = `You are a replacement loop breaker. The user feels off—bored, numb, tired, angry, lost, or drifting. Give them ONE immediate action that's MORE APPEALING than scrolling, Netflix, or numbing out.
 
