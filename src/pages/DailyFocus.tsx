@@ -14,6 +14,12 @@ const dailyFocusSchema = z.object({
   reflection: z.string().trim().max(5000, "Reflection must be less than 5,000 characters"),
 });
 
+// Get today's date in local timezone (YYYY-MM-DD format)
+const getLocalToday = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+
 const DailyFocus = () => {
   const { user } = useAuth();
   const [todayTask, setTodayTask] = useState<any>(null);
@@ -29,7 +35,7 @@ const DailyFocus = () => {
   }, [user]);
 
   const fetchTodayTask = async () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalToday();
     const { data, error } = await supabase
       .from("daily_tasks")
       .select("*")
@@ -59,7 +65,7 @@ const DailyFocus = () => {
 
     setLoading(true);
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalToday();
       
       if (todayTask) {
         const { error } = await supabase
@@ -99,12 +105,16 @@ const DailyFocus = () => {
   const handleGenerateDailyOne = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("navigator");
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { data, error } = await supabase.functions.invoke("navigator", {
+        body: { timezone }
+      });
 
       if (error) throw error;
 
-      setOneThing(data.one_thing);
-      setWhyMatters(data.why_matters);
+      // Navigator returns do_this_now and why_it_matters
+      setOneThing(data.do_this_now || data.one_thing || "");
+      setWhyMatters(data.why_it_matters || data.why_matters || "");
       toast.success("Generated your daily focus");
     } catch (error: any) {
       toast.error(error.message || "Failed to generate");
