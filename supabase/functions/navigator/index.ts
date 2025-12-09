@@ -252,9 +252,37 @@ serve(async (req) => {
       ? `\n\nSEMANTICALLY RELEVANT INSIGHTS (from across all your knowledge):\n${semanticInsights.join('\n')}`
       : '';
 
+    // Time-of-day specific guidance
+    const timeGuidance = {
+      morning: `MORNING CONTEXT: High energy, fresh mind. Prioritize:
+- Deep work, creative tasks, strategic thinking
+- Hardest/most important work first
+- Building, writing, shipping
+- Actions requiring focus and clarity`,
+      afternoon: `AFTERNOON CONTEXT: Sustained energy. Good for:
+- Collaborative tasks, meetings follow-ups
+- Administrative work, applications
+- Learning and skill practice
+- Moderate intensity tasks`,
+      evening: `EVENING CONTEXT: Winding down energy. Prioritize:
+- Lighter creative expression (posting, writing)
+- Social connection (reaching out to people)
+- Reflection and planning for tomorrow
+- Physical activity to decompress
+- NO deep work or complex tasks`,
+      night: `NIGHT CONTEXT: Low energy, rest needed. Only suggest:
+- Quick wins (under 15 min)
+- Presence/breathing exercises
+- Light planning or journaling
+- Preparing for tomorrow
+- Nothing requiring high cognitive load`
+    };
+
     const systemPrompt = `You are a personal operating system. Return ONE concrete action.
 
 TODAY: ${dateTime.fullContext}
+
+${timeGuidance[dateTime.timeOfDay as keyof typeof timeGuidance]}
 
 ${contextPrompt}${semanticContext}
 
@@ -272,8 +300,14 @@ PILLARS:
 - Connection: Texting friends, dating, social plans
 - Learning: Courses, reading, skill acquisition
 
+TIME-OF-DAY RULES (CRITICAL):
+${dateTime.timeOfDay === 'morning' ? '- Morning = high intensity, deep focus tasks OK (45-90 min)' : ''}
+${dateTime.timeOfDay === 'afternoon' ? '- Afternoon = medium intensity, varied tasks (30-60 min)' : ''}
+${dateTime.timeOfDay === 'evening' ? '- Evening = lighter tasks, social/creative focus (20-45 min)' : ''}
+${dateTime.timeOfDay === 'night' ? '- Night = quick wins only, wind-down focus (10-20 min max)' : ''}
+
 CRITICAL RULES:
-- 15-90 minutes (vary based on day and context - weekends can have longer deep work, weekday mornings might be shorter)
+- Time must match ${dateTime.timeOfDay} energy level
 - MUST BE ULTRA SPECIFIC - include exact details from their data
 - MUST be different from "ALREADY DONE" list above - NEVER repeat those
 - MUST connect to the user's actual identity/situation
@@ -301,13 +335,6 @@ BANNED PATTERNS (too generic):
 - Anything in the "ALREADY DONE" list
 - Any action without concrete specifics
 
-EXAMPLES OF GOOD SPECIFICITY:
-- "Write a LinkedIn post explaining why [concept from their recent insight] matters for [their industry]"
-- "Build the signup form component for [their project name]"
-- "Record a 60-second video explaining [topic from their experiments]"
-- "Do 50 pushups, cold shower, then 5 minutes of box breathing"
-- "Draft 3 cold emails to [type of company] for [role they want]"
-
 GROUNDING REQUIREMENT (CRITICAL - YOUR ACTIONS MUST BE PERSONAL):
 Your action MUST directly reference at least ONE of these from the user's ACTUAL data above:
 - A specific concept/phrase from their IDENTITY SEED (quote their language)
@@ -316,15 +343,7 @@ Your action MUST directly reference at least ONE of these from the user's ACTUAL
 - A specific technique or method from their documents (e.g., "Break-Loop protocol", "physiological sighs")
 - A specific identity they're building (e.g., "Creator-Athlete", "Full-Stack Human")
 
-DO NOT generate generic actions. QUOTE their own language back to them.
-
-EXAMPLE IF USER HAS INSIGHT "Break-Loop protocol: name the pattern, three sighs, label sensation":
-- BAD: "Practice emotional regulation when stressed"
-- GOOD: "Run the Break-Loop protocol next time you feel a spike: name the pattern, three sighs, label the body sensation, 60-second somatic ride, then 10 pushups"
-
-EXAMPLE IF USER HAS PROJECT "UPath" and identity about "anti-MBA career guidance":
-- BAD: "Work on your career platform"
-- GOOD: "Write the UPath landing page section explaining why the anti-MBA approach solves career paralysis"`;
+DO NOT generate generic actions. QUOTE their own language back to them.`;
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
