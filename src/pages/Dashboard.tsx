@@ -116,7 +116,10 @@ const Dashboard = () => {
     
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("navigator");
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { data, error } = await supabase.functions.invoke("navigator", {
+        body: { timezone }
+      });
       if (error) throw error;
       
       if (!data || !data.do_this_now) {
@@ -201,7 +204,10 @@ const Dashboard = () => {
   const handleNextRep = async () => {
     setIsGettingRep(true);
     try {
-      const { data, error } = await supabase.functions.invoke("next-rep");
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { data, error } = await supabase.functions.invoke("next-rep", {
+        body: { timezone }
+      });
       if (error) throw error;
       if (data) {
         setNextRep(data);
