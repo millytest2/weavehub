@@ -91,7 +91,35 @@ serve(async (req) => {
 
     console.log(`Next Rep: ${bucket} bucket (${timeOfDay})`);
 
+    // Time-of-day specific drift replacements
+    const timeContext = {
+      morning: `MORNING DRIFT: High energy available but not being used. Suggest:
+- Physical activation (workout, cold exposure)
+- Creative expression (writing, building)
+- Deep focus tasks that feel exciting
+- Avoid: passive activities, low-energy suggestions`,
+      afternoon: `AFTERNOON DRIFT: Energy dip is normal. Suggest:
+- Re-energizing activities (walk, movement)
+- Social connection (text someone)
+- Medium-intensity creative work
+- Quick wins that build momentum`,
+      evening: `EVENING DRIFT: Wind-down energy, prone to numbing. Suggest:
+- Light creative expression (post something)
+- Calming physical activity (stretch, walk)
+- Social/connection based activities
+- Avoid: high-intensity, deep work`,
+      night: `NIGHT DRIFT: Low energy, high numbing risk. Suggest:
+- Presence/breathing (5-10 min max)
+- Quick creative micro-action
+- Preparing for tomorrow (sets up wins)
+- Physical relaxation (stretch, decompress)
+- Avoid: anything requiring high energy`
+    };
+
     const systemPrompt = `You are a replacement loop breaker. The user feels off—bored, numb, tired, angry, lost, or drifting. Give them ONE immediate action that's MORE APPEALING than scrolling, Netflix, or numbing out.
+
+TIME: ${timeOfDay}
+${timeContext[timeOfDay as keyof typeof timeContext]}
 
 ${contextPrompt}
 
@@ -107,9 +135,15 @@ BUCKET MEANINGS:
 - Fun: Pure enjoyment - games, music, something playful
 - Focus: Ship one small thing - visible progress, momentum
 
+TIME-APPROPRIATE DURATION:
+${timeOfDay === 'morning' ? '- Morning: 10-30 min, can be higher intensity' : ''}
+${timeOfDay === 'afternoon' ? '- Afternoon: 10-25 min, re-energizing focus' : ''}
+${timeOfDay === 'evening' ? '- Evening: 5-20 min, lighter activities' : ''}
+${timeOfDay === 'night' ? '- Night: 5-15 min MAX, wind-down only' : ''}
+
 RULES:
 - ONE action only
-- 5-30 minutes max
+- Duration MUST match ${timeOfDay} energy level
 - Can start RIGHT NOW (no setup, no driving somewhere)
 - Must be MORE FUN than the numbing behavior
 - Make it sound exciting, not like a chore
@@ -118,7 +152,7 @@ RULES:
 - No guilt trips
 - Frame it as an upgrade, not a should
 
-THE KEY: This must feel like something they WANT to do, not have to do. Make it sound appealing.`;
+THE KEY: This must feel like something they WANT to do, not have to do. Make it sound appealing for ${timeOfDay}.`;
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
