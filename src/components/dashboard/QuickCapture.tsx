@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Lightbulb, Link, Scale } from "lucide-react";
+import { Plus, Lightbulb, Link, Scale, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,8 +10,18 @@ import { toast } from "sonner";
 import { detectCareerKeywords } from "@/lib/careerDetection";
 import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
+import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 
 type CaptureType = "insight" | "link" | "decision" | null;
+
+interface ReturnToSelfData {
+  identity: string;
+  values: string;
+  currentReality: string;
+  relevantInsight: { title: string; content: string } | null;
+  gentleRep: string;
+  reminder: string;
+}
 
 export const QuickCapture = () => {
   const { user } = useAuth();
@@ -25,6 +35,9 @@ export const QuickCapture = () => {
   const [pendingSubmit, setPendingSubmit] = useState(false);
   const [showMirrorResponse, setShowMirrorResponse] = useState(false);
   const [mirrorText, setMirrorText] = useState("");
+  const [showReturnToSelf, setShowReturnToSelf] = useState(false);
+  const [returnToSelfData, setReturnToSelfData] = useState<ReturnToSelfData | null>(null);
+  const [isLoadingReturnToSelf, setIsLoadingReturnToSelf] = useState(false);
 
   const handleOpen = () => setIsOpen(true);
   
@@ -147,6 +160,31 @@ export const QuickCapture = () => {
     executeSubmit();
   };
 
+  const handleReturnToSelf = async () => {
+    setIsLoadingReturnToSelf(true);
+    setShowReturnToSelf(true);
+    setIsOpen(false);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("return-to-self");
+      if (error) throw error;
+      setReturnToSelfData(data);
+    } catch (error) {
+      console.error("Return to self error:", error);
+      // Use fallback from edge function error response
+      setReturnToSelfData({
+        identity: "You are becoming someone aligned with your values.",
+        values: "Growth, Presence, Creation",
+        currentReality: "You are here. That is enough.",
+        relevantInsight: null,
+        gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
+        reminder: "You are becoming who you said you'd become."
+      });
+    } finally {
+      setIsLoadingReturnToSelf(false);
+    }
+  };
+
   return (
     <>
       {/* Floating Action Button */}
@@ -171,37 +209,49 @@ export const QuickCapture = () => {
                 "Quick Capture"
               )}
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Capture thoughts, links, or decisions</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">Capture or ground yourself</DialogDescription>
           </DialogHeader>
 
           {!captureType ? (
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 py-3">
+            <div className="space-y-3 py-3">
+              {/* Return to Self - Primary */}
               <button
-                onClick={() => handleQuickCapture("insight")}
-                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                onClick={handleReturnToSelf}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all text-left"
               >
-                <Lightbulb className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <span className="text-xs sm:text-sm font-medium">Insight</span>
-                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">Thought or learning</span>
+                <Compass className="h-6 w-6 text-primary shrink-0" />
+                <div>
+                  <span className="text-sm font-medium block">Return to Self</span>
+                  <span className="text-xs text-muted-foreground">Drifting? Ground yourself here.</span>
+                </div>
               </button>
-              
-              <button
-                onClick={() => handleQuickCapture("link")}
-                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-              >
-                <Link className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <span className="text-xs sm:text-sm font-medium">Link</span>
-                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">YouTube, article</span>
-              </button>
-              
-              <button
-                onClick={() => handleQuickCapture("decision")}
-                className="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-              >
-                <Scale className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <span className="text-xs sm:text-sm font-medium">Decision</span>
-                <span className="text-[10px] sm:text-xs text-muted-foreground text-center">Mirror identity</span>
-              </button>
+
+              {/* Other capture options */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => handleQuickCapture("insight")}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Lightbulb className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Insight</span>
+                </button>
+                
+                <button
+                  onClick={() => handleQuickCapture("link")}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Link className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Link</span>
+                </button>
+                
+                <button
+                  onClick={() => handleQuickCapture("decision")}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Scale className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Decision</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3 py-3">
@@ -269,6 +319,13 @@ export const QuickCapture = () => {
           }
         }}
         mirror={mirrorText}
+      />
+
+      <ReturnToSelfDialog
+        open={showReturnToSelf}
+        onOpenChange={setShowReturnToSelf}
+        data={returnToSelfData}
+        isLoading={isLoadingReturnToSelf}
       />
     </>
   );
