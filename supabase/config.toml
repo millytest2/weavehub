@@ -30,6 +30,9 @@ verify_jwt = true
 [functions.path-generator]
 verify_jwt = true
 
+[functions.return-to-self]
+verify_jwt = true
+
 [functions.synthesizer]
 verify_jwt = true
 

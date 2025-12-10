@@ -1,0 +1,175 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface ReturnToSelfOutput {
+  identity: string;
+  values: string;
+  currentReality: string;
+  relevantInsight: { title: string; content: string } | null;
+  gentleRep: string;
+  reminder: string;
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("authorization");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader! } } }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    // Fetch identity seed
+    const { data: identitySeed } = await supabase
+      .from("identity_seeds")
+      .select("content, core_values, weekly_focus")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    // Fetch recent insights (top 5 by relevance)
+    const { data: insights } = await supabase
+      .from("insights")
+      .select("id, title, content, relevance_score")
+      .eq("user_id", user.id)
+      .order("relevance_score", { ascending: false })
+      .limit(10);
+
+    // Pick a random relevant insight
+    const randomInsight = insights && insights.length > 0 
+      ? insights[Math.floor(Math.random() * Math.min(5, insights.length))]
+      : null;
+
+    const identity = identitySeed?.content || "You are becoming someone who takes aligned action.";
+    const values = identitySeed?.core_values || "Growth, Presence, Creation";
+    const currentReality = identitySeed?.weekly_focus || "You are here. That is enough.";
+
+    // Generate a gentle identity-aligned rep
+    const systemPrompt = `You are a grounding presence. The user is drifting (bored, anxious, lonely, overthinking, or wanting to numb out). 
+Your job is to bring them back to themselves with one gentle, identity-consistent micro-action.
+
+USER IDENTITY: ${identity}
+USER VALUES: ${values}
+CURRENT REALITY: ${currentReality}
+${randomInsight ? `RELEVANT INSIGHT: "${randomInsight.title}" - ${randomInsight.content.substring(0, 300)}` : ""}
+
+Return a JSON object with exactly these fields:
+- gentleRep: A single 2-5 minute action that feels inviting, not obligatory. Something that reconnects them to their identity. No pressure.
+- reminder: One sentence (under 15 words) that reminds them what they're doing with their life. Pull from their identity. Be specific.
+
+Rules:
+- No emojis
+- No questions
+- No shame or pressure
+- Make it feel like a gentle invitation, not a command
+- Reference their actual identity/values
+- Keep it concrete and immediate`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate the grounding response." }
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "return_grounding",
+            description: "Return a grounding response",
+            parameters: {
+              type: "object",
+              properties: {
+                gentleRep: { type: "string", description: "A gentle 2-5 minute identity-aligned action" },
+                reminder: { type: "string", description: "One sentence reminder of what they're doing with their life" }
+              },
+              required: ["gentleRep", "reminder"],
+              additionalProperties: false
+            }
+          }
+        }],
+        tool_choice: { type: "function", function: { name: "return_grounding" } }
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("AI error:", response.status);
+      // Fallback response
+      return new Response(JSON.stringify({
+        identity: identity.substring(0, 200),
+        values,
+        currentReality: currentReality.substring(0, 200),
+        relevantInsight: randomInsight ? { title: randomInsight.title, content: randomInsight.content.substring(0, 200) } : null,
+        gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
+        reminder: "You are becoming who you said you'd become."
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const data = await response.json();
+    let gentleRep = "Take three slow breaths. Feel your feet on the ground.";
+    let reminder = "You are becoming who you said you'd become.";
+
+    try {
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall?.function?.arguments) {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        gentleRep = parsed.gentleRep || gentleRep;
+        reminder = parsed.reminder || reminder;
+      }
+    } catch (e) {
+      console.error("Parse error:", e);
+    }
+
+    const output: ReturnToSelfOutput = {
+      identity: identity.substring(0, 300),
+      values,
+      currentReality: currentReality.substring(0, 300),
+      relevantInsight: randomInsight 
+        ? { title: randomInsight.title, content: randomInsight.content.substring(0, 200) } 
+        : null,
+      gentleRep,
+      reminder
+    };
+
+    return new Response(JSON.stringify(output), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+
+  } catch (error) {
+    console.error("Return to self error:", error);
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error",
+      // Provide fallback even on error
+      identity: "You are becoming someone aligned with your values.",
+      values: "Growth, Presence, Creation",
+      currentReality: "You are here. That is enough.",
+      relevantInsight: null,
+      gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
+      reminder: "You are becoming who you said you'd become."
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+});
