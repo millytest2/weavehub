@@ -255,10 +255,10 @@ const Dashboard = () => {
       <QuickCapture />
 
       <div className="flex-1 space-y-6">
-        {/* Today's Action Card */}
+        {/* Today's Invitation Card */}
         <Card className="border-0 shadow-sm bg-card/50">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Action</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Invitation</CardTitle>
             <ProgressDots current={currentSequence} />
           </CardHeader>
           <CardContent className="pt-0">
@@ -268,7 +268,7 @@ const Dashboard = () => {
                   <Check className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">All 3 actions complete</p>
+                  <p className="font-medium">All 3 invitations accepted</p>
                   <p className="text-sm text-muted-foreground">Great work today.</p>
                 </div>
               </div>
@@ -293,32 +293,33 @@ const Dashboard = () => {
                   )}
                 </div>
                 <Button onClick={handleCompleteTask} className="w-full" size="lg">
-                  Done <ArrowRight className="ml-2 h-4 w-4" />
+                  Accept <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             ) : (
               <div className="space-y-4 py-6">
                 <p className="text-sm text-muted-foreground text-center">
-                  Ready to start?
+                  Ready when you are
                 </p>
                 <Button
                   onClick={handleGenerateDailyOne}
                   disabled={isGenerating}
                   className="w-full"
+                  variant="outline"
                   size="lg"
                 >
-                  {isGenerating ? "Generating..." : "Start My Day"}
+                  {isGenerating ? "..." : "Show me an invitation"}
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Active Experiment Card */}
+        {/* Micro-Experiment Card */}
         {activeExperiment && (
           <Card className="border-0 shadow-sm bg-card/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Experiment</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Micro-Rep</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               {(() => {
@@ -327,13 +328,13 @@ const Dashboard = () => {
                 const todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)];
                 
                 return (
-                  <div className="space-y-2">
-                    <h3 className="font-semibold">{activeExperiment.title}</h3>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground/70">{activeExperiment.title}</p>
+                    <p className="text-base font-medium leading-relaxed">
                       {todayStep || activeExperiment.description}
                     </p>
-                    <p className="text-xs text-muted-foreground/70 pt-1">
-                      {activeExperiment.duration || "In progress"}
+                    <p className="text-xs text-muted-foreground/60">
+                      Just this. No pressure.
                     </p>
                   </div>
                 );
