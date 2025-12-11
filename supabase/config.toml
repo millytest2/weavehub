@@ -1,40 +1,74 @@
 project_id = "ugglogiaipbzojfrwcoe"
 
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["https://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
 [functions.brain]
-verify_jwt = true
-
-[functions.daily-suggestions]
-verify_jwt = true
-
-[functions.decision-mirror]
-verify_jwt = true
-
-[functions.document-intelligence]
-verify_jwt = true
-
-[functions.embed]
-verify_jwt = true
-
-[functions.experiment-generator]
-verify_jwt = true
-
-[functions.instagram-processor]
 verify_jwt = true
 
 [functions.navigator]
 verify_jwt = true
 
-[functions.next-rep]
+[functions.synthesizer]
+verify_jwt = true
+
+[functions.experiment-generator]
 verify_jwt = true
 
 [functions.path-generator]
 verify_jwt = true
 
-[functions.return-to-self]
+[functions.daily-suggestions]
 verify_jwt = true
 
-[functions.synthesizer]
+[functions.next-rep]
+verify_jwt = true
+
+[functions.document-intelligence]
 verify_jwt = true
 
 [functions.youtube-processor]
+verify_jwt = true
+
+[functions.instagram-processor]
+verify_jwt = true
+
+[functions.embed]
+verify_jwt = true
+
+[functions.decision-mirror]
+verify_jwt = true
+
+[functions.return-to-self]
+verify_jwt = true
+
+[functions.retrieval-engine]
 verify_jwt = true
