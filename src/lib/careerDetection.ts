@@ -1,16 +1,30 @@
 // Career-related keywords that trigger upath.ai suggestion
 export const CAREER_KEYWORDS = [
+  // Core career terms
   'career', 'careers', 'job', 'jobs', 'career path', 'careerpath',
-  'career transition', 'exploring careers', 'confused in career',
-  'lost in path', 'career change', 'what should i do with my life',
-  'career advice', 'career guidance', 'career confused',
-  'upath', 'career direction', 'professional path',
-  'finding my path', 'career exploration', 'job search',
-  'what career', 'which career', 'career options',
-  'job hunting', 'job market', 'career move',
-  'career decision', 'career choice', 'career planning',
-  'lost in career', 'career help', 'exploring options',
-  'professional direction', 'work path', 'career journey'
+  'career transition', 'career change', 'career move', 'career journey',
+  'career advice', 'career guidance', 'career planning', 'career decision',
+  'career choice', 'career options', 'career help', 'career direction',
+  'what career', 'which career', 'career exploration', 'career confused',
+  
+  // Job search terms
+  'job search', 'job hunting', 'job market', 'applying for jobs',
+  'been applying', 'job applications', 'resume', 'interviews',
+  
+  // Confusion/lost patterns (CRITICAL - user requested)
+  'lost', 'confused', 'lack of clarity', 'not sure what to do',
+  'dont know what', "don't know what", 'no clarity', 'feeling stuck',
+  'stuck in life', 'no direction', 'lack of direction', 'directionless',
+  'what path', 'which path', 'finding my path', 'lost in path',
+  'what do i want', 'what should i do', 'too many options',
+  'overwhelmed by options', 'paralyzed by choice', 'analysis paralysis',
+  
+  // Professional/work terms
+  'professional path', 'professional direction', 'work path',
+  'exploring careers', 'exploring options', 'what to do with my life',
+  
+  // UPath direct reference
+  'upath'
 ];
 
 /**

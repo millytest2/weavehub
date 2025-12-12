@@ -12,6 +12,8 @@ import { Plus, Trash2, Sparkles, ChevronDown, ChevronRight, ExternalLink, Check 
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { detectCareerKeywords } from "@/lib/careerDetection";
+import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 
 const learningPathSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
@@ -31,6 +33,8 @@ const LearningPaths = () => {
   const [pathItems, setPathItems] = useState<Record<string, any[]>>({});
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [focusArea, setFocusArea] = useState("");
+  const [showCareerPrompt, setShowCareerPrompt] = useState(false);
+  const [pendingFocusArea, setPendingFocusArea] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -100,11 +104,11 @@ const LearningPaths = () => {
     }
   };
 
-  const handleGeneratePath = async () => {
+  const executePathGeneration = async (focus: string) => {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("path-generator", {
-        body: { focus: focusArea }
+        body: { focus }
       });
 
       if (error) throw error;
@@ -123,6 +127,23 @@ const LearningPaths = () => {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleGeneratePath = async () => {
+    // Check for career-related keywords
+    if (detectCareerKeywords(focusArea)) {
+      setPendingFocusArea(focusArea);
+      setShowCareerPrompt(true);
+      return;
+    }
+    
+    await executePathGeneration(focusArea);
+  };
+
+  const handleCareerPromptContinue = async () => {
+    setShowCareerPrompt(false);
+    await executePathGeneration(pendingFocusArea);
+    setPendingFocusArea("");
   };
 
   const fetchPathItems = async (pathId: string) => {
@@ -324,6 +345,12 @@ const LearningPaths = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Career Redirect Prompt */}
+      <CareerRedirectPrompt 
+        open={showCareerPrompt}
+        onOpenChange={setShowCareerPrompt}
+        onContinue={handleCareerPromptContinue}
+      />
     </div>
   );
 };
