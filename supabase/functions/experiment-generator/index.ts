@@ -438,7 +438,7 @@ PILLAR: ${forcedPillar}
 ${sprintInstructions}
 ${avoidList}
 
-CORE QUESTION: What experiment proves the user's identity shift?
+CORE QUESTION: What experiment proves the user's identity shift using THEIR specific context?
 
 PILLARS:
 - Stability: Income, cash flow, financial security
@@ -450,13 +450,36 @@ PILLARS:
 - Connection: Social expansion, relationships
 - Learning: Education, skill acquisition
 
+GROUNDING REQUIREMENT (CRITICAL - EXPERIMENTS MUST BE PERSONAL):
+Your experiment MUST directly reference at least TWO of these from the user's ACTUAL data above:
+- A specific project/product they mentioned (e.g., "UPath", "Weave", their app name)
+- A specific technique or method from their insights (e.g., "Break-Loop protocol")
+- A specific identity they're building (e.g., "Creator-Athlete", "Full-Stack Human")
+- A specific platform they use (LinkedIn, Twitter, YouTube)
+- A specific skill they're developing
+- A specific number from their goals (income target, application goal)
+
+SPECIFICITY IS MANDATORY:
+- EVERY step must include a concrete detail from their data
+- Title should reference their specific situation/project
+- No generic "build a project" - use THEIR project name
+- No generic "create content" - reference THEIR content themes
+- No generic "reach out" - specify the TYPE of person based on their goals
+
+BANNED PATTERNS (too generic - will be rejected):
+- "Work on your project" - Instead: "Ship the landing page for [their project]"
+- "Create content" - Instead: "Write a thread about [specific insight they captured]"
+- "Build a habit" - Instead: "Wake at 6am for 5 days and ship [specific thing]"
+- "Practice a skill" - Instead: "Complete 3 [specific modules] in [platform they use]"
+- Any experiment that doesn't quote their language or reference their specific situation
+
 RULES:
 - Duration must match sprint mode (${sprintConfig.duration})
 - Intensity must match: ${sprintConfig.intensity}
 - Clear daily actions (3-4 steps)
 - Creates visible proof
 - Identity-shifting ("I am someone who...")
-- Fun, not homework
+- Fun, exciting, makes them want to do it
 - ABSOLUTELY NO EMOJIS anywhere in the output
 - Must be UNIQUE - different from past experiments listed above`;
 
