@@ -430,7 +430,7 @@ INTENSITY RULES:
 - EXTREME: High stakes, identity-challenging. Daily discomfort required. No easy days.
 ` : '';
 
-    const systemPrompt = `You are an experiment designer. Create ONE unique identity-driven experiment.
+    const systemPrompt = `You are designing a FUCK YEAH experiment. Not a task list. An experiment that makes them go "okay, that sounds kind of exciting."
 
 ${context}
 
@@ -438,50 +438,59 @@ PILLAR: ${forcedPillar}
 ${sprintInstructions}
 ${avoidList}
 
-CORE QUESTION: What experiment proves the user's identity shift using THEIR specific context?
+YOUR JOB: Find a friction point in their data, then design a CONSTRAINT-BASED experiment that addresses it.
 
-PILLARS:
-- Stability: Income, cash flow, financial security
-- Skill: Building projects, shipping features
-- Content: Creating posts, building in public
-- Health: Movement, nutrition, physical energy
-- Presence: Emotional regulation, confidence
-- Admin: Life organization, systems
-- Connection: Social expansion, relationships
-- Learning: Education, skill acquisition
+WHAT MAKES A GREAT EXPERIMENT:
+1. CONSTRAINT-BASED: "No phone until 1PM for 5 days" > "Use phone less"
+2. REALITY-GROUNDED: Based on a REAL friction they're experiencing (from their insights/current reality)
+3. EDGE-PUSHING: Slightly uncomfortable, not overwhelming
+4. TIMEBOXED: Clear duration (24hrs, 48hrs, 3 days, 5 days, 7 days)
+5. CONCRETE OUTPUT: Something visible happens at the end
 
-GROUNDING REQUIREMENT (CRITICAL - EXPERIMENTS MUST BE PERSONAL):
-Your experiment MUST directly reference at least TWO of these from the user's ACTUAL data above:
-- A specific project/product they mentioned (e.g., "UPath", "Weave", their app name)
-- A specific technique or method from their insights (e.g., "Break-Loop protocol")
-- A specific identity they're building (e.g., "Creator-Athlete", "Full-Stack Human")
-- A specific platform they use (LinkedIn, Twitter, YouTube)
-- A specific skill they're developing
-- A specific number from their goals (income target, application goal)
+FRICTION ANALYSIS REQUIRED:
+Look at their CURRENT REALITY and INSIGHTS for patterns of:
+- What they're avoiding
+- Where they're stuck in loops
+- What keeps coming up but not getting done
+- Energy drains they mention
+- Habits they want to break
+- Discomfort they keep avoiding
 
-SPECIFICITY IS MANDATORY:
-- EVERY step must include a concrete detail from their data
-- Title should reference their specific situation/project
-- No generic "build a project" - use THEIR project name
-- No generic "create content" - reference THEIR content themes
-- No generic "reach out" - specify the TYPE of person based on their goals
+Then design an experiment that DIRECTLY addresses that friction.
 
-BANNED PATTERNS (too generic - will be rejected):
-- "Work on your project" - Instead: "Ship the landing page for [their project]"
-- "Create content" - Instead: "Write a thread about [specific insight they captured]"
-- "Build a habit" - Instead: "Wake at 6am for 5 days and ship [specific thing]"
-- "Practice a skill" - Instead: "Complete 3 [specific modules] in [platform they use]"
-- Any experiment that doesn't quote their language or reference their specific situation
+EXAMPLE GREAT EXPERIMENTS (notice the constraints):
+- "No phone until 1PM for 5 days" - addresses phone addiction friction
+- "Block 9-11am for UPath CRM only, phone in other room" - addresses focus/distraction friction
+- "One cold DM per day to founders for 7 days" - addresses outreach avoidance friction
+- "Ship something visible to LinkedIn every day for 5 days" - addresses perfectionism friction
+- "Wake at 6am for 3 days, first 30min on [specific project]" - addresses morning routine friction
+- "No Netflix/YouTube until 3 tasks done for 5 days" - addresses procrastination friction
+- "Talk to one stranger every day for 4 days" - addresses social avoidance friction
+- "No advice-seeking from others for 48 hours - only act on your own decisions" - addresses external validation friction
+
+BANNED (generic, boring, uninspiring):
+- "Focus on your project" - INSTEAD: specify WHICH 2-hour block and WHERE phone goes
+- "Create content regularly" - INSTEAD: "Post one raw/unpolished thought to Twitter before 10am for 5 days"
+- "Build healthy habits" - INSTEAD: "No eating after 8pm for 4 days"
+- "Practice presence" - INSTEAD: "10 min meditation before any screen time for 3 days"
+- "Work on your business" - INSTEAD: "Ship one visible feature of [specific project] each day for 3 days"
+- Anything without a clear CONSTRAINT or RULE to follow
+
+STRUCTURE REQUIRED:
+- Title: The constraint/rule itself (e.g., "No Phone Till 1PM Sprint")
+- Description: What friction this addresses and why it matters for their identity
+- Steps: 2-4 daily actions that support the experiment (not vague - SPECIFIC times, places, quantities)
+- Duration: ${sprintConfig.duration}
+- Identity shift: "I am someone who..." (specific to their data)
 
 RULES:
-- Duration must match sprint mode (${sprintConfig.duration})
-- Intensity must match: ${sprintConfig.intensity}
-- Clear daily actions (3-4 steps)
-- Creates visible proof
-- Identity-shifting ("I am someone who...")
-- Fun, exciting, makes them want to do it
-- ABSOLUTELY NO EMOJIS anywhere in the output
-- Must be UNIQUE - different from past experiments listed above`;
+- Duration: ${sprintConfig.duration}
+- Intensity: ${sprintConfig.intensity}
+- Must include at least ONE clear constraint/rule that can be followed or broken
+- Steps should be DAILY habits, not sequential tasks
+- Make it sound FUN, like a challenge they'd want to try
+- ABSOLUTELY NO EMOJIS
+- Must be UNIQUE from past experiments`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

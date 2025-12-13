@@ -85,26 +85,53 @@ serve(async (req) => {
     const userContext = await fetchUserContext(supabase, userId);
     const contextPrompt = formatContextForAI(userContext);
 
-    const systemPrompt = `You are a learning path architect. Create a structured learning path with 5-8 concrete steps.
+    const systemPrompt = `You are creating a STEP-BY-STEP ACTION PATH. Not a curriculum. Not a reading list. A sequence of CONCRETE ACTIONS.
 
 ${contextPrompt}
 
 ${focusArea ? `USER'S FOCUS AREA: ${focusArea}` : ""}
 
-Create a learning path that:
-1. Synthesizes the user's identity, insights, documents, and experiments into a coherent growth trajectory
-2. Each step should be ACTIONABLE (do something, not read something)
-3. Steps should build on each other progressively
-4. Tie everything back to the user's identity shift
-5. Include specific time frames (e.g., "2-3 days", "1 week")
-6. NO EMOJIS anywhere
+WHAT MAKES A GREAT PATH:
+Each step is ONE concrete action that:
+1. Takes 15-60 minutes to complete
+2. Has a VISIBLE output (something created, shipped, or done)
+3. Builds on the previous step
+4. Has a clear timeframe (this week, next 3 days, etc.)
 
-RULES:
-- Steps must be concrete actions, not vague suggestions
-- Each step 15-60 minutes to complete
-- Path should take 2-4 weeks total
-- Connect dots between user's different areas of focus
-- No reading/reviewing tasks - only DO tasks`;
+STEP STRUCTURE (each step must have):
+- VERB-FIRST title: "Ship..." "Create..." "Send..." "Build..." "Record..."
+- TIME estimate: "30 min" or "1 hour" or "This week"
+- OUTPUT: What exists after this step is done?
+- CONNECTION: How does this connect to user's experiments/insights?
+
+EXAMPLE GREAT STEPS:
+- "Ship landing page v1 for [project] (2 hours, this week)"
+- "Record 3-min video explaining [concept from their insights] (30 min)"
+- "Send 5 cold DMs to [specific type of person] (45 min)"
+- "Create outline for [content piece based on their topic] (1 hour)"
+- "Build basic [feature] that does [specific thing] (2 hours)"
+
+BANNED PATTERNS:
+- "Research..." or "Learn about..." - Instead: "Build a [thing] using [concept]"
+- "Reflect on..." - Instead: "Write 300 words about [specific question]"
+- "Explore..." - Instead: "Create [specific artifact]"
+- "Continue..." - Instead: "Complete [specific milestone]"
+- Any step without a clear DELIVERABLE
+
+PATH TIMELINE:
+- 5-7 steps total
+- First 2 steps: This week
+- Middle steps: Next 1-2 weeks
+- Final steps: Week 3-4
+- Each step should unlock the next
+
+CONNECT TO THEIR DATA:
+- Reference their specific projects/products
+- Build on their active experiments
+- Use their captured insights as content
+- Tie back to their identity shift
+
+NO EMOJIS. ACTION VERBS ONLY. CONCRETE OUTPUTS.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -126,23 +153,25 @@ RULES:
             type: "function",
             function: {
               name: "create_learning_path",
-              description: "Create a structured learning path with actionable steps",
+              description: "Create a structured action path with concrete steps",
               parameters: {
                 type: "object",
                 properties: {
-                  path_title: { type: "string", description: "Concise title for the path (3-6 words)" },
-                  path_description: { type: "string", description: "1-2 sentence description of what this path achieves" },
+                  path_title: { type: "string", description: "Action-oriented title (e.g., 'Ship UPath MVP in 3 Weeks')" },
+                  path_description: { type: "string", description: "What visible outcome this path creates" },
                   steps: {
                     type: "array",
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string", description: "Actionable step title (verb-first)" },
-                        description: { type: "string", description: "Specific instructions and expected outcome" },
+                        title: { type: "string", description: "Verb-first action with time estimate (e.g., 'Ship landing page v1 (2 hours, this week)')" },
+                        description: { type: "string", description: "Specific instructions: what to do, what the output is, how it connects to their goals" },
                         order_index: { type: "number" }
                       },
                       required: ["title", "description", "order_index"]
-                    }
+                    },
+                    minItems: 5,
+                    maxItems: 7
                   }
                 },
                 required: ["path_title", "path_description", "steps"]
