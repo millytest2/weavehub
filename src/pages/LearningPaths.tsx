@@ -111,9 +111,16 @@ const LearningPaths = () => {
         body: { focus }
       });
 
-      if (error) throw error;
+      // Handle edge function errors (4xx/5xx responses)
+      if (error) {
+        // Try to parse error body for user-friendly message
+        const errorMsg = error.message || "Failed to generate path";
+        toast.error(errorMsg);
+        return;
+      }
 
-      if (data.error) {
+      // Handle application-level errors returned in data
+      if (data?.error) {
         toast.error(data.error);
         return;
       }
