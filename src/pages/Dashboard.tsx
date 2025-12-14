@@ -175,6 +175,16 @@ const Dashboard = () => {
         t.task_sequence === currentSequence ? { ...t, completed: true } : t
       );
       setTasksForToday(updatedTasks);
+      
+      // Track completion for time-of-day learning
+      const now = new Date();
+      await supabase.from('user_activity_patterns').insert({
+        user_id: user.id,
+        hour_of_day: now.getHours(),
+        day_of_week: now.getDay(),
+        activity_type: 'complete',
+        pillar: todayTask?.priority_for_today
+      });
 
       if (currentSequence < 3) {
         toast.success("Done. Generating next...");
