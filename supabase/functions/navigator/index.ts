@@ -109,8 +109,21 @@ function choosePillar(recentPillars: string[]): string {
   return available[Math.floor(Math.random() * available.length)];
 }
 
-// Get current date/time context using user's timezone
-function getDateTimeContext(timezone?: string): { dayOfWeek: string; date: string; timeOfDay: string; fullContext: string } {
+// Get current date/time context using user's timezone with detailed time rules
+interface TimeContext {
+  dayOfWeek: string;
+  date: string;
+  timeOfDay: string;
+  hour: number;
+  fullContext: string;
+  energyLevel: string;
+  taskTypes: string;
+  duration: string;
+  avoidTypes: string;
+  isLateNight: boolean;
+}
+
+function getDateTimeContext(timezone?: string): TimeContext {
   const now = new Date();
   
   // Use user's timezone if provided, otherwise fallback to UTC
@@ -134,22 +147,63 @@ function getDateTimeContext(timezone?: string): { dayOfWeek: string; date: strin
   
   const date = `${month} ${day}`;
   
+  // Detailed time-of-day rules
   let timeOfDay: string;
-  if (hour < 12) {
+  let energyLevel: string;
+  let taskTypes: string;
+  let duration: string;
+  let avoidTypes: string;
+  let isLateNight = false;
+
+  if (hour >= 23 || hour < 5) {
+    // LATE NIGHT (11pm - 5am)
+    timeOfDay = 'late_night';
+    energyLevel = 'Very Low';
+    taskTypes = 'Reflection, journaling, light admin, tomorrow prep, winding down';
+    duration = '5-15 minutes max';
+    avoidTypes = 'Work tasks, deep focus, meetings, anything requiring energy, creative projects';
+    isLateNight = true;
+  } else if (hour >= 5 && hour < 8) {
+    // EARLY MORNING (5am - 8am)
+    timeOfDay = 'early_morning';
+    energyLevel = 'Medium-High (for early risers)';
+    taskTypes = 'Strategic thinking, planning, personal development, morning routine';
+    duration = '20-45 minutes';
+    avoidTypes = 'Meetings, reactive tasks, email';
+  } else if (hour >= 8 && hour < 12) {
+    // MORNING (8am - 12pm)
     timeOfDay = 'morning';
-  } else if (hour < 17) {
+    energyLevel = 'High';
+    taskTypes = 'Deep work, creative tasks, strategic execution, building, shipping';
+    duration = '30-90 minutes';
+    avoidTypes = 'Admin, low-value tasks';
+  } else if (hour >= 12 && hour < 17) {
+    // AFTERNOON (12pm - 5pm)
     timeOfDay = 'afternoon';
-  } else if (hour < 21) {
-    timeOfDay = 'evening';
+    energyLevel = 'Medium';
+    taskTypes = 'Execution, meetings, collaboration, testing, iteration';
+    duration = '30-45 minutes';
+    avoidTypes = 'Heavy creative work (save for morning)';
   } else {
-    timeOfDay = 'night';
+    // EVENING (5pm - 11pm)
+    timeOfDay = 'evening';
+    energyLevel = 'Low-Medium';
+    taskTypes = 'Light tasks, admin, learning, creative exploration, social';
+    duration = '20-30 minutes';
+    avoidTypes = 'Deep focus, stressful tasks, heavy work';
   }
   
   return {
     dayOfWeek,
     date,
     timeOfDay,
-    fullContext: `${dayOfWeek}, ${date} (${timeOfDay})`
+    hour,
+    fullContext: `${dayOfWeek}, ${date} at ${hour}:00 (${timeOfDay.replace('_', ' ')})`,
+    energyLevel,
+    taskTypes,
+    duration,
+    avoidTypes,
+    isLateNight
   };
 }
 
@@ -257,32 +311,51 @@ serve(async (req) => {
       ? `\n\nCORE VALUES: ${identityData.core_values}`
       : '';
 
-    const timeGuidance = {
-      morning: 'High energy. Deep work OK. 30-90 min.',
-      afternoon: 'Medium energy. Varied tasks. 20-60 min.',
-      evening: 'Lower energy. Social, creative, light. 15-45 min.',
-      night: 'Wind down. Quick wins only. 10-20 min max.'
-    };
+    // Build detailed time context for prompts
+    const timeContextBlock = `
+=== TIME CONTEXT (FOLLOW STRICTLY) ===
+Current time: ${dateTime.hour}:00 (${dateTime.timeOfDay.replace('_', ' ')})
+Energy level: ${dateTime.energyLevel}
+Appropriate tasks: ${dateTime.taskTypes}
+Duration range: ${dateTime.duration}
+AVOID at this time: ${dateTime.avoidTypes}
+${dateTime.isLateNight ? '\n*** CRITICAL: It is LATE NIGHT. Only suggest reflection, journaling, tomorrow prep, or rest. NO work tasks. ***' : ''}
+=== END TIME CONTEXT ===`;
 
+    // Late night fallback - only light tasks
+    const lateNightPillars = ["Presence", "Health", "Admin"];
+    
     if (generateMultiple) {
+      // For late night, override pillars to only relaxing ones
+      const effectivePillar1 = dateTime.isLateNight ? "Presence" : pillar1;
+      const effectivePillar2 = dateTime.isLateNight ? "Health" : pillar2;
+      const effectivePillar3 = dateTime.isLateNight ? "Admin" : pillar3;
+      
       // Generate 3 options
       const systemPrompt = `You are a personal operating system. Generate 3 different action options for the user to choose from.
       
 TODAY: ${dateTime.fullContext}
-TIME CONTEXT: ${timeGuidance[dateTime.timeOfDay as keyof typeof timeGuidance]}
+
+${timeContextBlock}
 
 ${contextPrompt}${semanticContext}${userMindContext}${coreValuesContext}
 
-PILLARS TO USE: ${pillar1}, ${pillar2}, ${pillar3}
+PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
 RULES:
 - Each option should be from a DIFFERENT pillar
 - Each should feel exciting, not like homework
 - Ultra specific - include concrete details
-- Time appropriate for ${dateTime.timeOfDay}
+- STRICTLY MATCH task type to time of day
 - NO emojis
 - NO "read" or "review" tasks
 - Reference their actual data/projects when possible
+
+${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
+- ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep
+- Examples: "Journal 3 wins from today (5 min)", "Review tomorrow's calendar (5 min)", "Write one thing you're grateful for"
+- Duration: 5-15 minutes MAX
+- NEVER suggest: work tasks, deep focus, building, shipping, meetings, anything requiring energy` : ''}
 
 Make each option distinct and appealing so they can pick what resonates.`;
 
@@ -381,12 +454,14 @@ Make each option distinct and appealing so they can pick what resonates.`;
       }
     } else {
       // Original single action flow
-      const suggestedPillar = pillar1;
+      // For late night, override to relaxing pillar
+      const suggestedPillar = dateTime.isLateNight ? "Presence" : pillar1;
       
       const systemPrompt = `You are a personal operating system. Return ONE concrete action.
 
 TODAY: ${dateTime.fullContext}
-TIME CONTEXT: ${timeGuidance[dateTime.timeOfDay as keyof typeof timeGuidance]}
+
+${timeContextBlock}
 
 ${contextPrompt}${semanticContext}${coreValuesContext}
 
@@ -395,10 +470,16 @@ PILLAR: ${suggestedPillar}
 RULES:
 - Ultra specific with concrete details
 - Fun and exciting, not homework
-- Time appropriate for ${dateTime.timeOfDay}
+- STRICTLY MATCH task to time of day
 - NO emojis
 - NO "read" or "review" tasks
-- Reference their actual data when possible`;
+- Reference their actual data when possible
+
+${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
+- ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep, breathing exercise
+- Examples: "Journal 3 wins from today (5 min)", "Set tomorrow's top priority (5 min)", "Write one gratitude note"
+- Duration: 5-15 minutes MAX
+- NEVER suggest: work tasks, deep focus, building, shipping, anything requiring energy` : ''}`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
