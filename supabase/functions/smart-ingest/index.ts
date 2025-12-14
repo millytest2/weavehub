@@ -105,10 +105,78 @@ function decodeHtmlEntities(text: string): string {
     .replace(/\s+/g, ' ');
 }
 
-// Fetch YouTube transcript
+// Fetch YouTube transcript using RapidAPI
 async function fetchYouTubeTranscript(videoId: string): Promise<{ transcript: string; title: string }> {
   console.log("Fetching YouTube transcript for:", videoId);
   
+  const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY");
+  
+  // Try RapidAPI first (reliable)
+  if (RAPIDAPI_KEY) {
+    try {
+      console.log("Using RapidAPI for transcript extraction");
+      const url = `https://youtube-transcripts.p.rapidapi.com/youtube/transcript?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D${videoId}&videoId=${videoId}&chunkSize=500&text=true&lang=en`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'x-rapidapi-host': 'youtube-transcripts.p.rapidapi.com',
+          'x-rapidapi-key': RAPIDAPI_KEY,
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("RapidAPI response:", JSON.stringify(data).substring(0, 200));
+        
+        // Extract transcript text from response
+        let transcript = "";
+        if (data.content && Array.isArray(data.content)) {
+          transcript = data.content.map((chunk: any) => chunk.text || '').join(' ').trim();
+        } else if (typeof data.content === 'string') {
+          transcript = data.content;
+        } else if (data.text) {
+          transcript = data.text;
+        }
+        
+        // Get title from response or fetch separately
+        const title = data.title || await fetchYouTubeTitle(videoId);
+        
+        if (transcript.length > 100) {
+          console.log("RapidAPI transcript extracted - Length:", transcript.length);
+          return { transcript, title };
+        }
+      } else {
+        console.log("RapidAPI failed with status:", response.status);
+      }
+    } catch (e) {
+      console.error("RapidAPI error:", e);
+    }
+  }
+  
+  // Fallback to direct scraping
+  console.log("Falling back to direct YouTube scraping");
+  return fetchYouTubeTranscriptFallback(videoId);
+}
+
+// Fetch YouTube title separately
+async function fetchYouTubeTitle(videoId: string): Promise<string> {
+  try {
+    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      }
+    });
+    if (!response.ok) return "YouTube Video";
+    const html = await response.text();
+    const titleMatch = html.match(/"title":"([^"]+)"/);
+    return titleMatch ? decodeHtmlEntities(titleMatch[1]) : "YouTube Video";
+  } catch {
+    return "YouTube Video";
+  }
+}
+
+// Fallback: Direct YouTube scraping (unreliable but works sometimes)
+async function fetchYouTubeTranscriptFallback(videoId: string): Promise<{ transcript: string; title: string }> {
   try {
     const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
       headers: {
@@ -165,7 +233,7 @@ async function fetchYouTubeTranscript(videoId: string): Promise<{ transcript: st
     
     return { transcript: "", title };
   } catch (e) {
-    console.error("YouTube fetch error:", e);
+    console.error("YouTube fallback fetch error:", e);
     return { transcript: "", title: "" };
   }
 }
