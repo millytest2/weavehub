@@ -36,8 +36,22 @@ interface ExperimentOutput {
   intensity?: Intensity;
 }
 
+// BANNED THERAPY-SPEAK WORDS - experiments containing these get rejected
+const BANNED_WORDS = [
+  "internal pressure", "anxiety", "saboteur", "deep dive", "embrace", "unlock",
+  "journey", "explore", "reflect", "consider", "mindfulness", "relationship with",
+  "lean into", "sit with", "unpack", "process", "heal", "inner", "authentic self",
+  "self-care", "self-love", "boundaries", "triggered", "trauma", "validate",
+  "space to", "permission to feel", "honor your", "gentle reminder"
+];
+
 function stripEmojis(text: string): string {
   return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25AA}-\u{25AB}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{2614}-\u{2615}]|[\u{2648}-\u{2653}]|[\u{267F}]|[\u{2693}]|[\u{26A1}]|[\u{26AA}-\u{26AB}]|[\u{26BD}-\u{26BE}]|[\u{26C4}-\u{26C5}]|[\u{26CE}]|[\u{26D4}]|[\u{26EA}]|[\u{26F2}-\u{26F3}]|[\u{26F5}]|[\u{26FA}]|[\u{26FD}]|[\u{2702}]|[\u{2705}]|[\u{2708}-\u{270D}]|[\u{270F}]|[\u{2712}]|[\u{2714}]|[\u{2716}]|[\u{271D}]|[\u{2721}]|[\u{2728}]|[\u{2733}-\u{2734}]|[\u{2744}]|[\u{2747}]|[\u{274C}]|[\u{274E}]|[\u{2753}-\u{2755}]|[\u{2757}]|[\u{2763}-\u{2764}]|[\u{2795}-\u{2797}]|[\u{27A1}]|[\u{27B0}]|[\u{27BF}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{2B50}]|[\u{2B55}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{1F191}-\u{1F19A}]|[\u{1F201}-\u{1F202}]|[\u{1F21A}]|[\u{1F22F}]|[\u{1F232}-\u{1F23A}]|[\u{1F250}-\u{1F251}]/gu, '').trim();
+}
+
+function containsBannedWords(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return BANNED_WORDS.some(word => lowerText.includes(word));
 }
 
 function validateExperiments(data: any): ExperimentOutput[] {
@@ -51,6 +65,11 @@ function validateExperiments(data: any): ExperimentOutput[] {
     if (!exp.steps || !Array.isArray(exp.steps) || exp.steps.length < 2) throw new Error('Invalid experiment steps');
     if (!exp.duration || typeof exp.duration !== 'string') throw new Error('Invalid experiment duration');
     if (!exp.identity_shift_target || typeof exp.identity_shift_target !== 'string') throw new Error('Invalid identity_shift_target');
+    
+    // Reject experiments with banned therapy-speak
+    if (containsBannedWords(exp.title) || containsBannedWords(exp.description)) {
+      throw new Error('Experiment contains banned therapy-speak');
+    }
   });
   
   return data.experiments.map((exp: any) => ({
@@ -65,36 +84,48 @@ function validateExperiments(data: any): ExperimentOutput[] {
   })) as ExperimentOutput[];
 }
 
-// Sprint-specific fallbacks
+// NEW FORMAT: [Duration] [Constraint] → [Deliverable]
 function getFallbackExperiment(pillar: string, sprint: SprintConfig): ExperimentOutput[] {
   const sprintFallbacks: { [key: string]: { [key: string]: ExperimentOutput } } = {
     blitz_48h: {
       "Stability": {
-        title: "48-Hour Cash Sprint",
-        description: "Generate any income in 48 hours. Prove you can create money from nothing.",
-        steps: ["Hour 0-6: List 5 ways to make money today", "Hour 6-24: Execute fastest option", "Hour 24-48: Double down or try option 2"],
+        title: "48h No Distractions → Ship One Revenue Feature",
+        description: "Phone in drawer. No social media. 48 hours of pure focus on building one feature that can generate revenue. Ship rough by Monday 8am.",
+        steps: [
+          "Saturday 8am: Phone off, in drawer. Open only code editor + Weave",
+          "Saturday-Sunday: Build one monetizable feature for your main project",
+          "Monday 8am: Ship to production. Rough is fine. Phone back"
+        ],
         duration: "48 hours",
-        identity_shift_target: "I am someone who creates income on demand.",
+        identity_shift_target: "I ship under pressure.",
         pillar: "Stability",
         sprint_type: "blitz_48h",
         intensity: "extreme"
       },
       "Content": {
-        title: "48-Hour Content Blitz",
-        description: "Create and publish 10 pieces of content in 48 hours.",
-        steps: ["Hour 0-12: Batch create 5 pieces", "Hour 12-36: Publish and engage", "Hour 36-48: Create 5 more, schedule"],
+        title: "48h Content Blitz → 10 Posts Shipped",
+        description: "Batch create 10 pieces of content in one weekend. No editing perfectionism. Ship raw. Volume over polish.",
+        steps: [
+          "Hour 0-12: Write 5 posts about what you're building. No editing.",
+          "Hour 12-36: Publish all 5. Write 5 more.",
+          "Hour 36-48: Publish remaining 5. Schedule for next week."
+        ],
         duration: "48 hours",
-        identity_shift_target: "I am someone who creates relentlessly.",
+        identity_shift_target: "I create relentlessly.",
         pillar: "Content",
         sprint_type: "blitz_48h",
         intensity: "extreme"
       },
       "default": {
-        title: "48-Hour Intensity Sprint",
-        description: "Push your limits with focused intensity for 48 hours.",
-        steps: ["Define one aggressive goal", "Work in 4-hour blocks", "Rest minimally, execute maximally"],
+        title: "48h Phone Blackout → Ship One Thing",
+        description: "No phone for 48 hours. Pick your most important project and ship one visible feature by the end.",
+        steps: [
+          "Phone off, in another room for 48 hours",
+          "Work in 4-hour focused blocks on your main project",
+          "Ship one visible, usable thing before phone comes back"
+        ],
         duration: "48 hours",
-        identity_shift_target: "I am someone who can push when needed.",
+        identity_shift_target: "I execute without distractions.",
         pillar: pillar,
         sprint_type: "blitz_48h",
         intensity: "extreme"
@@ -102,31 +133,43 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     },
     challenge_24h: {
       "Presence": {
-        title: "24-Hour Social Challenge",
-        description: "Talk to 10 strangers in 24 hours. Break your comfort zone.",
-        steps: ["Morning: 3 conversations", "Afternoon: 4 conversations", "Evening: 3 conversations, reflect"],
+        title: "24h Talk to 10 Strangers → Real Conversations",
+        description: "Talk to 10 new people in 24 hours. Not small talk. Real conversations. Get one contact from each.",
+        steps: [
+          "Morning: Talk to 3 strangers. Ask about their work/life.",
+          "Afternoon: Talk to 4 more. Exchange contact with at least 2.",
+          "Evening: Talk to 3 more. Follow up with one via text."
+        ],
         duration: "24 hours",
-        identity_shift_target: "I am someone who connects fearlessly.",
+        identity_shift_target: "I connect with anyone, anywhere.",
         pillar: "Presence",
         sprint_type: "challenge_24h",
         intensity: "push"
       },
       "Health": {
-        title: "24-Hour Movement Challenge",
-        description: "Move every hour for 24 hours. Reset your relationship with your body.",
-        steps: ["Set hourly reminders", "10 min movement each hour (except sleep)", "Track energy shifts"],
+        title: "24h Move Every Hour → Track Energy",
+        description: "Set hourly alarms. Move for 10 minutes every hour you're awake. Track energy levels. See what changes.",
+        steps: [
+          "Set 16 hourly alarms from 6am to 10pm",
+          "10 min movement each alarm: walk, stretch, pushups, anything",
+          "Rate energy 1-10 after each session. Compare start vs end."
+        ],
         duration: "24 hours",
-        identity_shift_target: "I am someone who moves constantly.",
+        identity_shift_target: "I move constantly.",
         pillar: "Health",
         sprint_type: "challenge_24h",
         intensity: "push"
       },
       "default": {
-        title: "24-Hour Pattern Break",
-        description: "Do the opposite of your default for 24 hours.",
-        steps: ["Identify your default avoidance", "Do the opposite all day", "Journal what shifted"],
+        title: "24h Do The Opposite → Break One Pattern",
+        description: "Identify your biggest avoidance pattern. Do the opposite for 24 hours straight. Track what shifts.",
+        steps: [
+          "Identify: What do you always avoid? That's your target.",
+          "24 hours: Every time you want to avoid, do the opposite instead.",
+          "End: Write what changed. What was easier than expected?"
+        ],
         duration: "24 hours",
-        identity_shift_target: "I am someone who breaks patterns.",
+        identity_shift_target: "I break patterns on command.",
         pillar: pillar,
         sprint_type: "challenge_24h",
         intensity: "push"
@@ -134,21 +177,31 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     },
     deep_dive: {
       "Learning": {
-        title: "5-Day Deep Immersion",
-        description: "Master one skill through intense daily practice.",
-        steps: ["Day 1: Foundations + first project", "Day 2-3: Build something real", "Day 4: Refine and polish", "Day 5: Ship and share"],
+        title: "5-Day Skill Sprint → Build + Ship + Teach",
+        description: "Pick one skill. Learn it by building. Ship something real. Teach one concept publicly.",
+        steps: [
+          "Day 1: Foundations. Build first tiny project.",
+          "Day 2-3: Build something real with the skill.",
+          "Day 4: Refine and polish. Make it shareable.",
+          "Day 5: Ship publicly. Write one post teaching what you learned."
+        ],
         duration: "5 days",
-        identity_shift_target: "I am someone who masters through immersion.",
+        identity_shift_target: "I learn by shipping.",
         pillar: "Learning",
         sprint_type: "deep_dive",
         intensity: "push"
       },
       "default": {
-        title: "5-Day Knowledge Application",
-        description: "Take accumulated knowledge and apply it intensively.",
-        steps: ["Day 1: Synthesize key insights", "Day 2-3: Build based on insights", "Day 4: Test and iterate", "Day 5: Share learnings"],
+        title: "5-Day Build Sprint → 5 Visible Outputs",
+        description: "Ship one visible thing every day for 5 days. Each builds on the last. No planning days. Only shipping.",
+        steps: [
+          "Day 1: Ship smallest viable version of your main project feature",
+          "Day 2: Add one improvement. Ship again.",
+          "Day 3: Add one more. Ship.",
+          "Day 4-5: Keep shipping. Document what you learned."
+        ],
         duration: "5 days",
-        identity_shift_target: "I am someone who applies what I learn.",
+        identity_shift_target: "I ship daily.",
         pillar: pillar,
         sprint_type: "deep_dive",
         intensity: "push"
@@ -156,21 +209,29 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     },
     recovery: {
       "Health": {
-        title: "3-Day Gentle Reset",
-        description: "Restore energy through intentional rest and gentle movement.",
-        steps: ["Day 1: Sleep 9+ hours, light walk", "Day 2: Gentle stretching, no screens after 8pm", "Day 3: One energizing activity"],
+        title: "3-Day Sleep Reset → 9 Hours Every Night",
+        description: "Sleep 9+ hours for 3 nights. No screens after 8pm. Light walk each morning. Rebuild baseline energy.",
+        steps: [
+          "Day 1: In bed by 9pm. Phone in other room. Sleep 9+ hours.",
+          "Day 2: 30 min morning walk. Same sleep protocol.",
+          "Day 3: Rate energy vs Day 1. Keep what worked."
+        ],
         duration: "3 days",
-        identity_shift_target: "I am someone who rests strategically.",
+        identity_shift_target: "I prioritize recovery.",
         pillar: "Health",
         sprint_type: "recovery",
         intensity: "chill"
       },
       "default": {
-        title: "3-Day Slow Rebuild",
-        description: "Rebuild momentum through small, easy wins.",
-        steps: ["Day 1: One tiny task", "Day 2: Two small tasks", "Day 3: Three tasks, celebrate"],
+        title: "3-Day Tiny Wins → Rebuild Momentum",
+        description: "Smallest possible wins to rebuild momentum. One tiny task Day 1. Two Day 2. Three Day 3. Stack easy wins.",
+        steps: [
+          "Day 1: Complete ONE 5-minute task. Celebrate it.",
+          "Day 2: Complete TWO small tasks (10-15 min each).",
+          "Day 3: Complete THREE tasks. Notice momentum returning."
+        ],
         duration: "3 days",
-        identity_shift_target: "I am someone who rebuilds patiently.",
+        identity_shift_target: "I rebuild through small wins.",
         pillar: pillar,
         sprint_type: "recovery",
         intensity: "chill"
@@ -184,70 +245,103 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     return [sprintGroup[pillar] || sprintGroup["default"]];
   }
 
-  // Standard fallbacks
+  // Standard fallbacks - NEW FORMAT
   const standardFallbacks: { [key: string]: ExperimentOutput } = {
     "Stability": {
-      title: "3-Day Income Sprint",
-      description: "Generate income through any available channel. Proof of resourcefulness.",
-      steps: ["Day 1: Identify 3 immediate income opportunities", "Day 2: Execute on the fastest one", "Day 3: Double down or pivot"],
-      duration: "3 days",
-      identity_shift_target: "I am someone who creates income from nothing.",
+      title: "5-Day Morning Block → Ship Revenue Feature",
+      description: "Block 8-10am every day for revenue work only. Phone in drawer until 10am. Ship one feature that can make money by end of week.",
+      steps: [
+        "Day 1-5: 8am phone goes in drawer. 8-10am = revenue work only.",
+        "Pick ONE feature that could generate revenue this week.",
+        "Friday: Ship it live. Rough is fine. Done > perfect."
+      ],
+      duration: "5 days",
+      identity_shift_target: "I protect my revenue hours.",
       pillar: "Stability"
     },
     "Skill": {
-      title: "5-Day Build Challenge",
-      description: "Ship one visible feature or milestone each day.",
-      steps: ["Define 5 micro-deliverables", "Ship one per day", "Document learnings", "Share progress"],
+      title: "5-Day Ship Daily → 5 Visible Features",
+      description: "Ship one visible feature every single day. No planning days. Each day must have a shipped output others can see.",
+      steps: [
+        "Day 1: Ship smallest feature of your main project. Post about it.",
+        "Day 2-4: Ship one more feature each day. Document progress.",
+        "Day 5: Ship final feature. Write recap of what you built."
+      ],
       duration: "5 days",
-      identity_shift_target: "I am someone who ships, not plans.",
+      identity_shift_target: "I ship, not plan.",
       pillar: "Skill"
     },
     "Content": {
-      title: "7-Day Story Sprint",
-      description: "Post one authentic story daily. Build in public.",
-      steps: ["Write one insight daily", "Post to main platform", "Engage with 5 people", "Track what resonates"],
+      title: "7-Day Post Daily → 1 Post Before 10am",
+      description: "Post one piece of content every morning before 10am. No editing. No perfectionism. Raw thoughts about what you're building.",
+      steps: [
+        "Every day before 10am: Post one thought about your work to main platform.",
+        "No drafts. No editing. Write and post in under 15 minutes.",
+        "Track: Which posts get engagement? Do more of those."
+      ],
       duration: "7 days",
-      identity_shift_target: "I am someone who shares openly.",
+      identity_shift_target: "I share openly and consistently.",
       pillar: "Content"
     },
     "Health": {
-      title: "5-Day Movement Reset",
-      description: "Move intentionally every day. Energy creates clarity.",
-      steps: ["30 min movement daily", "Track energy levels", "No screens first hour", "Sleep by 11pm"],
+      title: "5-Day No Phone Till Noon → Morning Movement",
+      description: "Phone stays off/away until noon every day. First hour = movement. Track energy difference by Day 5.",
+      steps: [
+        "Each day: Phone in drawer until 12pm.",
+        "6-7am: 30 min movement (walk, gym, stretch, anything).",
+        "7am-12pm: Deep work or rest. No phone checking."
+      ],
       duration: "5 days",
-      identity_shift_target: "I am someone who prioritizes physical energy.",
+      identity_shift_target: "I own my mornings.",
       pillar: "Health"
     },
     "Presence": {
-      title: "3-Day Presence Practice",
-      description: "Train presence through real-world reps.",
-      steps: ["One presence rep daily", "5 min nervous system regulation", "Journal what shifted"],
-      duration: "3 days",
-      identity_shift_target: "I am someone who is calm and grounded.",
+      title: "4-Day 1 Real Conversation → Talk to Someone New",
+      description: "Have one real conversation with someone new every day. Not networking. Actual connection. Get their story.",
+      steps: [
+        "Day 1-4: Talk to one new person each day. Coffee, walk, whatever.",
+        "Ask about their work, dreams, struggles. Actually listen.",
+        "Follow up with one person you connected with."
+      ],
+      duration: "4 days",
+      identity_shift_target: "I connect easily with new people.",
       pillar: "Presence"
     },
     "Admin": {
-      title: "4-Day Life Clear",
-      description: "Remove friction from one life system daily.",
-      steps: ["Clear physical space", "Clear digital clutter", "Automate one task", "End one draining commitment"],
+      title: "4-Day Clear One System Per Day → Remove Friction",
+      description: "Clear one life system each day. Physical space, digital, commitments, subscriptions. End with less drag.",
+      steps: [
+        "Day 1: Clear physical space. Throw out/donate 10 things.",
+        "Day 2: Clear digital. Unsubscribe, delete apps, clean inbox to zero.",
+        "Day 3: Cancel one draining commitment or subscription.",
+        "Day 4: Automate one recurring task that drains energy."
+      ],
       duration: "4 days",
-      identity_shift_target: "I am someone who removes friction ruthlessly.",
+      identity_shift_target: "I remove friction ruthlessly.",
       pillar: "Admin"
     },
     "Connection": {
-      title: "5-Day Social Expansion",
-      description: "Expand social presence through daily interactions.",
-      steps: ["One conversation with stranger daily", "Reach out to someone you admire", "Say yes to one invitation", "Practice one vulnerable share"],
+      title: "5-Day Reach Out Daily → Message Someone You Admire",
+      description: "Message one person you admire each day. Cold DM, email, whatever. Not asking for anything. Just genuine connection.",
+      steps: [
+        "Day 1-5: Send one message to someone whose work you respect.",
+        "No asks. Just tell them what you appreciated about their work.",
+        "Track responses. Follow up on any that reply."
+      ],
       duration: "5 days",
-      identity_shift_target: "I am someone who connects easily.",
+      identity_shift_target: "I reach out boldly.",
       pillar: "Connection"
     },
     "Learning": {
-      title: "5-Day Deep Dive",
-      description: "Learn one skill intensively through focused immersion.",
-      steps: ["Choose one specific skill", "1 hour focused learning daily", "Apply immediately", "Teach one concept"],
+      title: "5-Day Learn + Build + Teach → One New Skill",
+      description: "Pick one skill. Spend 1 hour learning it daily. Build something with it by Day 4. Teach one concept by Day 5.",
+      steps: [
+        "Day 1-2: 1 hour focused learning. Take notes.",
+        "Day 3-4: Build one small project using the skill.",
+        "Day 5: Write or post one thing teaching what you learned."
+      ],
       duration: "5 days",
-      identity_shift_target: "I am someone who learns fast and applies.",
+      identity_shift_target: "I learn fast and apply immediately.",
       pillar: "Learning"
     }
   };
@@ -428,14 +522,10 @@ Duration: ${sprintConfig.duration}
 Intensity: ${sprintConfig.intensity.toUpperCase()}
 Reason: ${sprintConfig.reason}
 ${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
-
-INTENSITY RULES:
-- CHILL: Low stakes, easy wins, gentle stretch. Build confidence.
-- PUSH: Moderate discomfort, growth edge. 1-2 uncomfortable actions per day.
-- EXTREME: High stakes, identity-challenging. Daily discomfort required. No easy days.
 ` : '';
 
-    const systemPrompt = `You are designing a FUCK YEAH experiment. Not a task list. An experiment that makes them go "okay, that sounds kind of exciting."
+    // NEW SYSTEM PROMPT - ACTION-ORIENTED, NO THERAPY-SPEAK
+    const systemPrompt = `You design CONCRETE, ACTION-BASED experiments. Not therapy homework. Not abstract concepts. REAL constraints that force REAL outputs.
 
 ${context}
 
@@ -443,59 +533,118 @@ PILLAR: ${forcedPillar}
 ${sprintInstructions}
 ${avoidList}
 
-YOUR JOB: Find a friction point in their data, then design a CONSTRAINT-BASED experiment that addresses it.
+═══════════════════════════════════════════════════════════════
+REQUIRED FORMAT - EVERY EXPERIMENT MUST FOLLOW THIS EXACTLY:
+═══════════════════════════════════════════════════════════════
 
-WHAT MAKES A GREAT EXPERIMENT:
-1. CONSTRAINT-BASED: "No phone until 1PM for 5 days" > "Use phone less"
-2. REALITY-GROUNDED: Based on a REAL friction they're experiencing (from their insights/current reality)
-3. EDGE-PUSHING: Slightly uncomfortable, not overwhelming
-4. TIMEBOXED: Clear duration (24hrs, 48hrs, 3 days, 5 days, 7 days)
-5. CONCRETE OUTPUT: Something visible happens at the end
+TITLE FORMAT: "[Duration] [Constraint] → [Concrete Deliverable]"
+Examples:
+- "48h Phone Blackout → Ship UPath Landing Page"
+- "5-Day Cold Email Blitz → 50 Outbound Messages"
+- "7-Day Content Machine → 1 Post Every Morning"
+- "24h No-Phone-Until-Shipped → Launch Landing Page"
 
-FRICTION ANALYSIS REQUIRED:
-Look at their CURRENT REALITY and INSIGHTS for patterns of:
-- What they're avoiding
-- Where they're stuck in loops
-- What keeps coming up but not getting done
-- Energy drains they mention
-- Habits they want to break
-- Discomfort they keep avoiding
+DESCRIPTION FORMAT:
+"You saved [Specific Source from their data]. [What it recommends/shows]. Try it: [Exact constraint]. [Exact deliverable]. [Deadline]."
 
-Then design an experiment that DIRECTLY addresses that friction.
+═══════════════════════════════════════════════════════════════
+9 MANDATORY RULES - BREAK ANY AND THE EXPERIMENT IS REJECTED:
+═══════════════════════════════════════════════════════════════
 
-EXAMPLE GREAT EXPERIMENTS (notice the constraints):
-- "No phone until 1PM for 5 days" - addresses phone addiction friction
-- "Block 9-11am for UPath CRM only, phone in other room" - addresses focus/distraction friction
-- "One cold DM per day to founders for 7 days" - addresses outreach avoidance friction
-- "Ship something visible to LinkedIn every day for 5 days" - addresses perfectionism friction
-- "Wake at 6am for 3 days, first 30min on [specific project]" - addresses morning routine friction
-- "No Netflix/YouTube until 3 tasks done for 5 days" - addresses procrastination friction
-- "Talk to one stranger every day for 4 days" - addresses social avoidance friction
-- "No advice-seeking from others for 48 hours - only act on your own decisions" - addresses external validation friction
+1. CITE SPECIFIC SAVED SOURCE
+   Must reference something from their insights/documents/identity.
+   "You saved that video about deep work. He does 48h sprints."
+   "Your identity mentions becoming a creator who ships daily."
 
-BANNED (generic, boring, uninspiring):
-- "Focus on your project" - INSTEAD: specify WHICH 2-hour block and WHERE phone goes
-- "Create content regularly" - INSTEAD: "Post one raw/unpolished thought to Twitter before 10am for 5 days"
-- "Build healthy habits" - INSTEAD: "No eating after 8pm for 4 days"
-- "Practice presence" - INSTEAD: "10 min meditation before any screen time for 3 days"
-- "Work on your business" - INSTEAD: "Ship one visible feature of [specific project] each day for 3 days"
-- Anything without a clear CONSTRAINT or RULE to follow
+2. CONCRETE CONSTRAINT (binary - you either follow it or break it)
+   GOOD: "No phone until 1pm" / "48h media blackout" / "Cold shower every morning"
+   BAD: "use phone less" / "be more focused" / "limit distractions"
 
-STRUCTURE REQUIRED:
-- Title: The constraint/rule itself (e.g., "No Phone Till 1PM Sprint")
-- Description: What friction this addresses and why it matters for their identity
-- Steps: 2-4 daily actions that support the experiment (not vague - SPECIFIC times, places, quantities)
-- Duration: ${sprintConfig.duration}
-- Identity shift: "I am someone who..." (specific to their data)
+3. CONCRETE DELIVERABLE (visible output at the end)
+   GOOD: "Ship landing page" / "Send 50 cold emails" / "Post 7 times"
+   BAD: "feel more productive" / "make progress" / "develop habit"
 
-RULES:
-- Duration: ${sprintConfig.duration}
-- Intensity: ${sprintConfig.intensity}
-- Must include at least ONE clear constraint/rule that can be followed or broken
-- Steps should be DAILY habits, not sequential tasks
-- Make it sound FUN, like a challenge they'd want to try
-- ABSOLUTELY NO EMOJIS
-- Must be UNIQUE from past experiments`;
+4. SPECIFIC DEADLINE
+   GOOD: "by Sunday night" / "before 10am each day" / "within 48 hours"
+   BAD: "eventually" / "when ready" / "over time"
+
+5. ACTIVE VERBS ONLY
+   USE: Ship, Send, Post, Call, Write, Test, Build, Launch, Publish, Create
+   NEVER: Explore, Reflect, Consider, Embrace, Unlock, Journey, Process
+
+6. NO THERAPY-SPEAK (instant rejection if found)
+   BANNED WORDS: internal pressure, anxiety, saboteur, deep dive, embrace, unlock, 
+   journey, explore, reflect, consider, mindfulness, relationship with, lean into,
+   sit with, unpack, process, heal, inner, authentic self, boundaries, triggered
+
+7. NO ABSTRACT CONCEPTS
+   BAD: "Silence the Saboteur" / "Embrace Discomfort" / "Unlock Potential"
+   GOOD: "No Phone Till Shipped" / "Talk to 10 Strangers" / "Ship 5 Features"
+
+8. CHALLENGING (slightly scary = exciting)
+   Should make them go "oh shit, that's hard but I kind of want to try it"
+   Not comfortable. Not easy. Edge of comfort zone.
+
+9. BINARY SUCCESS (easy to know if you did it or not)
+   "Did you post 7 days in a row? Yes/No"
+   "Did you ship the landing page? Yes/No"
+   "Did you send 50 emails? Yes/No"
+
+═══════════════════════════════════════════════════════════════
+EXAMPLES OF GREAT EXPERIMENTS:
+═══════════════════════════════════════════════════════════════
+
+EXAMPLE 1:
+Title: "48h Media Blackout → Ship UPath Sales Page"
+Description: "You saved that Ali Abdaal video about deep work. He does 48h phone-off sprints to ship. Try it: No Instagram, no Twitter, no YouTube. Just UPath landing page copy. Ship rough version by Sunday night."
+Steps: ["Saturday 8am: Phone off, put in drawer, start writing UPath value prop", "Saturday evening: First draft of landing page live (rough is fine)", "Sunday: Polish one section, add testimonial or demo video", "Monday 8am: Publish to domain. Phone back. Done."]
+
+EXAMPLE 2:
+Title: "5-Day Cold Email Blitz → 50 Outbound Messages"  
+Description: "You saved that Hormozi cold outreach breakdown. His rule: 10 emails before breakfast. Try it: 10 cold emails to potential UPath users every morning for 5 days. Track responses. No skipping days."
+Steps: ["Day 1-5: 10 cold emails sent before 9am", "Track: who responded, who ignored", "Follow up on Day 3 with anyone who opened but didn't reply", "End of Day 5: Calculate response rate. Iterate."]
+
+EXAMPLE 3:
+Title: "7-Day Content Machine → 1 Post Every Morning"
+Description: "You saved that MrBeast video about daily shipping. He posted daily for 2 years before breaking out. Try it: 1 Twitter post about UPath's core insight (too many options = paralysis) every morning at 8am for 7 days. No editing, just ship."
+Steps: ["Day 1-7: Write one post before 8am about decision paralysis / too many options", "No editing allowed. Write and post in under 10 minutes.", "Track: which post got most engagement? Do more like that."]
+
+═══════════════════════════════════════════════════════════════
+EXAMPLES OF BAD EXPERIMENTS (NEVER DO THIS):
+═══════════════════════════════════════════════════════════════
+
+❌ "The 'Silence the Saboteur' AI Deep Dive - addresses internal pressure to perform"
+❌ "7-Day Mindfulness Journey - explore your relationship with productivity"  
+❌ "Embrace the Discomfort Challenge - lean into uncertainty"
+❌ "Unlock Your Creative Potential - discover what's holding you back"
+❌ "Processing Your Inner Critic - sit with the discomfort"
+
+WHY THESE ARE BAD:
+- No concrete constraint (what exactly do you DO?)
+- No deliverable (what ships at the end?)
+- No deadline (by when?)
+- Therapy-speak ("saboteur", "deep dive", "embrace", "relationship with")
+- Abstract concepts (can't measure success)
+
+═══════════════════════════════════════════════════════════════
+LOOK AT THEIR DATA FOR:
+═══════════════════════════════════════════════════════════════
+
+1. What content they saved (videos, articles, insights)
+2. What their identity says they're becoming
+3. What projects they're working on (UPath, Weave, content, etc.)
+4. What constraints have worked for them before
+5. What they keep avoiding (that's the friction point)
+
+Then design an experiment that:
+- Cites a specific source from their data
+- Has a Navy SEAL-style constraint (hard, clear, binary)
+- Produces a real deliverable tied to their actual project
+- Feels like "fuck yeah let's try that" not "ugh, homework"
+
+Duration: ${sprintConfig.duration}
+Intensity: ${sprintConfig.intensity}
+NO EMOJIS. NO THERAPY-SPEAK. CONCRETE ONLY.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -507,14 +656,25 @@ RULES:
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Design ONE unique "${forcedPillar}" experiment. Sprint mode: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}. Duration: ${sprintConfig.duration}. Make it identity-shifting. No emojis. Must be different from any past experiments.` }
+          { role: "user", content: `Design ONE experiment for the "${forcedPillar}" pillar. 
+
+FORMAT REQUIRED:
+- Title: "[Duration] [Constraint] → [Deliverable]"
+- Description: Start with "You saved..." citing their data, then constraint + deliverable + deadline
+- Steps: 2-4 concrete daily actions with specific times/quantities
+- Duration: ${sprintConfig.duration}
+- Identity shift: "I am someone who [action verb]..."
+
+Sprint: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}.
+
+Make it challenging. Make it concrete. Make it exciting. No therapy-speak.` }
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "generate_experiments",
-              description: "Generate ONE unique experiment with NO emojis",
+              description: "Generate ONE concrete, action-based experiment with NO therapy-speak",
               parameters: {
                 type: "object",
                 properties: {
@@ -523,11 +683,26 @@ RULES:
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string", description: "Short title, NO emojis, must be unique" },
-                        description: { type: "string", description: "2-3 sentences, NO emojis" },
-                        steps: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
+                        title: { 
+                          type: "string", 
+                          description: "Format: [Duration] [Constraint] → [Deliverable]. Example: '48h Phone Blackout → Ship Landing Page'" 
+                        },
+                        description: { 
+                          type: "string", 
+                          description: "Start with 'You saved [source]...' then constraint + deliverable + deadline" 
+                        },
+                        steps: { 
+                          type: "array", 
+                          items: { type: "string" }, 
+                          minItems: 2, 
+                          maxItems: 4,
+                          description: "Concrete daily actions with specific times, quantities, or binary rules"
+                        },
                         duration: { type: "string" },
-                        identity_shift_target: { type: "string", description: "I am someone who..." },
+                        identity_shift_target: { 
+                          type: "string", 
+                          description: "Format: 'I am someone who [action verb]...' Example: 'I ship under pressure.'" 
+                        },
                         pillar: { type: "string", enum: ALL_PILLARS }
                       },
                       required: ["title", "description", "steps", "duration", "identity_shift_target", "pillar"]
@@ -556,6 +731,7 @@ RULES:
     const toolCall = data.choices[0].message.tool_calls?.[0];
     
     if (!toolCall) {
+      console.log("No tool call returned, using fallback");
       return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -582,7 +758,7 @@ RULES:
         return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     } catch (parseError) {
-      console.error("Parse error:", parseError);
+      console.error("Parse/validation error:", parseError);
       return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
