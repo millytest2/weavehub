@@ -64,11 +64,12 @@ export const QuickCapture = () => {
     }
   };
 
-  const showCareerToast = (textToCheck: string) => {
+  const showCareerToastForPaste = (textToCheck: string) => {
+    // Only used for paste type - insights/decisions use the dialog instead
     if (detectCareerKeywords(textToCheck)) {
       setTimeout(() => {
         toast("Career clarity on your mind?", {
-          description: "UPath is designed specifically for this. Weave is for daily alignment, UPath is for finding your path.",
+          description: "Weave is for daily alignment. UPath is designed specifically for career exploration.",
           duration: 8000,
           action: {
             label: "Try UPath",
@@ -97,8 +98,8 @@ export const QuickCapture = () => {
         
         toast.success(data.message || "Saved");
         
-        // Check for career keywords in pasted content
-        showCareerToast(content);
+        // Check for career keywords in pasted content (toast only for paste type)
+        showCareerToastForPaste(content);
       } else if (captureType === "insight") {
         // Process through brain for categorization
         setIsProcessing(true);
@@ -111,9 +112,7 @@ export const QuickCapture = () => {
           source: "quick_capture",
         });
         toast.success("Insight captured");
-        
-        // Check for career keywords
-        showCareerToast(`${title} ${content}`);
+        // Career detection handled by pre-save dialog for insights
       } else if (captureType === "decision") {
         // Call decision-mirror edge function
         setIsProcessing(true);
@@ -127,9 +126,7 @@ export const QuickCapture = () => {
         setShowMirrorResponse(true);
         setIsSubmitting(false);
         setIsProcessing(false);
-        
-        // Check for career keywords in decision
-        showCareerToast(content);
+        // Career detection handled by pre-save dialog for decisions
         return;
       }
       
