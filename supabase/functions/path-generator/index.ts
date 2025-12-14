@@ -86,17 +86,49 @@ serve(async (req) => {
     // Use path-specific weights: Documents 40%, Identity 25%, Insights 25%
     const contextPrompt = formatWeightedContextForAgent(userContext, "path", { includeDocContent: true });
 
-    // Check if user has saved content about the focus area
-    const hasRelevantContent = userContext.key_documents.length > 0 || userContext.key_insights.length > 0;
-    
-    if (!hasRelevantContent && focusArea) {
-      return new Response(JSON.stringify({ 
-        error: `You haven't saved anything about "${focusArea}" yet. Save a course, tutorial, article, or insight first, then I'll build a path around it.`,
-        needs_content: true
-      }), { 
-        status: 400, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      });
+    // If user specified a focus area, check if they have RELEVANT content
+    if (focusArea) {
+      const focusKeywords = extractKeywords(focusArea);
+      console.log("Focus keywords:", focusKeywords);
+      
+      // Check documents for relevance
+      let relevantDocs: typeof userContext.key_documents = [];
+      for (const doc of userContext.key_documents) {
+        const docText = `${doc.title} ${doc.summary || ''} ${doc.extracted_content?.substring(0, 1000) || ''}`;
+        const docKeywords = extractKeywords(docText);
+        const overlap = focusKeywords.filter(k => docKeywords.includes(k));
+        if (overlap.length >= 1) { // At least 1 keyword overlap for topic relevance
+          relevantDocs.push(doc);
+        }
+      }
+      
+      // Check insights for relevance
+      let relevantInsights: typeof userContext.key_insights = [];
+      for (const insight of userContext.key_insights) {
+        const insightText = `${insight.title} ${insight.content || ''}`;
+        const insightKeywords = extractKeywords(insightText);
+        const overlap = focusKeywords.filter(k => insightKeywords.includes(k));
+        if (overlap.length >= 1) {
+          relevantInsights.push(insight);
+        }
+      }
+      
+      console.log(`Found ${relevantDocs.length} relevant docs, ${relevantInsights.length} relevant insights for "${focusArea}"`);
+      
+      // If no relevant content, return error
+      if (relevantDocs.length === 0 && relevantInsights.length === 0) {
+        return new Response(JSON.stringify({ 
+          error: `You haven't saved anything about "${focusArea}" yet. Save a course, tutorial, article, or insight about this topic first, then I'll build a path around it.`,
+          needs_content: true
+        }), { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+      
+      // Use only relevant content for path generation
+      userContext.key_documents = relevantDocs;
+      userContext.key_insights = relevantInsights;
     }
 
     // Build numbered source list for citation
