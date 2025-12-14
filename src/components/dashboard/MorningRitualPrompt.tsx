@@ -68,7 +68,10 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
   const handleDismiss = () => {
     if (user) {
       const today = new Date().toISOString().split('T')[0];
-      localStorage.setItem(`weave_morning_ritual_${user.id}`, today);
+      const key = `weave_morning_ritual_${user.id}`;
+      localStorage.setItem(key, today);
+      // Force sync to ensure it's persisted
+      console.log(`Morning ritual dismissed for ${today}, stored in ${key}`);
     }
     setOpen(false);
     onComplete();

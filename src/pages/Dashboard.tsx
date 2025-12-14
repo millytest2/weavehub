@@ -31,6 +31,32 @@ const Dashboard = () => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   };
 
+  // Check if task was generated in a different time period (stale context)
+  const isTaskStale = (task: any) => {
+    if (!task?.created_at) return false;
+    const taskCreated = new Date(task.created_at);
+    const now = new Date();
+    const hoursSinceCreation = (now.getTime() - taskCreated.getTime()) / (1000 * 60 * 60);
+    
+    // Consider stale if created more than 6 hours ago and time period changed
+    // (e.g., task from 11pm showing at 10am)
+    const taskHour = taskCreated.getHours();
+    const currentHour = now.getHours();
+    
+    const getTimeOfDay = (hour: number) => {
+      if (hour >= 5 && hour < 12) return 'morning';
+      if (hour >= 12 && hour < 17) return 'afternoon';
+      if (hour >= 17 && hour < 21) return 'evening';
+      return 'night';
+    };
+    
+    const taskTimeOfDay = getTimeOfDay(taskHour);
+    const currentTimeOfDay = getTimeOfDay(currentHour);
+    
+    // Stale if different time period AND more than 4 hours old AND not completed
+    return taskTimeOfDay !== currentTimeOfDay && hoursSinceCreation > 4 && !task.completed;
+  };
+
   useEffect(() => {
     if (!user) return;
 
@@ -45,8 +71,24 @@ const Dashboard = () => {
         .order("task_sequence", { ascending: true });
 
       if (tasksRes && tasksRes.length > 0) {
-        setTasksForToday(tasksRes);
+        // Check if the incomplete task is stale (from a different time period)
         const incomplete = tasksRes.find(t => !t.completed);
+        
+        if (incomplete && isTaskStale(incomplete)) {
+          // Delete stale task and regenerate with current time context
+          await supabase
+            .from("daily_tasks")
+            .delete()
+            .eq("id", incomplete.id);
+          
+          const remainingTasks = tasksRes.filter(t => t.id !== incomplete.id);
+          setTasksForToday(remainingTasks);
+          setTodayTask(null);
+          setCurrentSequence(remainingTasks.length + 1);
+          return;
+        }
+        
+        setTasksForToday(tasksRes);
         setCurrentSequence(incomplete?.task_sequence || tasksRes.length);
         setTodayTask(incomplete || tasksRes[tasksRes.length - 1]);
       } else {
