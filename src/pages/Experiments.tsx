@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Sparkles, FlaskConical, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Sparkles, FlaskConical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
@@ -196,48 +196,52 @@ const Experiments = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto px-4 py-6">
-      {/* Header with back button */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => navigate("/")} 
-          className="shrink-0 h-10 w-10 rounded-full hover:bg-muted"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-foreground">Experiments</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Go do cool shit</p>
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Experiments</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Go do cool shit
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleGenerateExperiment} disabled={generating} variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-muted">
-            <Sparkles className="h-5 w-5" />
+          <Button onClick={handleGenerateExperiment} disabled={generating} size="sm" variant="outline">
+            <Sparkles className="mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Generate</span>
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-muted">
-            <Plus className="h-5 w-5" />
+          <Button onClick={() => setIsDialogOpen(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Add</span>
           </Button>
         </div>
       </div>
 
       {/* Active Experiment - Prominent */}
       {experiments.filter((e) => e.status === "in_progress").length > 0 && (
-        <div className="space-y-3">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {experiments
             .filter((e) => e.status === "in_progress")
             .map((exp) => (
               <Card
                 key={exp.id}
-                className="border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50 transition-all"
+                className="rounded-[10px] border-primary/30 bg-primary/5 cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
                 onClick={() => handleViewDetails(exp)}
               >
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
-                        Active
-                      </Badge>
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+                        <FlaskConical className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                            Active
+                          </Badge>
+                        </div>
+                        <h3 className="font-medium text-base">{exp.title}</h3>
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -245,15 +249,14 @@ const Experiments = () => {
                           e.stopPropagation();
                           handleDelete(exp.id);
                         }}
-                        className="h-7 w-7 p-0"
+                        className="h-8 w-8 p-0 shrink-0"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                    <h3 className="font-semibold text-base">{exp.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{exp.description}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 pl-11">{exp.description}</p>
                     {exp.duration && (
-                      <p className="text-xs text-muted-foreground">{exp.duration}</p>
+                      <p className="text-xs text-muted-foreground pl-11">{exp.duration}</p>
                     )}
                   </div>
                 </CardContent>
@@ -262,38 +265,51 @@ const Experiments = () => {
         </div>
       )}
 
-      {/* Other Experiments - Compact List */}
+      {/* Other Experiments - Card Grid */}
       {experiments.filter((e) => e.status !== "in_progress").length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide px-1 mb-2">Past</p>
-          {experiments
-            .filter((e) => e.status !== "in_progress")
-            .map((exp) => (
-              <div
-                key={exp.id}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-                onClick={() => handleViewDetails(exp)}
-              >
-                <FlaskConical className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{exp.title}</p>
-                </div>
-                <Badge variant="outline" className={`${getStatusColor(exp.status)} text-xs shrink-0`}>
-                  {exp.status}
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(exp.id);
-                  }}
-                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Past Experiments</p>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {experiments
+              .filter((e) => e.status !== "in_progress")
+              .map((exp) => (
+                <Card
+                  key={exp.id}
+                  className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer"
+                  onClick={() => handleViewDetails(exp)}
                 >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
+                  <CardContent className="pt-5 pb-5">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <FlaskConical className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-base mb-1">{exp.title}</h3>
+                          <Badge variant="outline" className={`${getStatusColor(exp.status)} text-xs`}>
+                            {exp.status}
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(exp.id);
+                          }}
+                          className="h-8 w-8 p-0 shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      {exp.description && (
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 pl-11">{exp.description}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
         </div>
       )}
 
