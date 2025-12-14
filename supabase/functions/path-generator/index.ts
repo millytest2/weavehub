@@ -11,12 +11,34 @@ interface PathStep {
   title: string;
   description: string;
   order_index: number;
+  deliverable?: string;
 }
 
 interface PathOutput {
   path_title: string;
   path_description: string;
+  sources_used?: string[];
+  final_deliverable?: string;
   steps: PathStep[];
+}
+
+// BANNED WORDS - same approach as experiment generator
+const BANNED_WORDS = [
+  // Therapy-speak
+  "inner pressure", "anxiety", "saboteur", "deep dive", "embrace", "unlock", 
+  "journey", "explore", "reflect", "consider", "embrace", "authentic",
+  // Abstract concepts
+  "clarity", "presence", "mindful", "awareness", "potential", "growth mindset",
+  // Course-like language
+  "module", "week", "bootcamp", "program", "course", "curriculum", "fundamentals",
+  "introduction", "foundations", "basics", "overview", "principles",
+  // Vague outcomes
+  "develop", "enhance", "cultivate", "strengthen", "deepen", "expand"
+];
+
+function containsBannedWords(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return BANNED_WORDS.some(word => lowerText.includes(word.toLowerCase()));
 }
 
 function stripEmojis(text: string): string {
@@ -32,6 +54,71 @@ function extractKeywords(text: string): string[] {
     .replace(/[^a-z0-9\s]/g, '')
     .split(/\s+/)
     .filter(word => word.length > 3 && !stopWords.has(word));
+}
+
+// Generate fallback path when AI produces banned content
+function generateFallbackPath(sources: Array<{ ref: string; title: string; type: string; content: string }>, focusArea: string): PathOutput {
+  const sourceCount = sources.length;
+  const primarySource = sources[0];
+  const secondarySource = sources[1];
+  
+  if (sourceCount === 0) {
+    return {
+      path_title: `Ship ${focusArea || "MVP"} in 5 Days`,
+      path_description: `Build and ship a working ${focusArea || "prototype"} with concrete deliverables each day.`,
+      sources_used: [],
+      final_deliverable: `Live ${focusArea || "MVP"} ready for feedback`,
+      steps: [
+        {
+          title: "Sprint 1: Define and Scope (Days 1-2)",
+          description: "Define exactly what you're building. List 3 core features max. Write one sentence describing what it does. Create a simple sketch or wireframe.",
+          order_index: 1,
+          deliverable: "Written scope doc with 3 features and wireframe"
+        },
+        {
+          title: "Sprint 2: Build Core Feature (Days 3-4)",
+          description: "Build the single most important feature first. Ignore everything else. Get it working, even if ugly.",
+          order_index: 2,
+          deliverable: "Working core feature you can demo"
+        },
+        {
+          title: "Sprint 3: Ship and Get Feedback (Day 5)",
+          description: "Deploy what you have. Send to 5 people. Collect their feedback via text/email. Document what they say.",
+          order_index: 3,
+          deliverable: "Live link + 5 feedback responses documented"
+        }
+      ]
+    };
+  }
+  
+  return {
+    path_title: `Ship Using ${primarySource.title.substring(0, 30)} in 5 Days`,
+    path_description: `Apply techniques from your saved content to build something real in 5 days.`,
+    sources_used: sources.slice(0, 3).map(s => `${s.ref} ${s.title}`),
+    final_deliverable: `Working prototype using techniques from ${primarySource.ref}`,
+    steps: [
+      {
+        title: "Sprint 1: Extract Key Technique (Days 1-2)",
+        description: `Review ${primarySource.ref} "${primarySource.title}". Find the ONE core technique. Write it in your own words in 2 sentences. Create a simple plan to apply it.`,
+        order_index: 1,
+        deliverable: `Written technique summary + application plan from ${primarySource.ref}`
+      },
+      {
+        title: "Sprint 2: Build First Version (Days 3-4)",
+        description: secondarySource 
+          ? `Apply the technique from ${primarySource.ref}. Reference ${secondarySource.ref} for additional context. Build the simplest working version. Don't polish.`
+          : `Apply the technique from ${primarySource.ref}. Build the simplest working version. Focus on functionality, not polish.`,
+        order_index: 2,
+        deliverable: `Working first version applying ${primarySource.ref} technique`
+      },
+      {
+        title: "Sprint 3: Test and Ship (Day 5)",
+        description: `Test your build with real use. Fix only critical bugs. Deploy/publish/send to 5 people for feedback.`,
+        order_index: 3,
+        deliverable: `Shipped version + 5 feedback responses`
+      }
+    ]
+  };
 }
 
 serve(async (req) => {
@@ -73,17 +160,15 @@ serve(async (req) => {
     let focusArea = "";
     try {
       const body = await req.json();
-      // Input validation: limit focus area length to prevent resource exhaustion
       const rawFocus = body.focus;
       if (typeof rawFocus === 'string') {
-        focusArea = rawFocus.trim().slice(0, 1000); // Max 1000 chars
+        focusArea = rawFocus.trim().slice(0, 1000);
       }
     } catch {
       // No body provided
     }
 
     const userContext = await fetchUserContext(supabase, userId);
-    // Use path-specific weights: Documents 40%, Identity 25%, Insights 25%
     const contextPrompt = formatWeightedContextForAgent(userContext, "path", { includeDocContent: true });
 
     // If user specified a focus area, check if they have RELEVANT content
@@ -91,10 +176,8 @@ serve(async (req) => {
       const focusKeywords = extractKeywords(focusArea);
       console.log("Focus keywords:", focusKeywords);
       
-      // Check documents for relevance - must have actual extracted content
       let relevantDocs: typeof userContext.key_documents = [];
       for (const doc of userContext.key_documents) {
-        // Skip documents without extracted content - they haven't been processed
         if (!doc.extracted_content && !doc.summary) {
           console.log(`Skipping doc "${doc.title}" - no extracted content`);
           continue;
@@ -110,7 +193,6 @@ serve(async (req) => {
         }
       }
       
-      // Check insights for relevance - must have actual content
       let relevantInsights: typeof userContext.key_insights = [];
       for (const insight of userContext.key_insights) {
         if (!insight.content || insight.content.length < 20) {
@@ -128,16 +210,15 @@ serve(async (req) => {
         }
       }
       
-      console.log(`Found ${relevantDocs.length} relevant docs (with content), ${relevantInsights.length} relevant insights for "${focusArea}"`);
+      console.log(`Found ${relevantDocs.length} relevant docs, ${relevantInsights.length} relevant insights for "${focusArea}"`);
       
-      // If no relevant content, return error with helpful message
       if (relevantDocs.length === 0 && relevantInsights.length === 0) {
         const hasAnyContent = userContext.key_documents.some((d: any) => d.extracted_content || d.summary) ||
                               userContext.key_insights.some((i: any) => i.content && i.content.length > 20);
         
         const errorMsg = hasAnyContent
-          ? `You haven't saved anything specifically about "${focusArea}" yet. Your saved content is about other topics. Save a course, tutorial, or article about "${focusArea}" first, then I'll build a path around it.`
-          : `You haven't saved any content yet. Save a course, tutorial, article, or insight first, then I'll build a path around it.`;
+          ? `You haven't saved anything about "${focusArea}" yet. Save a course, tutorial, or article about "${focusArea}" first, then I'll build a sprint path around it.`
+          : `You haven't saved any content yet. Save a course, tutorial, article, or insight first, then I'll build a sprint path around it.`;
         
         return new Response(JSON.stringify({ 
           error: errorMsg,
@@ -148,17 +229,15 @@ serve(async (req) => {
         });
       }
       
-      // Use only relevant content for path generation
       userContext.key_documents = relevantDocs;
       userContext.key_insights = relevantInsights;
     } else {
-      // No focus area - still filter to only content that's been processed
       userContext.key_documents = userContext.key_documents.filter((d: any) => d.extracted_content || d.summary);
       userContext.key_insights = userContext.key_insights.filter((i: any) => i.content && i.content.length > 20);
       
       if (userContext.key_documents.length === 0 && userContext.key_insights.length === 0) {
         return new Response(JSON.stringify({ 
-          error: `You haven't saved any processed content yet. Save and process a course, tutorial, article, or insight first, then I'll build a path around it.`,
+          error: `You haven't saved any processed content yet. Save a course, tutorial, article, or insight first, then I'll build a sprint path around it.`,
           needs_content: true
         }), { 
           status: 400, 
@@ -177,7 +256,7 @@ serve(async (req) => {
         content: doc.extracted_content?.substring(0, 500) || doc.summary?.substring(0, 300) || ''
       });
     });
-    userContext.key_insights.forEach((insight: any, i: number) => {
+    userContext.key_insights.forEach((insight: any) => {
       sources.push({
         ref: `[${sources.length + 1}]`,
         title: insight.title,
@@ -188,65 +267,83 @@ serve(async (req) => {
 
     const sourceList = sources.map(s => `${s.ref} "${s.title}" (${s.type}): ${s.content}`).join('\n\n');
 
-    const systemPrompt = `You are creating a SHORT, ACTION-BASED SPRINT PATH. NOT a curriculum. NOT a reading list. A sequence of BUILD/SHIP sprints.
+    const systemPrompt = `You create CONCRETE SPRINT PATHS that ship real deliverables. NOT courses. NOT learning journeys. SHORT sprints with REAL output.
 
 ${contextPrompt}
 
-${focusArea ? `USER'S FOCUS AREA: ${focusArea}` : ""}
+${focusArea ? `USER'S FOCUS: ${focusArea}` : ""}
 
-=== AVAILABLE SOURCES (cite these using [1], [2], etc.) ===
-${sourceList || "No sources saved yet."}
+=== USER'S SAVED SOURCES (MUST cite using [1], [2], etc.) ===
+${sourceList || "No sources saved."}
 === END SOURCES ===
 
-CRITICAL RULES - FOLLOW EXACTLY:
+REQUIRED TITLE FORMAT:
+"[Ship/Build/Launch] [Specific Thing] in [3-5 Days] Using Your Saved Content"
 
-1. MAXIMUM 3-5 STEPS TOTAL (never more)
-2. Each step is 2-4 DAYS MAX (use "Days 1-3", never "Week 1")
-3. Use SPRINT language: "Sprint 1", "Sprint 2", NOT "Module" or "Week"
-4. CITE SPECIFIC SOURCES using [1], [2] notation
-5. QUOTE actual techniques, timestamps, chapters from those sources
-6. Each step MUST have a CONCRETE DELIVERABLE (build/create/ship something)
-7. Connect to user's active projects when possible
+EXAMPLES OF GOOD TITLES:
+- "Ship Cold Email System in 4 Days Using Hormozi's Framework"
+- "Build UPath Landing Page in 3 Days Using Saved Examples"
+- "Launch YouTube Channel in 5 Days Using MrBeast's Playbook"
 
-STEP FORMAT (follow exactly):
-\`\`\`
-Sprint X: [Action Verb] [Specific Thing] (Days X-Y)
+EXAMPLES OF BAD TITLES (NEVER USE):
+- "Creator-Athlete Clarity and Presence Path" 
+- "Journey to Authentic Self-Expression"
+- "Mindful Business Building Bootcamp"
+- "Unlock Your Creative Potential Program"
 
-You saved [1] "[source title]" and [2] "[source title]".
+REQUIRED PATH STRUCTURE:
 
-[Explain what the sources teach and how to apply it]
+1. TITLE: [Action Verb] [Specific Deliverable] in [X Days] Using [Source Name]
 
-Your task: [Specific action with concrete output]
+2. DESCRIPTION: Lists the sources being used:
+   "You saved:
+   - [1] [Source 1 title]
+   - [2] [Source 2 title]
+   - [3] [Source 3 title]"
 
-Deliverable: [What exists when done - file, function, prototype, etc.]
+3. SPRINTS (3-5 total, each 1-3 days):
+   Each sprint follows this format:
+   
+   Sprint X (Days X-Y): [Action Verb] [Specific Thing]
+   
+   You saved [1] "[source title]" which teaches [specific technique].
+   
+   Your task: [Concrete action with specific output]
+   
+   Deliverable: [Exact thing that exists when done]
 
-Sources used: [1] [specific section], [2] [specific part]
-\`\`\`
+4. FINAL DELIVERABLE: [Specific shipped/published/sent thing]
 
-EXAMPLE GOOD STEP:
-\`\`\`
-Sprint 1: Build Recommendation Prototype (Days 1-3)
+HARD RULES:
+1. MAXIMUM 3-5 sprints total
+2. Each sprint is 1-3 DAYS max (use "Days 1-2" not "Week 1")
+3. CITE SOURCES using [1], [2] - quote actual techniques
+4. Every sprint has a CONCRETE DELIVERABLE (file, prototype, sent emails, published post)
+5. Action verbs ONLY: Build, Ship, Write, Send, Post, Launch, Create, Test
+6. Total path duration: 3-5 days max
 
-You saved [1] "Andrew Ng's ML Course" and [2] "Collaborative Filtering in Python".
+BANNED WORDS (never use these):
+${BANNED_WORDS.join(', ')}
 
-Ng explains cosine similarity for user preferences in lecture 4. The article has working Python code for similarity scoring.
-
-Your task: Build a mini "suggest next career step" function for UPath. Take 10 sample user profiles, calculate similarity scores, return top 3 matches.
-
-Deliverable: Working Python function + test results with 10 sample profiles.
-
-Sources used: [1] Lecture 4 similarity section, [2] Python implementation example
-\`\`\`
-
-BANNED PATTERNS (never do these):
-- "Week 1: Introduction to..." - Use "Sprint 1: Build..." instead
-- "Learn the fundamentals..." - Instead cite a specific source and build something
-- "Read chapters 1-3..." - Instead extract the key technique and apply it
-- "Practice problems..." - Instead create a real deliverable
-- Any step without a shippable output
+BANNED PATTERNS:
+- "Week 1: Introduction to..." → Use "Sprint 1: Build..."
+- "Learn the fundamentals..." → Cite source, extract technique, apply it
+- "Practice problems..." → Create real deliverable instead
+- "Explore your..." → Ship something concrete instead
+- Any step without shippable output
 - Generic advice without source citations
+- Titles with "Path", "Journey", "Bootcamp", "Program", "Course"
 
-NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
+TONE:
+- Sprint-based, not course-based
+- Build/ship focused, not learning focused
+- Uses USER'S saved content with citations, not generic curriculum
+- Concrete deliverables, not abstract outcomes
+- 3-5 days max, not weeks/months
+
+Each path should feel like a mini product sprint ending in something SHIPPED.
+
+NO EMOJIS. CITE SOURCES. SHIP DELIVERABLES.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -259,8 +356,8 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: focusArea 
-            ? `Create a 3-5 step sprint path for: ${focusArea}. Use my saved sources with [1], [2] citations. Each sprint should be 2-4 days with a concrete deliverable.`
-            : `Create a 3-5 step sprint path that synthesizes my saved content into actionable sprints. Use [1], [2] source citations.` 
+            ? `Create a 3-5 day sprint path for: ${focusArea}. Use my saved sources with [1], [2] citations. Format: "[Ship/Build] [Thing] in [X Days] Using [Source]". Each sprint 1-3 days with concrete deliverable.`
+            : `Create a 3-5 day sprint path that synthesizes my saved content into a shippable deliverable. Use [1], [2] source citations. Format: "[Ship/Build] [Thing] in [X Days] Using [Source]".` 
           }
         ],
         tools: [
@@ -268,27 +365,45 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
             type: "function",
             function: {
               name: "create_sprint_path",
-              description: "Create a short sprint-based action path with source citations",
+              description: "Create a concrete sprint path with source citations and shippable deliverables",
               parameters: {
                 type: "object",
                 properties: {
-                  path_title: { type: "string", description: "Action-oriented sprint title (e.g., 'Build UPath Recommender in 2 Sprints')" },
-                  path_description: { type: "string", description: "What visible outcome this path creates in 1-2 sentences" },
+                  path_title: { 
+                    type: "string", 
+                    description: "Action-oriented title: '[Ship/Build] [Thing] in [X Days] Using [Source]'" 
+                  },
+                  path_description: { 
+                    type: "string", 
+                    description: "Lists sources used. Format: 'You saved:\\n- [1] Source 1\\n- [2] Source 2\\n\\nThis sprint path will...'" 
+                  },
                   sources_used: { 
                     type: "array", 
                     items: { type: "string" },
-                    description: "List of source references used (e.g., '[1] Andrew Ng ML Course')"
+                    description: "List of source references (e.g., '[1] Andrew Ng ML Course')"
+                  },
+                  final_deliverable: {
+                    type: "string",
+                    description: "What is shipped at the end (e.g., 'Live landing page with 20 signups')"
                   },
                   steps: {
                     type: "array",
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string", description: "Sprint title with days (e.g., 'Sprint 1: Build Prototype (Days 1-3)')" },
-                        description: { type: "string", description: "Full step with source citations [1], [2], technique explanation, specific task, and deliverable" },
+                        title: { 
+                          type: "string", 
+                          description: "Sprint title: 'Sprint X (Days X-Y): [Action] [Thing]'" 
+                        },
+                        description: { 
+                          type: "string", 
+                          description: "Cites source [1], explains technique, gives specific task, states deliverable" 
+                        },
                         order_index: { type: "number" },
-                        deliverable: { type: "string", description: "What exists when this sprint is done" },
-                        sources_cited: { type: "array", items: { type: "string" } }
+                        deliverable: { 
+                          type: "string", 
+                          description: "What exists when this sprint is done" 
+                        }
                       },
                       required: ["title", "description", "order_index", "deliverable"]
                     },
@@ -296,7 +411,7 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
                     maxItems: 5
                   }
                 },
-                required: ["path_title", "path_description", "steps"]
+                required: ["path_title", "path_description", "final_deliverable", "steps"]
               }
             }
           }
@@ -329,7 +444,14 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
       throw new Error("No path generated");
     }
 
-    const pathData: PathOutput = JSON.parse(toolCall.function.arguments);
+    let pathData: PathOutput = JSON.parse(toolCall.function.arguments);
+    
+    // Validate against banned words - use fallback if needed
+    const allText = `${pathData.path_title} ${pathData.path_description} ${pathData.steps.map(s => `${s.title} ${s.description}`).join(' ')}`;
+    if (containsBannedWords(allText)) {
+      console.log("AI output contained banned words, using fallback path");
+      pathData = generateFallbackPath(sources, focusArea);
+    }
     
     // Clean emojis from all text
     pathData.path_title = stripEmojis(pathData.path_title);
@@ -373,24 +495,19 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
     // Auto-connect related content
     console.log("Auto-connecting related content...");
     
-    // Get all path text for keyword extraction
     const allPathText = `${pathData.path_title} ${pathData.path_description} ${pathData.steps.map(s => `${s.title} ${s.description}`).join(' ')}`;
     const pathKeywords = extractKeywords(allPathText);
-    console.log("Path keywords:", pathKeywords.slice(0, 10));
 
-    // Fetch user's insights
     const { data: userInsights } = await supabase
       .from("insights")
       .select("id, title, content")
       .eq("user_id", userId);
 
-    // Fetch user's documents
     const { data: userDocuments } = await supabase
       .from("documents")
       .select("id, title, summary")
       .eq("user_id", userId);
 
-    // Fetch user's experiments
     const { data: userExperiments } = await supabase
       .from("experiments")
       .select("id, title, description, hypothesis")
@@ -404,7 +521,6 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
       target_id: string;
     }> = [];
 
-    // Match insights to path
     if (userInsights) {
       for (const insight of userInsights) {
         const insightText = `${insight.title} ${insight.content}`;
@@ -419,12 +535,10 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
             target_type: "insight",
             target_id: insight.id
           });
-          console.log(`Matched insight: ${insight.title} (${overlap.length} keywords)`);
         }
       }
     }
 
-    // Match documents to path
     if (userDocuments) {
       for (const doc of userDocuments) {
         const docText = `${doc.title} ${doc.summary || ''}`;
@@ -439,12 +553,10 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
             target_type: "document",
             target_id: doc.id
           });
-          console.log(`Matched document: ${doc.title} (${overlap.length} keywords)`);
         }
       }
     }
 
-    // Match experiments to path
     if (userExperiments) {
       for (const exp of userExperiments) {
         const expText = `${exp.title} ${exp.description || ''} ${exp.hypothesis || ''}`;
@@ -459,12 +571,10 @@ NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
             target_type: "experiment",
             target_id: exp.id
           });
-          console.log(`Matched experiment: ${exp.title} (${overlap.length} keywords)`);
         }
       }
     }
 
-    // Insert all connections
     if (connections.length > 0) {
       const { error: connectError } = await supabase
         .from("connections")
