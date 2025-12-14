@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { fetchUserContext, formatContextForAI } from "../shared/context.ts";
+import { fetchUserContext, formatWeightedContextForAgent } from "../shared/context.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,7 +83,8 @@ serve(async (req) => {
     }
 
     const userContext = await fetchUserContext(supabase, userId);
-    const contextPrompt = formatContextForAI(userContext);
+    // Use path-specific weights: Documents 40%, Identity 25%, Insights 25%
+    const contextPrompt = formatWeightedContextForAgent(userContext, "path", { includeDocContent: true });
 
     const systemPrompt = `You are creating a STEP-BY-STEP ACTION PATH. Not a curriculum. Not a reading list. A sequence of CONCRETE ACTIONS.
 

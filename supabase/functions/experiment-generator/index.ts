@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { fetchUserContext, formatContextForAI, CompactContext } from "../shared/context.ts";
+import { 
+  fetchUserContext, 
+  formatWeightedContextForAgent,
+  CompactContext 
+} from "../shared/context.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -402,7 +406,8 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     const userContext = await fetchUserContext(supabase, user.id);
-    const context = formatContextForAI(userContext);
+    // Use experiment-specific weights: Documents 35%, Identity 40%, Insights 15%
+    const context = formatWeightedContextForAgent(userContext, "experiment", { includeDocContent: true });
     
     // Select sprint type based on momentum
     const sprintConfig = await selectSprintType(supabase, user.id, userContext);
