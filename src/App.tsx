@@ -16,6 +16,7 @@ import DailyFocus from "./pages/DailyFocus";
 import IdentitySeed from "./pages/IdentitySeed";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/landing" element={<Landing />} />
             <Route
               path="/"
               element={
