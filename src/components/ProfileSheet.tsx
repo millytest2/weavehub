@@ -3,9 +3,10 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, ChevronRight, Beaker, Target, Pause, Play } from "lucide-react";
+import { LogOut, ChevronDown, ChevronRight, Beaker, Target, Pause, Play, CheckCircle2, Circle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface ActionHistoryItem {
   id: string;
@@ -55,7 +56,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .select("id, action_text, pillar, action_date, completed_at")
           .eq("user_id", user.id)
           .gte("action_date", sevenDaysAgo.toISOString().split("T")[0])
-          .order("action_date", { ascending: false }),
+          .order("completed_at", { ascending: false }),
         supabase
           .from("experiments")
           .select("id, title, status, identity_shift_target")
@@ -112,59 +113,75 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     }
   };
 
-  // Group actions by pillar
-  const pillarGroups = weeklyActions.reduce((acc, action) => {
-    const pillar = action.pillar || "Other";
-    if (!acc[pillar]) acc[pillar] = [];
-    acc[pillar].push(action);
+  // Group actions by day
+  const actionsByDay = weeklyActions.reduce((acc, action) => {
+    const date = action.action_date;
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(action);
     return acc;
   }, {} as Record<string, ActionHistoryItem[]>);
 
-  const pillarCount = Object.keys(pillarGroups).length;
+  const sortedDays = Object.keys(actionsByDay).sort((a, b) => 
+    new Date(b).getTime() - new Date(a).getTime()
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-80 sm:w-96 p-0 flex flex-col">
-        <SheetHeader className="p-4 border-b border-border/30">
-          <SheetTitle className="text-left">Your Week</SheetTitle>
-          <SheetDescription className="text-left text-sm">
-            Track your identity in motion
+      <SheetContent side="right" className="w-80 sm:w-96 p-0 flex flex-col bg-background/95 backdrop-blur-xl">
+        <SheetHeader className="p-5 pb-4">
+          <SheetTitle className="text-left text-lg">Your Week</SheetTitle>
+          <SheetDescription className="sr-only">
+            Weekly progress and active projects
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-6">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <div className="flex items-center justify-center py-8">
+              <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
           ) : (
             <>
-              {/* Active Projects Section */}
+              {/* Stats Summary */}
+              <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-muted/30 border border-border/20">
+                <div className="flex-1 text-center">
+                  <p className="text-2xl font-semibold text-foreground">{weeklyActions.length}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Actions</p>
+                </div>
+                <div className="w-px h-8 bg-border/30" />
+                <div className="flex-1 text-center">
+                  <p className="text-2xl font-semibold text-foreground">{sortedDays.length}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Active Days</p>
+                </div>
+                <div className="w-px h-8 bg-border/30" />
+                <div className="flex-1 text-center">
+                  <p className="text-2xl font-semibold text-foreground">{activeExperiments.length}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Projects</p>
+                </div>
+              </div>
+
+              {/* Active Projects */}
               {activeExperiments.length > 0 && (
                 <div>
                   <Collapsible open={showExperiments} onOpenChange={setShowExperiments}>
-                    <CollapsibleTrigger className="flex items-center gap-2 w-full mb-2">
-                      <Beaker className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Active Projects</span>
-                      <span className="text-xs text-muted-foreground">({activeExperiments.length})</span>
-                      {showExperiments ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground ml-auto" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
-                      )}
+                    <CollapsibleTrigger className="flex items-center gap-2 w-full mb-2 group">
+                      <Beaker className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Active Projects</span>
+                      <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${showExperiments ? '' : '-rotate-90'}`} />
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="space-y-2 pl-6">
+                      <div className="space-y-1.5 mt-2">
                         {activeExperiments.map((exp) => (
-                          <div key={exp.id} className="py-1.5 flex items-start justify-between gap-2">
+                          <div 
+                            key={exp.id} 
+                            className={`py-2.5 px-3 rounded-lg flex items-center justify-between gap-2 ${
+                              exp.status === "paused" ? "bg-muted/20" : "bg-primary/5 border border-primary/10"
+                            }`}
+                          >
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium ${exp.status === "paused" ? "text-muted-foreground" : "text-foreground/90"}`}>
+                              <p className={`text-sm font-medium truncate ${exp.status === "paused" ? "text-muted-foreground" : "text-foreground"}`}>
                                 {exp.title}
                               </p>
-                              {exp.identity_shift_target && (
-                                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                                  <Target className="h-3 w-3" />
-                                  {exp.identity_shift_target.substring(0, 50)}
-                                </p>
-                              )}
                             </div>
                             <button
                               onClick={(e) => {
@@ -174,14 +191,13 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                               className={`p-1.5 rounded-md transition-colors ${
                                 exp.status === "paused" 
                                   ? "text-muted-foreground hover:text-primary hover:bg-primary/10" 
-                                  : "text-primary hover:text-muted-foreground hover:bg-muted"
+                                  : "text-primary hover:bg-primary/10"
                               }`}
-                              title={exp.status === "paused" ? "Resume project" : "Pause project"}
                             >
                               {exp.status === "paused" ? (
-                                <Play className="h-4 w-4" />
+                                <Play className="h-3.5 w-3.5" />
                               ) : (
-                                <Pause className="h-4 w-4" />
+                                <Pause className="h-3.5 w-3.5" />
                               )}
                             </button>
                           </div>
@@ -192,82 +208,72 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                 </div>
               )}
 
-              {/* Weekly Actions Section */}
+              {/* Weekly Actions by Day */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm font-medium">Weekly Progress</span>
-                  <span className="text-xs text-muted-foreground">
-                    ({weeklyActions.length} action{weeklyActions.length !== 1 ? 's' : ''})
-                  </span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">This Week</span>
                 </div>
                 
                 {weeklyActions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground pl-1">
-                    No actions completed yet. Your identity is built through consistent daily action.
-                  </p>
+                  <div className="py-6 text-center">
+                    <Circle className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                    <p className="text-sm text-muted-foreground">No actions completed yet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Your proof starts with one action</p>
+                  </div>
                 ) : (
-                  <>
-                    <p className="text-xs text-muted-foreground mb-3 pl-1">
-                      Each pillar below represents an area where you're actively becoming who you want to be.
-                    </p>
-                    <div className="space-y-1">
-                      {Object.entries(pillarGroups).map(([pillar, actions]) => (
-                        <Collapsible 
-                          key={pillar} 
-                          open={expandedPillars.has(pillar)}
-                          onOpenChange={() => togglePillar(pillar)}
-                        >
-                          <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-3 rounded-md hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{pillar}</span>
-                              <span className="text-xs text-muted-foreground">({actions.length})</span>
-                            </div>
-                            {expandedPillars.has(pillar) ? (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="pl-3 py-1 space-y-1">
-                              {actions.slice(0, 3).map((action) => (
-                                <p key={action.id} className="text-xs text-muted-foreground leading-snug py-1">
-                                  {action.action_text}
-                                </p>
-                              ))}
-                              {actions.length > 3 && (
-                                <p className="text-xs text-muted-foreground/60">+{actions.length - 3} more</p>
-                              )}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      ))}
-                    </div>
-                  </>
+                  <div className="space-y-3">
+                    {sortedDays.map((date) => {
+                      const actions = actionsByDay[date];
+                      const isToday = date === new Date().toISOString().split('T')[0];
+                      const displayDate = isToday ? "Today" : format(new Date(date), "EEE, MMM d");
+                      
+                      return (
+                        <div key={date} className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                              {displayDate}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/60">{actions.length} done</span>
+                          </div>
+                          <div className="space-y-1 pl-1">
+                            {actions.map((action) => (
+                              <div 
+                                key={action.id} 
+                                className="flex items-start gap-2 py-1.5"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-foreground/90 leading-snug">
+                                    {action.action_text}
+                                  </p>
+                                  {action.pillar && (
+                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                      {action.pillar}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-
-              {/* Why This Matters */}
-              {weeklyActions.length > 0 && pillarCount > 1 && (
-                <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/20">
-                  <p className="text-xs text-muted-foreground">
-                    You're building across {pillarCount} life areas. Balance creates sustainable momentum.
-                  </p>
-                </div>
-              )}
             </>
           )}
         </div>
 
-        <div className="p-4 border-t border-border/30 mt-auto">
+        <div className="p-4 border-t border-border/20 mt-auto">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleSignOut}
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground h-9"
           >
             <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
+            <span className="text-sm">Sign Out</span>
           </Button>
         </div>
       </SheetContent>
