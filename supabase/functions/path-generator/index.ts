@@ -91,34 +91,56 @@ serve(async (req) => {
       const focusKeywords = extractKeywords(focusArea);
       console.log("Focus keywords:", focusKeywords);
       
-      // Check documents for relevance
+      // Check documents for relevance - must have actual extracted content
       let relevantDocs: typeof userContext.key_documents = [];
       for (const doc of userContext.key_documents) {
-        const docText = `${doc.title} ${doc.summary || ''} ${doc.extracted_content?.substring(0, 1000) || ''}`;
+        // Skip documents without extracted content - they haven't been processed
+        if (!doc.extracted_content && !doc.summary) {
+          console.log(`Skipping doc "${doc.title}" - no extracted content`);
+          continue;
+        }
+        
+        const docText = `${doc.title} ${doc.summary || ''} ${doc.extracted_content?.substring(0, 2000) || ''}`.toLowerCase();
         const docKeywords = extractKeywords(docText);
         const overlap = focusKeywords.filter(k => docKeywords.includes(k));
-        if (overlap.length >= 1) { // At least 1 keyword overlap for topic relevance
+        
+        if (overlap.length >= 1) {
+          console.log(`Matched doc "${doc.title}" with keywords: ${overlap.join(', ')}`);
           relevantDocs.push(doc);
         }
       }
       
-      // Check insights for relevance
+      // Check insights for relevance - must have actual content
       let relevantInsights: typeof userContext.key_insights = [];
       for (const insight of userContext.key_insights) {
-        const insightText = `${insight.title} ${insight.content || ''}`;
+        if (!insight.content || insight.content.length < 20) {
+          console.log(`Skipping insight "${insight.title}" - no meaningful content`);
+          continue;
+        }
+        
+        const insightText = `${insight.title} ${insight.content}`.toLowerCase();
         const insightKeywords = extractKeywords(insightText);
         const overlap = focusKeywords.filter(k => insightKeywords.includes(k));
+        
         if (overlap.length >= 1) {
+          console.log(`Matched insight "${insight.title}" with keywords: ${overlap.join(', ')}`);
           relevantInsights.push(insight);
         }
       }
       
-      console.log(`Found ${relevantDocs.length} relevant docs, ${relevantInsights.length} relevant insights for "${focusArea}"`);
+      console.log(`Found ${relevantDocs.length} relevant docs (with content), ${relevantInsights.length} relevant insights for "${focusArea}"`);
       
-      // If no relevant content, return error
+      // If no relevant content, return error with helpful message
       if (relevantDocs.length === 0 && relevantInsights.length === 0) {
+        const hasAnyContent = userContext.key_documents.some((d: any) => d.extracted_content || d.summary) ||
+                              userContext.key_insights.some((i: any) => i.content && i.content.length > 20);
+        
+        const errorMsg = hasAnyContent
+          ? `You haven't saved anything specifically about "${focusArea}" yet. Your saved content is about other topics. Save a course, tutorial, or article about "${focusArea}" first, then I'll build a path around it.`
+          : `You haven't saved any content yet. Save a course, tutorial, article, or insight first, then I'll build a path around it.`;
+        
         return new Response(JSON.stringify({ 
-          error: `You haven't saved anything about "${focusArea}" yet. Save a course, tutorial, article, or insight about this topic first, then I'll build a path around it.`,
+          error: errorMsg,
           needs_content: true
         }), { 
           status: 400, 
@@ -129,6 +151,20 @@ serve(async (req) => {
       // Use only relevant content for path generation
       userContext.key_documents = relevantDocs;
       userContext.key_insights = relevantInsights;
+    } else {
+      // No focus area - still filter to only content that's been processed
+      userContext.key_documents = userContext.key_documents.filter((d: any) => d.extracted_content || d.summary);
+      userContext.key_insights = userContext.key_insights.filter((i: any) => i.content && i.content.length > 20);
+      
+      if (userContext.key_documents.length === 0 && userContext.key_insights.length === 0) {
+        return new Response(JSON.stringify({ 
+          error: `You haven't saved any processed content yet. Save and process a course, tutorial, article, or insight first, then I'll build a path around it.`,
+          needs_content: true
+        }), { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
     }
 
     // Build numbered source list for citation
