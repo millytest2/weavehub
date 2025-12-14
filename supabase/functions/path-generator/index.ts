@@ -23,18 +23,16 @@ interface PathOutput {
   steps: PathStep[];
 }
 
-// BANNED WORDS - same approach as experiment generator
+// BANNED WORDS - only truly problematic therapy-speak and course language
 const BANNED_WORDS = [
   // Therapy-speak
-  "inner pressure", "anxiety", "saboteur", "deep dive", "embrace", "unlock", 
-  "journey", "explore", "reflect", "consider", "embrace", "authentic",
-  // Abstract concepts
-  "clarity", "presence", "mindful", "awareness", "potential", "growth mindset",
-  // Course-like language
-  "module", "week", "bootcamp", "program", "course", "curriculum", "fundamentals",
-  "introduction", "foundations", "basics", "overview", "principles",
-  // Vague outcomes
-  "develop", "enhance", "cultivate", "strengthen", "deepen", "expand"
+  "inner pressure", "saboteur", "embrace your", "unlock your", 
+  "journey to", "authentic self", "mindfulness", "self-discovery",
+  // Course-like language  
+  "module", "bootcamp", "program", "course", "curriculum", "fundamentals",
+  "introduction to", "foundations of", "basics of", "overview of", "principles of",
+  // Abstract fluff
+  "growth mindset", "potential", "cultivate", "deepen your"
 ];
 
 function containsBannedWords(text: string): boolean {
@@ -60,63 +58,75 @@ function extractKeywords(text: string): string[] {
 // Generate fallback path when AI produces banned content
 function generateFallbackPath(sources: Array<{ ref: string; title: string; type: string; content: string }>, focusArea: string): PathOutput {
   const sourceCount = sources.length;
-  const primarySource = sources[0];
-  const secondarySource = sources[1];
   
-  if (sourceCount === 0) {
+  // Get clean source titles (filter out numeric-only titles)
+  const cleanSources = sources.filter(s => s.title && s.title.length > 5 && !/^\d+(\.\d+)?[kK]?$/.test(s.title.trim()));
+  const primarySource = cleanSources[0] || sources[0];
+  const secondarySource = cleanSources[1] || sources[1];
+  const tertiarySource = cleanSources[2] || sources[2];
+  
+  // Create sources list for description
+  const sourcesList = cleanSources.slice(0, 3).map((s, i) => `- [${i + 1}] ${s.title}`).join('\n');
+  
+  if (sourceCount === 0 || !primarySource) {
+    const deliverable = focusArea || "Working Prototype";
     return {
-      path_title: `Ship ${focusArea || "MVP"} in 5 Days`,
-      path_description: `Build and ship a working ${focusArea || "prototype"} with concrete deliverables each day.`,
+      path_title: `${deliverable} Shipped in 5 Days`,
+      path_description: `Build and ship a working ${focusArea || "prototype"} with concrete deliverables each sprint.`,
       sources_used: [],
-      final_deliverable: `Live ${focusArea || "MVP"} ready for feedback`,
+      final_deliverable: `Live ${focusArea || "MVP"} sent to 5 people for feedback`,
       steps: [
         {
-          title: "Sprint 1: Define and Scope (Days 1-2)",
-          description: "Define exactly what you're building. List 3 core features max. Write one sentence describing what it does. Create a simple sketch or wireframe.",
+          title: "Sprint 1 (Days 1-2): Define Scope and Create Wireframe",
+          description: "Try it: List exactly 3 core features. Write one sentence describing what it does. Sketch a simple wireframe on paper or Figma. Deadline: End of Day 2.",
           order_index: 1,
-          deliverable: "Written scope doc with 3 features and wireframe"
+          deliverable: "Written scope doc with 3 features + wireframe image"
         },
         {
-          title: "Sprint 2: Build Core Feature (Days 3-4)",
-          description: "Build the single most important feature first. Ignore everything else. Get it working, even if ugly.",
+          title: "Sprint 2 (Days 3-4): Build Core Feature",
+          description: "Try it: Build only the #1 most important feature. Ignore everything else. Get it working even if ugly. Deadline: End of Day 4.",
           order_index: 2,
-          deliverable: "Working core feature you can demo"
+          deliverable: "Working core feature you can demo in 30 seconds"
         },
         {
-          title: "Sprint 3: Ship and Get Feedback (Day 5)",
-          description: "Deploy what you have. Send to 5 people. Collect their feedback via text/email. Document what they say.",
+          title: "Sprint 3 (Day 5): Ship and Collect Feedback",
+          description: "Try it: Deploy what you have. Send link to 5 specific people. Ask them one question about it. Document their responses. Deadline: End of Day 5.",
           order_index: 3,
-          deliverable: "Live link + 5 feedback responses documented"
+          deliverable: "Live link + 5 feedback responses in a doc"
         }
       ]
     };
   }
   
+  // Use actual source titles to create meaningful path
+  const primaryTitle = primarySource.title.substring(0, 40);
+  const actionFocus = focusArea || "actionable system";
+  
   return {
-    path_title: `Ship Using ${primarySource.title.substring(0, 30)} in 5 Days`,
-    path_description: `Apply techniques from your saved content to build something real in 5 days.`,
-    sources_used: sources.slice(0, 3).map(s => `${s.ref} ${s.title}`),
-    final_deliverable: `Working prototype using techniques from ${primarySource.ref}`,
+    path_title: `${actionFocus} Built in 5 Days Using "${primaryTitle}"`,
+    path_description: `You saved:\n${sourcesList}\n\nThis sprint path applies techniques from your saved content to ship something real.`,
+    sources_used: cleanSources.slice(0, 3).map(s => `${s.ref} ${s.title}`),
+    final_deliverable: `Working ${actionFocus} using techniques from your saved sources, sent to 5 people`,
     steps: [
       {
-        title: "Sprint 1: Extract Key Technique (Days 1-2)",
-        description: `Review ${primarySource.ref} "${primarySource.title}". Find the ONE core technique. Write it in your own words in 2 sentences. Create a simple plan to apply it.`,
+        title: "Sprint 1 (Days 1-2): Extract and Apply Core Technique",
+        description: `You saved [1] "${primaryTitle}". Review it and find the ONE core technique.\n\nTry it: Write the technique in your own words (2 sentences max). Create a simple plan to apply it to ${actionFocus}. Deadline: End of Day 2.`,
         order_index: 1,
-        deliverable: `Written technique summary + application plan from ${primarySource.ref}`
+        deliverable: `Written technique summary from [1] + application plan`
       },
       {
-        title: "Sprint 2: Build First Version (Days 3-4)",
+        title: "Sprint 2 (Days 3-4): Build First Working Version",
         description: secondarySource 
-          ? `Apply the technique from ${primarySource.ref}. Reference ${secondarySource.ref} for additional context. Build the simplest working version. Don't polish.`
-          : `Apply the technique from ${primarySource.ref}. Build the simplest working version. Focus on functionality, not polish.`,
+          ? `Apply the technique from [1]. Use [2] "${secondarySource.title.substring(0, 30)}" for additional context.\n\nTry it: Build the simplest working version. Focus on function, not polish. Deadline: End of Day 4.`
+          : `Apply the technique from [1] to build your ${actionFocus}.\n\nTry it: Build the simplest working version. Focus on function, not polish. Deadline: End of Day 4.`,
         order_index: 2,
-        deliverable: `Working first version applying ${primarySource.ref} technique`
+        deliverable: `Working first version applying [1] technique`
       },
       {
-        title: "Sprint 3: Test and Ship (Day 5)",
-        description: `Test your build with real use. Fix only critical bugs. Deploy/publish/send to 5 people for feedback.`,
+        title: "Sprint 3 (Day 5): Test and Ship",
+        description: `Test your build with real use. Fix only critical bugs.\n\nTry it: Deploy/publish/send to 5 specific people. Ask each one question. Document responses. Deadline: End of Day 5.`,
         order_index: 3,
-        deliverable: `Shipped version + 5 feedback responses`
+        deliverable: `Shipped version + 5 feedback responses documented`
       }
     ]
   };
