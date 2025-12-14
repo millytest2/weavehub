@@ -294,73 +294,75 @@ ${avoidList}
 ${sourceList || "No sources saved."}
 === END SOURCES ===
 
-REQUIRED TITLE FORMAT:
-"[Ship/Build/Launch] [Specific Thing] in [3-5 Days] Using Your Saved Content"
+EXACT OUTPUT FORMAT REQUIRED:
+
+TITLE FORMAT (deliverable-first):
+"[Concrete Deliverable] in [X Days] Using Your Saved Content"
 
 EXAMPLES OF GOOD TITLES:
-- "Ship Cold Email System in 4 Days Using Hormozi's Framework"
-- "Build UPath Landing Page in 3 Days Using Saved Examples"
-- "Launch YouTube Channel in 5 Days Using MrBeast's Playbook"
+- "50 Cold Emails Sent in 4 Days Using Hormozi's Framework"
+- "Live Landing Page in 3 Days Using Saved Examples"
+- "First YouTube Video Posted in 5 Days Using MrBeast's Playbook"
 
 EXAMPLES OF BAD TITLES (NEVER USE):
-- "Creator-Athlete Clarity and Presence Path" 
-- "Journey to Authentic Self-Expression"
-- "Mindful Business Building Bootcamp"
-- "Unlock Your Creative Potential Program"
+- "Ship Cold Email System" (too vague - what's the deliverable?)
+- "Build Landing Page Skills" (learning-focused, not output-focused)
+- "Journey to YouTube Mastery" (abstract, no deliverable)
+- "Creator Path" or "Business Bootcamp" (course language)
 
-REQUIRED PATH STRUCTURE:
+EXACT DESCRIPTION FORMAT:
+"You saved:
+- [1] [Source 1 title]
+- [2] [Source 2 title]
+- [3] [Source 3 title]
 
-1. TITLE: [Action Verb] [Specific Deliverable] in [X Days] Using [Source Name]
+[One sentence: what you'll ship using these sources]"
 
-2. DESCRIPTION: Lists the sources being used:
-   "You saved:
-   - [1] [Source 1 title]
-   - [2] [Source 2 title]
-   - [3] [Source 3 title]"
+EXACT SPRINT FORMAT (each sprint):
+"Sprint X (Days X-Y): [Action] [Deliverable]
 
-3. SPRINTS (3-5 total, each 1-3 days):
-   Each sprint follows this format:
-   
-   Sprint X (Days X-Y): [Action Verb] [Specific Thing]
-   
-   You saved [1] "[source title]" which teaches [specific technique].
-   
-   Your task: [Concrete action with specific output]
-   
-   Deliverable: [Exact thing that exists when done]
+You saved [1] "[source title]". [What they do/teach/recommend in 1 sentence].
 
-4. FINAL DELIVERABLE: [Specific shipped/published/sent thing]
+Try it: [Exact constraint]. [Exact deliverable]. [Deadline within sprint].
+
+Deliverable: [Specific thing that exists when done]"
+
+EXAMPLE SPRINT:
+"Sprint 1 (Days 1-2): Write 25 Cold Emails
+
+You saved [1] "Hormozi $100M Leads". He recommends writing personalized first lines based on LinkedIn research.
+
+Try it: Block 2 hours each morning. Research 25 prospects. Write one personalized email per prospect. Finish by end of Day 2.
+
+Deliverable: 25 emails drafted in spreadsheet with prospect name, first line, and email body"
+
+FINAL DELIVERABLE (at end of path):
+"Deliverable: [Specific shipped/published/sent thing with quantity]"
 
 HARD RULES:
-1. MAXIMUM 3-5 sprints total
-2. Each sprint is 1-3 DAYS max (use "Days 1-2" not "Week 1")
-3. CITE SOURCES using [1], [2] - quote actual techniques
-4. Every sprint has a CONCRETE DELIVERABLE (file, prototype, sent emails, published post)
-5. Action verbs ONLY: Build, Ship, Write, Send, Post, Launch, Create, Test
-6. Total path duration: 3-5 days max
+1. Title = deliverable with quantity when possible ("50 Emails Sent" not "Email System Built")
+2. Description MUST list saved sources with [1], [2], [3] format
+3. Each sprint MUST cite which source it's applying with [1], [2] notation
+4. Each sprint MUST have "Try it:" section with exact constraint + exact deliverable + deadline
+5. Maximum 3-5 sprints, each 1-3 days
+6. Total path duration: 3-7 days max
+7. Every deliverable is concrete and countable when possible
 
-BANNED WORDS (never use these):
+BANNED WORDS (never use):
 ${BANNED_WORDS.join(', ')}
 
 BANNED PATTERNS:
-- "Week 1: Introduction to..." → Use "Sprint 1: Build..."
-- "Learn the fundamentals..." → Cite source, extract technique, apply it
-- "Practice problems..." → Create real deliverable instead
-- "Explore your..." → Ship something concrete instead
-- Any step without shippable output
-- Generic advice without source citations
-- Titles with "Path", "Journey", "Bootcamp", "Program", "Course"
+- Titles without concrete deliverables
+- Sprints without "Try it:" section
+- Generic advice without source citations [1], [2]
+- "Week 1" or "Module 1" (use "Sprint 1 (Days 1-2)")
+- Course-like language (bootcamp, program, curriculum, fundamentals)
+- Any sprint without specific deadline and output
 
-TONE:
-- Sprint-based, not course-based
-- Build/ship focused, not learning focused
-- Uses USER'S saved content with citations, not generic curriculum
-- Concrete deliverables, not abstract outcomes
-- 3-5 days max, not weeks/months
+ACTION VERBS ONLY:
+Ship, Build, Write, Send, Post, Launch, Create, Test, Record, Publish, Deploy, Draft
 
-Each path should feel like a mini product sprint ending in something SHIPPED.
-
-NO EMOJIS. CITE SOURCES. SHIP DELIVERABLES.`;
+NO EMOJIS. CITE SOURCES [1], [2]. CONCRETE DELIVERABLES.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
