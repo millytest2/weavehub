@@ -46,6 +46,8 @@ export interface CompactContext {
     in_progress: any[];
     planning: any[];
   };
+  past_experiments: any[];  // All experiments in last 60 days for de-duplication
+  past_paths: any[];  // All learning paths in last 60 days for de-duplication
   key_insights: any[];
   key_documents: any[];
   recent_actions: any[];
@@ -190,12 +192,19 @@ export async function fetchUserContext(
   // Parallel fetch - minimal data for speed
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-  const [identitySeed, insights, documents, experiments, dailyTasks, actionHistory, topics, connections] = await Promise.all([
+  const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
+    // Fetch ALL past experiments to avoid regenerating similar ones
+    supabase.from("experiments").select("title, description, identity_shift_target").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
+    // Fetch ALL learning paths to avoid regenerating similar ones
+    supabase.from("learning_paths").select("title, description").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
     supabase.from("daily_tasks").select("pillar, completed, one_thing, why_matters, task_date").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(10),
     // Fetch completed action history to avoid repetition
     supabase.from("action_history").select("action_text, pillar, action_date").eq("user_id", userId).gte("action_date", thirtyDaysAgo.toISOString().split("T")[0]).order("action_date", { ascending: false }).limit(30),
@@ -223,6 +232,8 @@ export async function fetchUserContext(
       in_progress: allExperiments.filter((e: any) => e.status === "in_progress"),
       planning: allExperiments.filter((e: any) => e.status === "planning"),
     },
+    past_experiments: pastExperiments.data || [],
+    past_paths: learningPaths.data || [],
     key_insights: keyInsights,
     key_documents: documents.data || [],
     recent_actions: dailyTasks.data || [],
@@ -709,6 +720,20 @@ export function formatWeightedContextForAgent(
     if (doneActions.length > 0) {
       formatted += `\nALREADY DONE (DO NOT REPEAT):\n${doneActions.join('\n')}\n`;
     }
+  }
+
+  // Past experiments to avoid regenerating similar ones (for experiment/path agents)
+  if ((agentType === 'experiment' || agentType === 'path') && context.past_experiments && context.past_experiments.length > 0) {
+    const pastExpTitles = context.past_experiments.slice(0, 15).map((e: any) => 
+      `- ${e.title}${e.identity_shift_target ? ` (${e.identity_shift_target.substring(0, 50)})` : ''}`
+    ).join('\n');
+    formatted += `\nALREADY CREATED EXPERIMENTS (DO NOT RECREATE SIMILAR):\n${pastExpTitles}\n`;
+  }
+
+  // Past learning paths to avoid regenerating similar ones
+  if (agentType === 'path' && context.past_paths && context.past_paths.length > 0) {
+    const pastPathTitles = context.past_paths.slice(0, 10).map((p: any) => `- ${p.title}`).join('\n');
+    formatted += `\nALREADY CREATED PATHS (DO NOT RECREATE SIMILAR):\n${pastPathTitles}\n`;
   }
 
   return formatted.trim();

@@ -274,11 +274,21 @@ serve(async (req) => {
 
     const sourceList = sources.map(s => `${s.ref} "${s.title}" (${s.type}): ${s.content}`).join('\n\n');
 
+    // Build past paths avoidance list
+    const pastPathsTitles = userContext.past_paths?.map((p: any) => p.title?.toLowerCase()).filter(Boolean) || [];
+    const pastExperimentsTitles = userContext.past_experiments?.map((e: any) => e.title?.toLowerCase()).filter(Boolean) || [];
+    const allPastTitles = [...pastPathsTitles, ...pastExperimentsTitles];
+    
+    const avoidList = allPastTitles.length > 0 
+      ? `\n\nALREADY CREATED (DO NOT RECREATE SIMILAR):\n${allPastTitles.slice(0, 15).map(t => `- ${t}`).join('\n')}`
+      : '';
+
     const systemPrompt = `You create CONCRETE SPRINT PATHS that ship real deliverables. NOT courses. NOT learning journeys. SHORT sprints with REAL output.
 
 ${contextPrompt}
 
 ${focusArea ? `USER'S FOCUS: ${focusArea}` : ""}
+${avoidList}
 
 === USER'S SAVED SOURCES (MUST cite using [1], [2], etc.) ===
 ${sourceList || "No sources saved."}
