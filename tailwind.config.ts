@@ -72,25 +72,48 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "weave-left": {
+          "0%, 100%": { transform: "translateX(-200%) scaleY(0.8)", opacity: "0.4" },
+          "50%": { transform: "translateX(0%) scaleY(1)", opacity: "1" },
+        },
+        "weave-center": {
+          "0%, 100%": { transform: "translateX(-50%) scaleY(1)", opacity: "1" },
+          "25%": { transform: "translateX(-150%) scaleY(0.9)", opacity: "0.6" },
+          "75%": { transform: "translateX(50%) scaleY(0.9)", opacity: "0.6" },
+        },
+        "weave-right": {
+          "0%, 100%": { transform: "translateX(100%) scaleY(0.8)", opacity: "0.4" },
+          "50%": { transform: "translateX(-100%) scaleY(1)", opacity: "1" },
+        },
+        "weave-dot": {
+          "0%, 100%": { transform: "translateY(0) scale(1)", opacity: "0.4" },
+          "50%": { transform: "translateY(-6px) scale(1.2)", opacity: "1" },
+        },
+        "fade-in": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.95)" },
+          to: { opacity: "1", transform: "scale(1)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "weave-left": "weave-left 1.2s ease-in-out infinite",
+        "weave-center": "weave-center 1.2s ease-in-out infinite",
+        "weave-right": "weave-right 1.2s ease-in-out infinite",
+        "weave-dot": "weave-dot 1s ease-in-out infinite",
+        "fade-in": "fade-in 0.3s ease-out",
+        "scale-in": "scale-in 0.2s ease-out",
       },
     },
   },

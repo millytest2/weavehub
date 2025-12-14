@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
+import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -253,9 +254,8 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="pt-0">
             {isGenerating ? (
-              <div className="py-10 text-center space-y-3">
-                <Sparkles className="h-8 w-8 mx-auto text-primary animate-pulse" />
-                <p className="text-sm text-muted-foreground">Preparing your invitation...</p>
+              <div className="py-10 flex flex-col items-center justify-center">
+                <WeaveLoader size="lg" text="Preparing your invitation..." />
               </div>
             ) : allDone ? (
               <div className="py-10 text-center space-y-3">
