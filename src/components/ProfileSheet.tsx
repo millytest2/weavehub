@@ -3,8 +3,9 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, ChevronRight, Beaker, Target } from "lucide-react";
+import { LogOut, ChevronDown, ChevronRight, Beaker, Target, Pause, Play } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 
 interface ActionHistoryItem {
   id: string;
@@ -59,9 +60,9 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .from("experiments")
           .select("id, title, status, identity_shift_target")
           .eq("user_id", user.id)
-          .in("status", ["in_progress", "planning"])
+          .in("status", ["in_progress", "planning", "paused"])
           .order("created_at", { ascending: false })
-          .limit(5)
+          .limit(10)
       ]);
 
       if (actionsResult.error) throw actionsResult.error;
@@ -89,6 +90,26 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       newSet.add(pillar);
     }
     setExpandedPillars(newSet);
+  };
+
+  const toggleExperimentStatus = async (expId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "paused" ? "in_progress" : "paused";
+    try {
+      const { error } = await supabase
+        .from("experiments")
+        .update({ status: newStatus })
+        .eq("id", expId);
+      
+      if (error) throw error;
+      
+      setActiveExperiments(prev => 
+        prev.map(exp => exp.id === expId ? { ...exp, status: newStatus } : exp)
+      );
+      toast.success(newStatus === "paused" ? "Project paused" : "Project resumed");
+    } catch (error) {
+      console.error("Error toggling experiment status:", error);
+      toast.error("Failed to update project status");
+    }
   };
 
   // Group actions by pillar
@@ -133,14 +154,36 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                     <CollapsibleContent>
                       <div className="space-y-2 pl-6">
                         {activeExperiments.map((exp) => (
-                          <div key={exp.id} className="py-1.5">
-                            <p className="text-sm font-medium text-foreground/90">{exp.title}</p>
-                            {exp.identity_shift_target && (
-                              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                                <Target className="h-3 w-3" />
-                                {exp.identity_shift_target.substring(0, 60)}
+                          <div key={exp.id} className="py-1.5 flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium ${exp.status === "paused" ? "text-muted-foreground" : "text-foreground/90"}`}>
+                                {exp.title}
                               </p>
-                            )}
+                              {exp.identity_shift_target && (
+                                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                  <Target className="h-3 w-3" />
+                                  {exp.identity_shift_target.substring(0, 50)}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExperimentStatus(exp.id, exp.status);
+                              }}
+                              className={`p-1.5 rounded-md transition-colors ${
+                                exp.status === "paused" 
+                                  ? "text-muted-foreground hover:text-primary hover:bg-primary/10" 
+                                  : "text-primary hover:text-muted-foreground hover:bg-muted"
+                              }`}
+                              title={exp.status === "paused" ? "Resume project" : "Pause project"}
+                            >
+                              {exp.status === "paused" ? (
+                                <Play className="h-4 w-4" />
+                              ) : (
+                                <Pause className="h-4 w-4" />
+                              )}
+                            </button>
                           </div>
                         ))}
                       </div>
