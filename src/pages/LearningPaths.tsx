@@ -171,27 +171,27 @@ const LearningPaths = () => {
   };
 
   return (
-    <div className="space-y-6 px-4 sm:px-0 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-2xl mx-auto px-4 py-6">
       {/* Header with back button */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={() => navigate("/")} 
-          className="shrink-0 h-9 w-9 rounded-full hover:bg-muted"
+          className="shrink-0 h-10 w-10 rounded-full hover:bg-muted"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold text-foreground">Paths</h1>
-          <p className="text-sm text-muted-foreground">Areas you're expanding in</p>
+          <h1 className="text-2xl font-bold text-foreground">Paths</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Areas you're expanding in</p>
         </div>
-        <div className="flex gap-1">
-          <Button onClick={() => setGenerateDialogOpen(true)} disabled={generating} variant="ghost" size="icon" className="h-9 w-9">
-            <Sparkles className="h-4 w-4" />
+        <div className="flex gap-2">
+          <Button onClick={() => setGenerateDialogOpen(true)} disabled={generating} variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-muted">
+            <Sparkles className="h-5 w-5" />
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} variant="ghost" size="icon" className="h-9 w-9">
-            <Plus className="h-4 w-4" />
+          <Button onClick={() => setIsDialogOpen(true)} variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-muted">
+            <Plus className="h-5 w-5" />
           </Button>
         </div>
       </div>
