@@ -196,8 +196,57 @@ async function fetchInstagramMetadata(url: string): Promise<{ title: string; des
   }
 }
 
-// Fetch article content
+// Fetch article content using Jina.ai Reader API (free, no API key needed)
 async function fetchArticleContent(url: string): Promise<{ title: string; content: string }> {
+  console.log("Fetching article via Jina.ai:", url);
+  
+  try {
+    // Use Jina.ai Reader API - just prefix the URL
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    
+    const response = await fetch(jinaUrl, {
+      headers: {
+        'Accept': 'text/plain',
+      }
+    });
+    
+    if (!response.ok) {
+      console.log("Jina.ai failed, falling back to basic extraction");
+      return fetchArticleContentFallback(url);
+    }
+    
+    const markdown = await response.text();
+    
+    // Extract title from first line (usually # Title)
+    const lines = markdown.split('\n').filter(l => l.trim());
+    let title = "";
+    let content = markdown;
+    
+    if (lines[0]?.startsWith('# ')) {
+      title = lines[0].replace(/^#\s+/, '').trim();
+    } else if (lines[0]?.startsWith('Title: ')) {
+      title = lines[0].replace(/^Title:\s+/, '').trim();
+    }
+    
+    // If no title found in markdown, use hostname
+    if (!title) {
+      title = new URL(url).hostname;
+    }
+    
+    console.log("Jina.ai extracted - Title:", title?.substring(0, 50), "Content length:", content?.length);
+    
+    return { 
+      title, 
+      content: content.substring(0, 50000) // Jina returns clean markdown, keep more
+    };
+  } catch (e) {
+    console.error("Jina.ai fetch error:", e);
+    return fetchArticleContentFallback(url);
+  }
+}
+
+// Fallback to basic HTML extraction if Jina.ai fails
+async function fetchArticleContentFallback(url: string): Promise<{ title: string; content: string }> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -209,19 +258,15 @@ async function fetchArticleContent(url: string): Promise<{ title: string; conten
     
     const html = await response.text();
     
-    // Extract title
     const titleMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) ||
                        html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const title = titleMatch ? decodeHtmlEntities(titleMatch[1]) : new URL(url).hostname;
     
-    // Extract description/content
     const descMatch = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i) ||
                       html.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
     
-    // Extract main text content (basic extraction)
     let content = descMatch ? decodeHtmlEntities(descMatch[1]) : "";
     
-    // Try to get article content from common patterns
     const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
     if (articleMatch) {
       const stripped = articleMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -232,7 +277,7 @@ async function fetchArticleContent(url: string): Promise<{ title: string; conten
     
     return { title, content };
   } catch (e) {
-    console.error("Article fetch error:", e);
+    console.error("Fallback article fetch error:", e);
     return { title: "", content: "" };
   }
 }
