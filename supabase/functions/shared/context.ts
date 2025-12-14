@@ -2,8 +2,44 @@
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
 
+// Agent-specific context weight presets
+export type AgentType = "navigator" | "experiment" | "path" | "next-rep" | "decision-mirror" | "return-to-self" | "default";
+
+export interface ContextWeights {
+  identity: number;
+  insights: number;
+  documents: number;
+  experiments: number;
+  actions: number;
+}
+
+// Context-dependent weights for different agent outputs
+export const AGENT_WEIGHTS: Record<AgentType, ContextWeights> = {
+  // Navigator: balanced for daily actions
+  navigator: { identity: 0.40, insights: 0.30, documents: 0.10, experiments: 0.15, actions: 0.05 },
+  
+  // Experiment Generator: heavy on documents and identity for friction-based experiments
+  experiment: { identity: 0.40, insights: 0.15, documents: 0.35, experiments: 0.05, actions: 0.05 },
+  
+  // Path Generator: heavy on documents and insights for building learning paths
+  path: { identity: 0.25, insights: 0.25, documents: 0.40, experiments: 0.05, actions: 0.05 },
+  
+  // Next-Rep: identity-heavy for drift moments
+  "next-rep": { identity: 0.50, insights: 0.25, documents: 0.05, experiments: 0.15, actions: 0.05 },
+  
+  // Decision Mirror: identity and insights for reflection
+  "decision-mirror": { identity: 0.45, insights: 0.35, documents: 0.05, experiments: 0.10, actions: 0.05 },
+  
+  // Return to Self: pure identity grounding
+  "return-to-self": { identity: 0.60, insights: 0.25, documents: 0.05, experiments: 0.05, actions: 0.05 },
+  
+  // Default fallback
+  default: { identity: 0.40, insights: 0.30, documents: 0.10, experiments: 0.15, actions: 0.05 },
+};
+
 export interface CompactContext {
   identity_seed: string | null;
+  core_values: string | null;
   current_phase: string | null;
   weekly_focus: string | null;
   experiments: {
@@ -32,18 +68,17 @@ export interface SemanticContext extends CompactContext {
   semantic_documents: any[];
 }
 
-// Generate embedding using Lovable AI Gateway
-async function generateEmbedding(text: string): Promise<number[]> {
+// Generate actual vector embedding using AI
+export async function generateEmbedding(text: string): Promise<number[] | null> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY || !text) {
     console.log("No API key or text for embedding generation");
-    return [];
+    return null;
   }
   
   try {
-    // Use Gemini to generate a semantic understanding, then use it for search
-    // Since direct embedding API may not be available, we'll use a workaround
+    // Use AI to generate semantic representation for vector search
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -55,26 +90,92 @@ async function generateEmbedding(text: string): Promise<number[]> {
         messages: [
           { 
             role: "system", 
-            content: "Extract 5-10 key semantic concepts from this text. Return only comma-separated keywords/phrases, nothing else." 
+            content: `You are an embedding generator. Convert the text into a semantic fingerprint.
+Extract the 15 most important concepts, themes, and meanings. 
+Return ONLY a JSON array of 15 floats between -1 and 1 representing semantic dimensions:
+[identity, growth, action, emotion, skill, health, connection, creativity, stability, learning, presence, content, admin, challenge, insight]
+Each dimension should be scored based on how relevant it is to the text.` 
+          },
+          { role: "user", content: text.substring(0, 3000) }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to generate embedding:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    
+    // Parse the JSON array
+    const match = content.match(/\[[\d\s,.\-]+\]/);
+    if (match) {
+      const embedding = JSON.parse(match[0]);
+      if (Array.isArray(embedding) && embedding.length >= 10) {
+        console.log("Generated semantic embedding:", embedding.slice(0, 5));
+        return embedding;
+      }
+    }
+    
+    console.log("Could not parse embedding from response");
+    return null;
+  } catch (error) {
+    console.error("Embedding generation error:", error);
+    return null;
+  }
+}
+
+// Calculate cosine similarity between two vectors
+export function cosineSimilarity(a: number[], b: number[]): number {
+  if (!a || !b || a.length !== b.length) return 0;
+  
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  return magnitude === 0 ? 0 : dotProduct / magnitude;
+}
+
+// Extract semantic keywords for fallback text search
+async function extractSemanticKeywords(text: string): Promise<string[]> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY || !text) return [];
+  
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { 
+            role: "system", 
+            content: "Extract 8-12 key semantic concepts from this text. Return only comma-separated keywords/phrases, nothing else." 
           },
           { role: "user", content: text.substring(0, 2000) }
         ],
       }),
     });
 
-    if (!response.ok) {
-      console.error("Failed to generate semantic keywords:", response.status);
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
     const keywords = data.choices?.[0]?.message?.content || "";
-    console.log("Semantic keywords extracted:", keywords.substring(0, 100));
-    
-    // Return keywords as a searchable string (will be used for text matching)
-    return keywords.split(',').map((k: string) => k.trim().toLowerCase());
-  } catch (error) {
-    console.error("Embedding generation error:", error);
+    return keywords.split(',').map((k: string) => k.trim().toLowerCase()).filter(Boolean);
+  } catch {
     return [];
   }
 }
@@ -91,7 +192,7 @@ export async function fetchUserContext(
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const [identitySeed, insights, documents, experiments, dailyTasks, actionHistory, topics, connections] = await Promise.all([
-    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus").eq("user_id", userId).maybeSingle(),
+    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
@@ -115,6 +216,7 @@ export async function fetchUserContext(
 
   return {
     identity_seed: identitySeed.data?.content || null,
+    core_values: identitySeed.data?.core_values || null,
     current_phase: identitySeed.data?.current_phase || "baseline",
     weekly_focus: identitySeed.data?.weekly_focus || null,
     experiments: {
@@ -145,10 +247,10 @@ export async function fetchSemanticContext(
     return { ...baseContext, semantic_insights: [], semantic_documents: [] };
   }
 
-  // Generate semantic keywords from identity seed
-  const semanticKeywords = await generateEmbedding(baseContext.identity_seed);
+  // Generate semantic keywords from identity seed using fallback keyword extraction
+  const semanticKeywords = await extractSemanticKeywords(baseContext.identity_seed);
   
-  if (semanticKeywords.length === 0) {
+  if (!semanticKeywords || semanticKeywords.length === 0) {
     console.log("No semantic keywords - using chronological context");
     return { ...baseContext, semantic_insights: [], semantic_documents: [] };
   }
@@ -164,20 +266,48 @@ export async function fetchSemanticContext(
       .limit(1);
 
     if (embeddedCheck && embeddedCheck.length > 0) {
-      // We have embeddings - but we can't generate query embedding without proper API
-      // Fall back to keyword-based relevance search
-      console.log("Embeddings exist but using keyword search for now");
+      // We have embeddings - try vector search
+      console.log("Embeddings exist - attempting vector-based semantic search");
+      
+      // Generate query embedding from identity
+      const queryEmbedding = await generateEmbedding(baseContext.identity_seed);
+      
+      if (queryEmbedding) {
+        // Use RPC for vector search
+        const { data: vectorInsights } = await supabase.rpc('search_insights_semantic', {
+          user_uuid: userId,
+          query_embedding: `[${queryEmbedding.join(',')}]`,
+          match_count: 10,
+          similarity_threshold: 0.3
+        });
+        
+        const { data: vectorDocs } = await supabase.rpc('search_documents_semantic', {
+          user_uuid: userId,
+          query_embedding: `[${queryEmbedding.join(',')}]`,
+          match_count: 5,
+          similarity_threshold: 0.3
+        });
+        
+        if (vectorInsights?.length > 0 || vectorDocs?.length > 0) {
+          console.log(`Vector search found: ${vectorInsights?.length || 0} insights, ${vectorDocs?.length || 0} documents`);
+          return {
+            ...baseContext,
+            semantic_insights: vectorInsights || [],
+            semantic_documents: vectorDocs || [],
+          };
+        }
+      }
     }
 
-    // Text-based semantic search using keywords
-    const keywordPattern = semanticKeywords.slice(0, 5).join('|');
+    // Fallback: Text-based semantic search using keywords
+    const primaryKeyword = semanticKeywords[0] || '';
     
     // Search insights by content relevance
     const { data: semanticInsights } = await supabase
       .from("insights")
       .select("id, title, content, source, created_at, relevance_score")
       .eq("user_id", userId)
-      .or(`title.ilike.%${semanticKeywords[0]}%,content.ilike.%${semanticKeywords[0]}%`)
+      .or(`title.ilike.%${primaryKeyword}%,content.ilike.%${primaryKeyword}%`)
       .order("relevance_score", { ascending: false, nullsFirst: false })
       .limit(10);
 
@@ -186,11 +316,11 @@ export async function fetchSemanticContext(
       .from("documents")
       .select("id, title, summary, created_at, relevance_score")
       .eq("user_id", userId)
-      .or(`title.ilike.%${semanticKeywords[0]}%,summary.ilike.%${semanticKeywords[0]}%`)
+      .or(`title.ilike.%${primaryKeyword}%,summary.ilike.%${primaryKeyword}%`)
       .order("relevance_score", { ascending: false, nullsFirst: false })
       .limit(5);
 
-    console.log(`Semantic search found: ${semanticInsights?.length || 0} insights, ${semanticDocs?.length || 0} documents`);
+    console.log(`Keyword search found: ${semanticInsights?.length || 0} insights, ${semanticDocs?.length || 0} documents`);
 
     return {
       ...baseContext,
@@ -452,6 +582,133 @@ export function formatDocumentContext(context: DocumentContext): string {
       `- ${i.title}: ${i.content.substring(0, 100)}`
     ).join('\n');
     formatted += `RECENT INSIGHTS:\n${insightText}\n`;
+  }
+
+  return formatted.trim();
+}
+
+// Agent-specific weighted context formatter
+// Uses different weights for different agent outputs
+export function formatWeightedContextForAgent(
+  context: CompactContext,
+  agentType: AgentType,
+  options: { maxTokens?: number; includeDocContent?: boolean } = {}
+): string {
+  const weights = AGENT_WEIGHTS[agentType] || AGENT_WEIGHTS.default;
+  const { maxTokens = 6000, includeDocContent = false } = options;
+  
+  let formatted = "";
+  let tokenEstimate = 0;
+  const estimateTokens = (text: string) => Math.ceil(text.length / 4);
+
+  // Calculate proportional limits based on weights
+  const totalWeight = weights.identity + weights.insights + weights.documents + weights.experiments + weights.actions;
+  const identityLimit = Math.floor((weights.identity / totalWeight) * maxTokens);
+  const insightsLimit = Math.floor((weights.insights / totalWeight) * maxTokens);
+  const docsLimit = Math.floor((weights.documents / totalWeight) * maxTokens);
+  const experimentsLimit = Math.floor((weights.experiments / totalWeight) * maxTokens);
+  const actionsLimit = Math.floor((weights.actions / totalWeight) * maxTokens);
+
+  // IDENTITY SECTION (weighted)
+  if (context.identity_seed && tokenEstimate < identityLimit) {
+    const identityText = `IDENTITY (weight: ${Math.round(weights.identity * 100)}%):\n${context.identity_seed}\n\n`;
+    formatted += identityText;
+    tokenEstimate += estimateTokens(identityText);
+    
+    if (context.core_values) {
+      const valuesText = `CORE VALUES: ${context.core_values}\n\n`;
+      formatted += valuesText;
+      tokenEstimate += estimateTokens(valuesText);
+    }
+  }
+
+  if (context.weekly_focus) {
+    const realityText = `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
+    formatted += realityText;
+    tokenEstimate += estimateTokens(realityText);
+  }
+
+  // DOCUMENTS SECTION (weighted - higher for experiment/path agents)
+  if (context.key_documents.length > 0 && weights.documents > 0.2) {
+    // For document-heavy agents, include more document content
+    const docsToInclude = weights.documents >= 0.35 ? 6 : 4;
+    const contentLength = includeDocContent ? 600 : 200;
+    
+    const docText = context.key_documents.slice(0, docsToInclude).map((d: any) => {
+      const content = d.extracted_content 
+        ? d.extracted_content.substring(0, contentLength) 
+        : (d.summary || '').substring(0, contentLength);
+      return `- ${d.title}: ${content}`;
+    }).join('\n');
+    
+    const docSection = `FROM YOUR DOCUMENTS (weight: ${Math.round(weights.documents * 100)}%):\n${docText}\n\n`;
+    if (estimateTokens(docSection) < docsLimit) {
+      formatted += docSection;
+      tokenEstimate += estimateTokens(docSection);
+    }
+  }
+
+  // INSIGHTS SECTION (weighted)
+  if (context.key_insights.length > 0) {
+    const insightsToInclude = weights.insights >= 0.30 ? 8 : 5;
+    const contentLength = weights.insights >= 0.30 ? 400 : 200;
+    
+    const insightText = context.key_insights.slice(0, insightsToInclude).map((i: any) => {
+      const source = i.source ? ` [${i.source}]` : '';
+      return `- ${i.title}${source}: ${i.content.substring(0, contentLength)}`;
+    }).join('\n');
+    
+    const insightSection = `INSIGHTS (weight: ${Math.round(weights.insights * 100)}%):\n${insightText}\n\n`;
+    if (estimateTokens(insightSection) < insightsLimit) {
+      formatted += insightSection;
+      tokenEstimate += estimateTokens(insightSection);
+    }
+  }
+
+  // EXPERIMENTS SECTION (weighted)
+  const allExperiments = [...context.experiments.in_progress, ...context.experiments.planning];
+  if (allExperiments.length > 0) {
+    const expText = allExperiments.slice(0, 5).map((e: any) => {
+      const shift = e.identity_shift_target ? `: ${e.identity_shift_target.substring(0, 100)}` : '';
+      const hypothesis = e.hypothesis ? ` | Hypothesis: ${e.hypothesis.substring(0, 80)}` : '';
+      return `- ${e.title} (${e.status})${shift}${hypothesis}`;
+    }).join('\n');
+    
+    const expSection = `EXPERIMENTS (weight: ${Math.round(weights.experiments * 100)}%):\n${expText}\n\n`;
+    if (estimateTokens(expSection) < experimentsLimit) {
+      formatted += expSection;
+      tokenEstimate += estimateTokens(expSection);
+    }
+  }
+
+  // Topics for context
+  if (context.topics.length > 0) {
+    formatted += `TOPICS: ${context.topics.map((t: any) => t.name).join(', ')}\n`;
+  }
+
+  // Phase context
+  if (context.current_phase) {
+    formatted += `PHASE: ${context.current_phase}\n`;
+  }
+
+  // Pillar history
+  if (context.pillar_history.length > 0) {
+    formatted += `RECENT PILLARS: ${context.pillar_history.slice(0, 5).join(' > ')}\n`;
+  }
+
+  // Recent completed actions
+  const completedActions = context.recent_actions.filter((a: any) => a.completed);
+  if (completedActions.length > 0) {
+    formatted += `RECENT WINS: ${completedActions.slice(0, 3).map((a: any) => a.one_thing).join('; ')}\n`;
+  }
+
+  // Completed actions to avoid (limited by actions weight)
+  if (context.completed_actions && context.completed_actions.length > 0 && weights.actions > 0) {
+    const actionsToShow = Math.min(15, Math.floor(weights.actions * 100));
+    const doneActions = context.completed_actions.slice(0, actionsToShow).map((a: any) => a.action_text).filter(Boolean);
+    if (doneActions.length > 0) {
+      formatted += `\nALREADY DONE (DO NOT REPEAT):\n${doneActions.join('\n')}\n`;
+    }
   }
 
   return formatted.trim();
