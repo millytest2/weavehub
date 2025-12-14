@@ -166,7 +166,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                   <Collapsible open={showExperiments} onOpenChange={setShowExperiments}>
                     <CollapsibleTrigger className="flex items-center gap-2 w-full mb-2 group">
                       <Beaker className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Projects</span>
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Active Builds</span>
                       <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${showExperiments ? '' : '-rotate-90'}`} />
                     </CollapsibleTrigger>
                     <CollapsibleContent>
