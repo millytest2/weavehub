@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProfileSheet } from "@/components/ProfileSheet";
+import { QuickCapture } from "@/components/dashboard/QuickCapture";
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -138,6 +139,9 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Profile Sheet */}
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
+
+      {/* Global Quick Capture FAB */}
+      <QuickCapture />
 
       {/* Main Content */}
       <main className="flex-1 pt-12 pb-16 md:pb-0">

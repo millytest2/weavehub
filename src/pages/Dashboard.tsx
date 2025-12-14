@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowRight, Check, Zap, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { WeaveLoader } from "@/components/ui/weave-loader";
@@ -243,7 +242,6 @@ const Dashboard = () => {
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
         </>
       )}
-      <QuickCapture />
 
       <div className="flex-1 space-y-6">
         {/* Today's Invitation Card */}
