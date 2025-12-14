@@ -194,70 +194,82 @@ const Experiments = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto px-4 sm:px-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-6 max-w-2xl mx-auto px-4 sm:px-0">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Experiments</h1>
-          <p className="text-sm text-muted-foreground mt-1">Small tests to do cool stuff</p>
+          <h1 className="text-xl font-semibold text-foreground">Experiments</h1>
+          <p className="text-sm text-muted-foreground">Go do cool shit</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleGenerateExperiment} disabled={generating} variant="outline" size="sm">
-            <Sparkles className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">{generating ? "Generating..." : "Generate"}</span>
-            <span className="sm:hidden">{generating ? "..." : ""}</span>
+          <Button onClick={handleGenerateExperiment} disabled={generating} variant="ghost" size="sm">
+            <Sparkles className="h-4 w-4" />
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Add Experiment</span>
-            <span className="sm:hidden">Add</span>
+          <Button onClick={() => setIsDialogOpen(true)} variant="ghost" size="sm">
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Active Experiment Warning */}
-      {experiments.filter((e) => e.status === "in_progress" || e.status === "planning").length > 1 && (
-        <Card className="rounded-[10px] border-orange-500/50 bg-orange-500/10">
-          <CardContent className="pt-5">
-            <div className="flex items-start gap-3">
-              <FlaskConical className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-base mb-1">Multiple Active Experiments</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Focus on ONE experiment at a time. Pause or complete others to build completion momentum.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Active Experiment - Prominent */}
+      {experiments.filter((e) => e.status === "in_progress").length > 0 && (
+        <div className="space-y-3">
+          {experiments
+            .filter((e) => e.status === "in_progress")
+            .map((exp) => (
+              <Card
+                key={exp.id}
+                className="border-primary/30 bg-primary/5 cursor-pointer hover:border-primary/50 transition-all"
+                onClick={() => handleViewDetails(exp)}
+              >
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                        Active
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(exp.id);
+                        }}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <h3 className="font-semibold text-base">{exp.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{exp.description}</p>
+                    {exp.duration && (
+                      <p className="text-xs text-muted-foreground">{exp.duration}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+        </div>
       )}
 
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-        {experiments.map((exp) => (
-          <Card
-            key={exp.id}
-            className="rounded-[10px] border-border/30 cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
-            onClick={() => handleViewDetails(exp)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <FlaskConical className="h-4 w-4 text-primary" />
-                </div>
+      {/* Other Experiments - Compact List */}
+      {experiments.filter((e) => e.status !== "in_progress").length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide px-1 mb-2">Past</p>
+          {experiments
+            .filter((e) => e.status !== "in_progress")
+            .map((exp) => (
+              <div
+                key={exp.id}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                onClick={() => handleViewDetails(exp)}
+              >
+                <FlaskConical className="h-4 w-4 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <h3 className="font-medium text-sm sm:text-base leading-tight">{exp.title}</h3>
-                    <Badge variant="outline" className={`${getStatusColor(exp.status)} text-xs shrink-0`}>
-                      {exp.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-1.5">
-                    {exp.description}
-                  </p>
-                  {exp.duration && <p className="text-xs text-muted-foreground mb-1">{exp.duration}</p>}
-                  {exp.identity_shift_target && (
-                    <p className="text-xs text-muted-foreground truncate">Identity: {exp.identity_shift_target}</p>
-                  )}
+                  <p className="text-sm font-medium truncate">{exp.title}</p>
                 </div>
+                <Badge variant="outline" className={`${getStatusColor(exp.status)} text-xs shrink-0`}>
+                  {exp.status}
+                </Badge>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -265,15 +277,24 @@ const Experiments = () => {
                     e.stopPropagation();
                     handleDelete(exp.id);
                   }}
-                  className="h-8 w-8 p-0 shrink-0"
+                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            ))}
+        </div>
+      )}
+
+      {experiments.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-sm text-muted-foreground mb-4">No experiments yet</p>
+          <Button onClick={handleGenerateExperiment} disabled={generating} variant="outline" size="sm">
+            <Sparkles className="mr-2 h-4 w-4" />
+            Generate your first experiment
+          </Button>
+        </div>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-xl">
