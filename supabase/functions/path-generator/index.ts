@@ -86,53 +86,99 @@ serve(async (req) => {
     // Use path-specific weights: Documents 40%, Identity 25%, Insights 25%
     const contextPrompt = formatWeightedContextForAgent(userContext, "path", { includeDocContent: true });
 
-    const systemPrompt = `You are creating a STEP-BY-STEP ACTION PATH. Not a curriculum. Not a reading list. A sequence of CONCRETE ACTIONS.
+    // Check if user has saved content about the focus area
+    const hasRelevantContent = userContext.key_documents.length > 0 || userContext.key_insights.length > 0;
+    
+    if (!hasRelevantContent && focusArea) {
+      return new Response(JSON.stringify({ 
+        error: `You haven't saved anything about "${focusArea}" yet. Save a course, tutorial, article, or insight first, then I'll build a path around it.`,
+        needs_content: true
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // Build numbered source list for citation
+    const sources: Array<{ ref: string; title: string; type: string; content: string }> = [];
+    userContext.key_documents.forEach((doc: any, i: number) => {
+      sources.push({
+        ref: `[${i + 1}]`,
+        title: doc.title,
+        type: 'document',
+        content: doc.extracted_content?.substring(0, 500) || doc.summary?.substring(0, 300) || ''
+      });
+    });
+    userContext.key_insights.forEach((insight: any, i: number) => {
+      sources.push({
+        ref: `[${sources.length + 1}]`,
+        title: insight.title,
+        type: insight.source || 'insight',
+        content: insight.content?.substring(0, 400) || ''
+      });
+    });
+
+    const sourceList = sources.map(s => `${s.ref} "${s.title}" (${s.type}): ${s.content}`).join('\n\n');
+
+    const systemPrompt = `You are creating a SHORT, ACTION-BASED SPRINT PATH. NOT a curriculum. NOT a reading list. A sequence of BUILD/SHIP sprints.
 
 ${contextPrompt}
 
 ${focusArea ? `USER'S FOCUS AREA: ${focusArea}` : ""}
 
-WHAT MAKES A GREAT PATH:
-Each step is ONE concrete action that:
-1. Takes 15-60 minutes to complete
-2. Has a VISIBLE output (something created, shipped, or done)
-3. Builds on the previous step
-4. Has a clear timeframe (this week, next 3 days, etc.)
+=== AVAILABLE SOURCES (cite these using [1], [2], etc.) ===
+${sourceList || "No sources saved yet."}
+=== END SOURCES ===
 
-STEP STRUCTURE (each step must have):
-- VERB-FIRST title: "Ship..." "Create..." "Send..." "Build..." "Record..."
-- TIME estimate: "30 min" or "1 hour" or "This week"
-- OUTPUT: What exists after this step is done?
-- CONNECTION: How does this connect to user's experiments/insights?
+CRITICAL RULES - FOLLOW EXACTLY:
 
-EXAMPLE GREAT STEPS:
-- "Ship landing page v1 for [project] (2 hours, this week)"
-- "Record 3-min video explaining [concept from their insights] (30 min)"
-- "Send 5 cold DMs to [specific type of person] (45 min)"
-- "Create outline for [content piece based on their topic] (1 hour)"
-- "Build basic [feature] that does [specific thing] (2 hours)"
+1. MAXIMUM 3-5 STEPS TOTAL (never more)
+2. Each step is 2-4 DAYS MAX (use "Days 1-3", never "Week 1")
+3. Use SPRINT language: "Sprint 1", "Sprint 2", NOT "Module" or "Week"
+4. CITE SPECIFIC SOURCES using [1], [2] notation
+5. QUOTE actual techniques, timestamps, chapters from those sources
+6. Each step MUST have a CONCRETE DELIVERABLE (build/create/ship something)
+7. Connect to user's active projects when possible
 
-BANNED PATTERNS:
-- "Research..." or "Learn about..." - Instead: "Build a [thing] using [concept]"
-- "Reflect on..." - Instead: "Write 300 words about [specific question]"
-- "Explore..." - Instead: "Create [specific artifact]"
-- "Continue..." - Instead: "Complete [specific milestone]"
-- Any step without a clear DELIVERABLE
+STEP FORMAT (follow exactly):
+\`\`\`
+Sprint X: [Action Verb] [Specific Thing] (Days X-Y)
 
-PATH TIMELINE:
-- 5-7 steps total
-- First 2 steps: This week
-- Middle steps: Next 1-2 weeks
-- Final steps: Week 3-4
-- Each step should unlock the next
+You saved [1] "[source title]" and [2] "[source title]".
 
-CONNECT TO THEIR DATA:
-- Reference their specific projects/products
-- Build on their active experiments
-- Use their captured insights as content
-- Tie back to their identity shift
+[Explain what the sources teach and how to apply it]
 
-NO EMOJIS. ACTION VERBS ONLY. CONCRETE OUTPUTS.`;
+Your task: [Specific action with concrete output]
+
+Deliverable: [What exists when done - file, function, prototype, etc.]
+
+Sources used: [1] [specific section], [2] [specific part]
+\`\`\`
+
+EXAMPLE GOOD STEP:
+\`\`\`
+Sprint 1: Build Recommendation Prototype (Days 1-3)
+
+You saved [1] "Andrew Ng's ML Course" and [2] "Collaborative Filtering in Python".
+
+Ng explains cosine similarity for user preferences in lecture 4. The article has working Python code for similarity scoring.
+
+Your task: Build a mini "suggest next career step" function for UPath. Take 10 sample user profiles, calculate similarity scores, return top 3 matches.
+
+Deliverable: Working Python function + test results with 10 sample profiles.
+
+Sources used: [1] Lecture 4 similarity section, [2] Python implementation example
+\`\`\`
+
+BANNED PATTERNS (never do these):
+- "Week 1: Introduction to..." - Use "Sprint 1: Build..." instead
+- "Learn the fundamentals..." - Instead cite a specific source and build something
+- "Read chapters 1-3..." - Instead extract the key technique and apply it
+- "Practice problems..." - Instead create a real deliverable
+- Any step without a shippable output
+- Generic advice without source citations
+
+NO EMOJIS. SPRINT LANGUAGE. CITE SOURCES. SHIP DELIVERABLES.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -145,34 +191,41 @@ NO EMOJIS. ACTION VERBS ONLY. CONCRETE OUTPUTS.`;
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: focusArea 
-            ? `Create a learning path focused on: ${focusArea}. Synthesize everything I'm working on into actionable steps.`
-            : `Create a learning path that synthesizes my identity, insights, and experiments into a coherent growth trajectory with actionable steps.` 
+            ? `Create a 3-5 step sprint path for: ${focusArea}. Use my saved sources with [1], [2] citations. Each sprint should be 2-4 days with a concrete deliverable.`
+            : `Create a 3-5 step sprint path that synthesizes my saved content into actionable sprints. Use [1], [2] source citations.` 
           }
         ],
         tools: [
           {
             type: "function",
             function: {
-              name: "create_learning_path",
-              description: "Create a structured action path with concrete steps",
+              name: "create_sprint_path",
+              description: "Create a short sprint-based action path with source citations",
               parameters: {
                 type: "object",
                 properties: {
-                  path_title: { type: "string", description: "Action-oriented title (e.g., 'Ship UPath MVP in 3 Weeks')" },
-                  path_description: { type: "string", description: "What visible outcome this path creates" },
+                  path_title: { type: "string", description: "Action-oriented sprint title (e.g., 'Build UPath Recommender in 2 Sprints')" },
+                  path_description: { type: "string", description: "What visible outcome this path creates in 1-2 sentences" },
+                  sources_used: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "List of source references used (e.g., '[1] Andrew Ng ML Course')"
+                  },
                   steps: {
                     type: "array",
                     items: {
                       type: "object",
                       properties: {
-                        title: { type: "string", description: "Verb-first action with time estimate (e.g., 'Ship landing page v1 (2 hours, this week)')" },
-                        description: { type: "string", description: "Specific instructions: what to do, what the output is, how it connects to their goals" },
-                        order_index: { type: "number" }
+                        title: { type: "string", description: "Sprint title with days (e.g., 'Sprint 1: Build Prototype (Days 1-3)')" },
+                        description: { type: "string", description: "Full step with source citations [1], [2], technique explanation, specific task, and deliverable" },
+                        order_index: { type: "number" },
+                        deliverable: { type: "string", description: "What exists when this sprint is done" },
+                        sources_cited: { type: "array", items: { type: "string" } }
                       },
-                      required: ["title", "description", "order_index"]
+                      required: ["title", "description", "order_index", "deliverable"]
                     },
-                    minItems: 5,
-                    maxItems: 7
+                    minItems: 3,
+                    maxItems: 5
                   }
                 },
                 required: ["path_title", "path_description", "steps"]
@@ -180,7 +233,7 @@ NO EMOJIS. ACTION VERBS ONLY. CONCRETE OUTPUTS.`;
             }
           }
         ],
-        tool_choice: { type: "function", function: { name: "create_learning_path" } }
+        tool_choice: { type: "function", function: { name: "create_sprint_path" } }
       }),
     });
 
