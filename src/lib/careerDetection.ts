@@ -10,14 +10,20 @@ export const CAREER_KEYWORDS = [
   // Job search terms
   'job search', 'job hunting', 'job market', 'applying for jobs',
   'been applying', 'job applications', 'resume', 'interviews',
+  "can't find a job", 'cant find a job', 'recent grad', 
   
-  // Confusion/lost patterns (CRITICAL - user requested)
-  'lost', 'confused', 'lack of clarity', 'not sure what to do',
+  // Path and direction terms
+  'path', 'pivot', 'switch', 'transition',
+  'purpose', 'meaning', 'mission',
+  
+  // Confusion/lost patterns (CRITICAL)
+  'lost', 'confused', 'stuck', 'lack of clarity', 'not sure what to do',
   'dont know what', "don't know what", 'no clarity', 'feeling stuck',
   'stuck in life', 'no direction', 'lack of direction', 'directionless',
   'what path', 'which path', 'finding my path', 'lost in path',
   'what do i want', 'what should i do', 'too many options',
   'overwhelmed by options', 'paralyzed by choice', 'analysis paralysis',
+  'overwhelmed', 'undecided', 'indecisive',
   
   // Professional/work terms
   'professional path', 'professional direction', 'work path',

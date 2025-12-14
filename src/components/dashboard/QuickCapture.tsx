@@ -64,6 +64,21 @@ export const QuickCapture = () => {
     }
   };
 
+  const showCareerToast = (textToCheck: string) => {
+    if (detectCareerKeywords(textToCheck)) {
+      setTimeout(() => {
+        toast("Career clarity on your mind?", {
+          description: "UPath is designed specifically for this. Weave is for daily alignment, UPath is for finding your path.",
+          duration: 8000,
+          action: {
+            label: "Try UPath",
+            onClick: () => window.open('https://upath.ai', '_blank'),
+          },
+        });
+      }, 500);
+    }
+  };
+
   const executeSubmit = async () => {
     if (!user || !content.trim()) return;
     
@@ -81,6 +96,9 @@ export const QuickCapture = () => {
         if (error) throw error;
         
         toast.success(data.message || "Saved");
+        
+        // Check for career keywords in pasted content
+        showCareerToast(content);
       } else if (captureType === "insight") {
         // Process through brain for categorization
         setIsProcessing(true);
@@ -93,6 +111,9 @@ export const QuickCapture = () => {
           source: "quick_capture",
         });
         toast.success("Insight captured");
+        
+        // Check for career keywords
+        showCareerToast(`${title} ${content}`);
       } else if (captureType === "decision") {
         // Call decision-mirror edge function
         setIsProcessing(true);
@@ -106,6 +127,9 @@ export const QuickCapture = () => {
         setShowMirrorResponse(true);
         setIsSubmitting(false);
         setIsProcessing(false);
+        
+        // Check for career keywords in decision
+        showCareerToast(content);
         return;
       }
       
