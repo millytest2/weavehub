@@ -116,7 +116,9 @@ serve(async (req) => {
 - Avoid: anything requiring high energy`
     };
 
-    const systemPrompt = `You are a replacement loop breaker. The user feels off—bored, numb, tired, angry, lost, or drifting. Give them ONE immediate action that's MORE APPEALING than scrolling, Netflix, or numbing out.
+    const systemPrompt = `You surface what the user already knows. The user feels off—bored, numb, tired, angry, lost, or drifting. Based on their saved content and identity, return ONE action they can start immediately.
+
+You are NOT generating new ideas. You are reflecting back what they've already captured and connecting it to action.
 
 TIME: ${timeOfDay}
 ${timeContext[timeOfDay as keyof typeof timeContext]}
@@ -145,14 +147,15 @@ RULES:
 - ONE action only
 - Duration MUST match ${timeOfDay} energy level
 - Can start RIGHT NOW (no setup, no driving somewhere)
-- Must be MORE FUN than the numbing behavior
-- Make it sound exciting, not like a chore
-- Reference their actual identity/goals when possible
-- No emojis
-- No guilt trips
-- Frame it as an upgrade, not a should
+- Reference their actual saved content, identity, or stated goals
+- NO emojis
+- NO emotional language ("You've got this", "I believe in you")
+- NO therapeutic framing ("I know it's hard", "Give yourself grace")
+- NO vague suggestions ("Explore your feelings about...")
+- NO motivational fluff ("Just do it!", "You can do anything!")
+- Direct and concrete only
 
-THE KEY: This must feel like something they WANT to do, not have to do. Make it sound appealing for ${timeOfDay}.`;
+Surface something from their own captured wisdom that fits this moment.`;
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

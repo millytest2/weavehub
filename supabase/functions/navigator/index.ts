@@ -407,7 +407,9 @@ ${dateTime.isLateNight ? '\n*** CRITICAL: It is LATE NIGHT. Only suggest reflect
       const effectivePillar3 = dateTime.isLateNight ? "Admin" : pillar3;
       
       // Generate 3 options
-      const systemPrompt = `You are a personal operating system. Generate 3 different action options for the user to choose from.
+      const systemPrompt = `You surface what the user already knows. Based on their saved content, identity, and projects—return 3 concrete actions they can choose from.
+
+You are NOT generating new ideas. You are reflecting back what they've already captured and connecting it to action.
       
 TODAY: ${dateTime.fullContext}
 
@@ -418,13 +420,17 @@ ${contextPrompt}${semanticContext}${userMindContext}${coreValuesContext}
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
 RULES:
-- Each option should be from a DIFFERENT pillar
-- Each should feel exciting, not like homework
-- Ultra specific - include concrete details
+- Each option from a DIFFERENT pillar
+- Reference their actual saved content, projects, or stated goals
+- Ultra specific with concrete details from THEIR data
 - STRICTLY MATCH task type to time of day
 - NO emojis
 - NO "read" or "review" tasks
-- Reference their actual data/projects when possible
+- NO emotional language ("You've got this", "I believe in you")
+- NO therapeutic framing ("I know it's hard", "Give yourself grace")
+- NO vague suggestions ("Explore your feelings about...")
+- NO motivational fluff ("Just do it!", "You can do anything!")
+- Direct and concrete only
 
 ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 - ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep
@@ -432,7 +438,7 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 - Duration: 5-15 minutes MAX
 - NEVER suggest: work tasks, deep focus, building, shipping, meetings, anything requiring energy` : ''}
 
-Make each option distinct and appealing so they can pick what resonates.`;
+Surface what resonates from their own captured wisdom.`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -532,7 +538,9 @@ Make each option distinct and appealing so they can pick what resonates.`;
       // For late night, override to relaxing pillar
       const suggestedPillar = dateTime.isLateNight ? "Presence" : pillar1;
       
-      const systemPrompt = `You are a personal operating system. Return ONE concrete action.
+      const systemPrompt = `You surface what the user already knows. Based on their saved content, identity, and projects—return ONE concrete action.
+
+You are NOT generating new ideas. You are reflecting back what they've already captured and connecting it to action.
 
 TODAY: ${dateTime.fullContext}
 
@@ -543,11 +551,16 @@ ${contextPrompt}${semanticContext}${coreValuesContext}
 PILLAR: ${suggestedPillar}
 
 RULES:
-- Ultra specific with concrete details
-- Fun and exciting, not homework
+- Reference their actual saved content, projects, or stated goals
+- Ultra specific with concrete details from THEIR data
 - STRICTLY MATCH task to time of day
 - NO emojis
 - NO "read" or "review" tasks
+- NO emotional language ("You've got this", "I believe in you")
+- NO therapeutic framing ("I know it's hard", "Give yourself grace")
+- NO vague suggestions ("Explore your feelings about...")
+- NO motivational fluff ("Just do it!", "You can do anything!")
+- Direct and concrete only
 - Reference their actual data when possible
 
 ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
