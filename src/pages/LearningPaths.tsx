@@ -171,57 +171,46 @@ const LearningPaths = () => {
   };
 
   return (
-    <div className="space-y-6 px-4 sm:px-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-6 px-4 sm:px-0 max-w-2xl mx-auto">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Paths</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Areas you're learning and evolving in
-          </p>
+          <h1 className="text-xl font-semibold text-foreground">Paths</h1>
+          <p className="text-sm text-muted-foreground">Areas you're expanding in</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setGenerateDialogOpen(true)} disabled={generating} variant="outline" size="sm">
-            <Sparkles className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">{generating ? "Generating..." : "Generate"}</span>
+          <Button onClick={() => setGenerateDialogOpen(true)} disabled={generating} variant="ghost" size="sm">
+            <Sparkles className="h-4 w-4" />
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">New Path</span>
-            <span className="sm:hidden">New</span>
+          <Button onClick={() => setIsDialogOpen(true)} variant="ghost" size="sm">
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-2">
         {paths.map((path) => (
           <Collapsible
             key={path.id}
             open={expandedPaths[path.id]}
             onOpenChange={() => togglePath(path.id)}
           >
-            <Card className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <CollapsibleTrigger className="flex items-start gap-3 flex-1 text-left min-w-0">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      {expandedPaths[path.id] ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm sm:text-base leading-tight mb-1">
-                        {path.title}
-                      </h3>
-                      {path.description && (
-                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                          {path.description}
-                        </p>
-                      )}
-                    </div>
-                  </CollapsibleTrigger>
-                  <div className="flex gap-1 shrink-0">
+            <div className="group">
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    {expandedPaths[path.id] ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="font-medium text-sm truncate">{path.title}</p>
+                    {path.description && (
+                      <p className="text-xs text-muted-foreground truncate">{path.description}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -229,9 +218,9 @@ const LearningPaths = () => {
                         e.stopPropagation();
                         navigate(`/paths/${path.id}`);
                       }}
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
+                      <ExternalLink className="h-3 w-3" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -240,43 +229,50 @@ const LearningPaths = () => {
                         e.stopPropagation();
                         handleDelete(path.id);
                       }}
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
+              </CollapsibleTrigger>
 
-                <CollapsibleContent className="mt-4 pt-3 border-t border-border/30">
+              <CollapsibleContent>
+                <div className="pl-14 pr-3 pb-3 space-y-1">
                   {pathItems[path.id]?.length > 0 ? (
-                    <div className="space-y-2">
-                      {pathItems[path.id].map((item, index) => (
-                        <div
-                          key={item.id}
-                          className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/30"
-                        >
-                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium">
-                            {item.completed ? <Check className="h-3.5 w-3.5" /> : index + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs sm:text-sm font-medium leading-tight">{item.title}</p>
-                            {item.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                {item.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    pathItems[path.id].map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2 py-1.5 text-sm"
+                      >
+                        <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs ${
+                          item.completed ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {item.completed ? <Check className="h-3 w-3" /> : index + 1}
+                        </span>
+                        <span className={item.completed ? 'text-muted-foreground line-through' : ''}>
+                          {item.title}
+                        </span>
+                      </div>
+                    ))
                   ) : (
-                    <p className="text-xs text-muted-foreground text-center py-2">No steps added yet</p>
+                    <p className="text-xs text-muted-foreground py-2">No steps yet</p>
                   )}
-                </CollapsibleContent>
-              </CardContent>
-            </Card>
+                </div>
+              </CollapsibleContent>
+            </div>
           </Collapsible>
         ))}
+
+        {paths.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-sm text-muted-foreground mb-4">No paths yet</p>
+            <Button onClick={() => setGenerateDialogOpen(true)} variant="outline" size="sm">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Generate your first path
+            </Button>
+          </div>
+        )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -159,13 +159,17 @@ serve(async (req) => {
   }
 
   try {
-    // Parse request body for timezone
     let timezone: string | undefined;
+    let userContext: string | undefined;
+    let generateMultiple = false;
+    
     try {
       const body = await req.json();
       timezone = body?.timezone;
+      userContext = body?.context;
+      generateMultiple = body?.generateMultiple === true;
     } catch {
-      // No body or invalid JSON, continue with default
+      // No body or invalid JSON
     }
 
     const authHeader = req.headers.get("authorization");
@@ -181,24 +185,20 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
     
-    // Get date/time context using user's timezone
     const dateTime = getDateTimeContext(timezone);
-    console.log(`Navigator: ${dateTime.fullContext}`);
+    console.log(`Navigator: ${dateTime.fullContext}, multiple: ${generateMultiple}`);
 
-    const userContext = await fetchUserContext(supabase, user.id);
+    const userContextData = await fetchUserContext(supabase, user.id);
     
-    // Fetch identity seed with content for semantic search
     const { data: identityData } = await supabase
       .from("identity_seeds")
-      .select("last_pillar_used, content")
+      .select("last_pillar_used, content, core_values")
       .eq("user_id", user.id)
       .maybeSingle();
     
-    // Perform semantic search on insights using identity content
     let semanticInsights: string[] = [];
     if (identityData?.content) {
       try {
-        // Get embedding for identity seed
         const embedResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
           method: 'POST',
           headers: {
@@ -216,7 +216,6 @@ serve(async (req) => {
           const embedding = embedData.data?.[0]?.embedding;
           
           if (embedding) {
-            // Search semantically relevant insights
             const { data: relevantInsights } = await supabase.rpc('search_insights_semantic', {
               user_uuid: user.id,
               query_embedding: `[${embedding.join(',')}]`,
@@ -226,199 +225,255 @@ serve(async (req) => {
             
             if (relevantInsights && relevantInsights.length > 0) {
               semanticInsights = relevantInsights.map((i: any) => `[${i.source || 'insight'}] ${i.title}: ${i.content.substring(0, 150)}`);
-              console.log(`Found ${semanticInsights.length} semantically relevant insights`);
             }
           }
         }
       } catch (embedError) {
-        console.error('Semantic search error (non-fatal):', embedError);
-        // Continue without semantic insights
+        console.error('Semantic search error:', embedError);
       }
     }
 
     const lastPillar = identityData?.last_pillar_used || null;
     const recentPillars = [
       ...(lastPillar ? [lastPillar] : []),
-      ...userContext.pillar_history
+      ...userContextData.pillar_history
     ];
 
-    const suggestedPillar = choosePillar(recentPillars);
-    console.log(`Navigator: ${suggestedPillar}`);
+    // For multiple options, pick 3 different pillars
+    const pillar1 = choosePillar(recentPillars);
+    const pillar2 = choosePillar([pillar1, ...recentPillars]);
+    const pillar3 = choosePillar([pillar1, pillar2, ...recentPillars]);
 
-    const contextPrompt = formatContextForAI(userContext);
-    
-    // Add semantic insights to context
+    const contextPrompt = formatContextForAI(userContextData);
     const semanticContext = semanticInsights.length > 0 
-      ? `\n\nSEMANTICALLY RELEVANT INSIGHTS (from across all your knowledge):\n${semanticInsights.join('\n')}`
+      ? `\n\nRELEVANT INSIGHTS:\n${semanticInsights.join('\n')}`
+      : '';
+    
+    const userMindContext = userContext 
+      ? `\n\nWHAT'S ON THEIR MIND TODAY: "${userContext}"\nFactor this into your suggestions - what they mentioned should influence the types of actions you suggest.`
       : '';
 
-    // Time-of-day specific guidance
+    const coreValuesContext = identityData?.core_values
+      ? `\n\nCORE VALUES: ${identityData.core_values}`
+      : '';
+
     const timeGuidance = {
-      morning: `MORNING CONTEXT: High energy, fresh mind. Prioritize:
-- Deep work, creative tasks, strategic thinking
-- Hardest/most important work first
-- Building, writing, shipping
-- Actions requiring focus and clarity`,
-      afternoon: `AFTERNOON CONTEXT: Sustained energy. Good for:
-- Collaborative tasks, meetings follow-ups
-- Administrative work, applications
-- Learning and skill practice
-- Moderate intensity tasks`,
-      evening: `EVENING CONTEXT: Winding down energy. Prioritize:
-- Lighter creative expression (posting, writing)
-- Social connection (reaching out to people)
-- Reflection and planning for tomorrow
-- Physical activity to decompress
-- NO deep work or complex tasks`,
-      night: `NIGHT CONTEXT: Low energy, rest needed. Only suggest:
-- Quick wins (under 15 min)
-- Presence/breathing exercises
-- Light planning or journaling
-- Preparing for tomorrow
-- Nothing requiring high cognitive load`
+      morning: 'High energy. Deep work OK. 30-90 min.',
+      afternoon: 'Medium energy. Varied tasks. 20-60 min.',
+      evening: 'Lower energy. Social, creative, light. 15-45 min.',
+      night: 'Wind down. Quick wins only. 10-20 min max.'
     };
 
-    const systemPrompt = `You are a personal operating system. Return ONE concrete action.
-
+    if (generateMultiple) {
+      // Generate 3 options
+      const systemPrompt = `You are a personal operating system. Generate 3 different action options for the user to choose from.
+      
 TODAY: ${dateTime.fullContext}
+TIME CONTEXT: ${timeGuidance[dateTime.timeOfDay as keyof typeof timeGuidance]}
 
-${timeGuidance[dateTime.timeOfDay as keyof typeof timeGuidance]}
+${contextPrompt}${semanticContext}${userMindContext}${coreValuesContext}
 
-${contextPrompt}${semanticContext}
+PILLARS TO USE: ${pillar1}, ${pillar2}, ${pillar3}
 
-CORE QUESTION: What action today reinforces the user's identity shift?
+RULES:
+- Each option should be from a DIFFERENT pillar
+- Each should feel exciting, not like homework
+- Ultra specific - include concrete details
+- Time appropriate for ${dateTime.timeOfDay}
+- NO emojis
+- NO "read" or "review" tasks
+- Reference their actual data/projects when possible
 
-PILLAR FOR THIS ACTION: ${suggestedPillar}
+Make each option distinct and appealing so they can pick what resonates.`;
 
-PILLARS:
-- Stability: Income, job applications, interviews, networking for work
-- Skill: Building, shipping, coding, projects
-- Content: Creating posts, writing threads, making videos
-- Health: Working out, walking, nutrition, sleep
-- Presence: Emotional regulation, meditation, breathing
-- Admin: Clearing backlog, emails, organization
-- Connection: Texting friends, dating, social plans
-- Learning: Courses, reading, skill acquisition
-
-TIME-OF-DAY RULES (CRITICAL):
-${dateTime.timeOfDay === 'morning' ? '- Morning = high intensity, deep focus tasks OK (45-90 min)' : ''}
-${dateTime.timeOfDay === 'afternoon' ? '- Afternoon = medium intensity, varied tasks (30-60 min)' : ''}
-${dateTime.timeOfDay === 'evening' ? '- Evening = lighter tasks, social/creative focus (20-45 min)' : ''}
-${dateTime.timeOfDay === 'night' ? '- Night = quick wins only, wind-down focus (10-20 min max)' : ''}
-
-CRITICAL RULES:
-- Time must match ${dateTime.timeOfDay} energy level
-- MUST BE ULTRA SPECIFIC - include exact details from their data
-- MUST be different from "ALREADY DONE" list above - NEVER repeat those
-- MUST connect to the user's actual identity/situation
-- Reference SPECIFIC things from their insights, experiments, or documents by NAME
-- Fun and exciting, not boring homework
-- NO EMOJIS anywhere
-- NO multiple options
-- NO "review" or "read" tasks
-- NO generic tasks - every action must include a SPECIFIC detail
-
-SPECIFICITY IS MANDATORY:
-The action MUST include at least ONE of:
-- A specific project/product name from their data
-- A specific topic they're learning about
-- A specific platform (LinkedIn, Twitter, YouTube)
-- A specific number (3 applications, 50 pushups, 20 minutes)
-- A specific technique or method they mentioned
-
-BANNED PATTERNS (too generic):
-- "Work on your project" → Instead: "Write the landing page copy for [specific project]"
-- "Create content" → Instead: "Write a Twitter thread about [specific insight they captured]"
-- "Apply to jobs" → Instead: "Apply to 3 [specific role] positions on LinkedIn"
-- "Exercise" → Instead: "Do 30 pushups, 20 squats, and 2-minute plank"
-- "Reach out to someone" → Instead: "Send a value-add DM to [specific person/type from their network goals]"
-- Anything in the "ALREADY DONE" list
-- Any action without concrete specifics
-
-GROUNDING REQUIREMENT (CRITICAL - YOUR ACTIONS MUST BE PERSONAL):
-Your action MUST directly reference at least ONE of these from the user's ACTUAL data above:
-- A specific concept/phrase from their IDENTITY SEED (quote their language)
-- A specific insight they captured (by title or core concept)
-- A specific project/product they mentioned (e.g., "UPath", "Weave")
-- A specific technique or method from their documents (e.g., "Break-Loop protocol", "physiological sighs")
-- A specific identity they're building (e.g., "Creator-Athlete", "Full-Stack Human")
-
-DO NOT generate generic actions. QUOTE their own language back to them.`;
-
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Give me ONE specific "${suggestedPillar}" action. Not a reading task. A concrete thing to DO.` }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "choose_daily_action",
-              description: "Return one specific, concrete action - never a reading/review task",
-              parameters: {
-                type: "object",
-                properties: {
-                  priority_for_today: { type: "string", enum: ALL_PILLARS },
-                  do_this_now: { type: "string", description: "One specific action to DO, 15-90 minutes, no emojis, never 'read' or 'review' something" },
-                  why_it_matters: { type: "string", description: "1-2 sentences max, no emojis" },
-                  time_required: { type: "string" }
-                },
-                required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required"]
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Give me 3 different action options to choose from." }
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "generate_options",
+                description: "Return 3 different action options",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    options: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          priority_for_today: { type: "string" },
+                          do_this_now: { type: "string" },
+                          why_it_matters: { type: "string" },
+                          time_required: { type: "string" }
+                        },
+                        required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required"]
+                      },
+                      minItems: 3,
+                      maxItems: 3
+                    }
+                  },
+                  required: ["options"]
+                }
               }
             }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "choose_daily_action" } }
-      }),
-    });
+          ],
+          tool_choice: { type: "function", function: { name: "generate_options" } }
+        }),
+      });
 
-    if (!response.ok) {
-      console.error("AI Gateway error:", response.status);
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+      if (!response.ok) {
+        console.error("AI error:", response.status);
+        // Return 3 fallback options
+        return new Response(JSON.stringify({
+          options: [
+            getFallbackSuggestion(pillar1),
+            getFallbackSuggestion(pillar2),
+            getFallbackSuggestion(pillar3)
+          ]
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
-    const data = await response.json();
-    const toolCall = data.choices[0].message.tool_calls?.[0];
-    
-    if (!toolCall) {
-      return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    let action;
-    try {
-      action = JSON.parse(toolCall.function.arguments);
-      action = validateNavigatorOutput(action);
+      const data = await response.json();
+      const toolCall = data.choices[0].message.tool_calls?.[0];
       
-      // Reject "read/review" tasks and use fallback instead
-      const lowerAction = action.do_this_now.toLowerCase();
-      if (lowerAction.includes('review') || lowerAction.includes('read') || lowerAction.includes('look at') || lowerAction.includes('go through')) {
-        console.log("Rejected reading task, using fallback");
+      if (!toolCall) {
+        return new Response(JSON.stringify({
+          options: [
+            getFallbackSuggestion(pillar1),
+            getFallbackSuggestion(pillar2),
+            getFallbackSuggestion(pillar3)
+          ]
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        const cleanedOptions = parsed.options.map((opt: any) => ({
+          priority_for_today: stripEmojis(opt.priority_for_today || "Action"),
+          do_this_now: stripEmojis(opt.do_this_now),
+          why_it_matters: stripEmojis(opt.why_it_matters),
+          time_required: stripEmojis(opt.time_required)
+        }));
+        
+        return new Response(JSON.stringify({ options: cleanedOptions }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      } catch (parseError) {
+        console.error("Parse error:", parseError);
+        return new Response(JSON.stringify({
+          options: [
+            getFallbackSuggestion(pillar1),
+            getFallbackSuggestion(pillar2),
+            getFallbackSuggestion(pillar3)
+          ]
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    } else {
+      // Original single action flow
+      const suggestedPillar = pillar1;
+      
+      const systemPrompt = `You are a personal operating system. Return ONE concrete action.
+
+TODAY: ${dateTime.fullContext}
+TIME CONTEXT: ${timeGuidance[dateTime.timeOfDay as keyof typeof timeGuidance]}
+
+${contextPrompt}${semanticContext}${coreValuesContext}
+
+PILLAR: ${suggestedPillar}
+
+RULES:
+- Ultra specific with concrete details
+- Fun and exciting, not homework
+- Time appropriate for ${dateTime.timeOfDay}
+- NO emojis
+- NO "read" or "review" tasks
+- Reference their actual data when possible`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Give me ONE specific "${suggestedPillar}" action.` }
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "choose_daily_action",
+                description: "Return one specific action",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    priority_for_today: { type: "string", enum: ALL_PILLARS },
+                    do_this_now: { type: "string" },
+                    why_it_matters: { type: "string" },
+                    time_required: { type: "string" }
+                  },
+                  required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required"]
+                }
+              }
+            }
+          ],
+          tool_choice: { type: "function", function: { name: "choose_daily_action" } }
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI error:", response.status);
+        if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      
-      await supabase
-        .from("identity_seeds")
-        .update({ last_pillar_used: action.priority_for_today })
-        .eq("user_id", user.id);
-    } catch (parseError) {
-      console.error("Parse error:", parseError);
-      return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
 
-    return new Response(JSON.stringify(action), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const data = await response.json();
+      const toolCall = data.choices[0].message.tool_calls?.[0];
+      
+      if (!toolCall) {
+        return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      try {
+        let action = JSON.parse(toolCall.function.arguments);
+        action = validateNavigatorOutput(action);
+        
+        const lowerAction = action.do_this_now.toLowerCase();
+        if (lowerAction.includes('review') || lowerAction.includes('read') || lowerAction.includes('look at')) {
+          return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        
+        await supabase
+          .from("identity_seeds")
+          .update({ last_pillar_used: action.priority_for_today })
+          .eq("user_id", user.id);
+          
+        return new Response(JSON.stringify(action), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (parseError) {
+        console.error("Parse error:", parseError);
+        return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
   } catch (error) {
     console.error("Navigator error:", error);
-    return new Response(JSON.stringify(getFallbackSuggestion("Skill")), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

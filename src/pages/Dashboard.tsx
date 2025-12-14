@@ -4,7 +4,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowRight, Check, Zap, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
@@ -17,6 +18,11 @@ const Dashboard = () => {
   const [currentSequence, setCurrentSequence] = useState(1);
   const [tasksForToday, setTasksForToday] = useState<any[]>([]);
   
+  // New invitation flow state
+  const [showInvitationPicker, setShowInvitationPicker] = useState(false);
+  const [invitationOptions, setInvitationOptions] = useState<any[]>([]);
+  const [whatsOnMind, setWhatsOnMind] = useState("");
+  
   // Next Best Rep state
   const [isGettingRep, setIsGettingRep] = useState(false);
   const [nextRep, setNextRep] = useState<any>(null);
@@ -25,7 +31,6 @@ const Dashboard = () => {
   // Active experiment state
   const [activeExperiment, setActiveExperiment] = useState<any>(null);
 
-  // Get today's date in local timezone (YYYY-MM-DD format)
   const getLocalToday = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -37,7 +42,6 @@ const Dashboard = () => {
     const fetchData = async () => {
       const today = getLocalToday();
       
-      // Fetch tasks for today only
       const { data: tasksRes } = await supabase
         .from("daily_tasks")
         .select("*")
@@ -51,13 +55,11 @@ const Dashboard = () => {
         setCurrentSequence(incomplete?.task_sequence || tasksRes.length);
         setTodayTask(incomplete || tasksRes[tasksRes.length - 1]);
       } else {
-        // No tasks for today - fresh start
         setTasksForToday([]);
         setTodayTask(null);
         setCurrentSequence(1);
       }
       
-      // Fetch active experiment
       const { data: expRes } = await supabase
         .from("experiments")
         .select("*")
@@ -72,11 +74,9 @@ const Dashboard = () => {
 
     fetchData();
 
-    // Check for date change every minute to auto-reset at midnight
     const midnightCheck = setInterval(() => {
       const today = getLocalToday();
       if (tasksForToday.length > 0 && tasksForToday[0]?.task_date !== today) {
-        // Date changed - reset
         setTasksForToday([]);
         setTodayTask(null);
         setCurrentSequence(1);
@@ -98,10 +98,9 @@ const Dashboard = () => {
     };
   }, [user, tasksForToday]);
 
-  const handleGenerateDailyOne = async () => {
+  const handleGenerateOptions = async () => {
     if (!user) return;
     
-    // Check task count BEFORE generating to prevent extra tasks
     const today = getLocalToday();
     const { data: existingTasks } = await supabase
       .from("daily_tasks")
@@ -110,7 +109,7 @@ const Dashboard = () => {
       .eq("task_date", today);
     
     if (existingTasks && existingTasks.length >= 3) {
-      toast.info("All 3 actions complete for today. Come back tomorrow.");
+      toast.info("All 3 invitations done for today");
       return;
     }
     
@@ -118,54 +117,84 @@ const Dashboard = () => {
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke("navigator", {
-        body: { timezone }
+        body: { 
+          timezone,
+          context: whatsOnMind || undefined,
+          generateMultiple: true
+        }
       });
       if (error) throw error;
       
-      if (!data || !data.do_this_now) {
-        toast.error("No action generated. Try again.");
-        return;
+      if (data?.options && data.options.length > 0) {
+        setInvitationOptions(data.options);
+        setShowInvitationPicker(true);
+      } else if (data?.do_this_now) {
+        // Fallback: single option returned
+        setInvitationOptions([{
+          do_this_now: data.do_this_now,
+          why_it_matters: data.why_it_matters,
+          time_required: data.time_required,
+          priority_for_today: data.priority_for_today
+        }]);
+        setShowInvitationPicker(true);
       }
-      
-      const nextSequence = (existingTasks?.length || 0) + 1;
-      
-      const { error: insertError } = await supabase
-        .from("daily_tasks")
-        .insert({
-          user_id: user.id,
-          task_date: today,
-          task_sequence: nextSequence,
-          title: data.priority_for_today || "Action",
-          one_thing: data.do_this_now,
-          why_matters: data.why_it_matters,
-          description: data.time_required,
-          pillar: data.priority_for_today,
-          completed: false,
-        });
-
-      if (insertError) throw insertError;
-
-      const newTask = {
-        task_sequence: nextSequence,
-        priority_for_today: data.priority_for_today,
-        one_thing: data.do_this_now,
-        why_matters: data.why_it_matters,
-        description: data.time_required,
-        pillar: data.priority_for_today,
-        completed: false,
-      };
-      
-      setTasksForToday([...tasksForToday, newTask]);
-      setTodayTask(newTask as any);
-      setCurrentSequence(nextSequence);
-      
-      toast.success(`Action ${nextSequence} ready`);
     } catch (error: any) {
       console.error("Generate error:", error);
       toast.error(error.message || "Failed to generate");
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSelectInvitation = async (option: any) => {
+    if (!user) return;
+    
+    const today = getLocalToday();
+    const { data: existingTasks } = await supabase
+      .from("daily_tasks")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("task_date", today);
+    
+    const nextSequence = (existingTasks?.length || 0) + 1;
+    
+    const { error: insertError } = await supabase
+      .from("daily_tasks")
+      .insert({
+        user_id: user.id,
+        task_date: today,
+        task_sequence: nextSequence,
+        title: option.priority_for_today || "Action",
+        one_thing: option.do_this_now,
+        why_matters: option.why_it_matters,
+        description: option.time_required,
+        pillar: option.priority_for_today,
+        completed: false,
+      });
+
+    if (insertError) {
+      toast.error("Failed to save");
+      return;
+    }
+
+    const newTask = {
+      task_sequence: nextSequence,
+      priority_for_today: option.priority_for_today,
+      one_thing: option.do_this_now,
+      why_matters: option.why_it_matters,
+      description: option.time_required,
+      pillar: option.priority_for_today,
+      completed: false,
+    };
+    
+    setTasksForToday([...tasksForToday, newTask]);
+    setTodayTask(newTask as any);
+    setCurrentSequence(nextSequence);
+    setShowInvitationPicker(false);
+    setInvitationOptions([]);
+    setWhatsOnMind("");
+    
+    toast.success("Let's go");
   };
 
   const handleCompleteTask = async () => {
@@ -189,8 +218,8 @@ const Dashboard = () => {
       setTasksForToday(updatedTasks);
 
       if (currentSequence < 3) {
-        toast.success("Done. Generating next...");
-        await handleGenerateDailyOne();
+        toast.success("Done. Pick your next one.");
+        setTodayTask(null);
       } else {
         toast.success("All 3 done. Great work.");
         setTodayTask(null);
@@ -268,7 +297,7 @@ const Dashboard = () => {
                   <Check className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">All 3 invitations accepted</p>
+                  <p className="font-medium">All 3 done</p>
                   <p className="text-sm text-muted-foreground">Great work today.</p>
                 </div>
               </div>
@@ -293,22 +322,35 @@ const Dashboard = () => {
                   )}
                 </div>
                 <Button onClick={handleCompleteTask} className="w-full" size="lg">
-                  Accept <ArrowRight className="ml-2 h-4 w-4" />
+                  Done <Check className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4 py-6">
-                <p className="text-sm text-muted-foreground text-center">
-                  Ready when you are
-                </p>
+              <div className="space-y-4 py-4">
+                <Textarea
+                  value={whatsOnMind}
+                  onChange={(e) => setWhatsOnMind(e.target.value)}
+                  placeholder="What's on your mind today? (optional)"
+                  className="min-h-[60px] text-base resize-none border-muted-foreground/20"
+                  style={{ fontSize: '16px' }}
+                />
                 <Button
-                  onClick={handleGenerateDailyOne}
+                  onClick={handleGenerateOptions}
                   disabled={isGenerating}
                   className="w-full"
-                  variant="outline"
                   size="lg"
                 >
-                  {isGenerating ? "..." : "Show me an invitation"}
+                  {isGenerating ? (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
+                      Finding options...
+                    </>
+                  ) : (
+                    <>
+                      Show me 3 options
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             )}
@@ -319,7 +361,7 @@ const Dashboard = () => {
         {activeExperiment && (
           <Card className="border-0 shadow-sm bg-card/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Micro-Rep</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Experiment</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               {(() => {
@@ -333,9 +375,6 @@ const Dashboard = () => {
                     <p className="text-base font-medium leading-relaxed">
                       {todayStep || activeExperiment.description}
                     </p>
-                    <p className="text-xs text-muted-foreground/60">
-                      Just this. No pressure.
-                    </p>
                   </div>
                 );
               })()}
@@ -343,7 +382,7 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Next Best Rep - Main Drift Breaker */}
+        {/* Next Best Rep */}
         <button
           onClick={handleNextRep}
           disabled={isGettingRep}
@@ -358,13 +397,46 @@ const Dashboard = () => {
                 {isGettingRep ? "Finding your next move..." : "Feeling off?"}
               </p>
               <p className="text-sm text-muted-foreground">
-                Bored, tired, lost, angry? Tap for one aligned action.
+                One tap. One aligned action.
               </p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
         </button>
       </div>
+
+      {/* Invitation Picker Dialog */}
+      <Dialog open={showInvitationPicker} onOpenChange={setShowInvitationPicker}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pick one</DialogTitle>
+            <DialogDescription>Choose what feels right. No wrong answers.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {invitationOptions.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSelectInvitation(option)}
+                className="w-full p-4 rounded-lg border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+              >
+                <div className="space-y-2">
+                  {option.priority_for_today && (
+                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                      {option.priority_for_today}
+                    </span>
+                  )}
+                  <p className="font-medium leading-snug group-hover:text-primary transition-colors">
+                    {option.do_this_now}
+                  </p>
+                  {option.time_required && (
+                    <p className="text-xs text-muted-foreground">{option.time_required}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Next Best Rep Dialog */}
       <Dialog open={showRepDialog} onOpenChange={setShowRepDialog}>
@@ -374,7 +446,7 @@ const Dashboard = () => {
               <Zap className="h-4 w-4 text-primary" />
               {nextRep?.bucket || "Your Rep"}
             </DialogTitle>
-            <DialogDescription>One aligned action to break the drift</DialogDescription>
+            <DialogDescription>Break the drift</DialogDescription>
           </DialogHeader>
           {nextRep && (
             <div className="space-y-4">
