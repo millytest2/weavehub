@@ -34,6 +34,27 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // Parse timezone from request
+    let timezone = 'UTC';
+    try {
+      const body = await req.json();
+      timezone = body.timezone || 'UTC';
+    } catch {
+      // No body or invalid JSON
+    }
+
+    // Get time context
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false
+    };
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const hourStr = formatter.format(now);
+    const hour = parseInt(hourStr, 10);
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+
     // Fetch identity seed
     const { data: identitySeed } = await supabase
       .from("identity_seeds")
@@ -58,9 +79,20 @@ serve(async (req) => {
     const values = identitySeed?.core_values || "Growth, Presence, Creation";
     const currentReality = identitySeed?.weekly_focus || "You are here. That is enough.";
 
+    // Time-appropriate grounding
+    const timeContext = {
+      morning: "Morning energy - can suggest slightly more active grounding (movement, cold exposure, journaling)",
+      afternoon: "Afternoon - balance, re-centering (short walk, breathing, quick reset)",
+      evening: "Evening wind-down - gentler activities (reflection, gratitude, light reading)",
+      night: "Night - pure calm (breathing, stillness, preparing for rest)"
+    };
+
     // Generate a gentle identity-aligned rep
-    const systemPrompt = `You are a grounding presence. The user is drifting (bored, anxious, lonely, overthinking, or wanting to numb out). 
-Your job is to bring them back to themselves with one gentle, identity-consistent micro-action.
+    const systemPrompt = `You surface what the user already knows. The user is drifting (bored, anxious, lonely, overthinking, or wanting to numb out). 
+Based on their saved identity and values, bring them back to themselves with one gentle micro-action.
+
+TIME: ${timeOfDay}
+${timeContext[timeOfDay as keyof typeof timeContext]}
 
 USER IDENTITY: ${identity}
 USER VALUES: ${values}
@@ -68,15 +100,16 @@ CURRENT REALITY: ${currentReality}
 ${randomInsight ? `RELEVANT INSIGHT: "${randomInsight.title}" - ${randomInsight.content.substring(0, 300)}` : ""}
 
 Return a JSON object with exactly these fields:
-- gentleRep: A single 2-5 minute action that feels inviting, not obligatory. Something that reconnects them to their identity. No pressure.
+- gentleRep: A single 2-5 minute action appropriate for ${timeOfDay}. Reference their actual identity/values. Something that reconnects them to who they're becoming.
 - reminder: One sentence (under 15 words) that reminds them what they're doing with their life. Pull from their identity. Be specific.
 
 Rules:
+- Match energy to ${timeOfDay} (${timeOfDay === 'night' ? 'very calm, wind-down only' : timeOfDay === 'evening' ? 'gentle' : timeOfDay === 'afternoon' ? 'balanced' : 'can be slightly more active'})
 - No emojis
-- No questions
-- No shame or pressure
-- Make it feel like a gentle invitation, not a command
-- Reference their actual identity/values
+- No emotional language ("You've got this", "I believe in you")
+- No therapeutic framing ("I know it's hard", "Give yourself grace")
+- No motivational fluff
+- Reference their actual identity/values from what they've saved
 - Keep it concrete and immediate`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
