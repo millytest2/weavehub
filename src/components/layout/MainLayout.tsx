@@ -2,6 +2,7 @@ import { Brain, Home, Lightbulb, FileText, Map, ListTodo, FlaskConical, Compass,
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
@@ -9,6 +10,7 @@ import { QuickCapture } from "@/components/dashboard/QuickCapture";
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
@@ -27,13 +29,16 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Top Bar */}
       <div className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
         <div className="flex h-12 items-center justify-between px-4">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
+          {/* Logo - Clickable */}
+          <button 
+            onClick={() => navigate("/")} 
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
               <Brain className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="text-sm font-semibold hidden sm:inline">Weave</span>
-          </div>
+          </button>
 
           {/* Desktop/Tablet Nav - Icon only on tablet, icon+text on desktop */}
           <nav className="hidden md:flex items-center gap-0.5">
