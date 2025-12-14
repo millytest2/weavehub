@@ -246,103 +246,109 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     return [sprintGroup[pillar] || sprintGroup["default"]];
   }
 
-  // Standard fallbacks - NEW FORMAT
+  // Standard fallbacks - NEW FORMAT with 7-day and social options
   const standardFallbacks: { [key: string]: ExperimentOutput } = {
     "Stability": {
-      title: "5-Day Morning Block → Ship Revenue Feature",
-      description: "Block 8-10am every day for revenue work only. Phone in drawer until 10am. Ship one feature that can make money by end of week.",
+      title: "7-Day Revenue Focus → Ship + 3 Sales Calls",
+      description: "Block 8-10am every day for revenue work. Ship one feature by midweek. Book 3 sales calls by Friday. Phone in drawer until 10am.",
       steps: [
-        "Day 1-5: 8am phone goes in drawer. 8-10am = revenue work only.",
-        "Pick ONE feature that could generate revenue this week.",
-        "Friday: Ship it live. Rough is fine. Done > perfect."
+        "Day 1-7: 8am phone goes in drawer. 8-10am = revenue work only.",
+        "Day 1-3: Ship ONE feature that could generate revenue.",
+        "Day 4-7: Reach out to 10 potential customers. Book 3 calls.",
+        "Friday: Feature live + 3 calls booked."
       ],
-      duration: "5 days",
-      identity_shift_target: "I protect my revenue hours.",
+      duration: "7 days",
+      identity_shift_target: "I protect my revenue hours and talk to customers.",
       pillar: "Stability"
     },
     "Skill": {
-      title: "5-Day Ship Daily → 5 Visible Features",
-      description: "Ship one visible feature every single day. No planning days. Each day must have a shipped output others can see.",
+      title: "7-Day Ship Daily → 7 Visible Features",
+      description: "Ship one visible feature every single day for a full week. No planning days. Each day must have a shipped output others can see.",
       steps: [
         "Day 1: Ship smallest feature of your main project. Post about it.",
-        "Day 2-4: Ship one more feature each day. Document progress.",
-        "Day 5: Ship final feature. Write recap of what you built."
+        "Day 2-6: Ship one more feature each day. Document progress publicly.",
+        "Day 7: Ship final feature. Write recap thread of what you built."
       ],
-      duration: "5 days",
-      identity_shift_target: "I ship, not plan.",
+      duration: "7 days",
+      identity_shift_target: "I ship daily without exception.",
       pillar: "Skill"
     },
     "Content": {
-      title: "7-Day Post Daily → 1 Post Before 10am",
-      description: "Post one piece of content every morning before 10am. No editing. No perfectionism. Raw thoughts about what you're building.",
+      title: "7-Day Content Machine → 1 Post Before 10am Daily",
+      description: "Post one piece of content every morning before 10am for 7 days. No editing. No perfectionism. Raw thoughts about what you're building.",
       steps: [
-        "Every day before 10am: Post one thought about your work to main platform.",
+        "Every day before 10am: Post one thought about your work.",
         "No drafts. No editing. Write and post in under 15 minutes.",
-        "Track: Which posts get engagement? Do more of those."
+        "Track: Which posts get engagement? Do more of those.",
+        "Day 7: Compile learnings. Pick best format for next week."
       ],
       duration: "7 days",
       identity_shift_target: "I share openly and consistently.",
       pillar: "Content"
     },
     "Health": {
-      title: "5-Day No Phone Till Noon → Morning Movement",
-      description: "Phone stays off/away until noon every day. First hour = movement. Track energy difference by Day 5.",
+      title: "7-Day Morning Protocol → 6am + Movement + No Phone",
+      description: "Wake at 6am. 30 min movement. No phone until 8am. Track energy levels. Build the morning that makes everything else easier.",
       steps: [
-        "Each day: Phone in drawer until 12pm.",
-        "6-7am: 30 min movement (walk, gym, stretch, anything).",
-        "7am-12pm: Deep work or rest. No phone checking."
+        "Day 1-7: Alarm at 6am. Out of bed immediately.",
+        "6:00-6:30am: Movement (walk, gym, stretch, anything).",
+        "6:30-8:00am: Deep work or rest. Phone stays off.",
+        "Track energy 1-10 each day. Compare Day 1 vs Day 7."
       ],
-      duration: "5 days",
-      identity_shift_target: "I own my mornings.",
+      duration: "7 days",
+      identity_shift_target: "I own my mornings completely.",
       pillar: "Health"
     },
     "Presence": {
-      title: "4-Day 1 Real Conversation → Talk to Someone New",
-      description: "Have one real conversation with someone new every day. Not networking. Actual connection. Get their story.",
+      title: "7-Day Social Proof → 1 Event + 5 DMs Daily",
+      description: "Attend one real-world event this week. Send 5 cold DMs per day to people you admire. Build real connections, not followers.",
       steps: [
-        "Day 1-4: Talk to one new person each day. Coffee, walk, whatever.",
-        "Ask about their work, dreams, struggles. Actually listen.",
-        "Follow up with one person you connected with."
+        "Day 1: Find one local event this week (meetup, conference, coffee). Commit.",
+        "Day 1-7: Send 5 cold DMs to founders/creators you admire. No asks.",
+        "Event day: Talk to 5+ people. Get contact info. Follow up next day.",
+        "End: 35 DMs sent + 1 event attended + 5 new real connections."
       ],
-      duration: "4 days",
-      identity_shift_target: "I connect easily with new people.",
+      duration: "7 days",
+      identity_shift_target: "I connect boldly in person and online.",
       pillar: "Presence"
     },
     "Admin": {
-      title: "4-Day Clear One System Per Day → Remove Friction",
-      description: "Clear one life system each day. Physical space, digital, commitments, subscriptions. End with less drag.",
+      title: "5-Day System Reset → 1 System Cleared Per Day",
+      description: "Clear one life system each day. Physical space, digital, commitments, subscriptions. End with less drag, more focus.",
       steps: [
         "Day 1: Clear physical space. Throw out/donate 10 things.",
-        "Day 2: Clear digital. Unsubscribe, delete apps, clean inbox to zero.",
+        "Day 2: Clear digital. Unsubscribe, delete apps, inbox zero.",
         "Day 3: Cancel one draining commitment or subscription.",
-        "Day 4: Automate one recurring task that drains energy."
+        "Day 4: Automate one recurring task that drains energy.",
+        "Day 5: Review all systems. What else needs to go?"
       ],
-      duration: "4 days",
+      duration: "5 days",
       identity_shift_target: "I remove friction ruthlessly.",
       pillar: "Admin"
     },
     "Connection": {
-      title: "5-Day Reach Out Daily → Message Someone You Admire",
-      description: "Message one person you admire each day. Cold DM, email, whatever. Not asking for anything. Just genuine connection.",
+      title: "7-Day Network Sprint → 3 DMs + 1 Call Daily",
+      description: "Send 3 genuine DMs per day to people whose work you respect. Book 1 call per day with someone interesting. Build real relationships.",
       steps: [
-        "Day 1-5: Send one message to someone whose work you respect.",
-        "No asks. Just tell them what you appreciated about their work.",
-        "Track responses. Follow up on any that reply."
+        "Day 1-7: Send 3 DMs to people you admire. Compliment their work.",
+        "Day 1-7: Book 1 call per day (15-30 min) with someone new.",
+        "End of week: 21 DMs sent + 7 calls completed + follow-ups scheduled."
       ],
-      duration: "5 days",
-      identity_shift_target: "I reach out boldly.",
+      duration: "7 days",
+      identity_shift_target: "I reach out and connect daily.",
       pillar: "Connection"
     },
     "Learning": {
-      title: "5-Day Learn + Build + Teach → One New Skill",
-      description: "Pick one skill. Spend 1 hour learning it daily. Build something with it by Day 4. Teach one concept by Day 5.",
+      title: "7-Day Learn + Build + Teach → Master One Skill",
+      description: "Pick one skill. 1 hour learning daily. Build something real by Day 5. Teach one concept publicly by Day 7.",
       steps: [
-        "Day 1-2: 1 hour focused learning. Take notes.",
-        "Day 3-4: Build one small project using the skill.",
-        "Day 5: Write or post one thing teaching what you learned."
+        "Day 1-3: 1 hour focused learning. Take notes. Practice.",
+        "Day 4-5: Build one small project using the skill.",
+        "Day 6: Polish and document what you built.",
+        "Day 7: Post/write teaching one concept you learned."
       ],
-      duration: "5 days",
-      identity_shift_target: "I learn fast and apply immediately.",
+      duration: "7 days",
+      identity_shift_target: "I learn by building and teaching.",
       pillar: "Learning"
     }
   };
@@ -444,10 +450,12 @@ async function selectSprintType(
     };
   }
   
-// DEFAULT: Standard experiment (48h to 7 days)
+// DEFAULT: Standard experiment (3-7 days, with variation)
+  const durationOptions = ["5 days", "7 days"];
+  const randomDuration = durationOptions[Math.floor(Math.random() * durationOptions.length)];
   return { 
     type: "standard", 
-    duration: "3-5 days", 
+    duration: randomDuration, 
     intensity: "push", 
     reason: "Steady identity-building" 
   };
@@ -598,23 +606,54 @@ DESCRIPTION FORMAT:
    "Did you send 50 emails? Yes/No"
 
 ═══════════════════════════════════════════════════════════════
+EXPERIMENT TYPES TO MIX:
+═══════════════════════════════════════════════════════════════
+
+1. SPRINT EXPERIMENTS (48h-5 days): Intense focused bursts
+   - "48h Phone Blackout → Ship Landing Page"
+   - "5-Day Cold Email Blitz → 50 Messages Sent"
+
+2. WEEKLY RHYTHM EXPERIMENTS (7 days): Daily habits that compound
+   - "7-Day Content Machine → 1 Post Every Morning"
+   - "7-Day Early Riser → 6am Wake + 1 Hour Deep Work"
+
+3. SPONTANEOUS/SOCIAL EXPERIMENTS (weekly): Real-world action
+   - "7-Day Connection Sprint → 1 Event + 5 DMs Per Day"
+   - "5-Day Social Proof → Attend 1 Meetup + Message 3 People Daily"
+   - "7-Day Network Builder → 1 In-Person Event + 10 Cold DMs"
+
+4. HYBRID EXPERIMENTS: Mix work output with social action
+   - "7-Day Launch Week → Ship Feature + 1 Event + 20 Outreach"
+   - "5-Day Full Send → 2 Hours Deep Work + 5 DMs Daily + 1 Coffee Meeting"
+
+═══════════════════════════════════════════════════════════════
 EXAMPLES OF GREAT EXPERIMENTS:
 ═══════════════════════════════════════════════════════════════
 
-EXAMPLE 1:
+EXAMPLE 1 (Sprint):
 Title: "48h Media Blackout → Ship UPath Sales Page"
 Description: "You saved that Ali Abdaal video about deep work. He does 48h phone-off sprints to ship. Try it: No Instagram, no Twitter, no YouTube. Just UPath landing page copy. Ship rough version by Sunday night."
 Steps: ["Saturday 8am: Phone off, put in drawer, start writing UPath value prop", "Saturday evening: First draft of landing page live (rough is fine)", "Sunday: Polish one section, add testimonial or demo video", "Monday 8am: Publish to domain. Phone back. Done."]
 
-EXAMPLE 2:
-Title: "5-Day Cold Email Blitz → 50 Outbound Messages"  
-Description: "You saved that Hormozi cold outreach breakdown. His rule: 10 emails before breakfast. Try it: 10 cold emails to potential UPath users every morning for 5 days. Track responses. No skipping days."
-Steps: ["Day 1-5: 10 cold emails sent before 9am", "Track: who responded, who ignored", "Follow up on Day 3 with anyone who opened but didn't reply", "End of Day 5: Calculate response rate. Iterate."]
-
-EXAMPLE 3:
+EXAMPLE 2 (Weekly Output):
 Title: "7-Day Content Machine → 1 Post Every Morning"
-Description: "You saved that MrBeast video about daily shipping. He posted daily for 2 years before breaking out. Try it: 1 Twitter post about UPath's core insight (too many options = paralysis) every morning at 8am for 7 days. No editing, just ship."
-Steps: ["Day 1-7: Write one post before 8am about decision paralysis / too many options", "No editing allowed. Write and post in under 10 minutes.", "Track: which post got most engagement? Do more like that."]
+Description: "You saved that MrBeast video about daily shipping. He posted daily for 2 years before breaking out. Try it: 1 Twitter post every morning at 8am for 7 days. No editing, just ship."
+Steps: ["Day 1-7: Write one post before 8am", "No editing allowed. Write and post in under 10 minutes.", "Track: which post got most engagement? Do more like that."]
+
+EXAMPLE 3 (Social/Spontaneous):
+Title: "7-Day Connection Sprint → 1 Event + 5 DMs Daily"
+Description: "You saved that insight about building in public. Try it: Attend 1 real-world event this week (meetup, conference, coffee) + send 5 cold DMs per day to people in your space."
+Steps: ["Day 1: Find one local event this week and commit (tech meetup, creator event, etc.)", "Day 1-7: Send 5 cold DMs to founders/creators you admire. No asks, just genuine interest.", "Event day: Talk to 3+ people. Get contact info. Follow up next day.", "End of week: 35 DMs sent + 1 event attended + 3 new connections made."]
+
+EXAMPLE 4 (Hybrid):
+Title: "7-Day Launch Mode → Ship + Network + Post"
+Description: "Based on your identity as someone who ships. This week: ship 1 feature + attend 1 event + message 20 people + post daily."
+Steps: ["Daily: 2 hours deep work on your main feature before noon", "Daily: 3 cold DMs to people who might use your product", "Midweek: Attend 1 in-person event. Talk to 5+ people.", "Daily: 1 post about what you're building", "Sunday: Feature live, 20+ DMs sent, event attended, 7 posts published."]
+
+EXAMPLE 5 (Social Challenge):
+Title: "5-Day Talk to Strangers → 3 Real Conversations Daily"
+Description: "You saved content about confidence and connection. Try it: Talk to 3 strangers per day for 5 days. Not small talk. Real 5+ minute conversations about their life/work."
+Steps: ["Day 1-5: Start 3 conversations with strangers per day (coffee shop, gym, events)", "Get past small talk. Ask what they're working on, what excites them.", "Exchange contact info with at least 1 person per day.", "End: 15 conversations, 5+ new contacts, follow up with 2."]
 
 ═══════════════════════════════════════════════════════════════
 EXAMPLES OF BAD EXPERIMENTS (NEVER DO THIS):
@@ -623,14 +662,11 @@ EXAMPLES OF BAD EXPERIMENTS (NEVER DO THIS):
 ❌ "The 'Silence the Saboteur' AI Deep Dive - addresses internal pressure to perform"
 ❌ "7-Day Mindfulness Journey - explore your relationship with productivity"  
 ❌ "Embrace the Discomfort Challenge - lean into uncertainty"
-❌ "Unlock Your Creative Potential - discover what's holding you back"
-❌ "Processing Your Inner Critic - sit with the discomfort"
 
 WHY THESE ARE BAD:
 - No concrete constraint (what exactly do you DO?)
 - No deliverable (what ships at the end?)
-- No deadline (by when?)
-- Therapy-speak ("saboteur", "deep dive", "embrace", "relationship with")
+- Therapy-speak ("saboteur", "deep dive", "embrace")
 - Abstract concepts (can't measure success)
 
 ═══════════════════════════════════════════════════════════════
@@ -639,14 +675,17 @@ LOOK AT THEIR DATA FOR:
 
 1. What content they saved (videos, articles, insights)
 2. What their identity says they're becoming
-3. What projects they're working on (UPath, Weave, content, etc.)
-4. What constraints have worked for them before
-5. What they keep avoiding (that's the friction point)
+3. What projects they're working on
+4. What they keep avoiding (that's the friction point)
+5. Are they isolated? → Add social/event component
+6. Are they shipping but not connecting? → Add outreach/event
+7. Are they consuming but not creating? → Add daily output requirement
 
 Then design an experiment that:
 - Cites a specific source from their data
 - Has a Navy SEAL-style constraint (hard, clear, binary)
 - Produces a real deliverable tied to their actual project
+- Mixes work output with real-world action when appropriate
 - Feels like "fuck yeah let's try that" not "ugh, homework"
 
 Duration: ${sprintConfig.duration}
