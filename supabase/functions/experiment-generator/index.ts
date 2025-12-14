@@ -5,6 +5,7 @@ import {
   formatWeightedContextForAgent,
   CompactContext 
 } from "../shared/context.ts";
+import { checkRateLimit, rateLimitResponse } from "../shared/rateLimit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -467,6 +468,12 @@ serve(async (req) => {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
+
+    // Check rate limit (20 requests/hour)
+    const rateCheck = await checkRateLimit(user.id, 'experiment-generator', 20, 60);
+    if (!rateCheck.allowed) {
+      return rateLimitResponse();
+    }
 
     // Check for active experiments
     const { data: activeExperiments } = await supabase
