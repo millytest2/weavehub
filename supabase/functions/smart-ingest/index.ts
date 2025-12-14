@@ -139,10 +139,14 @@ async function fetchYouTubeTranscript(videoId: string): Promise<{ transcript: st
         }
         
         // Get title from response or fetch separately
-        const title = data.title || await fetchYouTubeTitle(videoId);
+        let title = data.title || "";
+        if (!title || title.length < 3) {
+          console.log("Fetching title separately...");
+          title = await fetchYouTubeTitle(videoId);
+        }
         
         if (transcript.length > 100) {
-          console.log("RapidAPI transcript extracted - Length:", transcript.length);
+          console.log("RapidAPI transcript extracted - Title:", title, "Length:", transcript.length);
           return { transcript, title };
         }
       } else {
