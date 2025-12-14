@@ -4,7 +4,6 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, Check, Zap, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
@@ -17,11 +16,6 @@ const Dashboard = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentSequence, setCurrentSequence] = useState(1);
   const [tasksForToday, setTasksForToday] = useState<any[]>([]);
-  
-  // New invitation flow state
-  const [showInvitationPicker, setShowInvitationPicker] = useState(false);
-  const [invitationOptions, setInvitationOptions] = useState<any[]>([]);
-  const [whatsOnMind, setWhatsOnMind] = useState("");
   
   // Next Best Rep state
   const [isGettingRep, setIsGettingRep] = useState(false);
@@ -98,7 +92,7 @@ const Dashboard = () => {
     };
   }, [user, tasksForToday]);
 
-  const handleGenerateOptions = async () => {
+  const handleGenerateTask = async () => {
     if (!user) return;
     
     const today = getLocalToday();
@@ -117,26 +111,42 @@ const Dashboard = () => {
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke("navigator", {
-        body: { 
-          timezone,
-          context: whatsOnMind || undefined,
-          generateMultiple: true
-        }
+        body: { timezone }
       });
       if (error) throw error;
       
-      if (data?.options && data.options.length > 0) {
-        setInvitationOptions(data.options);
-        setShowInvitationPicker(true);
-      } else if (data?.do_this_now) {
-        // Fallback: single option returned
-        setInvitationOptions([{
-          do_this_now: data.do_this_now,
-          why_it_matters: data.why_it_matters,
-          time_required: data.time_required,
-          priority_for_today: data.priority_for_today
-        }]);
-        setShowInvitationPicker(true);
+      if (data) {
+        const nextSequence = (existingTasks?.length || 0) + 1;
+        
+        const { error: insertError } = await supabase
+          .from("daily_tasks")
+          .insert({
+            user_id: user.id,
+            task_date: today,
+            task_sequence: nextSequence,
+            title: data.priority_for_today || "Action",
+            one_thing: data.do_this_now,
+            why_matters: data.why_it_matters,
+            description: data.time_required,
+            pillar: data.priority_for_today,
+            completed: false,
+          });
+
+        if (insertError) throw insertError;
+
+        const newTask = {
+          task_sequence: nextSequence,
+          priority_for_today: data.priority_for_today,
+          one_thing: data.do_this_now,
+          why_matters: data.why_it_matters,
+          description: data.time_required,
+          pillar: data.priority_for_today,
+          completed: false,
+        };
+        
+        setTasksForToday([...tasksForToday, newTask]);
+        setTodayTask(newTask as any);
+        setCurrentSequence(nextSequence);
       }
     } catch (error: any) {
       console.error("Generate error:", error);
@@ -144,57 +154,6 @@ const Dashboard = () => {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleSelectInvitation = async (option: any) => {
-    if (!user) return;
-    
-    const today = getLocalToday();
-    const { data: existingTasks } = await supabase
-      .from("daily_tasks")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("task_date", today);
-    
-    const nextSequence = (existingTasks?.length || 0) + 1;
-    
-    const { error: insertError } = await supabase
-      .from("daily_tasks")
-      .insert({
-        user_id: user.id,
-        task_date: today,
-        task_sequence: nextSequence,
-        title: option.priority_for_today || "Action",
-        one_thing: option.do_this_now,
-        why_matters: option.why_it_matters,
-        description: option.time_required,
-        pillar: option.priority_for_today,
-        completed: false,
-      });
-
-    if (insertError) {
-      toast.error("Failed to save");
-      return;
-    }
-
-    const newTask = {
-      task_sequence: nextSequence,
-      priority_for_today: option.priority_for_today,
-      one_thing: option.do_this_now,
-      why_matters: option.why_it_matters,
-      description: option.time_required,
-      pillar: option.priority_for_today,
-      completed: false,
-    };
-    
-    setTasksForToday([...tasksForToday, newTask]);
-    setTodayTask(newTask as any);
-    setCurrentSequence(nextSequence);
-    setShowInvitationPicker(false);
-    setInvitationOptions([]);
-    setWhatsOnMind("");
-    
-    toast.success("Let's go");
   };
 
   const handleCompleteTask = async () => {
@@ -218,8 +177,10 @@ const Dashboard = () => {
       setTasksForToday(updatedTasks);
 
       if (currentSequence < 3) {
-        toast.success("Done. Pick your next one.");
+        toast.success("Done. Generating next...");
         setTodayTask(null);
+        // Auto-generate next
+        setTimeout(() => handleGenerateTask(), 500);
       } else {
         toast.success("All 3 done. Great work.");
         setTodayTask(null);
@@ -291,7 +252,12 @@ const Dashboard = () => {
             <ProgressDots current={currentSequence} />
           </CardHeader>
           <CardContent className="pt-0">
-            {allDone ? (
+            {isGenerating ? (
+              <div className="py-10 text-center space-y-3">
+                <Sparkles className="h-8 w-8 mx-auto text-primary animate-pulse" />
+                <p className="text-sm text-muted-foreground">Preparing your invitation...</p>
+              </div>
+            ) : allDone ? (
               <div className="py-10 text-center space-y-3">
                 <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                   <Check className="h-6 w-6 text-primary" />
@@ -326,31 +292,14 @@ const Dashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4 py-4">
-                <Textarea
-                  value={whatsOnMind}
-                  onChange={(e) => setWhatsOnMind(e.target.value)}
-                  placeholder="What's on your mind today? (optional)"
-                  className="min-h-[60px] text-base resize-none border-muted-foreground/20"
-                  style={{ fontSize: '16px' }}
-                />
+              <div className="py-6 text-center">
                 <Button
-                  onClick={handleGenerateOptions}
-                  disabled={isGenerating}
-                  className="w-full"
+                  onClick={handleGenerateTask}
                   size="lg"
+                  className="px-8"
                 >
-                  {isGenerating ? (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
-                      Finding options...
-                    </>
-                  ) : (
-                    <>
-                      Show me 3 options
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
+                  Start My Day
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             )}
@@ -404,39 +353,6 @@ const Dashboard = () => {
           </div>
         </button>
       </div>
-
-      {/* Invitation Picker Dialog */}
-      <Dialog open={showInvitationPicker} onOpenChange={setShowInvitationPicker}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Pick one</DialogTitle>
-            <DialogDescription>Choose what feels right. No wrong answers.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {invitationOptions.map((option, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSelectInvitation(option)}
-                className="w-full p-4 rounded-lg border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
-              >
-                <div className="space-y-2">
-                  {option.priority_for_today && (
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                      {option.priority_for_today}
-                    </span>
-                  )}
-                  <p className="font-medium leading-snug group-hover:text-primary transition-colors">
-                    {option.do_this_now}
-                  </p>
-                  {option.time_required && (
-                    <p className="text-xs text-muted-foreground">{option.time_required}</p>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Next Best Rep Dialog */}
       <Dialog open={showRepDialog} onOpenChange={setShowRepDialog}>
