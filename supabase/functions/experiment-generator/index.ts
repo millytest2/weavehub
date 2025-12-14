@@ -443,10 +443,10 @@ async function selectSprintType(
     };
   }
   
-  // DEFAULT: Standard experiment
+// DEFAULT: Standard experiment (48h to 7 days)
   return { 
     type: "standard", 
-    duration: "3-7 days", 
+    duration: "3-5 days", 
     intensity: "push", 
     reason: "Steady identity-building" 
   };
