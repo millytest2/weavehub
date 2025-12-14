@@ -3,7 +3,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, ChevronRight, Beaker, Target, Pause, Play, CheckCircle2, Circle } from "lucide-react";
+import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -33,8 +33,8 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [weeklyActions, setWeeklyActions] = useState<ActionHistoryItem[]>([]);
   const [activeExperiments, setActiveExperiments] = useState<ActiveExperiment[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set());
   const [showExperiments, setShowExperiments] = useState(true);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (open && user) {
@@ -83,16 +83,6 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     onOpenChange(false);
   };
 
-  const togglePillar = (pillar: string) => {
-    const newSet = new Set(expandedPillars);
-    if (newSet.has(pillar)) {
-      newSet.delete(pillar);
-    } else {
-      newSet.add(pillar);
-    }
-    setExpandedPillars(newSet);
-  };
-
   const toggleExperimentStatus = async (expId: string, currentStatus: string) => {
     const newStatus = currentStatus === "paused" ? "in_progress" : "paused";
     try {
@@ -111,6 +101,16 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       console.error("Error toggling experiment status:", error);
       toast.error("Failed to update project status");
     }
+  };
+
+  const toggleDay = (date: string) => {
+    const newSet = new Set(expandedDays);
+    if (newSet.has(date)) {
+      newSet.delete(date);
+    } else {
+      newSet.add(date);
+    }
+    setExpandedDays(newSet);
   };
 
   // Group actions by day
@@ -146,17 +146,17 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
               <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-muted/30 border border-border/20">
                 <div className="flex-1 text-center">
                   <p className="text-2xl font-semibold text-foreground">{weeklyActions.length}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Actions</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Done</p>
                 </div>
                 <div className="w-px h-8 bg-border/30" />
                 <div className="flex-1 text-center">
                   <p className="text-2xl font-semibold text-foreground">{sortedDays.length}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Active Days</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Days</p>
                 </div>
                 <div className="w-px h-8 bg-border/30" />
                 <div className="flex-1 text-center">
                   <p className="text-2xl font-semibold text-foreground">{activeExperiments.length}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Projects</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Active</p>
                 </div>
               </div>
 
@@ -166,7 +166,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                   <Collapsible open={showExperiments} onOpenChange={setShowExperiments}>
                     <CollapsibleTrigger className="flex items-center gap-2 w-full mb-2 group">
                       <Beaker className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Active Projects</span>
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Projects</span>
                       <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${showExperiments ? '' : '-rotate-90'}`} />
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -178,17 +178,15 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                               exp.status === "paused" ? "bg-muted/20" : "bg-primary/5 border border-primary/10"
                             }`}
                           >
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium truncate ${exp.status === "paused" ? "text-muted-foreground" : "text-foreground"}`}>
-                                {exp.title}
-                              </p>
-                            </div>
+                            <p className={`text-sm font-medium truncate flex-1 ${exp.status === "paused" ? "text-muted-foreground" : "text-foreground"}`}>
+                              {exp.title}
+                            </p>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleExperimentStatus(exp.id, exp.status);
                               }}
-                              className={`p-1.5 rounded-md transition-colors ${
+                              className={`p-1.5 rounded-md transition-colors shrink-0 ${
                                 exp.status === "paused" 
                                   ? "text-muted-foreground hover:text-primary hover:bg-primary/10" 
                                   : "text-primary hover:bg-primary/10"
@@ -208,7 +206,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                 </div>
               )}
 
-              {/* Weekly Actions by Day */}
+              {/* Weekly Actions by Day - Collapsible */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">This Week</span>
@@ -218,44 +216,46 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                   <div className="py-6 text-center">
                     <Circle className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
                     <p className="text-sm text-muted-foreground">No actions completed yet</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">Your proof starts with one action</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-1">
                     {sortedDays.map((date) => {
                       const actions = actionsByDay[date];
                       const isToday = date === new Date().toISOString().split('T')[0];
                       const displayDate = isToday ? "Today" : format(new Date(date), "EEE, MMM d");
+                      const isExpanded = expandedDays.has(date);
                       
                       return (
-                        <div key={date} className="space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
-                              {displayDate}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground/60">{actions.length} done</span>
-                          </div>
-                          <div className="space-y-1 pl-1">
-                            {actions.map((action) => (
-                              <div 
-                                key={action.id} 
-                                className="flex items-start gap-2 py-1.5"
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-foreground/90 leading-snug">
+                        <Collapsible key={date} open={isExpanded} onOpenChange={() => toggleDay(date)}>
+                          <CollapsibleTrigger className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className={`h-4 w-4 ${isToday ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                                {displayDate}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{actions.length}</span>
+                              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="space-y-1 pl-9 pr-3 pb-2">
+                              {actions.map((action) => (
+                                <div key={action.id} className="py-1.5">
+                                  <p className="text-sm text-muted-foreground leading-snug">
                                     {action.action_text}
                                   </p>
                                   {action.pillar && (
-                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">
                                       {action.pillar}
                                     </span>
                                   )}
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
                       );
                     })}
                   </div>
