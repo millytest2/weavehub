@@ -537,6 +537,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activity_patterns: {
+        Row: {
+          activity_type: string
+          created_at: string
+          day_of_week: number
+          hour_of_day: number
+          id: string
+          pillar: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          day_of_week: number
+          hour_of_day: number
+          id?: string
+          pillar?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          day_of_week?: number
+          hour_of_day?: number
+          id?: string
+          pillar?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -591,6 +621,16 @@ export type Database = {
           full_name: string
           id: string
           insights_count: number
+        }[]
+      }
+      get_user_time_preferences: {
+        Args: { p_user_id: string }
+        Returns: {
+          complete_count: number
+          hour_of_day: number
+          request_count: number
+          skip_count: number
+          success_rate: number
         }[]
       }
       has_role: {

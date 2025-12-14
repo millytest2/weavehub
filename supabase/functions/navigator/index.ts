@@ -115,15 +115,68 @@ interface TimeContext {
   date: string;
   timeOfDay: string;
   hour: number;
+  dayOfWeekNum: number;
   fullContext: string;
   energyLevel: string;
   taskTypes: string;
   duration: string;
   avoidTypes: string;
   isLateNight: boolean;
+  isLearned: boolean;
+  learnedNote: string;
 }
 
-function getDateTimeContext(timezone?: string): TimeContext {
+interface UserTimePreference {
+  hour_of_day: number;
+  request_count: number;
+  complete_count: number;
+  skip_count: number;
+  success_rate: number;
+}
+
+// Default time rules (used when no learned data)
+const DEFAULT_TIME_RULES: { [key: string]: { energyLevel: string; taskTypes: string; duration: string; avoidTypes: string } } = {
+  late_night: {
+    energyLevel: 'Very Low',
+    taskTypes: 'Reflection, journaling, light admin, tomorrow prep, winding down',
+    duration: '5-15 minutes max',
+    avoidTypes: 'Work tasks, deep focus, meetings, anything requiring energy, creative projects'
+  },
+  early_morning: {
+    energyLevel: 'Medium-High (for early risers)',
+    taskTypes: 'Strategic thinking, planning, personal development, morning routine',
+    duration: '20-45 minutes',
+    avoidTypes: 'Meetings, reactive tasks, email'
+  },
+  morning: {
+    energyLevel: 'High',
+    taskTypes: 'Deep work, creative tasks, strategic execution, building, shipping',
+    duration: '30-90 minutes',
+    avoidTypes: 'Admin, low-value tasks'
+  },
+  afternoon: {
+    energyLevel: 'Medium',
+    taskTypes: 'Execution, meetings, collaboration, testing, iteration',
+    duration: '30-45 minutes',
+    avoidTypes: 'Heavy creative work (save for morning)'
+  },
+  evening: {
+    energyLevel: 'Low-Medium',
+    taskTypes: 'Light tasks, admin, learning, creative exploration, social',
+    duration: '20-30 minutes',
+    avoidTypes: 'Deep focus, stressful tasks, heavy work'
+  }
+};
+
+function getTimeOfDayCategory(hour: number): string {
+  if (hour >= 23 || hour < 5) return 'late_night';
+  if (hour >= 5 && hour < 8) return 'early_morning';
+  if (hour >= 8 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+function getDateTimeContext(timezone?: string, userPrefs?: UserTimePreference[]): TimeContext {
   const now = new Date();
   
   // Use user's timezone if provided, otherwise fallback to UTC
@@ -145,65 +198,75 @@ function getDateTimeContext(timezone?: string): TimeContext {
   const hourStr = parts.find(p => p.type === 'hour')?.value || '12';
   const hour = parseInt(hourStr, 10);
   
-  const date = `${month} ${day}`;
+  // Get day of week as number (0 = Sunday)
+  const dayMap: { [key: string]: number } = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+  const dayOfWeekNum = dayMap[dayOfWeek] ?? 1;
   
-  // Detailed time-of-day rules
-  let timeOfDay: string;
+  const date = `${month} ${day}`;
+  const timeOfDay = getTimeOfDayCategory(hour);
+  
+  // Check if user has learned preferences for this hour
+  let isLearned = false;
+  let learnedNote = '';
   let energyLevel: string;
   let taskTypes: string;
   let duration: string;
   let avoidTypes: string;
-  let isLateNight = false;
-
-  if (hour >= 23 || hour < 5) {
-    // LATE NIGHT (11pm - 5am)
-    timeOfDay = 'late_night';
-    energyLevel = 'Very Low';
-    taskTypes = 'Reflection, journaling, light admin, tomorrow prep, winding down';
-    duration = '5-15 minutes max';
-    avoidTypes = 'Work tasks, deep focus, meetings, anything requiring energy, creative projects';
-    isLateNight = true;
-  } else if (hour >= 5 && hour < 8) {
-    // EARLY MORNING (5am - 8am)
-    timeOfDay = 'early_morning';
-    energyLevel = 'Medium-High (for early risers)';
-    taskTypes = 'Strategic thinking, planning, personal development, morning routine';
-    duration = '20-45 minutes';
-    avoidTypes = 'Meetings, reactive tasks, email';
-  } else if (hour >= 8 && hour < 12) {
-    // MORNING (8am - 12pm)
-    timeOfDay = 'morning';
-    energyLevel = 'High';
-    taskTypes = 'Deep work, creative tasks, strategic execution, building, shipping';
-    duration = '30-90 minutes';
-    avoidTypes = 'Admin, low-value tasks';
-  } else if (hour >= 12 && hour < 17) {
-    // AFTERNOON (12pm - 5pm)
-    timeOfDay = 'afternoon';
-    energyLevel = 'Medium';
-    taskTypes = 'Execution, meetings, collaboration, testing, iteration';
-    duration = '30-45 minutes';
-    avoidTypes = 'Heavy creative work (save for morning)';
+  
+  const hourPref = userPrefs?.find(p => p.hour_of_day === hour);
+  
+  if (hourPref && (hourPref.complete_count + hourPref.skip_count) >= 3) {
+    // We have enough data to make inferences
+    isLearned = true;
+    const successRate = hourPref.success_rate;
+    
+    if (successRate >= 0.7) {
+      // User is highly productive at this hour
+      learnedNote = `User completes ${Math.round(successRate * 100)}% of tasks at this hour - they're productive now`;
+      energyLevel = 'High (learned from behavior)';
+      taskTypes = 'Deep work, creative tasks, building, shipping - user is active at this hour';
+      duration = '30-90 minutes';
+      avoidTypes = 'Low-value tasks';
+    } else if (successRate >= 0.4) {
+      // Moderate productivity
+      learnedNote = `User completes ${Math.round(successRate * 100)}% of tasks at this hour - moderate energy`;
+      energyLevel = 'Medium (learned from behavior)';
+      taskTypes = 'Balanced tasks, execution, light creative work';
+      duration = '20-45 minutes';
+      avoidTypes = 'Heavy deep work';
+    } else {
+      // Low completion rate - user often skips at this hour
+      learnedNote = `User skips ${Math.round((1 - successRate) * 100)}% of tasks at this hour - suggest lighter tasks`;
+      energyLevel = 'Low (learned from behavior)';
+      taskTypes = 'Light reflection, quick wins, journaling, admin';
+      duration = '5-20 minutes';
+      avoidTypes = 'Deep focus, heavy work, long tasks';
+    }
   } else {
-    // EVENING (5pm - 11pm)
-    timeOfDay = 'evening';
-    energyLevel = 'Low-Medium';
-    taskTypes = 'Light tasks, admin, learning, creative exploration, social';
-    duration = '20-30 minutes';
-    avoidTypes = 'Deep focus, stressful tasks, heavy work';
+    // Use default rules
+    const defaultRule = DEFAULT_TIME_RULES[timeOfDay];
+    energyLevel = defaultRule.energyLevel;
+    taskTypes = defaultRule.taskTypes;
+    duration = defaultRule.duration;
+    avoidTypes = defaultRule.avoidTypes;
   }
+  
+  const isLateNight = (hour >= 23 || hour < 5) && !isLearned;
   
   return {
     dayOfWeek,
     date,
     timeOfDay,
     hour,
+    dayOfWeekNum,
     fullContext: `${dayOfWeek}, ${date} at ${hour}:00 (${timeOfDay.replace('_', ' ')})`,
     energyLevel,
     taskTypes,
     duration,
     avoidTypes,
-    isLateNight
+    isLateNight,
+    isLearned,
+    learnedNote
   };
 }
 
@@ -239,8 +302,19 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
     
-    const dateTime = getDateTimeContext(timezone);
-    console.log(`Navigator: ${dateTime.fullContext}, multiple: ${generateMultiple}`);
+    // Fetch user's learned time preferences
+    const { data: userTimePrefs } = await supabase.rpc('get_user_time_preferences', { p_user_id: user.id });
+    
+    const dateTime = getDateTimeContext(timezone, userTimePrefs);
+    console.log(`Navigator: ${dateTime.fullContext}, learned: ${dateTime.isLearned}, multiple: ${generateMultiple}`);
+    
+    // Track this request for learning
+    await supabase.from('user_activity_patterns').insert({
+      user_id: user.id,
+      hour_of_day: dateTime.hour,
+      day_of_week: dateTime.dayOfWeekNum,
+      activity_type: 'request'
+    });
 
     const userContextData = await fetchUserContext(supabase, user.id);
     
@@ -319,6 +393,7 @@ Energy level: ${dateTime.energyLevel}
 Appropriate tasks: ${dateTime.taskTypes}
 Duration range: ${dateTime.duration}
 AVOID at this time: ${dateTime.avoidTypes}
+${dateTime.isLearned ? `\n*** PERSONALIZED: ${dateTime.learnedNote} ***` : ''}
 ${dateTime.isLateNight ? '\n*** CRITICAL: It is LATE NIGHT. Only suggest reflection, journaling, tomorrow prep, or rest. NO work tasks. ***' : ''}
 === END TIME CONTEXT ===`;
 
