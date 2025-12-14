@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Lightbulb, Link, Scale, Compass } from "lucide-react";
+import { Plus, Lightbulb, Scale, Compass, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +12,7 @@ import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
 import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 
-type CaptureType = "insight" | "link" | "decision" | null;
+type CaptureType = "paste" | "insight" | "decision" | null;
 
 interface ReturnToSelfData {
   identity: string;
@@ -69,39 +69,18 @@ export const QuickCapture = () => {
     
     setIsSubmitting(true);
     try {
-      if (captureType === "link") {
-        // Check if it's a YouTube link
-        const isYouTube = content.includes("youtube.com") || content.includes("youtu.be");
+      if (captureType === "paste") {
+        // Smart ingest - auto-detect and process any URL
+        setIsProcessing(true);
+        toast.info("Processing...");
         
-        if (isYouTube) {
-          setIsProcessing(true);
-          toast.info("Processing YouTube video...");
-          
-          const { data, error } = await supabase.functions.invoke("youtube-processor", {
-            body: { url: content },
-          });
-          
-          if (error) throw error;
-          
-          // Save as document with summary
-          await supabase.from("documents").insert({
-            user_id: user.id,
-            title: data.title || "YouTube Video",
-            summary: data.summary,
-            file_type: "youtube",
-          });
-          
-          toast.success("Video processed & saved");
-        } else {
-          // Save as regular document link
-          await supabase.from("documents").insert({
-            user_id: user.id,
-            title: title || "Captured Link",
-            summary: content,
-            file_type: "link",
-          });
-          toast.success("Link saved");
-        }
+        const { data, error } = await supabase.functions.invoke("smart-ingest", {
+          body: { input: content },
+        });
+        
+        if (error) throw error;
+        
+        toast.success(data.message || "Saved");
       } else if (captureType === "insight") {
         // Process through brain for categorization
         setIsProcessing(true);
@@ -125,7 +104,6 @@ export const QuickCapture = () => {
         
         setMirrorText(data.mirror);
         setShowMirrorResponse(true);
-        // Don't close main dialog yet - wait for mirror response to be closed
         setIsSubmitting(false);
         setIsProcessing(false);
         return;
@@ -144,12 +122,14 @@ export const QuickCapture = () => {
   const handleSubmit = () => {
     if (!user || !content.trim()) return;
     
-    // Check for career-related keywords
-    const textToCheck = `${title} ${content}`;
-    if (detectCareerKeywords(textToCheck)) {
-      setPendingSubmit(true);
-      setShowCareerPrompt(true);
-      return;
+    // Check for career-related keywords (skip for paste type)
+    if (captureType !== "paste") {
+      const textToCheck = `${title} ${content}`;
+      if (detectCareerKeywords(textToCheck)) {
+        setPendingSubmit(true);
+        setShowCareerPrompt(true);
+        return;
+      }
     }
     
     executeSubmit();
@@ -171,7 +151,6 @@ export const QuickCapture = () => {
       setReturnToSelfData(data);
     } catch (error) {
       console.error("Return to self error:", error);
-      // Use fallback from edge function error response
       setReturnToSelfData({
         identity: "You are becoming someone aligned with your values.",
         values: "Growth, Presence, Creation",
@@ -206,10 +185,12 @@ export const QuickCapture = () => {
                   ← Back
                 </button>
               ) : (
-                "Quick Capture"
+                "Capture"
               )}
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">Capture or ground yourself</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
+              {captureType ? "Add your content below" : "Save or reflect"}
+            </DialogDescription>
           </DialogHeader>
 
           {!captureType ? (
@@ -226,22 +207,26 @@ export const QuickCapture = () => {
                 </div>
               </button>
 
+              {/* Smart Paste - Primary capture method */}
+              <button
+                onClick={() => handleQuickCapture("paste")}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+              >
+                <Sparkles className="h-6 w-6 text-primary shrink-0" />
+                <div>
+                  <span className="text-sm font-medium block">Paste Anything</span>
+                  <span className="text-xs text-muted-foreground">YouTube, article, tweet, Instagram - auto-detect</span>
+                </div>
+              </button>
+
               {/* Other capture options */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleQuickCapture("insight")}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
                 >
                   <Lightbulb className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Insight</span>
-                </button>
-                
-                <button
-                  onClick={() => handleQuickCapture("link")}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <Link className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Link</span>
+                  <span className="text-xs font-medium">Manual Insight</span>
                 </button>
                 
                 <button
@@ -249,13 +234,13 @@ export const QuickCapture = () => {
                   className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
                 >
                   <Scale className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Decision</span>
+                  <span className="text-xs font-medium">Decision Mirror</span>
                 </button>
               </div>
             </div>
           ) : (
             <div className="space-y-3 py-3">
-              {captureType !== "link" && (
+              {captureType === "insight" && (
                 <Input
                   placeholder="Title (optional)"
                   value={title}
@@ -267,8 +252,8 @@ export const QuickCapture = () => {
               
               <Textarea
                 placeholder={
-                  captureType === "link"
-                    ? "Paste YouTube URL or any link..."
+                  captureType === "paste"
+                    ? "Paste any URL (YouTube, article, tweet, Instagram...)"
                     : captureType === "decision"
                     ? "What are you about to do?"
                     : "What did you learn or realize?"
@@ -282,7 +267,7 @@ export const QuickCapture = () => {
               
               {isProcessing && (
                 <p className="text-xs text-muted-foreground animate-pulse">
-                  Processing with AI...
+                  {captureType === "paste" ? "Detecting content and extracting..." : "Processing with AI..."}
                 </p>
               )}
               
@@ -291,7 +276,10 @@ export const QuickCapture = () => {
                 disabled={!content.trim() || isSubmitting}
                 className="w-full h-10"
               >
-                {isSubmitting ? (captureType === "decision" ? "Reflecting..." : "Saving...") : (captureType === "decision" ? "Mirror" : "Capture")}
+                {isSubmitting 
+                  ? (captureType === "decision" ? "Reflecting..." : "Processing...") 
+                  : (captureType === "decision" ? "Mirror" : captureType === "paste" ? "Save & Extract" : "Capture")
+                }
               </Button>
             </div>
           )}
@@ -303,7 +291,6 @@ export const QuickCapture = () => {
         onOpenChange={(open) => {
           setShowCareerPrompt(open);
           if (!open && !pendingSubmit) {
-            // User closed without choosing, reset
             setPendingSubmit(false);
           }
         }}
