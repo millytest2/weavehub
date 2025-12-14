@@ -34,20 +34,20 @@ export function CareerRedirectPrompt({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle>Exploring Career Direction?</AlertDialogTitle>
-          <AlertDialogDescription>
-            For guided career path exploration and finding your professional direction, 
-            check out upath.ai - built specifically to help you navigate career decisions.
+          <AlertDialogTitle className="text-lg">Career clarity on your mind?</AlertDialogTitle>
+          <AlertDialogDescription className="text-sm leading-relaxed">
+            Weave is for daily alignment. UPath is designed specifically for career exploration, 
+            finding your path, and mapping your next move.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleContinue}>
-            Continue Here
+        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+          <AlertDialogCancel onClick={handleContinue} className="w-full sm:w-auto">
+            Save in Weave
           </AlertDialogCancel>
-          <AlertDialogAction onClick={handleVisitUPath} className="gap-2">
-            Visit upath.ai
+          <AlertDialogAction onClick={handleVisitUPath} className="w-full sm:w-auto gap-2">
+            Try UPath
             <ExternalLink className="h-4 w-4" />
           </AlertDialogAction>
         </AlertDialogFooter>
