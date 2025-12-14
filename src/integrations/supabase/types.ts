@@ -649,11 +649,16 @@ export type Database = {
       get_admin_users: {
         Args: never
         Returns: {
+          actions_completed: number
           created_at: string
+          current_streak: number
+          documents_count: number
           experiments_count: number
           full_name: string
+          has_identity_seed: boolean
           id: string
           insights_count: number
+          last_active: string
         }[]
       }
       get_user_time_preferences: {

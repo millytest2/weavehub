@@ -4,10 +4,11 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
+import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -244,10 +245,13 @@ const Dashboard = () => {
     </div>
   );
 
+  const [morningComplete, setMorningComplete] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-6">
       {user && (
         <>
+          <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
           <WelcomeWizard userId={user.id} onComplete={() => {}} />
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
         </>
