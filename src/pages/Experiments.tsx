@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Sparkles, FlaskConical } from "lucide-react";
+import { Plus, Trash2, Sparkles, FlaskConical, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 const experimentSchema = z.object({
@@ -22,6 +23,7 @@ const experimentSchema = z.object({
 
 const Experiments = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [experiments, setExperiments] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -195,16 +197,25 @@ const Experiments = () => {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto px-4 sm:px-0">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      {/* Header with back button */}
+      <div className="flex items-center gap-3">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => navigate("/")} 
+          className="shrink-0 h-9 w-9 rounded-full hover:bg-muted"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-semibold text-foreground">Experiments</h1>
           <p className="text-sm text-muted-foreground">Go do cool shit</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={handleGenerateExperiment} disabled={generating} variant="ghost" size="sm">
+        <div className="flex gap-1">
+          <Button onClick={handleGenerateExperiment} disabled={generating} variant="ghost" size="icon" className="h-9 w-9">
             <Sparkles className="h-4 w-4" />
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} variant="ghost" size="sm">
+          <Button onClick={() => setIsDialogOpen(true)} variant="ghost" size="icon" className="h-9 w-9">
             <Plus className="h-4 w-4" />
           </Button>
         </div>

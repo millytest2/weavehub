@@ -241,10 +241,15 @@ const LearningPathDetail = () => {
   const completedSteps = items.filter(i => i.completed).length;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="flex items-start gap-3 sm:gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/paths")} className="shrink-0 mt-1">
+      <div className="flex items-start gap-3">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => navigate("/paths")} 
+          className="shrink-0 h-9 w-9 rounded-full hover:bg-muted mt-0.5"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
