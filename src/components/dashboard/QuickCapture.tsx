@@ -167,7 +167,10 @@ export const QuickCapture = () => {
     setIsOpen(false);
     
     try {
-      const { data, error } = await supabase.functions.invoke("return-to-self");
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { data, error } = await supabase.functions.invoke("return-to-self", {
+        body: { timezone }
+      });
       if (error) throw error;
       setReturnToSelfData(data);
     } catch (error) {
