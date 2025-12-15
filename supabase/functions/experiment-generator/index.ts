@@ -844,9 +844,10 @@ Make it challenging. Make it concrete. Make it exciting. No therapy-speak.` }
       return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Insert experiment with sprint metadata
+    // Insert experiment with sprint metadata and return the ID
+    const insertedIds: string[] = [];
     for (const exp of experiments) {
-      await supabase.from("experiments").insert({
+      const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
         user_id: user.id,
         title: exp.title,
         description: exp.description,
@@ -855,14 +856,19 @@ Make it challenging. Make it concrete. Make it exciting. No therapy-speak.` }
         identity_shift_target: exp.identity_shift_target,
         hypothesis: `Sprint: ${sprintConfig.type} | Intensity: ${sprintConfig.intensity} | ${sprintConfig.reason}`,
         status: "planning"
-      });
+      }).select("id").single();
+      
+      if (inserted?.id) {
+        insertedIds.push(inserted.id);
+      }
     }
 
     console.log(`Generated ${sprintConfig.type} experiment: ${experiments[0].title}`);
 
     return new Response(JSON.stringify({ 
-      experiments,
-      sprint: sprintConfig
+      experiments: experiments.map((exp, idx) => ({ ...exp, id: insertedIds[idx] })),
+      sprint: sprintConfig,
+      inserted_ids: insertedIds
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Experiment generator error:", error);
