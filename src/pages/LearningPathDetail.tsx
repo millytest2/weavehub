@@ -210,28 +210,21 @@ const LearningPathDetail = () => {
         },
       });
 
-      // supabase.functions.invoke returns `error` for non-2xx
+      // Handle errors - supabase.functions.invoke can return error for network issues
+      // or data with error field for 400 responses
       if (error) {
-        const ctx: any = (error as any)?.context;
-        const raw = typeof ctx === "string" ? ctx : (typeof ctx?.body === "string" ? ctx.body : null);
-        const parsed = raw ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : null;
-
-        const code = parsed?.error || (error as any)?.name;
-        const message = parsed?.message || error.message || "Failed to regenerate path";
-
-        if (code === "legacy_path") {
-          setLegacyPathError(message);
-          toast.error(message);
-          return;
-        }
-
-        toast.error(message);
+        console.error("Regenerate error object:", error);
+        toast.error(error.message || "Failed to regenerate path");
         return;
       }
 
+      // Check if the response data contains an error (400 responses)
       if (data?.error) {
+        console.log("Regenerate returned error data:", data);
         const message = data.message || data.error;
-        if (data.error === "legacy_path") setLegacyPathError(message);
+        if (data.error === "legacy_path") {
+          setLegacyPathError(message);
+        }
         toast.error(message);
         return;
       }
