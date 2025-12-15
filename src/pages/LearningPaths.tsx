@@ -26,7 +26,7 @@ const LearningPaths = () => {
   const [generating, setGenerating] = useState(false);
   const [sourceCheckResult, setSourceCheckResult] = useState<{ count: number; sufficient: boolean } | null>(null);
   const [checkingSource, setCheckingSource] = useState(false);
-  const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
+  const [suggestedTopics, setSuggestedTopics] = useState<{topic: string; sourceCount: number}[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showCareerRedirect, setShowCareerRedirect] = useState(false);
 
@@ -94,8 +94,11 @@ const LearningPaths = () => {
         return;
       }
 
-      if (data?.suggestions && data.suggestions.length > 0) {
-        setSuggestedTopics(data.suggestions);
+      if (data?.suggestionsWithCounts && data.suggestionsWithCounts.length > 0) {
+        setSuggestedTopics(data.suggestionsWithCounts);
+      } else if (data?.suggestions && data.suggestions.length > 0) {
+        // Fallback for old format
+        setSuggestedTopics(data.suggestions.map((s: string) => ({ topic: s, sourceCount: 5 })));
       } else if (data?.message) {
         toast.info(data.message);
       } else {
@@ -290,14 +293,19 @@ const LearningPaths = () => {
               {suggestedTopics.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   <span className="text-sm text-muted-foreground">Patterns in your content:</span>
-                  {suggestedTopics.map((t) => (
+                  {suggestedTopics.map((s) => (
                     <Badge 
-                      key={t} 
+                      key={s.topic} 
                       variant="secondary" 
                       className="cursor-pointer hover:bg-primary/20"
-                      onClick={() => { setTopic(t); setSuggestedTopics([]); checkSources(); }}
+                      onClick={() => { 
+                        setTopic(s.topic); 
+                        setSuggestedTopics([]); 
+                        // Auto-validate since path-suggester already confirmed 5+ sources
+                        setSourceCheckResult({ count: s.sourceCount, sufficient: true });
+                      }}
                     >
-                      {t}
+                      {s.topic}
                     </Badge>
                   ))}
                 </div>

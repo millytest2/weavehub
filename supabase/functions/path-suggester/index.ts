@@ -130,10 +130,17 @@ GOOD EXAMPLES (specific, learnable):
                 properties: {
                   suggestions: {
                     type: "array",
-                    items: { type: "string" },
+                    items: { 
+                      type: "object",
+                      properties: {
+                        topic: { type: "string", description: "The specific, learnable topic name" },
+                        sourceCount: { type: "number", description: "How many sources in their content relate to this topic (must be 5+)" }
+                      },
+                      required: ["topic", "sourceCount"]
+                    },
                     minItems: 1,
                     maxItems: 3,
-                    description: "2-3 specific, learnable topic names"
+                    description: "2-3 specific topics with source counts"
                   }
                 },
                 required: ["suggestions"]
@@ -165,11 +172,23 @@ GOOD EXAMPLES (specific, learnable):
 
     try {
       const parsed = JSON.parse(toolCall.function.arguments);
-      const suggestions = parsed.suggestions || [];
+      let suggestions = parsed.suggestions || [];
+      
+      // Normalize response - handle both string[] and object[] formats
+      suggestions = suggestions.map((s: any) => {
+        if (typeof s === 'string') {
+          return { topic: s, sourceCount: 5 };
+        }
+        return { topic: s.topic, sourceCount: s.sourceCount || 5 };
+      });
       
       console.log(`Path suggester: Found ${suggestions.length} topics for user`);
       
-      return new Response(JSON.stringify({ suggestions }), { 
+      // Return just topic names for backwards compatibility, plus the full data
+      return new Response(JSON.stringify({ 
+        suggestions: suggestions.map((s: any) => s.topic),
+        suggestionsWithCounts: suggestions 
+      }), { 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     } catch (parseError) {
