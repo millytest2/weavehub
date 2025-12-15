@@ -406,32 +406,59 @@ export type Database = {
       }
       learning_paths: {
         Row: {
+          completed_at: string | null
           created_at: string
+          current_day: number | null
           description: string | null
+          duration_days: number | null
+          final_deliverable: string | null
           id: string
+          sources_used: Json | null
+          started_at: string | null
           status: string | null
+          structure: Json | null
+          sub_topics: Json | null
           title: string
           topic_id: string | null
+          topic_name: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
+          current_day?: number | null
           description?: string | null
+          duration_days?: number | null
+          final_deliverable?: string | null
           id?: string
+          sources_used?: Json | null
+          started_at?: string | null
           status?: string | null
+          structure?: Json | null
+          sub_topics?: Json | null
           title: string
           topic_id?: string | null
+          topic_name?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
+          current_day?: number | null
           description?: string | null
+          duration_days?: number | null
+          final_deliverable?: string | null
           id?: string
+          sources_used?: Json | null
+          started_at?: string | null
           status?: string | null
+          structure?: Json | null
+          sub_topics?: Json | null
           title?: string
           topic_id?: string | null
+          topic_name?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -441,6 +468,62 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      path_daily_progress: {
+        Row: {
+          application_completed: boolean | null
+          application_task: string | null
+          completed_at: string | null
+          created_at: string | null
+          day_number: number
+          id: string
+          is_rest_day: boolean | null
+          learning_completed: boolean | null
+          learning_source_ref: string | null
+          learning_task: string | null
+          notes: string | null
+          path_id: string
+          user_id: string
+        }
+        Insert: {
+          application_completed?: boolean | null
+          application_task?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          day_number: number
+          id?: string
+          is_rest_day?: boolean | null
+          learning_completed?: boolean | null
+          learning_source_ref?: string | null
+          learning_task?: string | null
+          notes?: string | null
+          path_id: string
+          user_id: string
+        }
+        Update: {
+          application_completed?: boolean | null
+          application_task?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          day_number?: number
+          id?: string
+          is_rest_day?: boolean | null
+          learning_completed?: boolean | null
+          learning_source_ref?: string | null
+          learning_task?: string | null
+          notes?: string | null
+          path_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "path_daily_progress_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
             referencedColumns: ["id"]
           },
         ]

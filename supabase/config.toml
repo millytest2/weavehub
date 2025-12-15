@@ -75,3 +75,6 @@ verify_jwt = true
 
 [functions.smart-ingest]
 verify_jwt = true
+
+[functions.learning-path-generator]
+verify_jwt = true
