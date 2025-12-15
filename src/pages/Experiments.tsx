@@ -125,24 +125,33 @@ const Experiments = () => {
       }
 
       const generatedExperiments = data.experiments;
+      const insertedIds = data.inserted_ids;
+      
       if (generatedExperiments && generatedExperiments.length > 0) {
-        // Edge function already inserted - just update status to in_progress
-        // Find the newly created experiment (it was inserted with 'planning' status)
-        const { data: newExp } = await supabase
-          .from("experiments")
-          .select("id")
-          .eq("user_id", user!.id)
-          .eq("title", generatedExperiments[0].title)
-          .eq("status", "planning")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        // Use the returned ID directly to update status
+        const experimentId = insertedIds?.[0] || generatedExperiments[0]?.id;
+        
+        if (experimentId) {
+          await supabase.from("experiments").update({ status: "in_progress" }).eq("id", experimentId);
+          toast.success("Experiment generated and activated");
+        } else {
+          // Fallback: find by title if ID not returned (shouldn't happen)
+          const { data: newExp } = await supabase
+            .from("experiments")
+            .select("id")
+            .eq("user_id", user!.id)
+            .eq("title", generatedExperiments[0].title)
+            .eq("status", "planning")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-        if (newExp) {
-          await supabase.from("experiments").update({ status: "in_progress" }).eq("id", newExp.id);
+          if (newExp) {
+            await supabase.from("experiments").update({ status: "in_progress" }).eq("id", newExp.id);
+          }
+          toast.success("Experiment generated and activated");
         }
-
-        toast.success("Experiment generated and activated");
+        
         fetchExperiments();
       }
     } catch (error: any) {
