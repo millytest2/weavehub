@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ const insightSchema = z.object({
   content: z.string().trim().min(1, "Content is required").max(50000, "Content must be less than 50,000 characters"),
 });
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 const Insights = () => {
   const { user } = useAuth();
@@ -29,6 +29,25 @@ const Insights = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          fetchInsights(false);
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, insights.length]);
 
   useEffect(() => {
     if (!user) return;
@@ -187,24 +206,17 @@ const Insights = () => {
             ))}
           </div>
 
-          {/* Load More Button */}
-          {hasMore && insights.length > 0 && (
-            <div className="flex justify-center pt-4">
-              <Button
-                variant="outline"
-                onClick={() => fetchInsights(false)}
-                disabled={loadingMore}
-              >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  `Load More (${insights.length} of ${totalCount})`
-                )}
-              </Button>
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="h-4" />
+          {loadingMore && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          )}
+          {!hasMore && insights.length > 0 && (
+            <p className="text-center text-xs text-muted-foreground py-2">
+              {totalCount} insights
+            </p>
           )}
         </>
       )}
