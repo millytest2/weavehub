@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ const documentSchema = z.object({
   summary: z.string().trim().max(5000, "Summary must be less than 5,000 characters"),
 });
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 const Documents = () => {
   const { user } = useAuth();
@@ -47,6 +47,25 @@ const Documents = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          fetchDocuments(false);
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, documents.length]);
 
   useEffect(() => {
     if (!user) return;
@@ -625,24 +644,17 @@ const Documents = () => {
         ))}
       </div>
 
-      {/* Load More Button */}
-      {hasMore && documents.length > 0 && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            onClick={() => fetchDocuments(false)}
-            disabled={loadingMore}
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              `Load More (${documents.length} of ${totalCount})`
-            )}
-          </Button>
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="h-4" />
+      {loadingMore && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
+      )}
+      {!hasMore && documents.length > 0 && (
+        <p className="text-center text-xs text-muted-foreground py-2">
+          {totalCount} documents
+        </p>
       )}
       </>
       )}
