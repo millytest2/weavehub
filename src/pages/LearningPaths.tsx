@@ -67,6 +67,19 @@ const LearningPaths = () => {
         body: { topic: topic.trim(), durationDays: 30 },
       });
       if (error) throw error;
+      
+      // Handle career topic redirect
+      if (data.error === "career_topic") {
+        toast.info(data.message, {
+          action: {
+            label: "Visit upath.ai",
+            onClick: () => window.open(data.redirect_url, "_blank"),
+          },
+          duration: 8000,
+        });
+        return;
+      }
+      
       if (data.error) {
         toast.error(data.message || data.error);
         return;

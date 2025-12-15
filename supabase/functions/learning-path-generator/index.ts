@@ -6,6 +6,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Career keywords that should redirect to upath.ai
+const CAREER_KEYWORDS = [
+  'career', 'careers', 'job', 'jobs', 'career path', 'careerpath',
+  'career transition', 'career change', 'career move', 'career journey',
+  'career advice', 'career guidance', 'career planning', 'career decision',
+  'job search', 'job hunting', 'job market', 'applying for jobs',
+  'resume', 'interviews', 'recent grad', 'professional path',
+  'what career', 'which career', 'career exploration',
+  'purpose', 'meaning', 'mission', 'what to do with my life',
+  'pivot', 'switch careers', 'transition careers',
+  'lost in career', 'career confused', 'career stuck',
+  'upath'
+];
+
+function detectCareerTopic(topic: string): boolean {
+  const lowerTopic = topic.toLowerCase();
+  return CAREER_KEYWORDS.some(keyword => lowerTopic.includes(keyword));
+}
+
 interface Source {
   id: string;
   title: string;
@@ -55,7 +74,7 @@ serve(async (req) => {
       });
     }
 
-    const { topic, durationDays = 30 } = await req.json();
+    const { topic, durationDays = 30, regenerate = false, pathId = null } = await req.json();
 
     if (!topic) {
       return new Response(JSON.stringify({ error: "Topic is required" }), {
@@ -64,7 +83,27 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Generating ${durationDays}-day learning path for topic: ${topic}`);
+    // Check for career-related topics and redirect to upath.ai
+    if (detectCareerTopic(topic)) {
+      console.log(`Career topic detected: ${topic} - suggesting upath.ai`);
+      return new Response(JSON.stringify({
+        error: "career_topic",
+        message: `For career-related learning like "${topic}", we recommend upath.ai - a specialized tool for career clarity and path finding.`,
+        redirect_url: "https://upath.ai",
+        topic: topic
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`Generating ${durationDays}-day learning path for topic: ${topic}${regenerate ? ' (regenerating)' : ''}`);
+
+    // If regenerating, delete old progress entries
+    if (regenerate && pathId) {
+      await supabase.from("path_daily_progress").delete().eq("path_id", pathId);
+      console.log(`Deleted old progress for path: ${pathId}`);
+    }
 
     // Search for relevant sources (insights + documents)
     const [insightsResult, documentsResult] = await Promise.all([
@@ -226,29 +265,60 @@ Return ONLY valid JSON.`;
       throw new Error("Failed to parse learning path structure");
     }
 
-    // Create the learning path
-    const { data: learningPath, error: pathError } = await supabase
-      .from("learning_paths")
-      .insert({
-        user_id: user.id,
-        title: `${durationDays}-Day ${topic} Learning Path`,
-        description: pathStructure.why_this_matters,
-        topic_name: topic,
-        duration_days: durationDays,
-        structure: pathStructure.daily_structure,
-        sources_used: sources.slice(0, 12).map(s => ({ id: s.id, title: s.title, type: s.type })),
-        sub_topics: pathStructure.sub_topics,
-        final_deliverable: pathStructure.final_deliverable,
-        status: "active",
-        current_day: 1,
-        started_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+    // Create or update the learning path
+    let learningPath;
+    
+    if (regenerate && pathId) {
+      // Update existing path
+      const { data, error: pathError } = await supabase
+        .from("learning_paths")
+        .update({
+          title: `${durationDays}-Day ${topic} Learning Path`,
+          description: pathStructure.why_this_matters,
+          structure: pathStructure.daily_structure,
+          sources_used: sources.slice(0, 12).map(s => ({ id: s.id, title: s.title, type: s.type })),
+          sub_topics: pathStructure.sub_topics,
+          final_deliverable: pathStructure.final_deliverable,
+          current_day: 1,
+          started_at: new Date().toISOString(),
+          status: "active",
+        })
+        .eq("id", pathId)
+        .eq("user_id", user.id)
+        .select()
+        .single();
 
-    if (pathError) {
-      console.error("Failed to create learning path:", pathError);
-      throw new Error("Failed to save learning path");
+      if (pathError) {
+        console.error("Failed to update learning path:", pathError);
+        throw new Error("Failed to update learning path");
+      }
+      learningPath = data;
+    } else {
+      // Create new path
+      const { data, error: pathError } = await supabase
+        .from("learning_paths")
+        .insert({
+          user_id: user.id,
+          title: `${durationDays}-Day ${topic} Learning Path`,
+          description: pathStructure.why_this_matters,
+          topic_name: topic,
+          duration_days: durationDays,
+          structure: pathStructure.daily_structure,
+          sources_used: sources.slice(0, 12).map(s => ({ id: s.id, title: s.title, type: s.type })),
+          sub_topics: pathStructure.sub_topics,
+          final_deliverable: pathStructure.final_deliverable,
+          status: "active",
+          current_day: 1,
+          started_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (pathError) {
+        console.error("Failed to create learning path:", pathError);
+        throw new Error("Failed to save learning path");
+      }
+      learningPath = data;
     }
 
     // Create daily progress entries
