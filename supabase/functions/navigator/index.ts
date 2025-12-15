@@ -426,18 +426,21 @@ ${contextPrompt}${semanticContext}${userMindContext}${coreValuesContext}
 
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
-RULES:
-- Each option from a DIFFERENT pillar
-- Reference their actual saved content, projects, or stated goals
-- Ultra specific with concrete details from THEIR data
-- STRICTLY MATCH task type to time of day
-- NO emojis
-- NO "read" or "review" tasks
-- NO emotional language ("You've got this", "I believe in you")
-- NO therapeutic framing ("I know it's hard", "Give yourself grace")
-- NO vague suggestions ("Explore your feelings about...")
-- NO motivational fluff ("Just do it!", "You can do anything!")
-- Direct and concrete only
+CRITICAL QUALITY RULES:
+1. EACH OPTION FROM A DIFFERENT PILLAR
+2. REFERENCE THEIR ACTUAL DATA - Quote their identity seed, cite their saved insights, mention their actual projects by name
+3. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
+4. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features, real project names
+5. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
+6. VARY THE TYPE - Don't just suggest "build X". Mix: outreach, content, learning, calls, events, social
+
+BANNED PATTERNS (instant rejection):
+- "read/review/look at" anything
+- "continue working on" without specifying WHAT exactly
+- "spend X minutes on" without saying WHAT
+- Vague suggestions without project names
+- Emotional/motivational language
+- "You've got this", "I believe in you", "Give yourself grace"
 
 ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 - ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep
@@ -557,24 +560,28 @@ ${contextPrompt}${semanticContext}${coreValuesContext}
 
 PILLAR: ${suggestedPillar}
 
-RULES:
-- Reference their actual saved content, projects, or stated goals
-- Ultra specific with concrete details from THEIR data
-- STRICTLY MATCH task to time of day
-- NO emojis
-- NO "read" or "review" tasks
-- NO emotional language ("You've got this", "I believe in you")
-- NO therapeutic framing ("I know it's hard", "Give yourself grace")
-- NO vague suggestions ("Explore your feelings about...")
-- NO motivational fluff ("Just do it!", "You can do anything!")
-- Direct and concrete only
-- Reference their actual data when possible
+CRITICAL QUALITY RULES:
+1. REFERENCE THEIR ACTUAL DATA - Quote their identity seed, cite their saved insights, mention their actual projects by name
+2. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
+3. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features
+4. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
+5. VARY THE TYPE - Don't always suggest "build X". Mix: outreach, content, learning, calls, events
+6. NO GENERIC FALLBACKS - If you can't cite their data specifically, use the pillar creatively
+
+BANNED PATTERNS (instant rejection):
+- "read/review/look at" anything
+- "continue working on" (be specific about WHAT)
+- "spend X minutes on" without saying WHAT exactly
+- Vague suggestions without project names or specifics
+- Emotional/motivational language
+- "You've got this", "I believe in you", "Give yourself grace"
 
 ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 - ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep, breathing exercise
 - Examples: "Journal 3 wins from today (5 min)", "Set tomorrow's top priority (5 min)", "Write one gratitude note"
 - Duration: 5-15 minutes MAX
 - NEVER suggest: work tasks, deep focus, building, shipping, anything requiring energy` : ''}`;
+
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
