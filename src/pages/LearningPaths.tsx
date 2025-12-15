@@ -163,8 +163,10 @@ const LearningPaths = () => {
           <Card className="border-dashed">
             <CardContent className="py-12 text-center">
               <BookOpen className="w-10 h-10 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">No learning paths yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">Pick a topic you want to learn. System will create a 30-day path from your saved sources.</p>
+              <h3 className="font-medium mb-2">You've saved content. What pattern are you noticing?</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+                Look at your saved insights and documents. What topic keeps appearing? That's your signal. Pick that topic and let your own sources guide you.
+              </p>
               <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> Start Learning Path</Button>
             </CardContent>
           </Card>
@@ -228,8 +230,8 @@ const LearningPaths = () => {
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Start a Learning Path</DialogTitle>
-              <DialogDescription>Enter a topic you want to learn. We'll create a 30-day structured path using your saved sources.</DialogDescription>
+              <DialogTitle>What topic keeps appearing in your saved content?</DialogTitle>
+              <DialogDescription>You've been saving sources about something. Name the pattern you're noticing and let your own sources guide a 30-day path.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">

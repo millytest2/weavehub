@@ -25,6 +25,7 @@ import {
   Trash2,
   Trophy,
   ExternalLink,
+  RotateCcw,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -82,6 +83,7 @@ const LearningPathDetail = () => {
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completedInsightId, setCompletedInsightId] = useState<string | null>(null);
   const [legacyPathError, setLegacyPathError] = useState<string | null>(null);
+  const [recreating, setRecreating] = useState(false);
 
   useEffect(() => {
     if (user && id) fetchPath();
@@ -258,6 +260,43 @@ const LearningPathDetail = () => {
     }
   };
 
+  const handleRecreatePath = async () => {
+    if (!path) return;
+    setRecreating(true);
+    try {
+      const topicName = path.topic_name || path.title;
+      const { data, error } = await supabase.functions.invoke("learning-path-generator", {
+        body: { topic: topicName, durationDays: path.duration_days || 30 },
+      });
+
+      if (error) {
+        const parsed = parseFunctionInvokeError(error);
+        toast.error(parsed.message);
+        return;
+      }
+
+      if ((data as any)?.error) {
+        toast.error((data as any).message || "Failed to create new path");
+        return;
+      }
+
+      // Delete the old legacy path
+      await supabase.from("learning_paths").delete().eq("id", path.id);
+
+      toast.success("New path created from your latest sources");
+      if ((data as any)?.path?.id) {
+        navigate(`/learning-paths/${(data as any).path.id}`);
+      } else {
+        navigate("/learning-paths");
+      }
+    } catch (err) {
+      console.error("Error recreating path:", err);
+      toast.error("Failed to recreate path");
+    } finally {
+      setRecreating(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!path) return;
     setDeleting(true);
@@ -364,11 +403,15 @@ const LearningPathDetail = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {legacyPathError && (
-              <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
-                {legacyPathError}
-                <div className="mt-2">
-                  <Button size="sm" variant="secondary" onClick={() => navigate("/learning-paths")}>
-                    Create a new path
+              <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+                <p className="text-muted-foreground mb-3">{legacyPathError}</p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleRecreatePath} disabled={recreating}>
+                    {recreating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCcw className="w-4 h-4 mr-1" />}
+                    Recreate with Latest Sources
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => navigate("/learning-paths")}>
+                    Browse Paths
                   </Button>
                 </div>
               </div>
