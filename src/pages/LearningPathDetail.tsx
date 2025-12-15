@@ -84,6 +84,7 @@ const LearningPathDetail = () => {
   const [completedInsightId, setCompletedInsightId] = useState<string | null>(null);
   const [legacyPathError, setLegacyPathError] = useState<string | null>(null);
   const [recreating, setRecreating] = useState(false);
+  const [openingSource, setOpeningSource] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && id) fetchPath();
@@ -311,6 +312,59 @@ const LearningPathDetail = () => {
       toast.error("Failed to delete path");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleOpenSource = async (source: { id: string; title: string; type: string }) => {
+    setOpeningSource(source.id);
+    try {
+      if (source.type === "document") {
+        // Fetch document to get file_path
+        const { data: doc } = await supabase
+          .from("documents")
+          .select("file_path, extracted_content")
+          .eq("id", source.id)
+          .single();
+        
+        if (doc?.file_path) {
+          // Get signed URL for the file
+          const { data: urlData } = await supabase.storage
+            .from("documents")
+            .createSignedUrl(doc.file_path, 3600);
+          
+          if (urlData?.signedUrl) {
+            window.open(urlData.signedUrl, "_blank");
+          } else {
+            toast.error("Could not access document file");
+          }
+        } else {
+          toast("This document has no file attached", { description: doc?.extracted_content?.slice(0, 100) + "..." });
+        }
+      } else {
+        // Fetch insight to get source URL or content
+        const { data: insight } = await supabase
+          .from("insights")
+          .select("source, content")
+          .eq("id", source.id)
+          .single();
+        
+        if (insight?.source && (insight.source.startsWith("http") || insight.source.startsWith("www"))) {
+          // If source is a URL, open it
+          const url = insight.source.startsWith("http") ? insight.source : `https://${insight.source}`;
+          window.open(url, "_blank");
+        } else {
+          // Show content in a toast or navigate to insights
+          toast(source.title, { 
+            description: insight?.content?.slice(0, 200) + (insight?.content && insight.content.length > 200 ? "..." : ""),
+            duration: 10000
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error opening source:", error);
+      toast.error("Could not open source");
+    } finally {
+      setOpeningSource(null);
     }
   };
 
@@ -714,20 +768,25 @@ const LearningPathDetail = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Sources Used</CardTitle>
-              <CardDescription className="text-xs">Click any source to view it</CardDescription>
+              <CardDescription className="text-xs">Click any source to open it directly</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-1.5">
                 {(path.sources_used as { id: string; title: string; type: string }[]).map((source, i) => (
                   <button
                     key={source.id}
-                    onClick={() => navigate(source.type === 'document' ? `/documents?highlight=${source.id}` : `/insights?highlight=${source.id}`)}
-                    className="flex items-center gap-2 text-sm w-full text-left hover:bg-muted/50 p-2 -mx-2 rounded-lg transition-colors group"
+                    onClick={() => handleOpenSource(source)}
+                    disabled={openingSource === source.id}
+                    className="flex items-center gap-2 text-sm w-full text-left hover:bg-muted/50 p-2 -mx-2 rounded-lg transition-colors group disabled:opacity-50"
                   >
                     <span className="text-muted-foreground font-mono">[{i + 1}]</span>
                     <span className="flex-1 group-hover:text-primary transition-colors">{source.title}</span>
                     <Badge variant="outline" className="text-xs shrink-0">{source.type}</Badge>
-                    <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    {openingSource === source.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                    ) : (
+                      <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    )}
                   </button>
                 ))}
               </div>
