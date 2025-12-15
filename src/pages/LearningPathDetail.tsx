@@ -317,17 +317,22 @@ const LearningPathDetail = () => {
 
   const handleOpenSource = async (source: { id: string; title: string; type: string }) => {
     setOpeningSource(source.id);
+    
+    // Strip prefix if exists (e.g., "insight-uuid" or "document-uuid" -> "uuid")
+    const cleanId = source.id.replace(/^(insight|document)-/, '');
+    
     try {
-      if (source.type === "document") {
-        // Fetch document to get file_path
+      // Check if type contains "document" or if ID has document prefix
+      const isDocument = source.type === "document" || source.id.startsWith("document-");
+      
+      if (isDocument) {
         const { data: doc } = await supabase
           .from("documents")
           .select("file_path, extracted_content")
-          .eq("id", source.id)
+          .eq("id", cleanId)
           .single();
         
         if (doc?.file_path) {
-          // Get signed URL for the file
           const { data: urlData } = await supabase.storage
             .from("documents")
             .createSignedUrl(doc.file_path, 3600);
@@ -338,24 +343,32 @@ const LearningPathDetail = () => {
             toast.error("Could not access document file");
           }
         } else {
-          toast("This document has no file attached", { description: doc?.extracted_content?.slice(0, 100) + "..." });
+          toast(source.title, { description: doc?.extracted_content?.slice(0, 200) + "..." });
         }
       } else {
-        // Fetch insight to get source URL or content
+        // It's an insight - check source type for YouTube etc.
         const { data: insight } = await supabase
           .from("insights")
           .select("source, content")
-          .eq("id", source.id)
+          .eq("id", cleanId)
           .single();
         
-        if (insight?.source && (insight.source.startsWith("http") || insight.source.startsWith("www"))) {
-          // If source is a URL, open it
+        if (!insight) {
+          toast(source.title, { description: "Source not found in database" });
+          return;
+        }
+        
+        // Check if it's a YouTube source (type contains "youtube:")
+        if (source.type.startsWith("youtube:")) {
+          const videoId = source.type.replace("youtube:", "");
+          window.open(`https://youtube.com/watch?v=${videoId}`, "_blank");
+        } else if (insight.source && (insight.source.startsWith("http") || insight.source.startsWith("www"))) {
           const url = insight.source.startsWith("http") ? insight.source : `https://${insight.source}`;
           window.open(url, "_blank");
         } else {
-          // Show content in a toast or navigate to insights
+          // Show content in a toast
           toast(source.title, { 
-            description: insight?.content?.slice(0, 200) + (insight?.content && insight.content.length > 200 ? "..." : ""),
+            description: insight.content?.slice(0, 200) + (insight.content && insight.content.length > 200 ? "..." : ""),
             duration: 10000
           });
         }
