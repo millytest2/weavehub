@@ -57,6 +57,7 @@ const LearningPathDetail = () => {
   const [deleting, setDeleting] = useState(false);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completedInsightId, setCompletedInsightId] = useState<string | null>(null);
+  const [legacyPathError, setLegacyPathError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && id) fetchPath();
@@ -197,26 +198,48 @@ const LearningPathDetail = () => {
   const handleRegenerate = async () => {
     if (!path) return;
     setRegenerating(true);
+    setLegacyPathError(null);
+
     try {
       const { data, error } = await supabase.functions.invoke("learning-path-generator", {
-        body: { 
-          topic: path.topic_name || path.title, 
+        body: {
+          topic: path.topic_name || path.title,
           durationDays: path.duration_days || 30,
           regenerate: true,
-          pathId: path.id
+          pathId: path.id,
         },
       });
 
-      if (error) throw error;
-      if (data.error) {
-        toast.error(data.message || data.error);
+      // supabase.functions.invoke returns `error` for non-2xx
+      if (error) {
+        const ctx: any = (error as any)?.context;
+        const raw = typeof ctx === "string" ? ctx : (typeof ctx?.body === "string" ? ctx.body : null);
+        const parsed = raw ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : null;
+
+        const code = parsed?.error || (error as any)?.name;
+        const message = parsed?.message || error.message || "Failed to regenerate path";
+
+        if (code === "legacy_path") {
+          setLegacyPathError(message);
+          toast.error(message);
+          return;
+        }
+
+        toast.error(message);
+        return;
+      }
+
+      if (data?.error) {
+        const message = data.message || data.error;
+        if (data.error === "legacy_path") setLegacyPathError(message);
+        toast.error(message);
         return;
       }
 
       toast.success("Path regenerated with fresh structure");
-      fetchPath(); // Refresh the data
-    } catch (error) {
-      console.error("Error regenerating path:", error);
+      fetchPath();
+    } catch (err) {
+      console.error("Error regenerating path:", err);
       toast.error("Failed to regenerate path");
     } finally {
       setRegenerating(false);
@@ -284,16 +307,20 @@ const LearningPathDetail = () => {
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={toggleStatus}>
                 {path.status === "active" ? (
-                  <><Pause className="w-4 h-4 mr-1" /> Pause</>
+                  <>
+                    <Pause className="w-4 h-4 mr-1" /> Pause
+                  </>
                 ) : (
-                  <><Play className="w-4 h-4 mr-1" /> Resume</>
+                  <>
+                    <Play className="w-4 h-4 mr-1" /> Resume
+                  </>
                 )}
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleRegenerate}
-                disabled={regenerating}
+                disabled={regenerating || !!legacyPathError}
               >
                 {regenerating ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-1" />
@@ -327,6 +354,17 @@ const LearningPathDetail = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {legacyPathError && (
+              <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+                {legacyPathError}
+                <div className="mt-2">
+                  <Button size="sm" variant="secondary" onClick={() => navigate("/learning-paths")}>
+                    Create a new path
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
@@ -339,7 +377,7 @@ const LearningPathDetail = () => {
                 </span>
               )}
             </div>
-            
+
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Progress</span>
@@ -498,102 +536,120 @@ const LearningPathDetail = () => {
         {/* Weekly Breakdown */}
         <div className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Full Schedule</h2>
-          
-          {weeks.map((week, weekIndex) => {
-            const weekNum = weekIndex + 1;
-            const weekCompleted = week.every(d => d.learning_completed && d.application_completed);
-            const isOpen = openWeeks.includes(weekNum);
-            
-            return (
-              <Collapsible 
-                key={weekNum} 
-                open={isOpen}
-                onOpenChange={(open) => {
-                  setOpenWeeks(prev => open ? [...prev, weekNum] : prev.filter(w => w !== weekNum));
-                }}
-              >
-                <CollapsibleTrigger asChild>
-                  <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <CardHeader className="py-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {weekCompleted ? (
-                            <CheckCircle2 className="w-4 h-4 text-primary" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-muted-foreground" />
-                          )}
-                          <span className="font-medium">Week {weekNum}</span>
-                          <span className="text-sm text-muted-foreground">
-                            Days {week[0].day_number}-{week[week.length - 1].day_number}
-                          </span>
-                        </div>
-                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                      </div>
-                    </CardHeader>
-                  </Card>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="pl-4 border-l-2 border-muted ml-4 mt-2 space-y-2">
-                    {week.map(day => (
-                      <div 
-                        key={day.id} 
-                        className={`p-3 rounded-lg ${
-                          day.learning_completed && day.application_completed 
-                            ? "bg-muted/50" 
-                            : "bg-card border"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Day {day.day_number}</span>
-                          {day.is_rest_day && (
-                            <Badge variant="outline" className="text-xs"><Coffee className="w-3 h-3 mr-1" /> Rest</Badge>
-                          )}
-                          {day.completed_at && (
-                            <CheckCircle2 className="w-4 h-4 text-primary" />
-                          )}
-                        </div>
-                        
-                        {!day.is_rest_day && (
-                          <div className="space-y-1.5 text-sm">
-                            <div className="flex items-start gap-2">
-                              <button
-                                onClick={() => markComplete(day.id, "learning_completed", !day.learning_completed)}
-                                disabled={updating === day.id}
-                              >
-                                {day.learning_completed ? (
-                                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
-                                ) : (
-                                  <Circle className="w-4 h-4 text-muted-foreground mt-0.5" />
-                                )}
-                              </button>
-                              <span className={day.learning_completed ? "text-muted-foreground line-through" : ""}>
-                                {day.learning_task}
-                              </span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <button
-                                onClick={() => markComplete(day.id, "application_completed", !day.application_completed)}
-                                disabled={updating === day.id}
-                              >
-                                {day.application_completed ? (
-                                  <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
-                                ) : (
-                                  <Circle className="w-4 h-4 text-muted-foreground mt-0.5" />
-                                )}
-                              </button>
-                              <span className={day.application_completed ? "text-muted-foreground line-through" : ""}>
-                                {day.application_task}
-                              </span>
-                            </div>
+
+          {dailyProgress.length === 0 ? (
+            <Card>
+              <CardContent className="py-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  This path doesnt have a generated schedule yet.
+                </p>
+                <div className="mt-3 flex justify-center gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => navigate("/learning-paths")}>
+                    Create a new path
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleRegenerate} disabled={regenerating || !!legacyPathError}>
+                    {regenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Try regenerate"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            weeks.map((week, weekIndex) => {
+              const weekNum = weekIndex + 1;
+              const weekCompleted = week.every(d => d.learning_completed && d.application_completed);
+              const isOpen = openWeeks.includes(weekNum);
+
+              return (
+                <Collapsible
+                  key={weekNum}
+                  open={isOpen}
+                  onOpenChange={(open) => {
+                    setOpenWeeks(prev => open ? [...prev, weekNum] : prev.filter(w => w !== weekNum));
+                  }}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <CardHeader className="py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {weekCompleted ? (
+                              <CheckCircle2 className="w-4 h-4 text-primary" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <span className="font-medium">Week {weekNum}</span>
+                            <span className="text-sm text-muted-foreground">
+                              Days {week[0].day_number}-{week[week.length - 1].day_number}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
+                          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="pl-4 border-l-2 border-muted ml-4 mt-2 space-y-2">
+                      {week.map(day => (
+                        <div
+                          key={day.id}
+                          className={`p-3 rounded-lg ${
+                            day.learning_completed && day.application_completed
+                              ? "bg-muted/50"
+                              : "bg-card border"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">Day {day.day_number}</span>
+                            {day.is_rest_day && (
+                              <Badge variant="outline" className="text-xs"><Coffee className="w-3 h-3 mr-1" /> Rest</Badge>
+                            )}
+                            {day.completed_at && (
+                              <CheckCircle2 className="w-4 h-4 text-primary" />
+                            )}
+                          </div>
+
+                          {!day.is_rest_day && (
+                            <div className="space-y-1.5 text-sm">
+                              <div className="flex items-start gap-2">
+                                <button
+                                  onClick={() => markComplete(day.id, "learning_completed", !day.learning_completed)}
+                                  disabled={updating === day.id}
+                                >
+                                  {day.learning_completed ? (
+                                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
+                                  ) : (
+                                    <Circle className="w-4 h-4 text-muted-foreground mt-0.5" />
+                                  )}
+                                </button>
+                                <span className={day.learning_completed ? "text-muted-foreground line-through" : ""}>
+                                  {day.learning_task}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <button
+                                  onClick={() => markComplete(day.id, "application_completed", !day.application_completed)}
+                                  disabled={updating === day.id}
+                                >
+                                  {day.application_completed ? (
+                                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
+                                  ) : (
+                                    <Circle className="w-4 h-4 text-muted-foreground mt-0.5" />
+                                  )}
+                                </button>
+                                <span className={day.application_completed ? "text-muted-foreground line-through" : ""}>
+                                  {day.application_task}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })
+          )}
         </div>
 
         {/* Sources Used */}
