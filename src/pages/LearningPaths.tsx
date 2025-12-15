@@ -60,17 +60,32 @@ const LearningPaths = () => {
     
     setCheckingSource(true);
     try {
+      // Extract keywords from topic for broader matching (same logic as learning-path-generator)
+      const topicWords = topic.toLowerCase()
+        .replace(/[&\-\/\\]/g, ' ')
+        .split(/\s+/)
+        .filter((w: string) => w.length > 3 && !['with', 'that', 'this', 'from', 'about', 'your', 'the', 'and', 'for'].includes(w));
+      
+      // Build OR conditions for each keyword
+      const keywordConditions = topicWords.slice(0, 4).map((kw: string) => 
+        `title.ilike.%${kw}%,content.ilike.%${kw}%`
+      ).join(',');
+      
+      const docKeywordConditions = topicWords.slice(0, 4).map((kw: string) => 
+        `title.ilike.%${kw}%,extracted_content.ilike.%${kw}%`
+      ).join(',');
+
       const [insightsResult, documentsResult] = await Promise.all([
         supabase
           .from("insights")
           .select("id", { count: "exact" })
           .eq("user_id", user?.id)
-          .or(`title.ilike.%${topic}%,content.ilike.%${topic}%`),
+          .or(keywordConditions || `title.ilike.%${topic}%,content.ilike.%${topic}%`),
         supabase
           .from("documents")
           .select("id", { count: "exact" })
           .eq("user_id", user?.id)
-          .or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`),
+          .or(docKeywordConditions || `title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`),
       ]);
       const count = (insightsResult.count || 0) + (documentsResult.count || 0);
       setSourceCheckResult({ count, sufficient: count >= 5 });
@@ -335,19 +350,32 @@ const LearningPaths = () => {
           onOpenChange={setShowCareerRedirect}
           onContinue={() => {
             setShowCareerRedirect(false);
-            // Proceed with source check after dismissing
+            // Proceed with source check after dismissing - use keyword extraction
             setCheckingSource(true);
+            const topicWords = topic.toLowerCase()
+              .replace(/[&\-\/\\]/g, ' ')
+              .split(/\s+/)
+              .filter((w: string) => w.length > 3 && !['with', 'that', 'this', 'from', 'about', 'your', 'the', 'and', 'for'].includes(w));
+            
+            const keywordConditions = topicWords.slice(0, 4).map((kw: string) => 
+              `title.ilike.%${kw}%,content.ilike.%${kw}%`
+            ).join(',');
+            
+            const docKeywordConditions = topicWords.slice(0, 4).map((kw: string) => 
+              `title.ilike.%${kw}%,extracted_content.ilike.%${kw}%`
+            ).join(',');
+
             Promise.all([
               supabase
                 .from("insights")
                 .select("id", { count: "exact" })
                 .eq("user_id", user?.id)
-                .or(`title.ilike.%${topic}%,content.ilike.%${topic}%`),
+                .or(keywordConditions || `title.ilike.%${topic}%,content.ilike.%${topic}%`),
               supabase
                 .from("documents")
                 .select("id", { count: "exact" })
                 .eq("user_id", user?.id)
-                .or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`),
+                .or(docKeywordConditions || `title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`),
             ]).then(([insightsResult, documentsResult]) => {
               const count = (insightsResult.count || 0) + (documentsResult.count || 0);
               setSourceCheckResult({ count, sufficient: count >= 5 });
