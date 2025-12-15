@@ -470,6 +470,33 @@ serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
+    // Parse timezone from request body
+    let timezone = 'UTC';
+    try {
+      const body = await req.json();
+      timezone = body.timezone || 'UTC';
+    } catch {
+      // No body or invalid JSON, use default
+    }
+
+    // Generate date context for time-aware experiments
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      timeZone: timezone,
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    };
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(now);
+    const dayOfWeek = parts.find(p => p.type === 'weekday')?.value || 'Monday';
+    const month = parts.find(p => p.type === 'month')?.value || 'Jan';
+    const day = parts.find(p => p.type === 'day')?.value || '1';
+    const year = parts.find(p => p.type === 'year')?.value || '2025';
+    const dateContext = `TODAY: ${dayOfWeek}, ${month} ${day}, ${year}`;
+    console.log(`Date context: ${dateContext}`);
+
     // Check rate limit (20 requests/hour)
     const rateCheck = await checkRateLimit(user.id, 'experiment-generator', 20, 60);
     if (!rateCheck.allowed) {
@@ -535,11 +562,21 @@ ${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
     // NEW SYSTEM PROMPT - ACTION-ORIENTED, NO THERAPY-SPEAK
     const systemPrompt = `You design CONCRETE, ACTION-BASED experiments. Not therapy homework. Not abstract concepts. REAL constraints that force REAL outputs.
 
+${dateContext}
+
 ${context}
 
 PILLAR: ${forcedPillar}
 ${sprintInstructions}
 ${avoidList}
+
+CRITICAL DATE AWARENESS:
+- Today is ${dayOfWeek}. Use CORRECT day names for deadlines.
+- If today is Monday, a 48h experiment ends Wednesday night.
+- If today is Monday, a 3-day experiment covers Mon/Tue/Wed.
+- If today is Friday, a 3-day experiment covers Fri/Sat/Sun.
+- NEVER reference days that have already passed this week.
+- Steps must use actual correct day names based on today being ${dayOfWeek}.
 
 ═══════════════════════════════════════════════════════════════
 REQUIRED FORMAT - EVERY EXPERIMENT MUST FOLLOW THIS EXACTLY:

@@ -111,7 +111,9 @@ const Experiments = () => {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("experiment-generator", {
-        body: {},
+        body: { 
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone 
+        },
       });
 
       if (error) throw error;
