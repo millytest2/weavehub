@@ -82,61 +82,28 @@ const LearningPaths = () => {
 
   const generateTopicSuggestions = async () => {
     setLoadingSuggestions(true);
+    setSuggestedTopics([]);
     try {
-      // Fetch user's recent insights and documents to find patterns
-      const [insightsResult, documentsResult] = await Promise.all([
-        supabase
-          .from("insights")
-          .select("title, content")
-          .eq("user_id", user?.id)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("documents")
-          .select("title, summary")
-          .eq("user_id", user?.id)
-          .order("created_at", { ascending: false })
-          .limit(10),
-      ]);
+      const { data, error } = await supabase.functions.invoke("path-suggester", {
+        body: {},
+      });
 
-      const insights = insightsResult.data || [];
-      const documents = documentsResult.data || [];
-
-      if (insights.length === 0 && documents.length === 0) {
-        toast.info("Save some content first to get topic suggestions");
+      if (error) {
+        console.error("Error generating suggestions:", error);
+        toast.error("Failed to analyze your content");
         return;
       }
 
-      // Extract common themes from titles
-      const allTitles = [
-        ...insights.map(i => i.title),
-        ...documents.map(d => d.title)
-      ].filter(Boolean);
-
-      // Simple frequency analysis of words (excluding common words)
-      const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'how', 'what', 'why', 'when', 'where', 'who', 'which', 'that', 'this', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our', 'their']);
-      
-      const wordFreq: Record<string, number> = {};
-      allTitles.forEach(title => {
-        const words = title.toLowerCase().split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
-        words.forEach(word => {
-          wordFreq[word] = (wordFreq[word] || 0) + 1;
-        });
-      });
-
-      // Get top 3 topics
-      const topTopics = Object.entries(wordFreq)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([word]) => word.charAt(0).toUpperCase() + word.slice(1));
-
-      if (topTopics.length > 0) {
-        setSuggestedTopics(topTopics);
+      if (data?.suggestions && data.suggestions.length > 0) {
+        setSuggestedTopics(data.suggestions);
+      } else if (data?.message) {
+        toast.info(data.message);
       } else {
-        toast.info("Couldn't find clear patterns yet. Save more content.");
+        toast.info("Save more content to get topic suggestions");
       }
     } catch (error) {
       console.error("Error generating suggestions:", error);
+      toast.error("Failed to analyze your content");
     } finally {
       setLoadingSuggestions(false);
     }
