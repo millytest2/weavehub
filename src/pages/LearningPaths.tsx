@@ -83,6 +83,7 @@ const LearningPaths = () => {
   const generateTopicSuggestions = async () => {
     setLoadingSuggestions(true);
     setSuggestedTopics([]);
+    setIsCreateOpen(true); // Open dialog immediately
     try {
       const { data, error } = await supabase.functions.invoke("path-suggester", {
         body: {},
@@ -97,7 +98,6 @@ const LearningPaths = () => {
       if (data?.suggestionsWithCounts && data.suggestionsWithCounts.length > 0) {
         setSuggestedTopics(data.suggestionsWithCounts);
       } else if (data?.suggestions && data.suggestions.length > 0) {
-        // Fallback for old format
         setSuggestedTopics(data.suggestions.map((s: string) => ({ topic: s, sourceCount: 5 })));
       } else if (data?.message) {
         toast.info(data.message);
