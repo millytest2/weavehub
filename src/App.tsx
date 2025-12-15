@@ -14,6 +14,8 @@ import Documents from "./pages/Documents";
 import Experiments from "./pages/Experiments";
 import DailyFocus from "./pages/DailyFocus";
 import IdentitySeed from "./pages/IdentitySeed";
+import LearningPaths from "./pages/LearningPaths";
+import LearningPathDetail from "./pages/LearningPathDetail";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Landing from "./pages/Landing";
@@ -108,6 +110,26 @@ const App = () => (
                   <MainLayout>
                     <IdentitySeed />
               </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/learning-paths"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <LearningPaths />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/learning-paths/:id"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <LearningPathDetail />
+                  </MainLayout>
                 </ProtectedRoute>
               }
             />
