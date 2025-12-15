@@ -111,7 +111,7 @@ serve(async (req) => {
         .eq("user_id", user.id)
         .single();
 
-      if (pathData?.sources_used && Array.isArray(pathData.sources_used)) {
+      if (pathData?.sources_used && Array.isArray(pathData.sources_used) && pathData.sources_used.length > 0) {
         existingPath = pathData;
         console.log(`Regenerating path with ${pathData.sources_used.length} existing sources`);
         
@@ -150,6 +150,16 @@ serve(async (req) => {
             });
           });
         }
+      } else {
+        // Legacy path without sources - cannot regenerate
+        console.log(`Legacy path ${pathId} has no sources_used - cannot regenerate`);
+        return new Response(JSON.stringify({ 
+          error: "legacy_path",
+          message: "This is a legacy learning path without saved sources. Please delete it and create a new path with your saved content.",
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Delete old progress entries
@@ -157,8 +167,8 @@ serve(async (req) => {
       console.log(`Deleted old progress for path: ${pathId}`);
     }
 
-    // Only search for new sources if not regenerating or no existing sources found
-    if (sources.length === 0) {
+    // Only search for new sources if creating new path (not regenerating)
+    if (sources.length === 0 && !regenerate) {
       const [insightsResult, documentsResult] = await Promise.all([
         supabase
           .from("insights")
