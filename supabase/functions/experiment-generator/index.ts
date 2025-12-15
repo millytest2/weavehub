@@ -370,9 +370,9 @@ async function selectSprintType(
   const recentCompleted = context.recent_actions.filter((a: any) => a.completed).length;
   const recentPillars = context.pillar_history;
   
-  // HIGH MOMENTUM: 8+ completed actions recently → Blitz mode (raised threshold)
-  // Only trigger blitz occasionally, not every time user is active
-  if (recentCompleted >= 8 && Math.random() > 0.5) {
+  // HIGH MOMENTUM: 10+ completed actions recently → Blitz mode (very high threshold)
+  // Only trigger blitz 25% of the time for active users - prefer variety
+  if (recentCompleted >= 10 && Math.random() > 0.75) {
     console.log("High momentum detected - suggesting 48h Blitz");
     return { 
       type: "blitz_48h", 
