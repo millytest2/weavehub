@@ -567,9 +567,11 @@ DESCRIPTION FORMAT:
    GOOD: "No phone until 1pm" / "48h media blackout" / "Cold shower every morning"
    BAD: "use phone less" / "be more focused" / "limit distractions"
 
-3. CONCRETE DELIVERABLE (visible output at the end)
-   GOOD: "Ship landing page" / "Send 50 cold emails" / "Post 7 times"
-   BAD: "feel more productive" / "make progress" / "develop habit"
+3. PROCESS-BASED DELIVERABLE (actions you CONTROL, not outcomes you can't)
+   GOOD: "Ship landing page" / "Send 50 cold emails" / "Post 7 times" / "Complete 10 workouts"
+   BAD: "weigh 170lbs" / "gain 1000 followers" / "close 3 deals" / "feel more productive"
+   RULE: If the outcome depends on luck, other people, or biology - it's NOT a valid deliverable.
+   Deliverables must be 100% within user's control. Track ACTIONS completed, not RESULTS achieved.
 
 4. SPECIFIC DEADLINE
    GOOD: "by Sunday night" / "before 10am each day" / "within 48 hours"
