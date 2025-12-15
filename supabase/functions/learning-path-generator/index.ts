@@ -99,52 +99,104 @@ serve(async (req) => {
 
     console.log(`Generating ${durationDays}-day learning path for topic: ${topic}${regenerate ? ' (regenerating)' : ''}`);
 
-    // If regenerating, delete old progress entries
+    let sources: Source[] = [];
+    let existingPath: any = null;
+
+    // If regenerating, fetch existing path and reuse its sources
     if (regenerate && pathId) {
+      const { data: pathData } = await supabase
+        .from("learning_paths")
+        .select("sources_used, topic_name")
+        .eq("id", pathId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (pathData?.sources_used && Array.isArray(pathData.sources_used)) {
+        existingPath = pathData;
+        console.log(`Regenerating path with ${pathData.sources_used.length} existing sources`);
+        
+        // Fetch full content for existing sources
+        const sourceIds = pathData.sources_used.map((s: any) => s.id);
+        const insightIds = sourceIds.filter((id: string) => id.startsWith('insight-')).map((id: string) => id.replace('insight-', ''));
+        const docIds = sourceIds.filter((id: string) => id.startsWith('doc-')).map((id: string) => id.replace('doc-', ''));
+
+        const [insightsResult, documentsResult] = await Promise.all([
+          insightIds.length > 0 
+            ? supabase.from("insights").select("id, title, content, source").eq("user_id", user.id).in("id", insightIds)
+            : Promise.resolve({ data: [] }),
+          docIds.length > 0
+            ? supabase.from("documents").select("id, title, extracted_content, file_type").eq("user_id", user.id).in("id", docIds)
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        if (insightsResult.data) {
+          insightsResult.data.forEach((i: any) => {
+            sources.push({
+              id: `insight-${i.id}`,
+              title: i.title,
+              content: i.content?.substring(0, 800) || "",
+              type: i.source || "insight",
+            });
+          });
+        }
+
+        if (documentsResult.data) {
+          documentsResult.data.forEach((d: any) => {
+            sources.push({
+              id: `doc-${d.id}`,
+              title: d.title,
+              content: d.extracted_content?.substring(0, 800) || "",
+              type: d.file_type || "document",
+            });
+          });
+        }
+      }
+
+      // Delete old progress entries
       await supabase.from("path_daily_progress").delete().eq("path_id", pathId);
       console.log(`Deleted old progress for path: ${pathId}`);
     }
 
-    // Search for relevant sources (insights + documents)
-    const [insightsResult, documentsResult] = await Promise.all([
-      supabase
-        .from("insights")
-        .select("id, title, content, source")
-        .eq("user_id", user.id)
-        .or(`title.ilike.%${topic}%,content.ilike.%${topic}%`)
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabase
-        .from("documents")
-        .select("id, title, extracted_content, file_type")
-        .eq("user_id", user.id)
-        .or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`)
-        .order("created_at", { ascending: false })
-        .limit(10),
-    ]);
+    // Only search for new sources if not regenerating or no existing sources found
+    if (sources.length === 0) {
+      const [insightsResult, documentsResult] = await Promise.all([
+        supabase
+          .from("insights")
+          .select("id, title, content, source")
+          .eq("user_id", user.id)
+          .or(`title.ilike.%${topic}%,content.ilike.%${topic}%`)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("documents")
+          .select("id, title, extracted_content, file_type")
+          .eq("user_id", user.id)
+          .or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`)
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
 
-    const sources: Source[] = [];
-    
-    if (insightsResult.data) {
-      insightsResult.data.forEach((i, idx) => {
-        sources.push({
-          id: `insight-${i.id}`,
-          title: i.title,
-          content: i.content?.substring(0, 800) || "",
-          type: i.source || "insight",
+      if (insightsResult.data) {
+        insightsResult.data.forEach((i: any) => {
+          sources.push({
+            id: `insight-${i.id}`,
+            title: i.title,
+            content: i.content?.substring(0, 800) || "",
+            type: i.source || "insight",
+          });
         });
-      });
-    }
+      }
 
-    if (documentsResult.data) {
-      documentsResult.data.forEach((d, idx) => {
-        sources.push({
-          id: `doc-${d.id}`,
-          title: d.title,
-          content: d.extracted_content?.substring(0, 800) || "",
-          type: d.file_type || "document",
+      if (documentsResult.data) {
+        documentsResult.data.forEach((d: any) => {
+          sources.push({
+            id: `doc-${d.id}`,
+            title: d.title,
+            content: d.extracted_content?.substring(0, 800) || "",
+            type: d.file_type || "document",
+          });
         });
-      });
+      }
     }
 
     console.log(`Found ${sources.length} sources for topic: ${topic}`);
