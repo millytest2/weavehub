@@ -55,6 +55,8 @@ export interface CompactContext {
   pillar_history: string[];
   topics: any[];
   connections: any[];
+  active_projects: string[];  // Extracted active projects/builds from user's data
+  last_project_focus: string | null;  // Last project that received attention
 }
 
 export interface DocumentContext {
@@ -222,6 +224,56 @@ export async function fetchUserContext(
     .slice(0, 10);
 
   const allExperiments = experiments.data || [];
+  
+  // Extract active projects from topics, experiments, and recent actions
+  // Projects are things the user is actively building/working on
+  const projectKeywords = ['upath', 'weave', 'app', 'build', 'ship', 'launch', 'project', 'product', 'startup', 'business', 'site', 'platform'];
+  const topicNames = (topics.data || []).map((t: any) => t.name);
+  const experimentTitles = allExperiments.map((e: any) => e.title);
+  const recentActionTexts = (actionHistory.data || []).slice(0, 10).map((a: any) => a.action_text || '');
+  
+  // Combine all text to find project mentions
+  const allText = [
+    identitySeed.data?.content || '',
+    identitySeed.data?.weekly_focus || '',
+    ...topicNames,
+    ...experimentTitles,
+    ...recentActionTexts
+  ].join(' ').toLowerCase();
+  
+  // Extract unique project names (capitalized words that appear in context)
+  const activeProjects: string[] = [];
+  const commonProjects = ['UPath', 'Weave', 'LinkedIn', 'Twitter', 'YouTube', 'Instagram'];
+  
+  for (const proj of commonProjects) {
+    if (allText.includes(proj.toLowerCase())) {
+      activeProjects.push(proj);
+    }
+  }
+  
+  // Also extract from topics as potential projects
+  for (const topic of topicNames) {
+    if (topic && !activeProjects.some(p => p.toLowerCase() === topic.toLowerCase())) {
+      // Check if it looks like a project (short name, capitalized, or contains project keywords)
+      const topicLower = topic.toLowerCase();
+      if (projectKeywords.some(k => topicLower.includes(k)) || topic.length < 15) {
+        activeProjects.push(topic);
+      }
+    }
+  }
+  
+  // Determine last project focused on from recent actions
+  let lastProjectFocus: string | null = null;
+  for (const action of recentActionTexts) {
+    const actionLower = action.toLowerCase();
+    for (const proj of activeProjects) {
+      if (actionLower.includes(proj.toLowerCase())) {
+        lastProjectFocus = proj;
+        break;
+      }
+    }
+    if (lastProjectFocus) break;
+  }
 
   return {
     identity_seed: identitySeed.data?.content || null,
@@ -241,6 +293,8 @@ export async function fetchUserContext(
     pillar_history: pillarHistory,
     topics: topics.data || [],
     connections: connections.data || [],
+    active_projects: activeProjects.slice(0, 8),  // Cap at 8 projects
+    last_project_focus: lastProjectFocus,
   };
 }
 
@@ -425,6 +479,19 @@ export function formatContextForAI(context: CompactContext): string {
   // Pillar rotation context
   if (context.pillar_history.length > 0) {
     formatted += `RECENT PILLARS: ${context.pillar_history.slice(0, 5).join(' > ')}\n`;
+  }
+  
+  // PROJECT BALANCING - weave between all active projects, don't over-index on one
+  if (context.active_projects && context.active_projects.length > 0) {
+    formatted += `\nACTIVE PROJECTS/BUILDS: ${context.active_projects.join(', ')}\n`;
+    if (context.last_project_focus) {
+      // Tell AI to rotate to a different project
+      const otherProjects = context.active_projects.filter(p => p.toLowerCase() !== context.last_project_focus?.toLowerCase());
+      if (otherProjects.length > 0) {
+        formatted += `LAST FOCUS WAS: ${context.last_project_focus} - ROTATE TO: ${otherProjects.join(' or ')}\n`;
+      }
+    }
+    formatted += `BALANCE RULE: Weave between ALL projects, don't push one repeatedly. User has multiple builds - touch different ones.\n`;
   }
 
   // Recent completed actions for momentum
