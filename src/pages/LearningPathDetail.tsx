@@ -9,13 +9,37 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { 
-  ArrowLeft, Loader2, CheckCircle2, Circle, Play, Pause, 
-  ChevronDown, BookOpen, Target, Calendar, Coffee, RefreshCw, Trash2, Trophy, ExternalLink
+import {
+  ArrowLeft,
+  Loader2,
+  CheckCircle2,
+  Circle,
+  Play,
+  Pause,
+  ChevronDown,
+  BookOpen,
+  Target,
+  Calendar,
+  Coffee,
+  RefreshCw,
+  Trash2,
+  Trophy,
+  ExternalLink,
 } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Json } from "@/integrations/supabase/types";
 import { PathCompletionDialog } from "@/components/dashboard/PathCompletionDialog";
+import { parseFunctionInvokeError } from "@/lib/edgeFunctionError";
 
 interface DailyProgress {
   id: string;
@@ -87,110 +111,105 @@ const LearningPathDetail = () => {
 
     setPath(pathResult.data);
     setDailyProgress(progressResult.data || []);
-    
+
     // Open current week
     if (pathResult.data?.current_day) {
       const currentWeek = Math.ceil(pathResult.data.current_day / 7);
       setOpenWeeks([currentWeek]);
     }
-    
+
     setLoading(false);
   };
 
-  const markComplete = async (progressId: string, field: "learning_completed" | "application_completed", value: boolean) => {
+  const markComplete = async (
+    progressId: string,
+    field: "learning_completed" | "application_completed",
+    value: boolean
+  ) => {
     setUpdating(progressId);
-    
-    const dayProgress = dailyProgress.find(d => d.id === progressId);
+
+    const dayProgress = dailyProgress.find((d) => d.id === progressId);
     if (!dayProgress) return;
 
     const updates: Record<string, unknown> = { [field]: value };
-    
+
     // If both learning and application are now complete, mark day complete
     const otherField = field === "learning_completed" ? "application_completed" : "learning_completed";
     const otherValue = dayProgress[otherField];
-    
+
     if (value && otherValue) {
       updates.completed_at = new Date().toISOString();
     } else if (!value) {
       updates.completed_at = null;
     }
 
-    const { error } = await supabase
-      .from("path_daily_progress")
-      .update(updates)
-      .eq("id", progressId);
+    const { error } = await supabase.from("path_daily_progress").update(updates).eq("id", progressId);
 
     if (error) {
       console.error("Error updating progress:", error);
       toast.error("Failed to update");
     } else {
       // Update local state
-      setDailyProgress(prev => prev.map(d => 
-        d.id === progressId ? { ...d, ...updates } as DailyProgress : d
-      ));
+      setDailyProgress((prev) => prev.map((d) => (d.id === progressId ? ({ ...d, ...updates } as DailyProgress) : d)));
 
       // Check if we should advance current_day
       if (value && otherValue && path) {
-        const completedDays = dailyProgress.filter(d => 
-          d.id === progressId ? true : (d.learning_completed && d.application_completed)
-        ).length;
-        
+        const completedDays = dailyProgress.filter((d) => (d.id === progressId ? true : d.learning_completed && d.application_completed)).length;
+
         if (completedDays > (path.current_day || 0)) {
-          await supabase
-            .from("learning_paths")
-            .update({ current_day: completedDays })
-            .eq("id", path.id);
-          
-          setPath(prev => prev ? { ...prev, current_day: completedDays } : null);
+          await supabase.from("learning_paths").update({ current_day: completedDays }).eq("id", path.id);
+
+          setPath((prev) => (prev ? { ...prev, current_day: completedDays } : null));
         }
       }
     }
-    
+
     setUpdating(null);
   };
 
   const markRestDayComplete = async (progressId: string) => {
     setUpdating(progressId);
-    
+
     const { error } = await supabase
       .from("path_daily_progress")
-      .update({ 
-        learning_completed: true, 
+      .update({
+        learning_completed: true,
         application_completed: true,
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
       })
       .eq("id", progressId);
 
     if (error) {
       toast.error("Failed to update");
     } else {
-      setDailyProgress(prev => prev.map(d => 
-        d.id === progressId ? { 
-          ...d, 
-          learning_completed: true, 
-          application_completed: true,
-          completed_at: new Date().toISOString()
-        } : d
-      ));
+      setDailyProgress((prev) =>
+        prev.map((d) =>
+          d.id === progressId
+            ? {
+                ...d,
+                learning_completed: true,
+                application_completed: true,
+                completed_at: new Date().toISOString(),
+              }
+            : d
+        )
+      );
     }
-    
+
     setUpdating(null);
   };
 
   const toggleStatus = async () => {
     if (!path) return;
-    
+
     const newStatus = path.status === "active" ? "paused" : "active";
-    
-    const { error } = await supabase
-      .from("learning_paths")
-      .update({ status: newStatus })
-      .eq("id", path.id);
+
+    const { error } = await supabase.from("learning_paths").update({ status: newStatus }).eq("id", path.id);
 
     if (error) {
       toast.error("Failed to update status");
     } else {
-      setPath(prev => prev ? { ...prev, status: newStatus } : null);
+      setPath((prev) => (prev ? { ...prev, status: newStatus } : null));
       toast.success(newStatus === "paused" ? "Path paused" : "Path resumed");
     }
   };
@@ -210,21 +229,21 @@ const LearningPathDetail = () => {
         },
       });
 
-      // Handle errors - supabase.functions.invoke can return error for network issues
-      // or data with error field for 400 responses
+      // Non-2xx responses usually surface as `error` with `context.body` containing JSON.
       if (error) {
-        console.error("Regenerate error object:", error);
-        toast.error(error.message || "Failed to regenerate path");
+        const parsed = parseFunctionInvokeError(error);
+        if (parsed.code === "legacy_path") {
+          setLegacyPathError(parsed.message);
+        }
+        toast.error(parsed.message);
         return;
       }
 
-      // Check if the response data contains an error (400 responses)
-      if (data?.error) {
-        console.log("Regenerate returned error data:", data);
-        const message = data.message || data.error;
-        if (data.error === "legacy_path") {
-          setLegacyPathError(message);
-        }
+      // Some environments may still return an error payload in `data`.
+      if ((data as any)?.error) {
+        const code = (data as any).error as string | undefined;
+        const message = (data as any).message || code || "Failed to regenerate path";
+        if (code === "legacy_path") setLegacyPathError(message);
         toast.error(message);
         return;
       }
@@ -243,10 +262,7 @@ const LearningPathDetail = () => {
     if (!path) return;
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from("learning_paths")
-        .delete()
-        .eq("id", path.id);
+      const { error } = await supabase.from("learning_paths").delete().eq("id", path.id);
 
       if (error) throw error;
       toast.success("Path deleted");
@@ -271,7 +287,7 @@ const LearningPathDetail = () => {
 
   if (!path) return null;
 
-  const completedDays = dailyProgress.filter(d => d.learning_completed && d.application_completed).length;
+  const completedDays = dailyProgress.filter((d) => d.learning_completed && d.application_completed).length;
   const progress = path.duration_days ? Math.round((completedDays / path.duration_days) * 100) : 0;
   const isPathComplete = path.duration_days ? completedDays >= path.duration_days : false;
   const isAlreadyCodified = path.status === "completed" && path.completed_at;
@@ -282,7 +298,7 @@ const LearningPathDetail = () => {
     weeks.push(dailyProgress.slice(i, i + 7));
   }
 
-  const currentDay = dailyProgress.find(d => !d.learning_completed || !d.application_completed);
+  const currentDay = dailyProgress.find((d) => !d.learning_completed || !d.application_completed);
 
   return (
     <MainLayout>

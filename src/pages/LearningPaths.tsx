@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, BookOpen, Loader2, Play, Pause, CheckCircle2, Calendar, Target } from "lucide-react";
+import { parseFunctionInvokeError } from "@/lib/edgeFunctionError";
 
 const LearningPaths = () => {
   const { user } = useAuth();
@@ -48,8 +49,16 @@ const LearningPaths = () => {
     setCheckingSource(true);
     try {
       const [insightsResult, documentsResult] = await Promise.all([
-        supabase.from("insights").select("id", { count: "exact" }).eq("user_id", user?.id).or(`title.ilike.%${topic}%,content.ilike.%${topic}%`),
-        supabase.from("documents").select("id", { count: "exact" }).eq("user_id", user?.id).or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`),
+        supabase
+          .from("insights")
+          .select("id", { count: "exact" })
+          .eq("user_id", user?.id)
+          .or(`title.ilike.%${topic}%,content.ilike.%${topic}%`),
+        supabase
+          .from("documents")
+          .select("id", { count: "exact" })
+          .eq("user_id", user?.id)
+          .or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`),
       ]);
       const count = (insightsResult.count || 0) + (documentsResult.count || 0);
       setSourceCheckResult({ count, sufficient: count >= 5 });
@@ -66,30 +75,36 @@ const LearningPaths = () => {
       const { data, error } = await supabase.functions.invoke("learning-path-generator", {
         body: { topic: topic.trim(), durationDays: 30 },
       });
-      if (error) throw error;
-      
+
+      if (error) {
+        const parsed = parseFunctionInvokeError(error);
+        toast.error(parsed.message);
+        return;
+      }
+
       // Handle career topic redirect
-      if (data.error === "career_topic") {
-        toast.info(data.message, {
+      if ((data as any)?.error === "career_topic") {
+        toast.info((data as any).message, {
           action: {
             label: "Visit upath.ai",
-            onClick: () => window.open(data.redirect_url, "_blank"),
+            onClick: () => window.open((data as any).redirect_url, "_blank"),
           },
           duration: 8000,
         });
         return;
       }
-      
-      if (data.error) {
-        toast.error(data.message || data.error);
+
+      if ((data as any)?.error) {
+        toast.error((data as any).message || (data as any).error);
         return;
       }
+
       toast.success("Learning path created");
       setIsCreateOpen(false);
       setTopic("");
       setSourceCheckResult(null);
       fetchPaths();
-      if (data.path?.id) navigate(`/learning-paths/${data.path.id}`);
+      if ((data as any)?.path?.id) navigate(`/learning-paths/${(data as any).path.id}`);
     } catch (error) {
       console.error("Error creating path:", error);
       toast.error("Failed to create learning path");
@@ -105,10 +120,26 @@ const LearningPaths = () => {
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
-      case "active": return <Badge variant="default" className="bg-primary/20 text-primary border-0"><Play className="w-3 h-3 mr-1" /> Active</Badge>;
-      case "paused": return <Badge variant="secondary"><Pause className="w-3 h-3 mr-1" /> Paused</Badge>;
-      case "completed": return <Badge variant="outline" className="bg-green-500/20 text-green-600 border-0"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
+      case "active":
+        return (
+          <Badge variant="default" className="bg-primary/20 text-primary border-0">
+            <Play className="w-3 h-3 mr-1" /> Active
+          </Badge>
+        );
+      case "paused":
+        return (
+          <Badge variant="secondary">
+            <Pause className="w-3 h-3 mr-1" /> Paused
+          </Badge>
+        );
+      case "completed":
+        return (
+          <Badge variant="outline" className="bg-green-500/20 text-green-600 border-0">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Completed
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
