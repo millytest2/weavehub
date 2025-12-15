@@ -11,10 +11,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import { 
   ArrowLeft, Loader2, CheckCircle2, Circle, Play, Pause, 
-  ChevronDown, BookOpen, Target, Calendar, Coffee, RefreshCw, Trash2
+  ChevronDown, BookOpen, Target, Calendar, Coffee, RefreshCw, Trash2, Trophy, ExternalLink
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Json } from "@/integrations/supabase/types";
+import { PathCompletionDialog } from "@/components/dashboard/PathCompletionDialog";
 
 interface DailyProgress {
   id: string;
@@ -54,6 +55,8 @@ const LearningPathDetail = () => {
   const [openWeeks, setOpenWeeks] = useState<number[]>([1]);
   const [regenerating, setRegenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [completedInsightId, setCompletedInsightId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && id) fetchPath();
@@ -254,6 +257,8 @@ const LearningPathDetail = () => {
 
   const completedDays = dailyProgress.filter(d => d.learning_completed && d.application_completed).length;
   const progress = path.duration_days ? Math.round((completedDays / path.duration_days) * 100) : 0;
+  const isPathComplete = path.duration_days ? completedDays >= path.duration_days : false;
+  const isAlreadyCodified = path.status === "completed" && path.completed_at;
 
   // Group by weeks
   const weeks: DailyProgress[][] = [];
@@ -354,6 +359,63 @@ const LearningPathDetail = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Path Complete - Celebration Card */}
+        {isPathComplete && !isAlreadyCodified && (
+          <Card className="border-primary bg-primary/5">
+            <CardContent className="py-6 text-center">
+              <Trophy className="w-10 h-10 mx-auto text-primary mb-3" />
+              <p className="text-lg font-semibold mb-1">You completed {path.topic_name || path.title}!</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {path.duration_days} days of focused learning. Now lock in what you learned.
+              </p>
+              <Button onClick={() => setCompletionDialogOpen(true)}>
+                Codify Your Learnings
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Already Codified Badge */}
+        {isAlreadyCodified && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-primary" />
+                <div>
+                  <p className="font-medium">Path Completed</p>
+                  <p className="text-sm text-muted-foreground">Learnings codified and saved</p>
+                </div>
+              </div>
+              {completedInsightId && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/insights`)}
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  View Insight
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Completion Dialog */}
+        <PathCompletionDialog
+          open={completionDialogOpen}
+          onOpenChange={setCompletionDialogOpen}
+          pathId={path.id}
+          topicName={path.topic_name || path.title}
+          durationDays={path.duration_days || 30}
+          subTopics={(path.sub_topics as string[]) || []}
+          finalDeliverable={path.final_deliverable}
+          sourcesUsed={(path.sources_used as { id: string; title: string; type: string }[]) || []}
+          onComplete={(insightId) => {
+            setCompletedInsightId(insightId);
+            setPath(prev => prev ? { ...prev, status: "completed", completed_at: new Date().toISOString() } : null);
+          }}
+        />
 
         {/* Today's Tasks */}
         {currentDay && !currentDay.is_rest_day && (
