@@ -169,22 +169,41 @@ serve(async (req) => {
 
     // Only search for new sources if creating new path (not regenerating)
     if (sources.length === 0 && !regenerate) {
+      // Extract keywords from topic for broader matching
+      const topicWords = topic.toLowerCase()
+        .replace(/[&\-\/\\]/g, ' ')
+        .split(/\s+/)
+        .filter((w: string) => w.length > 3 && !['with', 'that', 'this', 'from', 'about', 'your', 'the', 'and', 'for'].includes(w));
+      
+      console.log(`Searching with keywords: ${topicWords.join(', ')}`);
+      
+      // Build OR conditions for each keyword
+      const keywordConditions = topicWords.slice(0, 4).map((kw: string) => 
+        `title.ilike.%${kw}%,content.ilike.%${kw}%`
+      ).join(',');
+      
+      const docKeywordConditions = topicWords.slice(0, 4).map((kw: string) => 
+        `title.ilike.%${kw}%,extracted_content.ilike.%${kw}%`
+      ).join(',');
+
       const [insightsResult, documentsResult] = await Promise.all([
         supabase
           .from("insights")
           .select("id, title, content, source")
           .eq("user_id", user.id)
-          .or(`title.ilike.%${topic}%,content.ilike.%${topic}%`)
+          .or(keywordConditions || `title.ilike.%${topic}%,content.ilike.%${topic}%`)
           .order("created_at", { ascending: false })
-          .limit(20),
+          .limit(30),
         supabase
           .from("documents")
           .select("id, title, extracted_content, file_type")
           .eq("user_id", user.id)
-          .or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`)
+          .or(docKeywordConditions || `title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`)
           .order("created_at", { ascending: false })
-          .limit(10),
+          .limit(15),
       ]);
+
+      console.log(`Found ${insightsResult.data?.length || 0} insights, ${documentsResult.data?.length || 0} documents`);
 
       if (insightsResult.data) {
         insightsResult.data.forEach((i: any) => {
