@@ -192,18 +192,22 @@ const LearningPaths = () => {
 
   return (
     <>
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 px-1 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">Learning Paths</h1>
-            <p className="text-muted-foreground text-sm">30-day structured learning from your saved sources</p>
+            <h1 className="text-xl sm:text-2xl font-semibold">Learning Paths</h1>
+            <p className="text-muted-foreground text-xs sm:text-sm">30-day structured learning from your saved sources</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={generateTopicSuggestions} disabled={loadingSuggestions}>
-              {loadingSuggestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-              {loadingSuggestions ? "" : "Suggest"}
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={generateTopicSuggestions} disabled={loadingSuggestions}>
+              {loadingSuggestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 sm:mr-2" />}
+              <span className="hidden sm:inline">{loadingSuggestions ? "" : "Suggest"}</span>
             </Button>
-            <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> Start Path</Button>
+            <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setIsCreateOpen(true)}>
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Start Path</span>
+              <span className="sm:hidden">New</span>
+            </Button>
           </div>
         </div>
 
@@ -240,9 +244,9 @@ const LearningPaths = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> Day {path.current_day} of {path.duration_days}</span>
-                          {path.final_deliverable && <span className="flex items-center gap-1"><Target className="w-4 h-4" /> {path.final_deliverable}</span>}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Day {path.current_day} of {path.duration_days}</span>
+                          {path.final_deliverable && <span className="flex items-center gap-1 line-clamp-1"><Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> {path.final_deliverable}</span>}
                         </div>
                         <Progress value={getProgress(path)} className="h-2" />
                         {path.sub_topics && Array.isArray(path.sub_topics) && path.sub_topics.length > 0 && (
