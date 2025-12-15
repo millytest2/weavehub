@@ -11,8 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, BookOpen, Loader2, Play, Pause, CheckCircle2, Calendar, Target } from "lucide-react";
+import { Plus, BookOpen, Loader2, Play, Pause, CheckCircle2, Calendar, Target, Sparkles } from "lucide-react";
 import { parseFunctionInvokeError } from "@/lib/edgeFunctionError";
+import { detectCareerKeywords } from "@/lib/careerDetection";
+import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 
 const LearningPaths = () => {
   const { user } = useAuth();
@@ -24,6 +26,9 @@ const LearningPaths = () => {
   const [generating, setGenerating] = useState(false);
   const [sourceCheckResult, setSourceCheckResult] = useState<{ count: number; sufficient: boolean } | null>(null);
   const [checkingSource, setCheckingSource] = useState(false);
+  const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showCareerRedirect, setShowCareerRedirect] = useState(false);
 
   useEffect(() => {
     if (user) fetchPaths();
@@ -46,6 +51,13 @@ const LearningPaths = () => {
 
   const checkSources = async () => {
     if (!topic.trim()) return;
+    
+    // Check for career keywords first
+    if (detectCareerKeywords(topic)) {
+      setShowCareerRedirect(true);
+      return;
+    }
+    
     setCheckingSource(true);
     try {
       const [insightsResult, documentsResult] = await Promise.all([
@@ -66,6 +78,68 @@ const LearningPaths = () => {
       console.error("Error checking sources:", error);
     }
     setCheckingSource(false);
+  };
+
+  const generateTopicSuggestions = async () => {
+    setLoadingSuggestions(true);
+    try {
+      // Fetch user's recent insights and documents to find patterns
+      const [insightsResult, documentsResult] = await Promise.all([
+        supabase
+          .from("insights")
+          .select("title, content")
+          .eq("user_id", user?.id)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("documents")
+          .select("title, summary")
+          .eq("user_id", user?.id)
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+
+      const insights = insightsResult.data || [];
+      const documents = documentsResult.data || [];
+
+      if (insights.length === 0 && documents.length === 0) {
+        toast.info("Save some content first to get topic suggestions");
+        return;
+      }
+
+      // Extract common themes from titles
+      const allTitles = [
+        ...insights.map(i => i.title),
+        ...documents.map(d => d.title)
+      ].filter(Boolean);
+
+      // Simple frequency analysis of words (excluding common words)
+      const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'how', 'what', 'why', 'when', 'where', 'who', 'which', 'that', 'this', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our', 'their']);
+      
+      const wordFreq: Record<string, number> = {};
+      allTitles.forEach(title => {
+        const words = title.toLowerCase().split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+        words.forEach(word => {
+          wordFreq[word] = (wordFreq[word] || 0) + 1;
+        });
+      });
+
+      // Get top 3 topics
+      const topTopics = Object.entries(wordFreq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([word]) => word.charAt(0).toUpperCase() + word.slice(1));
+
+      if (topTopics.length > 0) {
+        setSuggestedTopics(topTopics);
+      } else {
+        toast.info("Couldn't find clear patterns yet. Save more content.");
+      }
+    } catch (error) {
+      console.error("Error generating suggestions:", error);
+    } finally {
+      setLoadingSuggestions(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -154,7 +228,13 @@ const LearningPaths = () => {
             <h1 className="text-2xl font-semibold">Learning Paths</h1>
             <p className="text-muted-foreground text-sm">30-day structured learning from your saved sources</p>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> Start Path</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={generateTopicSuggestions} disabled={loadingSuggestions}>
+              {loadingSuggestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              {loadingSuggestions ? "" : "Suggest"}
+            </Button>
+            <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> Start Path</Button>
+          </div>
         </div>
 
         {loading ? (
@@ -163,11 +243,17 @@ const LearningPaths = () => {
           <Card className="border-dashed">
             <CardContent className="py-12 text-center">
               <BookOpen className="w-10 h-10 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">You've saved content. What pattern are you noticing?</h3>
+              <h3 className="font-medium mb-2">What pattern are you noticing in your saved content?</h3>
               <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-                Look at your saved insights and documents. What topic keeps appearing? That's your signal. Pick that topic and let your own sources guide you.
+                Name the topic that keeps appearing and let your sources guide you.
               </p>
-              <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> Start Learning Path</Button>
+              <div className="flex justify-center gap-2">
+                <Button variant="outline" onClick={generateTopicSuggestions} disabled={loadingSuggestions}>
+                  {loadingSuggestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  {loadingSuggestions ? "Analyzing..." : "Show me patterns"}
+                </Button>
+                <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> I know my topic</Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -238,6 +324,21 @@ const LearningPaths = () => {
                 <Label>What do you want to learn?</Label>
                 <Input placeholder="e.g., Quantum Physics, Decision Science, Charisma..." value={topic} onChange={(e) => { setTopic(e.target.value); setSourceCheckResult(null); }} onBlur={checkSources} />
               </div>
+              {suggestedTopics.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm text-muted-foreground">Patterns in your content:</span>
+                  {suggestedTopics.map((t) => (
+                    <Badge 
+                      key={t} 
+                      variant="secondary" 
+                      className="cursor-pointer hover:bg-primary/20"
+                      onClick={() => { setTopic(t); setSuggestedTopics([]); checkSources(); }}
+                    >
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
+              )}
               {checkingSource && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Checking your saved sources...</div>}
               {sourceCheckResult && (
                 <div className={`p-3 rounded-lg text-sm ${sourceCheckResult.sufficient ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"}`}>
@@ -253,6 +354,32 @@ const LearningPaths = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <CareerRedirectPrompt 
+          open={showCareerRedirect} 
+          onOpenChange={setShowCareerRedirect}
+          onContinue={() => {
+            setShowCareerRedirect(false);
+            // Proceed with source check after dismissing
+            setCheckingSource(true);
+            Promise.all([
+              supabase
+                .from("insights")
+                .select("id", { count: "exact" })
+                .eq("user_id", user?.id)
+                .or(`title.ilike.%${topic}%,content.ilike.%${topic}%`),
+              supabase
+                .from("documents")
+                .select("id", { count: "exact" })
+                .eq("user_id", user?.id)
+                .or(`title.ilike.%${topic}%,extracted_content.ilike.%${topic}%`),
+            ]).then(([insightsResult, documentsResult]) => {
+              const count = (insightsResult.count || 0) + (documentsResult.count || 0);
+              setSourceCheckResult({ count, sufficient: count >= 5 });
+              setCheckingSource(false);
+            });
+          }}
+        />
       </div>
     </>
   );
