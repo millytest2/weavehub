@@ -271,54 +271,54 @@ const LearningPathDetail = () => {
         </Button>
 
         <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-xl">{path.topic_name || path.title}</CardTitle>
-                <CardDescription className="mt-1">{path.description}</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={toggleStatus}>
-                  {path.status === "active" ? (
-                    <><Pause className="w-4 h-4 mr-1" /> Pause</>
-                  ) : (
-                    <><Play className="w-4 h-4 mr-1" /> Resume</>
-                  )}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleRegenerate}
-                  disabled={regenerating}
-                >
-                  {regenerating ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Learning Path</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete this learning path and all progress. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+          <CardHeader className="space-y-4">
+            <div className="space-y-1">
+              <CardTitle className="text-xl">{path.topic_name || path.title}</CardTitle>
+              <CardDescription>{path.description}</CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={toggleStatus}>
+                {path.status === "active" ? (
+                  <><Pause className="w-4 h-4 mr-1" /> Pause</>
+                ) : (
+                  <><Play className="w-4 h-4 mr-1" /> Resume</>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRegenerate}
+                disabled={regenerating}
+              >
+                {regenerating ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                )}
+                <span className="sm:inline hidden">Regenerate</span>
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    <span className="sm:inline hidden">Delete</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Learning Path</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this learning path and all progress. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
