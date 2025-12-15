@@ -248,11 +248,7 @@ const LearningPaths = () => {
                 Name the topic that keeps appearing and let your sources guide you.
               </p>
               <div className="flex justify-center gap-2">
-                <Button variant="outline" onClick={generateTopicSuggestions} disabled={loadingSuggestions}>
-                  {loadingSuggestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  {loadingSuggestions ? "Analyzing..." : "Show me patterns"}
-                </Button>
-                <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> I know my topic</Button>
+                <Button onClick={() => setIsCreateOpen(true)}><Plus className="w-4 h-4 mr-2" /> Start Learning Path</Button>
               </div>
             </CardContent>
           </Card>
