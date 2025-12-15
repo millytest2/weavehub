@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Sparkles, FlaskConical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const experimentSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
@@ -198,7 +199,22 @@ const Experiments = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto relative">
+      {/* Generation Overlay */}
+      {generating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
+          <div className="flex flex-col items-center gap-6 p-8">
+            <div className="relative">
+              <WeaveLoader size="lg" />
+              <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-pulse" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-lg font-medium text-foreground">Weaving your experiment</p>
+              <p className="text-sm text-muted-foreground">Analyzing your identity, insights, and patterns...</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
