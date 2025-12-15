@@ -11,8 +11,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import { 
   ArrowLeft, Loader2, CheckCircle2, Circle, Play, Pause, 
-  ChevronDown, BookOpen, Target, Calendar, Coffee
+  ChevronDown, BookOpen, Target, Calendar, Coffee, RefreshCw, Trash2
 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Json } from "@/integrations/supabase/types";
 
 interface DailyProgress {
@@ -51,6 +52,8 @@ const LearningPathDetail = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [openWeeks, setOpenWeeks] = useState<number[]>([1]);
+  const [regenerating, setRegenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (user && id) fetchPath();
@@ -188,6 +191,55 @@ const LearningPathDetail = () => {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!path) return;
+    setRegenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("learning-path-generator", {
+        body: { 
+          topic: path.topic_name || path.title, 
+          durationDays: path.duration_days || 30,
+          regenerate: true,
+          pathId: path.id
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) {
+        toast.error(data.message || data.error);
+        return;
+      }
+
+      toast.success("Path regenerated with fresh structure");
+      fetchPath(); // Refresh the data
+    } catch (error) {
+      console.error("Error regenerating path:", error);
+      toast.error("Failed to regenerate path");
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!path) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("learning_paths")
+        .delete()
+        .eq("id", path.id);
+
+      if (error) throw error;
+      toast.success("Path deleted");
+      navigate("/learning-paths");
+    } catch (error) {
+      console.error("Error deleting path:", error);
+      toast.error("Failed to delete path");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -225,13 +277,48 @@ const LearningPathDetail = () => {
                 <CardTitle className="text-xl">{path.topic_name || path.title}</CardTitle>
                 <CardDescription className="mt-1">{path.description}</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={toggleStatus}>
-                {path.status === "active" ? (
-                  <><Pause className="w-4 h-4 mr-1" /> Pause</>
-                ) : (
-                  <><Play className="w-4 h-4 mr-1" /> Resume</>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={toggleStatus}>
+                  {path.status === "active" ? (
+                    <><Pause className="w-4 h-4 mr-1" /> Pause</>
+                  ) : (
+                    <><Play className="w-4 h-4 mr-1" /> Resume</>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRegenerate}
+                  disabled={regenerating}
+                >
+                  {regenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Learning Path</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete this learning path and all progress. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
