@@ -346,59 +346,41 @@ const LearningPathDetail = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Paths
         </Button>
 
-        <Card>
-          <CardHeader className="space-y-4">
-            <div className="space-y-1">
-              <CardTitle className="text-xl">{path.topic_name || path.title}</CardTitle>
-              <CardDescription>{path.description}</CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={toggleStatus}>
-                {path.status === "active" ? (
-                  <>
-                    <Pause className="w-4 h-4 mr-1" /> Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 mr-1" /> Resume
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRegenerate}
-                disabled={regenerating || !!legacyPathError}
-              >
-                {regenerating ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-1" />
-                )}
-                <span className="sm:inline hidden">Regenerate</span>
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    <span className="sm:inline hidden">Delete</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Learning Path</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete this learning path and all progress. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+        {/* Anti-MBA Header - WHY you're doing this */}
+        <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1 flex-1">
+                <p className="text-xs font-medium text-primary uppercase tracking-wider">Learning from YOUR saved content</p>
+                <CardTitle className="text-xl sm:text-2xl">{path.topic_name || path.title}</CardTitle>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleStatus}>
+                  {path.status === "active" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRegenerate} disabled={regenerating || !!legacyPathError}>
+                  {regenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Learning Path</AlertDialogTitle>
+                      <AlertDialogDescription>This will permanently delete this learning path and all progress.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -410,41 +392,51 @@ const LearningPathDetail = () => {
                     {recreating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCcw className="w-4 h-4 mr-1" />}
                     Recreate with Latest Sources
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => navigate("/learning-paths")}>
-                    Browse Paths
-                  </Button>
                 </div>
               </div>
             )}
 
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                Day {completedDays} of {path.duration_days}
-              </span>
-              {path.final_deliverable && (
-                <span className="flex items-center gap-1">
-                  <Target className="w-4 h-4" />
-                  {path.final_deliverable}
-                </span>
-              )}
-            </div>
+            {/* The WHY - Anti-MBA framing */}
+            {path.description && (
+              <p className="text-sm text-muted-foreground italic border-l-2 border-primary/30 pl-3">
+                {path.description}
+              </p>
+            )}
 
-            <div className="space-y-1">
+            {/* Final Deliverable - What you're building toward */}
+            {path.final_deliverable && (
+              <div className="p-3 rounded-lg bg-background border">
+                <p className="text-xs text-muted-foreground mb-1">You will create:</p>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Target className="w-4 h-4 text-primary shrink-0" />
+                  {path.final_deliverable}
+                </p>
+              </div>
+            )}
+
+            {/* Progress */}
+            <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Progress</span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  Day {completedDays} of {path.duration_days}
+                </span>
                 <span className="text-muted-foreground">{progress}%</span>
               </div>
               <Progress value={progress} className="h-2" />
             </div>
 
+            {/* Sub-topics you're covering */}
             {path.sub_topics && Array.isArray(path.sub_topics) && path.sub_topics.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {(path.sub_topics as string[]).map((t, i) => (
-                  <Badge key={i} variant="outline" className="text-xs font-normal">
-                    {t}
-                  </Badge>
-                ))}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Topics you will master:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(path.sub_topics as string[]).map((t, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs font-normal">
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
@@ -507,51 +499,61 @@ const LearningPathDetail = () => {
           }}
         />
 
-        {/* Today's Tasks */}
+        {/* Today's Focus - Anti-MBA style (learn then apply immediately) */}
         {currentDay && !currentDay.is_rest_day && (
-          <Card className="border-primary/50 bg-primary/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                Day {currentDay.day_number} - Today's Tasks
-              </CardTitle>
+          <Card className="border-primary/50">
+            <CardHeader className="pb-2 bg-primary/5 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  Today: Day {currentDay.day_number}
+                </CardTitle>
+                <Badge variant="outline" className="text-xs">~30 min total</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Learn from YOUR sources, then test your understanding immediately
+              </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="pt-4 space-y-4">
+              {/* Learning Task */}
+              <div className={`p-3 rounded-lg border ${currentDay.learning_completed ? "bg-muted/30 border-muted" : "bg-background"}`}>
                 <div className="flex items-start gap-3">
                   <button
                     onClick={() => markComplete(currentDay.id, "learning_completed", !currentDay.learning_completed)}
                     disabled={updating === currentDay.id}
-                    className="mt-0.5"
+                    className="mt-0.5 shrink-0"
                   >
                     {currentDay.learning_completed ? (
                       <CheckCircle2 className="w-5 h-5 text-primary" />
                     ) : (
-                      <Circle className="w-5 h-5 text-muted-foreground" />
+                      <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
                     )}
                   </button>
-                  <div>
-                    <p className="text-sm font-medium">Learning</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-primary uppercase tracking-wide mb-1">Learn (15 min)</p>
                     <p className={`text-sm ${currentDay.learning_completed ? "text-muted-foreground line-through" : ""}`}>
                       {currentDay.learning_task}
                     </p>
                   </div>
                 </div>
+              </div>
 
+              {/* Application Task */}
+              <div className={`p-3 rounded-lg border ${currentDay.application_completed ? "bg-muted/30 border-muted" : "bg-background"}`}>
                 <div className="flex items-start gap-3">
                   <button
                     onClick={() => markComplete(currentDay.id, "application_completed", !currentDay.application_completed)}
                     disabled={updating === currentDay.id}
-                    className="mt-0.5"
+                    className="mt-0.5 shrink-0"
                   >
                     {currentDay.application_completed ? (
                       <CheckCircle2 className="w-5 h-5 text-primary" />
                     ) : (
-                      <Circle className="w-5 h-5 text-muted-foreground" />
+                      <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
                     )}
                   </button>
-                  <div>
-                    <p className="text-sm font-medium">Application</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1">Apply (15 min)</p>
                     <p className={`text-sm ${currentDay.application_completed ? "text-muted-foreground line-through" : ""}`}>
                       {currentDay.application_task}
                     </p>
@@ -587,7 +589,10 @@ const LearningPathDetail = () => {
 
         {/* Weekly Breakdown */}
         <div className="space-y-3">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Full Schedule</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Full 30-Day Schedule</h2>
+            <p className="text-xs text-muted-foreground">Learn → Apply → Rest (every 5th day)</p>
+          </div>
 
           {dailyProgress.length === 0 ? (
             <Card>
