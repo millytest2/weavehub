@@ -714,15 +714,21 @@ const LearningPathDetail = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Sources Used</CardTitle>
+              <CardDescription className="text-xs">Click any source to view it</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-1.5">
                 {(path.sources_used as { id: string; title: string; type: string }[]).map((source, i) => (
-                  <div key={source.id} className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">[{i + 1}]</span>
-                    <span>{source.title}</span>
-                    <Badge variant="outline" className="text-xs">{source.type}</Badge>
-                  </div>
+                  <button
+                    key={source.id}
+                    onClick={() => navigate(source.type === 'document' ? `/documents?highlight=${source.id}` : `/insights?highlight=${source.id}`)}
+                    className="flex items-center gap-2 text-sm w-full text-left hover:bg-muted/50 p-2 -mx-2 rounded-lg transition-colors group"
+                  >
+                    <span className="text-muted-foreground font-mono">[{i + 1}]</span>
+                    <span className="flex-1 group-hover:text-primary transition-colors">{source.title}</span>
+                    <Badge variant="outline" className="text-xs shrink-0">{source.type}</Badge>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </button>
                 ))}
               </div>
             </CardContent>
