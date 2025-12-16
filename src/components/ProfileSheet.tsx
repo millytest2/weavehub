@@ -399,8 +399,8 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                 {insightClusters.length === 0 ? (
                   <div className="py-6 text-center">
                     <Brain className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">No insights captured yet</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Paste links or add insights to build your mind</p>
+                    <p className="text-sm text-muted-foreground">Your mind is empty</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Capture what matters to you</p>
                   </div>
                 ) : (
                   <div className="space-y-1">
