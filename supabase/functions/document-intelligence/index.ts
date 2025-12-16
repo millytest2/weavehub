@@ -284,6 +284,34 @@ INSIGHT QUALITY:
 
     // Create insights if there are meaningful ones
     let insightsCreated = 0;
+    let matchedTopicId: string | null = null;
+    
+    // Get topic ID for insights
+    if (intelligence.related_topic && intelligence.related_topic !== 'none') {
+      const { data: matchingTopic } = await supabase
+        .from('topics')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('name', intelligence.related_topic)
+        .maybeSingle();
+      
+      if (matchingTopic) {
+        matchedTopicId = matchingTopic.id;
+      } else {
+        // Fallback to ilike
+        const { data: fuzzyTopic } = await supabase
+          .from('topics')
+          .select('id')
+          .eq('user_id', user.id)
+          .ilike('name', `%${intelligence.related_topic}%`)
+          .maybeSingle();
+        
+        if (fuzzyTopic) {
+          matchedTopicId = fuzzyTopic.id;
+        }
+      }
+    }
+    
     if (intelligence.insights && intelligence.insights.length > 0) {
       const insightsToCreate = intelligence.insights
         .slice(0, 3)
@@ -292,6 +320,7 @@ INSIGHT QUALITY:
           title: `[${insight.timeframe?.toUpperCase() || 'INSIGHT'}] ${insight.title}`,
           content: insight.content + (insight.connects_to ? `\n\nBuilds on: ${insight.connects_to}` : ''),
           source: `document:${title.substring(0, 50)}`,
+          topic_id: matchedTopicId,
         }));
 
       if (insightsToCreate.length > 0) {
@@ -303,7 +332,7 @@ INSIGHT QUALITY:
           console.error('Error creating insights:', insightsError);
         } else {
           insightsCreated = insightsToCreate.length;
-          console.log(`Created ${insightsCreated} insights`);
+          console.log(`Created ${insightsCreated} insights with topic: ${matchedTopicId}`);
         }
       }
     }
