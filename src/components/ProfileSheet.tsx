@@ -24,9 +24,19 @@ interface ActiveExperiment {
   identity_shift_target: string | null;
 }
 
+interface InsightWithTopic {
+  id: string;
+  title: string;
+  content: string;
+  source: string | null;
+  topic_id: string | null;
+  topics: { id: string; name: string; color: string | null } | null;
+}
+
 interface InsightCluster {
   theme: string;
-  insights: { id: string; title: string; content: string; source: string | null }[];
+  color: string | null;
+  insights: InsightWithTopic[];
 }
 
 interface ProfileSheetProps {
@@ -75,7 +85,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .limit(10),
         supabase
           .from("insights")
-          .select("id, title, content, source")
+          .select("id, title, content, source, topic_id, topics(id, name, color)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(100)
@@ -88,8 +98,8 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       setWeeklyActions(actionsResult.data || []);
       setActiveExperiments(experimentsResult.data || []);
       
-      // Cluster insights by source type
-      const clusters = clusterInsights(insightsResult.data || []);
+      // Cluster insights by topic
+      const clusters = clusterInsightsByTopic(insightsResult.data as InsightWithTopic[] || []);
       setInsightClusters(clusters);
     } catch (error) {
       console.error("Error fetching profile data:", error);
@@ -98,27 +108,28 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     }
   };
 
-  const clusterInsights = (insights: { id: string; title: string; content: string; source: string | null }[]): InsightCluster[] => {
-    const clusters: Record<string, typeof insights> = {};
+  const clusterInsightsByTopic = (insights: InsightWithTopic[]): InsightCluster[] => {
+    const clusters: Record<string, { color: string | null; insights: InsightWithTopic[] }> = {};
     
     for (const insight of insights) {
-      let theme = "Manual";
-      const source = insight.source?.toLowerCase() || "";
+      // Use topic name if available, otherwise "Uncategorized"
+      const theme = insight.topics?.name || "Uncategorized";
+      const color = insight.topics?.color || null;
       
-      if (source.includes("youtube")) theme = "YouTube";
-      else if (source.includes("instagram")) theme = "Instagram";
-      else if (source.includes("twitter")) theme = "Twitter";
-      else if (source.includes("article")) theme = "Articles";
-      else if (source.includes("quick_capture")) theme = "Quick Captures";
-      else if (source.includes("manual")) theme = "Notes";
-      
-      if (!clusters[theme]) clusters[theme] = [];
-      clusters[theme].push(insight);
+      if (!clusters[theme]) {
+        clusters[theme] = { color, insights: [] };
+      }
+      clusters[theme].insights.push(insight);
     }
     
     return Object.entries(clusters)
-      .map(([theme, insights]) => ({ theme, insights }))
-      .sort((a, b) => b.insights.length - a.insights.length);
+      .map(([theme, data]) => ({ theme, color: data.color, insights: data.insights }))
+      .sort((a, b) => {
+        // Put "Uncategorized" last
+        if (a.theme === "Uncategorized") return 1;
+        if (b.theme === "Uncategorized") return -1;
+        return b.insights.length - a.insights.length;
+      });
   };
 
   const toggleCluster = (theme: string) => {
@@ -341,8 +352,8 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                   </div>
                   <div className="w-px h-8 bg-border/30" />
                   <div className="flex-1 text-center">
-                    <p className="text-2xl font-semibold text-foreground">{insightClusters.length}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Sources</p>
+                    <p className="text-2xl font-semibold text-foreground">{insightClusters.filter(c => c.theme !== "Uncategorized").length}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Topics</p>
                   </div>
                 </div>
 
@@ -361,7 +372,14 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                         <Collapsible key={cluster.theme} open={isExpanded} onOpenChange={() => toggleCluster(cluster.theme)}>
                           <CollapsibleTrigger className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
                             <div className="flex items-center gap-2">
-                              <Lightbulb className="h-4 w-4 text-primary" />
+                              {cluster.color ? (
+                                <div 
+                                  className="h-3 w-3 rounded-full" 
+                                  style={{ backgroundColor: cluster.color }}
+                                />
+                              ) : (
+                                <Lightbulb className="h-4 w-4 text-muted-foreground" />
+                              )}
                               <span className="text-sm font-medium text-foreground">{cluster.theme}</span>
                             </div>
                             <div className="flex items-center gap-2">
