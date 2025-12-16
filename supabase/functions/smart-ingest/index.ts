@@ -549,6 +549,11 @@ serve(async (req) => {
     
     console.log("Created document and", insightsCreated, "insights");
     
+    // Check if we only got metadata (minimal content) for social platforms
+    const needsManualContent = 
+      (detected.type === 'instagram' || detected.type === 'twitter') && 
+      (!content || content.length < 100);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -556,9 +561,12 @@ serve(async (req) => {
         title,
         documentId: docData.id,
         insightsCreated,
-        message: insightsCreated > 0 
-          ? `Saved + ${insightsCreated} insight${insightsCreated > 1 ? 's' : ''} extracted`
-          : "Saved"
+        needsManualContent,
+        message: needsManualContent 
+          ? "Saved metadata. Paste caption/thread for full extraction."
+          : insightsCreated > 0 
+            ? `Saved + ${insightsCreated} insight${insightsCreated > 1 ? 's' : ''} extracted`
+            : "Saved"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

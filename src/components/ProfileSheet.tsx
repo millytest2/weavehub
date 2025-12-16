@@ -3,8 +3,9 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle } from "lucide-react";
+import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Brain, Lightbulb } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -23,6 +24,11 @@ interface ActiveExperiment {
   identity_shift_target: string | null;
 }
 
+interface InsightCluster {
+  theme: string;
+  insights: { id: string; title: string; content: string; source: string | null }[];
+}
+
 interface ProfileSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,9 +38,12 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const { user, signOut } = useAuth();
   const [weeklyActions, setWeeklyActions] = useState<ActionHistoryItem[]>([]);
   const [activeExperiments, setActiveExperiments] = useState<ActiveExperiment[]>([]);
+  const [insightClusters, setInsightClusters] = useState<InsightCluster[]>([]);
   const [loading, setLoading] = useState(false);
   const [showExperiments, setShowExperiments] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("progress");
 
   useEffect(() => {
     if (open && user) {
@@ -50,7 +59,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     try {
-      const [actionsResult, experimentsResult] = await Promise.all([
+      const [actionsResult, experimentsResult, insightsResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("id, action_text, pillar, action_date, completed_at")
@@ -63,19 +72,63 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .eq("user_id", user.id)
           .in("status", ["in_progress", "planning", "paused"])
           .order("created_at", { ascending: false })
-          .limit(10)
+          .limit(10),
+        supabase
+          .from("insights")
+          .select("id, title, content, source")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(100)
       ]);
 
       if (actionsResult.error) throw actionsResult.error;
       if (experimentsResult.error) throw experimentsResult.error;
+      if (insightsResult.error) throw insightsResult.error;
       
       setWeeklyActions(actionsResult.data || []);
       setActiveExperiments(experimentsResult.data || []);
+      
+      // Cluster insights by source type
+      const clusters = clusterInsights(insightsResult.data || []);
+      setInsightClusters(clusters);
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const clusterInsights = (insights: { id: string; title: string; content: string; source: string | null }[]): InsightCluster[] => {
+    const clusters: Record<string, typeof insights> = {};
+    
+    for (const insight of insights) {
+      let theme = "Manual";
+      const source = insight.source?.toLowerCase() || "";
+      
+      if (source.includes("youtube")) theme = "YouTube";
+      else if (source.includes("instagram")) theme = "Instagram";
+      else if (source.includes("twitter")) theme = "Twitter";
+      else if (source.includes("article")) theme = "Articles";
+      else if (source.includes("quick_capture")) theme = "Quick Captures";
+      else if (source.includes("manual")) theme = "Notes";
+      
+      if (!clusters[theme]) clusters[theme] = [];
+      clusters[theme].push(insight);
+    }
+    
+    return Object.entries(clusters)
+      .map(([theme, insights]) => ({ theme, insights }))
+      .sort((a, b) => b.insights.length - a.insights.length);
+  };
+
+  const toggleCluster = (theme: string) => {
+    const newSet = new Set(expandedClusters);
+    if (newSet.has(theme)) {
+      newSet.delete(theme);
+    } else {
+      newSet.add(theme);
+    }
+    setExpandedClusters(newSet);
   };
 
   const handleSignOut = () => {
@@ -125,17 +178,25 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
+  const totalInsights = insightClusters.reduce((sum, c) => sum + c.insights.length, 0);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-80 sm:w-96 p-0 flex flex-col bg-background/95 backdrop-blur-xl">
-        <SheetHeader className="p-5 pb-4">
-          <SheetTitle className="text-left text-lg">Your Week</SheetTitle>
+        <SheetHeader className="p-5 pb-2">
+          <SheetTitle className="text-left text-lg">You</SheetTitle>
           <SheetDescription className="sr-only">
-            Weekly progress and active projects
+            Your progress and captured wisdom
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="mx-5 mb-2 grid grid-cols-2">
+            <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
+            <TabsTrigger value="mind" className="text-xs">Your Mind</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="progress" className="flex-1 overflow-y-auto px-5 pb-4 space-y-6 mt-0">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -263,7 +324,79 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
               </div>
             </>
           )}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="mind" className="flex-1 overflow-y-auto px-5 pb-4 mt-0">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : (
+              <>
+                {/* Mind Stats */}
+                <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-muted/30 border border-border/20 mb-4">
+                  <div className="flex-1 text-center">
+                    <p className="text-2xl font-semibold text-foreground">{totalInsights}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Insights</p>
+                  </div>
+                  <div className="w-px h-8 bg-border/30" />
+                  <div className="flex-1 text-center">
+                    <p className="text-2xl font-semibold text-foreground">{insightClusters.length}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Sources</p>
+                  </div>
+                </div>
+
+                {/* Clustered Insights */}
+                {insightClusters.length === 0 ? (
+                  <div className="py-6 text-center">
+                    <Brain className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                    <p className="text-sm text-muted-foreground">No insights captured yet</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Paste links or add insights to build your mind</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {insightClusters.map((cluster) => {
+                      const isExpanded = expandedClusters.has(cluster.theme);
+                      return (
+                        <Collapsible key={cluster.theme} open={isExpanded} onOpenChange={() => toggleCluster(cluster.theme)}>
+                          <CollapsibleTrigger className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Lightbulb className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-medium text-foreground">{cluster.theme}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{cluster.insights.length}</span>
+                              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="space-y-2 pl-9 pr-3 pb-2">
+                              {cluster.insights.slice(0, 5).map((insight) => (
+                                <div key={insight.id} className="py-1.5">
+                                  <p className="text-sm font-medium text-foreground leading-snug">
+                                    {insight.title}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                    {insight.content}
+                                  </p>
+                                </div>
+                              ))}
+                              {cluster.insights.length > 5 && (
+                                <p className="text-xs text-muted-foreground/60 py-1">
+                                  +{cluster.insights.length - 5} more
+                                </p>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
 
         <div className="p-4 border-t border-border/20 mt-auto">
           <Button

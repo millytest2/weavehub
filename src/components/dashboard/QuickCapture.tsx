@@ -11,6 +11,7 @@ import { detectCareerKeywords } from "@/lib/careerDetection";
 import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
 import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
+import { ManualPasteFallback } from "./ManualPasteFallback";
 
 type CaptureType = "paste" | "insight" | "decision" | null;
 
@@ -38,6 +39,9 @@ export const QuickCapture = () => {
   const [showReturnToSelf, setShowReturnToSelf] = useState(false);
   const [returnToSelfData, setReturnToSelfData] = useState<ReturnToSelfData | null>(null);
   const [isLoadingReturnToSelf, setIsLoadingReturnToSelf] = useState(false);
+  const [showManualFallback, setShowManualFallback] = useState(false);
+  const [pendingDocumentId, setPendingDocumentId] = useState<string | null>(null);
+  const [pendingContentType, setPendingContentType] = useState<string>("");
 
   const handleOpen = () => setIsOpen(true);
   
@@ -95,6 +99,17 @@ export const QuickCapture = () => {
         });
         
         if (error) throw error;
+        
+        // Check if we need manual content (Instagram/Twitter metadata only)
+        if (data.needsManualContent && data.documentId) {
+          toast.info(data.message);
+          setPendingDocumentId(data.documentId);
+          setPendingContentType(data.type);
+          setShowManualFallback(true);
+          setIsSubmitting(false);
+          setIsProcessing(false);
+          return;
+        }
         
         toast.success(data.message || "Saved");
         
@@ -337,6 +352,18 @@ export const QuickCapture = () => {
         onOpenChange={setShowReturnToSelf}
         data={returnToSelfData}
         isLoading={isLoadingReturnToSelf}
+      />
+
+      <ManualPasteFallback
+        open={showManualFallback}
+        onOpenChange={setShowManualFallback}
+        documentId={pendingDocumentId}
+        contentType={pendingContentType}
+        onComplete={() => {
+          handleClose();
+          setPendingDocumentId(null);
+          setPendingContentType("");
+        }}
       />
     </>
   );
