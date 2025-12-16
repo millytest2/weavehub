@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { TopicClusterVisualization } from "./dashboard/TopicClusterVisualization";
 
 interface ActionHistoryItem {
   id: string;
@@ -51,11 +52,22 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [weeklyActions, setWeeklyActions] = useState<ActionHistoryItem[]>([]);
   const [activeExperiments, setActiveExperiments] = useState<ActiveExperiment[]>([]);
   const [insightClusters, setInsightClusters] = useState<InsightCluster[]>([]);
+  const [identitySeed, setIdentitySeed] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showExperiments, setShowExperiments] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("progress");
+
+  // Extract keywords from identity seed for alignment scoring
+  const identityKeywords = useMemo(() => {
+    if (!identitySeed) return [];
+    return identitySeed
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(w => w.length > 4)
+      .slice(0, 20);
+  }, [identitySeed]);
 
   useEffect(() => {
     if (open && user) {
@@ -71,7 +83,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     try {
-      const [actionsResult, experimentsResult, insightsResult] = await Promise.all([
+      const [actionsResult, experimentsResult, insightsResult, identityResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("id, action_text, pillar, action_date, completed_at")
@@ -90,7 +102,12 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .select("id, title, content, source, topic_id, created_at, topics(id, name, color)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(100)
+          .limit(100),
+        supabase
+          .from("identity_seeds")
+          .select("content")
+          .eq("user_id", user.id)
+          .maybeSingle()
       ]);
 
       if (actionsResult.error) throw actionsResult.error;
@@ -99,6 +116,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       
       setWeeklyActions(actionsResult.data || []);
       setActiveExperiments(experimentsResult.data || []);
+      setIdentitySeed(identityResult.data?.content || "");
       
       // Cluster insights by topic
       const clusters = clusterInsightsByTopic(insightsResult.data as InsightWithTopic[] || []);
@@ -364,6 +382,19 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                   </div>
                 </div>
 
+                {/* Topic Cluster Visualization */}
+                {insightClusters.filter(c => c.theme !== "Uncategorized").length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2">
+                      Knowledge Map
+                    </p>
+                    <TopicClusterVisualization 
+                      clusters={insightClusters} 
+                      identityKeywords={identityKeywords}
+                    />
+                  </div>
+                )}
+
                 {/* Clustered Insights */}
                 {insightClusters.length === 0 ? (
                   <div className="py-6 text-center">
@@ -373,6 +404,9 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                   </div>
                 ) : (
                   <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2">
+                      By Topic
+                    </p>
                     {insightClusters.map((cluster) => {
                       const isExpanded = expandedClusters.has(cluster.theme);
                       return (
