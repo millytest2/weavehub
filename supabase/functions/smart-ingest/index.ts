@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type ContentType = 'youtube' | 'instagram' | 'twitter' | 'article' | 'unknown';
+type ContentType = 'youtube' | 'instagram' | 'twitter' | 'article' | 'text' | 'unknown';
 
 interface DetectedContent {
   type: ContentType;
@@ -500,8 +500,15 @@ serve(async (req) => {
         break;
       }
       
-      default:
-        throw new Error("Could not detect content type. Please paste a valid URL (YouTube, Instagram, Twitter, or article).");
+      case 'unknown': {
+        // Handle raw text (copied post content, notes, etc.)
+        console.log("Processing as raw text input");
+        title = cleanInput.substring(0, 60).split('\n')[0] || "Captured Note";
+        content = cleanInput;
+        fileType = 'text';
+        source = 'manual:paste';
+        break;
+      }
     }
     
     console.log("Extracted - Title:", title?.substring(0, 50), "Content length:", content?.length);
