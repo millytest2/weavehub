@@ -414,9 +414,14 @@ ${dateTime.isLateNight ? '\n*** CRITICAL: It is LATE NIGHT. Only suggest reflect
       const effectivePillar3 = dateTime.isLateNight ? "Admin" : pillar3;
       
       // Generate 3 options
-      const systemPrompt = `You surface what the user already knows. Based on their saved content, identity, and projects—return 3 concrete actions they can choose from.
+      const systemPrompt = `You ground the user in their VALUES and IDENTITY. Return 3 concrete actions rooted in WHO THEY ARE BECOMING.
 
-You are NOT generating new ideas. You are reflecting back what they've already captured and connecting it to action.
+CRITICAL ORIENTATION:
+- Their IDENTITY SEED and CORE VALUES are the PRIMARY anchor
+- Actions should EXPRESS their identity, not CONSUME content
+- Insights are EXTRACTED WISDOM they already internalized
+- NEVER suggest watching, reading, or reviewing content
+- "Based on your value of X, do Y" not "watch the video about X"
       
 TODAY: ${dateTime.fullContext}
 
@@ -428,19 +433,19 @@ PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
 CRITICAL QUALITY RULES:
 1. EACH OPTION FROM A DIFFERENT PILLAR
-2. REFERENCE THEIR ACTUAL DATA - Quote their identity seed, cite their saved insights, mention their actual projects by name
+2. GROUND IN VALUES - "Your identity says X, so do Y" not "go learn about X"
 3. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
 4. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features, real project names
 5. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
-6. VARY THE TYPE - Don't just suggest "build X". Mix: outreach, content, learning, calls, events, social
+6. ACTIONS EXPRESS IDENTITY - Create, build, reach out, ship, move, connect—not consume
 
 BANNED PATTERNS (instant rejection):
-- "read/review/look at" anything
-- "continue working on" without specifying WHAT exactly
-- "spend X minutes on" without saying WHAT
+- "watch/read/review/look at" ANYTHING
+- "check out the insight about..."
+- "revisit the article/video on..."
+- Any suggestion to CONSUME content
 - Vague suggestions without project names
 - Emotional/motivational language
-- "You've got this", "I believe in you", "Give yourself grace"
 
 ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 - ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep
@@ -548,9 +553,14 @@ Surface what resonates from their own captured wisdom.`;
       // For late night, override to relaxing pillar
       const suggestedPillar = dateTime.isLateNight ? "Presence" : pillar1;
       
-      const systemPrompt = `You surface what the user already knows. Based on their saved content, identity, and projects—return ONE concrete action.
+      const systemPrompt = `You ground the user in their VALUES and IDENTITY. Return ONE concrete action rooted in WHO THEY ARE BECOMING.
 
-You are NOT generating new ideas. You are reflecting back what they've already captured and connecting it to action.
+CRITICAL ORIENTATION:
+- Their IDENTITY SEED and CORE VALUES are the PRIMARY anchor
+- Actions should EXPRESS their identity, not CONSUME content
+- Insights are EXTRACTED WISDOM they already internalized
+- NEVER suggest watching, reading, or reviewing content
+- "Based on your value of X, do Y" not "watch the video about X"
 
 TODAY: ${dateTime.fullContext}
 
@@ -561,24 +571,22 @@ ${contextPrompt}${semanticContext}${coreValuesContext}
 PILLAR: ${suggestedPillar}
 
 CRITICAL QUALITY RULES:
-1. REFERENCE THEIR ACTUAL DATA - Quote their identity seed, cite their saved insights, mention their actual projects by name
+1. GROUND IN VALUES - "Your identity says X, so do Y"
 2. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
 3. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features
 4. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
-5. VARY THE TYPE - Don't always suggest "build X". Mix: outreach, content, learning, calls, events
-6. NO GENERIC FALLBACKS - If you can't cite their data specifically, use the pillar creatively
+5. ACTIONS EXPRESS IDENTITY - Create, build, reach out, ship, move, connect—not consume
 
 BANNED PATTERNS (instant rejection):
-- "read/review/look at" anything
-- "continue working on" (be specific about WHAT)
-- "spend X minutes on" without saying WHAT exactly
-- Vague suggestions without project names or specifics
+- "watch/read/review/look at" ANYTHING
+- "check out the insight about..."
+- "revisit the article/video on..."
+- Any suggestion to CONSUME content
+- Vague suggestions without project names
 - Emotional/motivational language
-- "You've got this", "I believe in you", "Give yourself grace"
 
 ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 - ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep, breathing exercise
-- Examples: "Journal 3 wins from today (5 min)", "Set tomorrow's top priority (5 min)", "Write one gratitude note"
 - Duration: 5-15 minutes MAX
 - NEVER suggest: work tasks, deep focus, building, shipping, anything requiring energy` : ''}`;
 

@@ -116,9 +116,13 @@ serve(async (req) => {
 - Avoid: anything requiring high energy`
     };
 
-    const systemPrompt = `You surface what the user already knows. The user feels off—bored, numb, tired, angry, lost, or drifting. Based on their saved content and identity, return ONE action they can start immediately.
+    const systemPrompt = `You ground the user in their VALUES and IDENTITY. They feel off—bored, numb, tired, angry, lost, or drifting. Return ONE action rooted in WHO THEY ARE BECOMING.
 
-You are NOT generating new ideas. You are reflecting back what they've already captured and connecting it to action.
+CRITICAL ORIENTATION:
+- Their IDENTITY SEED and VALUES are the primary anchor, not their content library
+- Insights are EXTRACTED WISDOM they already internalized—not "go watch/read this"
+- NEVER suggest consuming more content (no "watch the video about X", "review the article on Y")
+- Actions should EXPRESS their identity, not CONSUME information
 
 TIME: ${timeOfDay}
 ${timeContext[timeOfDay as keyof typeof timeContext]}
@@ -129,7 +133,7 @@ BUCKET: ${bucket}
 
 BUCKET MEANINGS:
 - Presence: Nervous system reset - breathing, cold exposure, grounding
-- Learning: Following genuine curiosity - not homework, actual interest
+- Learning: APPLY something they already know - not consume more
 - Creator: Make something visible - write, build, ship
 - Body: Move and feel alive - workout, walk, stretch
 - Charisma: Social energy - reach out to a specific person, practice confidence
@@ -145,17 +149,15 @@ ${timeOfDay === 'night' ? '- Night: 5-15 min MAX, wind-down only' : ''}
 
 RULES:
 - ONE action only
+- Ground in their IDENTITY and VALUES first
 - Duration MUST match ${timeOfDay} energy level
 - Can start RIGHT NOW (no setup, no driving somewhere)
-- Reference their actual saved content, identity, or stated goals
+- NEVER suggest watching, reading, or consuming anything
 - NO emojis
-- NO emotional language ("You've got this", "I believe in you")
-- NO therapeutic framing ("I know it's hard", "Give yourself grace")
-- NO vague suggestions ("Explore your feelings about...")
-- NO motivational fluff ("Just do it!", "You can do anything!")
+- NO emotional language
 - Direct and concrete only
 
-Surface something from their own captured wisdom that fits this moment.`;
+The action should EMBODY their identity, not add to their consumption.`;
 
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
