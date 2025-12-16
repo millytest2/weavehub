@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Trash2, Lightbulb, Loader2 } from "lucide-react";
+import { Plus, Trash2, Lightbulb, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { z } from "zod";
 
 const insightSchema = z.object({
@@ -16,7 +16,9 @@ const insightSchema = z.object({
   content: z.string().trim().min(1, "Content is required").max(50000, "Content must be less than 50,000 characters"),
 });
 
-const PAGE_SIZE = 25;
+const INITIAL_SIZE = 15;
+const MAX_SCROLL_SIZE = 50;
+const PAGE_SIZE = 50;
 
 const Insights = () => {
   const { user } = useAuth();
@@ -27,19 +29,23 @@ const Insights = () => {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [canLoadMore, setCanLoadMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Infinite scroll observer
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const showPagination = totalCount > MAX_SCROLL_SIZE;
+
+  // Infinite scroll observer - only active within first page and under 50 items
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel) return;
+    if (!sentinel || currentPage > 0 || !canLoadMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-          fetchInsights(false);
+        if (entries[0].isIntersecting && canLoadMore && !loadingMore && !loading && insights.length < MAX_SCROLL_SIZE) {
+          loadMore();
         }
       },
       { threshold: 0.1, rootMargin: '100px' }
@@ -47,60 +53,74 @@ const Insights = () => {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, insights.length]);
+  }, [canLoadMore, loadingMore, loading, insights.length, currentPage]);
 
   useEffect(() => {
     if (!user) return;
-    fetchInsights(true);
+    fetchInsights(0);
   }, [user]);
 
-  const fetchInsights = useCallback(async (reset = false) => {
+  const fetchInsights = useCallback(async (page: number) => {
     if (!user) return;
     
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+    setLoading(true);
+    setCurrentPage(page);
 
-    const offset = reset ? 0 : insights.length;
+    const offset = page * PAGE_SIZE;
+    const limit = page === 0 ? INITIAL_SIZE : PAGE_SIZE;
 
     try {
-      // Get total count first (only on reset)
-      if (reset) {
-        const { count } = await supabase
-          .from("insights")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        setTotalCount(count || 0);
-      }
+      // Get total count
+      const { count } = await supabase
+        .from("insights")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      setTotalCount(count || 0);
 
       const { data, error } = await supabase
         .from("insights")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1);
+        .range(offset, offset + limit - 1);
 
       if (error) {
         toast.error("Failed to load insights");
         return;
       }
 
-      const newInsights = data || [];
-      
-      if (reset) {
-        setInsights(newInsights);
-      } else {
-        setInsights(prev => [...prev, ...newInsights]);
-      }
-
-      setHasMore(newInsights.length === PAGE_SIZE);
+      setInsights(data || []);
+      setCanLoadMore(page === 0 && (data?.length || 0) >= INITIAL_SIZE && (count || 0) > INITIAL_SIZE);
     } finally {
       setLoading(false);
+    }
+  }, [user]);
+
+  const loadMore = useCallback(async () => {
+    if (!user || loadingMore || insights.length >= MAX_SCROLL_SIZE) return;
+    
+    setLoadingMore(true);
+    const offset = insights.length;
+    const remaining = MAX_SCROLL_SIZE - insights.length;
+    const limit = Math.min(remaining, 15);
+
+    try {
+      const { data, error } = await supabase
+        .from("insights")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) return;
+
+      const newInsights = data || [];
+      setInsights(prev => [...prev, ...newInsights]);
+      setCanLoadMore(newInsights.length >= limit && insights.length + newInsights.length < MAX_SCROLL_SIZE);
+    } finally {
       setLoadingMore(false);
     }
-  }, [user, insights.length]);
+  }, [user, insights.length, loadingMore]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +148,7 @@ const Insights = () => {
       setTitle("");
       setContent("");
       setIsDialogOpen(false);
-      fetchInsights(true);
+      fetchInsights(0);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -206,16 +226,48 @@ const Insights = () => {
             ))}
           </div>
 
-          {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef} className="h-4" />
-          {loadingMore && (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          {/* Infinite scroll sentinel - only for first page */}
+          {currentPage === 0 && canLoadMore && insights.length < MAX_SCROLL_SIZE && (
+            <>
+              <div ref={sentinelRef} className="h-4" />
+              {loadingMore && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Pagination controls - show after 50 items */}
+          {showPagination && (
+            <div className="flex items-center justify-center gap-4 py-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchInsights(currentPage - 1)}
+                disabled={currentPage === 0 || loading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchInsights(currentPage + 1)}
+                disabled={currentPage >= totalPages - 1 || loading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
           )}
-          {!hasMore && insights.length > 0 && (
+
+          {insights.length > 0 && (
             <p className="text-center text-xs text-muted-foreground py-2">
-              {totalCount} insights
+              {totalCount} insights total
             </p>
           )}
         </>

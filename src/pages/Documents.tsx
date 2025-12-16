@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Trash2, Upload, Download, Plus, FileText, Eye, Loader2 } from "lucide-react";
+import { Trash2, Upload, Download, Plus, FileText, Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { z } from "zod";
 import * as pdfjs from 'pdfjs-dist';
 import { createWorker } from 'tesseract.js';
@@ -24,7 +24,9 @@ const documentSchema = z.object({
   summary: z.string().trim().max(5000, "Summary must be less than 5,000 characters"),
 });
 
-const PAGE_SIZE = 25;
+const INITIAL_SIZE = 15;
+const MAX_SCROLL_SIZE = 50;
+const PAGE_SIZE = 50;
 
 const Documents = () => {
   const { user } = useAuth();
@@ -45,19 +47,23 @@ const Documents = () => {
   const [isReExtracting, setIsReExtracting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [canLoadMore, setCanLoadMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Infinite scroll observer
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const showPagination = totalCount > MAX_SCROLL_SIZE;
+
+  // Infinite scroll observer - only active within first page and under 50 items
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel) return;
+    if (!sentinel || currentPage > 0 || !canLoadMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-          fetchDocuments(false);
+        if (entries[0].isIntersecting && canLoadMore && !loadingMore && !loading && documents.length < MAX_SCROLL_SIZE) {
+          loadMore();
         }
       },
       { threshold: 0.1, rootMargin: '100px' }
@@ -65,60 +71,74 @@ const Documents = () => {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, documents.length]);
+  }, [canLoadMore, loadingMore, loading, documents.length, currentPage]);
 
   useEffect(() => {
     if (!user) return;
-    fetchDocuments(true);
+    fetchDocuments(0);
   }, [user]);
 
-  const fetchDocuments = useCallback(async (reset = false) => {
+  const fetchDocuments = useCallback(async (page: number) => {
     if (!user) return;
     
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+    setLoading(true);
+    setCurrentPage(page);
 
-    const offset = reset ? 0 : documents.length;
+    const offset = page * PAGE_SIZE;
+    const limit = page === 0 ? INITIAL_SIZE : PAGE_SIZE;
 
     try {
-      // Get total count first (only on reset)
-      if (reset) {
-        const { count } = await supabase
-          .from("documents")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        setTotalCount(count || 0);
-      }
+      // Get total count
+      const { count } = await supabase
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      setTotalCount(count || 0);
 
       const { data, error } = await supabase
         .from("documents")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1);
+        .range(offset, offset + limit - 1);
 
       if (error) {
         toast.error("Failed to load documents");
         return;
       }
 
-      const newDocs = data || [];
-      
-      if (reset) {
-        setDocuments(newDocs);
-      } else {
-        setDocuments(prev => [...prev, ...newDocs]);
-      }
-
-      setHasMore(newDocs.length === PAGE_SIZE);
+      setDocuments(data || []);
+      setCanLoadMore(page === 0 && (data?.length || 0) >= INITIAL_SIZE && (count || 0) > INITIAL_SIZE);
     } finally {
       setLoading(false);
+    }
+  }, [user]);
+
+  const loadMore = useCallback(async () => {
+    if (!user || loadingMore || documents.length >= MAX_SCROLL_SIZE) return;
+    
+    setLoadingMore(true);
+    const offset = documents.length;
+    const remaining = MAX_SCROLL_SIZE - documents.length;
+    const limit = Math.min(remaining, 15);
+
+    try {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) return;
+
+      const newDocs = data || [];
+      setDocuments(prev => [...prev, ...newDocs]);
+      setCanLoadMore(newDocs.length >= limit && documents.length + newDocs.length < MAX_SCROLL_SIZE);
+    } finally {
       setLoadingMore(false);
     }
-  }, [user, documents.length]);
+  }, [user, documents.length, loadingMore]);
 
   const extractPdfText = async (file: File): Promise<string> => {
     try {
@@ -263,7 +283,7 @@ const Documents = () => {
         : data.message || "Video saved successfully!"
       );
       
-      await fetchDocuments();
+      await fetchDocuments(0);
       setVideoUrl("");
       setUploadTitle("");
       setIsDialogOpen(false);
@@ -362,7 +382,7 @@ const Documents = () => {
         }
       }
       
-      await fetchDocuments();
+      await fetchDocuments(0);
       setSelectedFile(null);
       setUploadTitle("");
       setRunAnalysis(false);
@@ -399,7 +419,7 @@ const Documents = () => {
       setTitle("");
       setSummary("");
       setIsDialogOpen(false);
-      fetchDocuments();
+      fetchDocuments(0);
     } catch (error: any) {
       toast.error(error.message);
     }
@@ -415,7 +435,7 @@ const Documents = () => {
       if (error) throw error;
 
       toast.success("Document deleted");
-      fetchDocuments();
+      fetchDocuments(0);
     } catch (error: any) {
       toast.error(error.message);
     }
@@ -536,7 +556,7 @@ const Documents = () => {
       setViewingDoc({ ...viewingDoc, extracted_content: extractedContent });
       
       // Refresh documents list
-      await fetchDocuments();
+      await fetchDocuments(0);
       
       toast.success("Content extracted successfully!");
     } catch (error: any) {
@@ -644,18 +664,50 @@ const Documents = () => {
         ))}
       </div>
 
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="h-4" />
-      {loadingMore && (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
-      {!hasMore && documents.length > 0 && (
-        <p className="text-center text-xs text-muted-foreground py-2">
-          {totalCount} documents
-        </p>
-      )}
+          {/* Infinite scroll sentinel - only for first page */}
+          {currentPage === 0 && canLoadMore && documents.length < MAX_SCROLL_SIZE && (
+            <>
+              <div ref={sentinelRef} className="h-4" />
+              {loadingMore && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Pagination controls - show after 50 items */}
+          {showPagination && (
+            <div className="flex items-center justify-center gap-4 py-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchDocuments(currentPage - 1)}
+                disabled={currentPage === 0 || loading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchDocuments(currentPage + 1)}
+                disabled={currentPage >= totalPages - 1 || loading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+
+          {documents.length > 0 && (
+            <p className="text-center text-xs text-muted-foreground py-2">
+              {totalCount} documents total
+            </p>
+          )}
       </>
       )}
 
