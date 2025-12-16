@@ -103,7 +103,6 @@ export function TopicClusterVisualization({ clusters, identityKeywords = [] }: T
                   className={`
                     flex items-center justify-center rounded-full transition-all duration-300
                     ${hasConnection ? 'ring-2 ring-primary/20' : ''}
-                    ${cluster.isHot ? 'animate-pulse' : ''}
                   `}
                   style={{
                     width: `${size}px`,
