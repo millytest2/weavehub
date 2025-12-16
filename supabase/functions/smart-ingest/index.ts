@@ -380,6 +380,65 @@ async function fetchTweetContent(url: string): Promise<{ title: string; content:
   }
 }
 
+// Match content to best topic using AI
+async function matchToTopic(
+  content: string, 
+  title: string, 
+  topics: { id: string; name: string; description: string | null }[]
+): Promise<string | null> {
+  if (topics.length === 0) return null;
+  
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) return null;
+  
+  try {
+    const topicList = topics.map(t => `- ${t.name}${t.description ? `: ${t.description}` : ''}`).join('\n');
+    
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content: `You are a content classifier. Match the content to the BEST fitting topic from this list. Return ONLY the exact topic name, nothing else. If no topic fits well, return "none".
+
+Available topics:
+${topicList}`
+          },
+          {
+            role: "user",
+            content: `Title: ${title}\n\nContent:\n${content.substring(0, 2000)}`
+          }
+        ],
+      }),
+    });
+
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const matchedName = data.choices[0].message.content.trim();
+    
+    if (matchedName.toLowerCase() === 'none') return null;
+    
+    // Find the topic by name (case-insensitive)
+    const matched = topics.find(t => 
+      t.name.toLowerCase() === matchedName.toLowerCase() ||
+      t.name.toLowerCase().includes(matchedName.toLowerCase()) ||
+      matchedName.toLowerCase().includes(t.name.toLowerCase())
+    );
+    
+    return matched?.id || null;
+  } catch (e) {
+    console.error("Topic matching error:", e);
+    return null;
+  }
+}
+
 // Generate insights from content
 async function generateInsights(content: string, title: string, source: string): Promise<{ title: string; content: string }[]> {
   if (content.length < 50) return [];
@@ -529,10 +588,23 @@ serve(async (req) => {
 
     if (docError) throw docError;
     
-    // Generate and save insights
+    // Fetch user's topics for matching
+    const { data: userTopics } = await supabase
+      .from("topics")
+      .select("id, name, description")
+      .eq("user_id", user.id);
+    
+    // Generate and save insights with topic matching
     let insightsCreated = 0;
     if (content && content.length > 50) {
       const insights = await generateInsights(content, title, detected.type);
+      
+      // Match content to best topic (do once for all insights from same content)
+      const matchedTopicId = userTopics && userTopics.length > 0
+        ? await matchToTopic(content, title, userTopics)
+        : null;
+      
+      console.log("Matched topic:", matchedTopicId);
       
       for (const insight of insights) {
         if (insight.title && insight.content) {
@@ -541,6 +613,7 @@ serve(async (req) => {
             title: insight.title,
             content: insight.content,
             source,
+            topic_id: matchedTopicId,
           });
           insightsCreated++;
         }
