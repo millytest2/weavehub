@@ -79,7 +79,11 @@ export function TopicClusterVisualization({ clusters, identityKeywords = [] }: T
   }, [clustersWithAlignment]);
 
   if (clustersWithAlignment.length === 0) {
-    return null;
+    return (
+      <div className="p-4 rounded-xl bg-muted/20 border border-border/20 text-center">
+        <p className="text-xs text-muted-foreground">Start capturing to see your patterns emerge</p>
+      </div>
+    );
   }
 
   return (
@@ -142,13 +146,15 @@ export function TopicClusterVisualization({ clusters, identityKeywords = [] }: T
           })}
         </div>
         
-        {/* Identity core indicator */}
-        <div className="absolute top-2 right-2">
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Zap className="h-3 w-3 text-amber-500" />
-            <span>active</span>
+        {/* Legend - only show if clusters have activity */}
+        {clustersWithAlignment.some(c => c.isHot) && (
+          <div className="absolute top-2 right-2">
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Zap className="h-3 w-3 text-amber-500" />
+              <span>recent</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       
       {/* Connections list */}
