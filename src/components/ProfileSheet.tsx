@@ -30,6 +30,7 @@ interface InsightWithTopic {
   content: string;
   source: string | null;
   topic_id: string | null;
+  created_at: string;
   topics: { id: string; name: string; color: string | null } | null;
 }
 
@@ -37,6 +38,7 @@ interface InsightCluster {
   theme: string;
   color: string | null;
   insights: InsightWithTopic[];
+  recentCount: number;
 }
 
 interface ProfileSheetProps {
@@ -85,7 +87,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .limit(10),
         supabase
           .from("insights")
-          .select("id, title, content, source, topic_id, topics(id, name, color)")
+          .select("id, title, content, source, topic_id, created_at, topics(id, name, color)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(100)
@@ -110,9 +112,10 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
 
   const clusterInsightsByTopic = (insights: InsightWithTopic[]): InsightCluster[] => {
     const clusters: Record<string, { color: string | null; insights: InsightWithTopic[] }> = {};
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
     for (const insight of insights) {
-      // Use topic name if available, otherwise "Uncategorized"
       const theme = insight.topics?.name || "Uncategorized";
       const color = insight.topics?.color || null;
       
@@ -123,11 +126,15 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     }
     
     return Object.entries(clusters)
-      .map(([theme, data]) => ({ theme, color: data.color, insights: data.insights }))
+      .map(([theme, data]) => {
+        const recentCount = data.insights.filter(i => new Date(i.created_at) > sevenDaysAgo).length;
+        return { theme, color: data.color, insights: data.insights, recentCount };
+      })
       .sort((a, b) => {
-        // Put "Uncategorized" last
         if (a.theme === "Uncategorized") return 1;
         if (b.theme === "Uncategorized") return -1;
+        // Sort by recent activity first, then total
+        if (b.recentCount !== a.recentCount) return b.recentCount - a.recentCount;
         return b.insights.length - a.insights.length;
       });
   };
@@ -381,6 +388,11 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                                 <Lightbulb className="h-4 w-4 text-muted-foreground" />
                               )}
                               <span className="text-sm font-medium text-foreground">{cluster.theme}</span>
+                              {cluster.recentCount > 0 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                  +{cluster.recentCount}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted-foreground">{cluster.insights.length}</span>

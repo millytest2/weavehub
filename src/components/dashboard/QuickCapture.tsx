@@ -205,6 +205,18 @@ export const QuickCapture = () => {
 
   return (
     <>
+      {/* Decision Mirror - Secondary Button */}
+      <button
+        onClick={() => {
+          setCaptureType("decision");
+          setIsOpen(true);
+        }}
+        className="fixed bottom-20 md:bottom-6 right-[5.5rem] z-50 w-10 h-10 rounded-full bg-muted/80 backdrop-blur text-muted-foreground border border-border shadow-md hover:shadow-lg hover:bg-muted hover:text-foreground transition-all flex items-center justify-center"
+        aria-label="Decision mirror"
+      >
+        <Scale className="h-4 w-4" />
+      </button>
+
       {/* Floating Action Button */}
       <button
         onClick={handleOpen}
