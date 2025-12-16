@@ -269,6 +269,13 @@ const Insights = () => {
               </p>
             </div>
           )}
+
+          {/* Show total at bottom when not paginating and done loading */}
+          {!showPagination && !canLoadMore && insights.length > 0 && (
+            <p className="text-center text-xs text-muted-foreground py-4">
+              {totalCount} insights
+            </p>
+          )}
         </>
       )}
 

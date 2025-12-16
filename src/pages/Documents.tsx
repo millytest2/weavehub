@@ -591,7 +591,7 @@ const Documents = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Documents</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            PDFs, resources, and reference materials
+            PDFs, videos, and social materials
           </p>
         </div>
         <Button onClick={() => setIsDialogOpen(true)} size="sm">
@@ -706,6 +706,13 @@ const Documents = () => {
                 {totalCount} documents total
               </p>
             </div>
+          )}
+
+          {/* Show total at bottom when not paginating and done loading */}
+          {!showPagination && !canLoadMore && documents.length > 0 && (
+            <p className="text-center text-xs text-muted-foreground py-4">
+              {totalCount} documents
+            </p>
           )}
       </>
       )}
