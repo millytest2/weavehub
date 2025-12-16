@@ -24,7 +24,7 @@ const documentSchema = z.object({
   summary: z.string().trim().max(5000, "Summary must be less than 5,000 characters"),
 });
 
-const INITIAL_SIZE = 15;
+const INITIAL_SIZE = 20;
 const MAX_SCROLL_SIZE = 50;
 const PAGE_SIZE = 50;
 
@@ -678,35 +678,34 @@ const Documents = () => {
 
           {/* Pagination controls - show after 50 items */}
           {showPagination && (
-            <div className="flex items-center justify-center gap-4 py-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchDocuments(currentPage - 1)}
-                disabled={currentPage === 0 || loading}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {currentPage + 1} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchDocuments(currentPage + 1)}
-                disabled={currentPage >= totalPages - 1 || loading}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+            <div className="flex flex-col items-center gap-2 py-6">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchDocuments(currentPage - 1)}
+                  disabled={currentPage === 0 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchDocuments(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1 || loading}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {totalCount} documents total
+              </p>
             </div>
-          )}
-
-          {documents.length > 0 && (
-            <p className="text-center text-xs text-muted-foreground py-2">
-              {totalCount} documents total
-            </p>
           )}
       </>
       )}
