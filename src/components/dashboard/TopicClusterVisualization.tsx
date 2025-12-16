@@ -157,26 +157,7 @@ export function TopicClusterVisualization({ clusters, identityKeywords = [] }: T
         )}
       </div>
       
-      {/* Connections list */}
-      {connections.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-            Semantic Connections
-          </p>
-          <div className="space-y-1">
-            {connections.slice(0, 4).map((conn, idx) => (
-              <div 
-                key={idx}
-                className="flex items-center gap-2 text-xs text-muted-foreground py-1 px-2 rounded bg-muted/20"
-              >
-                <span className="truncate max-w-[80px]">{conn.from}</span>
-                <div className="flex-1 h-px bg-gradient-to-r from-border via-primary/30 to-border" />
-                <span className="truncate max-w-[80px]">{conn.to}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Connections are calculated but not displayed - system uses them internally */}
     </div>
   );
 }
