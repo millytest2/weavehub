@@ -11,46 +11,75 @@ interface WelcomeWizardProps {
   onComplete: () => void;
 }
 
-// Reduced to 4 focused steps - prove value fast
+// Value-first flow: show immediate action BEFORE asking for identity
 const STEPS = [
   {
     icon: Brain,
-    title: "Drowning in Options?",
-    description: "You're not broken. You're overloaded.",
-    content: "Too many ideas. Too much advice. Too many tabs open. You don't need more information. You need someone who knows you to say: 'Do this next.'",
+    title: "You're Not Broken",
+    description: "You're overloaded.",
+    content: "Too many ideas. Too much advice. Too many open tabs. You don't need more information. You need clarity on what to do next.",
     type: "hook" as const,
   },
   {
-    icon: Target,
-    title: "Who Are You Becoming?",
-    description: "This is the filter that cuts through noise",
-    content: "Not goals. Not tasks. The person you're actively stepping into. Every action Weave suggests will push you toward this identity.",
-    type: "identity" as const,
-    prompts: [
-      "I am becoming someone who...",
-      "I'm stepping into being...",
-      "The version of me I'm building is...",
-    ],
-    placeholder: `Be specific. Not "successful" but "someone who ships one thing every week." Not "healthy" but "someone who moves their body before looking at a screen."`,
-    examples: [
-      "I am becoming someone who builds in public instead of planning in private. Someone who values done over perfect.",
-      "I'm stepping into being a creator who publishes weekly, not a consumer who saves for later.",
-      "The version of me I'm building is disciplined but not rigid. Action-biased but not reckless.",
-    ],
-  },
-  {
     icon: Zap,
-    title: "Your First Action",
-    description: "This is what Weave does",
+    title: "Here's Your First Move",
+    description: "No setup required. Just one action.",
     content: "",
     type: "demo" as const,
   },
   {
+    icon: Target,
+    title: "Want Better Recommendations?",
+    description: "Tell Weave who you're becoming",
+    content: "The more Weave knows about where you're headed, the sharper the actions become. This is optional but powerful.",
+    type: "identity" as const,
+    prompts: [
+      "I am becoming someone who...",
+      "I'm working toward being...",
+      "The person I'm building is...",
+    ],
+    placeholder: `Be specific. Not "successful" but "someone who ships weekly." Not "healthy" but "someone who moves before screens."`,
+    examples: [
+      "I am becoming someone who builds in public instead of planning in private.",
+      "I'm working toward being a creator who publishes weekly, not a consumer who saves for later.",
+      "The person I'm building is disciplined but not rigid. Action-biased but not reckless.",
+    ],
+  },
+  {
     icon: Sparkles,
-    title: "That's It. You're In.",
-    description: "Three actions per day. One identity to build.",
-    content: "Save content as you learn. Weave connects it to your identity and turns it into actions. No more planning without doing.",
+    title: "You're In",
+    description: "One action at a time. That's it.",
+    content: "When you're bored, lost, or overthinking - come back here. Weave will always have your next move ready.",
     type: "final" as const,
+  },
+];
+
+// Universal starter actions that work for anyone
+const UNIVERSAL_ACTIONS = [
+  {
+    action: "Write down the one thing you've been avoiding. Then do the smallest possible version of it right now.",
+    why: "Avoidance creates mental weight. The smallest step breaks the loop.",
+    time: "10-15 min",
+  },
+  {
+    action: "Stand up, take 10 deep breaths, then write down what's actually on your mind without filtering.",
+    why: "Clarity comes from getting thoughts out of your head and onto paper.",
+    time: "5-10 min",
+  },
+  {
+    action: "Message one person you've been meaning to reach out to. Keep it simple: 'Hey, thinking of you.'",
+    why: "Connection breaks isolation. Small gestures compound.",
+    time: "2-5 min",
+  },
+  {
+    action: "Close all tabs. Open one blank document. Write the single most important thing you need to do today.",
+    why: "Overwhelm comes from too many options. Focus on one.",
+    time: "5-10 min",
+  },
+  {
+    action: "Go outside for 5 minutes. No phone. Just notice what you see, hear, and feel.",
+    why: "Presence resets the nervous system. Fresh air changes perspective.",
+    time: "5-10 min",
   },
 ];
 
@@ -59,7 +88,6 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [identitySeed, setIdentitySeed] = useState("");
   const [saving, setSaving] = useState(false);
-  const [generatingAction, setGeneratingAction] = useState(false);
   const [demoAction, setDemoAction] = useState<{ action: string; why: string; time: string } | null>(null);
   const [showExample, setShowExample] = useState(false);
 
@@ -87,8 +115,14 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
     }
   };
 
+  // Show immediate value with universal action
+  const showDemoAction = () => {
+    const randomAction = UNIVERSAL_ACTIONS[Math.floor(Math.random() * UNIVERSAL_ACTIONS.length)];
+    setDemoAction(randomAction);
+  };
+
   const saveIdentitySeed = async () => {
-    if (!identitySeed.trim()) return false;
+    if (!identitySeed.trim()) return true; // Allow skipping
     
     setSaving(true);
     try {
@@ -100,56 +134,26 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
       if (error) throw error;
       return true;
     } catch (error: any) {
-      toast.error("Failed to save identity seed");
+      toast.error("Failed to save");
       return false;
     } finally {
       setSaving(false);
     }
   };
 
-  const generateDemoAction = async () => {
-    setGeneratingAction(true);
-    try {
-      // Get user's timezone
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      
-      const { data, error } = await supabase.functions.invoke("navigator", {
-        body: { timezone, isOnboarding: true },
-      });
-
-      if (error) throw error;
-      
-      if (data?.action) {
-        setDemoAction({
-          action: data.action,
-          why: data.why_it_matters || data.identity_thread || "This builds the identity you just defined.",
-          time: data.time_required || "15-30 min",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to generate demo action:", error);
-      // Fallback action based on their identity seed
-      setDemoAction({
-        action: "Write down one thing you've been avoiding and do the smallest possible version of it right now.",
-        why: "You just defined who you're becoming. This is your first rep.",
-        time: "10-15 min",
-      });
-    } finally {
-      setGeneratingAction(false);
-    }
-  };
-
   const handleNext = async () => {
     const step = STEPS[currentStep];
+    
+    // Moving to demo step - show action immediately
+    if (step.type === "hook") {
+      setCurrentStep(currentStep + 1);
+      showDemoAction();
+      return;
+    }
     
     if (step.type === "identity" && identitySeed.trim()) {
       const success = await saveIdentitySeed();
       if (!success) return;
-      
-      // Move to demo step and generate action
-      setCurrentStep(currentStep + 1);
-      generateDemoAction();
-      return;
     }
 
     if (currentStep < STEPS.length - 1) {
@@ -162,9 +166,6 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
-      if (currentStep === 2) {
-        setDemoAction(null);
-      }
     }
   };
 
@@ -184,43 +185,20 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
   const Icon = step.icon;
   const isLastStep = currentStep === STEPS.length - 1;
 
-  // Stricter validation - must be meaningful
   const canProceed = () => {
-    if (step.type === "identity") {
-      const trimmed = identitySeed.trim();
-      // At least 50 chars and contains "I" or "someone" to ensure it's identity-focused
-      return trimmed.length >= 50 && (
-        trimmed.toLowerCase().includes("i am") ||
-        trimmed.toLowerCase().includes("i'm") ||
-        trimmed.toLowerCase().includes("someone who") ||
-        trimmed.toLowerCase().includes("person who") ||
-        trimmed.toLowerCase().includes("becoming")
-      );
-    }
     if (step.type === "demo") {
       return demoAction !== null;
     }
+    // Identity is optional - can always proceed
     return true;
   };
 
   const getIdentityFeedback = () => {
     const trimmed = identitySeed.trim();
     if (trimmed.length === 0) return null;
-    if (trimmed.length < 30) return { text: "Keep going. Be specific about who you're becoming.", color: "text-muted-foreground" };
-    if (trimmed.length < 50) return { text: "Good start. Add more detail about behaviors and values.", color: "text-muted-foreground" };
-    
-    const hasIdentityLanguage = 
-      trimmed.toLowerCase().includes("i am") ||
-      trimmed.toLowerCase().includes("i'm") ||
-      trimmed.toLowerCase().includes("someone who") ||
-      trimmed.toLowerCase().includes("person who") ||
-      trimmed.toLowerCase().includes("becoming");
-    
-    if (!hasIdentityLanguage) {
-      return { text: "Start with 'I am becoming someone who...' to frame as identity.", color: "text-muted-foreground" };
-    }
-    
-    return { text: "This is a strong identity seed.", color: "text-primary" };
+    if (trimmed.length < 20) return { text: "Keep going...", color: "text-muted-foreground" };
+    if (trimmed.length < 40) return { text: "Good start. Add more detail.", color: "text-muted-foreground" };
+    return { text: "This will sharpen your recommendations.", color: "text-primary" };
   };
 
   return (
@@ -246,7 +224,23 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
             )}
           </div>
 
-          {/* Identity Input */}
+          {/* Demo Action - Show value FIRST */}
+          {step.type === "demo" && demoAction && (
+            <div className="w-full space-y-4 text-left">
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="font-medium text-foreground leading-relaxed">{demoAction.action}</p>
+                <p className="text-xs text-muted-foreground mt-2">{demoAction.time}</p>
+              </div>
+              <p className="text-sm text-muted-foreground italic">
+                "{demoAction.why}"
+              </p>
+              <p className="text-xs text-primary">
+                This is what Weave does. One clear action when you need it.
+              </p>
+            </div>
+          )}
+
+          {/* Identity Input - AFTER showing value */}
           {step.type === "identity" && (
             <div className="w-full space-y-4 text-left">
               {/* Quick prompts */}
@@ -266,13 +260,13 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
                 value={identitySeed}
                 onChange={(e) => setIdentitySeed(e.target.value)}
                 placeholder={step.placeholder}
-                className="min-h-[120px] text-sm"
+                className="min-h-[100px] text-sm"
               />
               
               {/* Feedback */}
               {getIdentityFeedback() && (
                 <p className={`text-xs flex items-center gap-1 ${getIdentityFeedback()?.color}`}>
-                  {canProceed() && <Check className="h-3 w-3" />}
+                  {identitySeed.length >= 40 && <Check className="h-3 w-3" />}
                   {getIdentityFeedback()?.text}
                 </p>
               )}
@@ -282,7 +276,7 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
                 onClick={() => setShowExample(!showExample)}
                 className="text-xs text-primary hover:underline"
               >
-                {showExample ? "Hide examples" : "Need inspiration? See examples"}
+                {showExample ? "Hide examples" : "See examples"}
               </button>
               
               {showExample && (
@@ -298,33 +292,10 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
                   ))}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Demo Action */}
-          {step.type === "demo" && (
-            <div className="w-full space-y-4">
-              {generatingAction ? (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">
-                    Generating your first action based on your identity...
-                  </p>
-                </div>
-              ) : demoAction ? (
-                <div className="space-y-4 text-left">
-                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                    <p className="font-medium text-foreground">{demoAction.action}</p>
-                    <p className="text-xs text-muted-foreground mt-2">{demoAction.time}</p>
-                  </div>
-                  <p className="text-sm text-muted-foreground italic">
-                    "{demoAction.why}"
-                  </p>
-                  <p className="text-xs text-primary">
-                    This was generated from your identity seed in seconds. Imagine this happening every day, informed by everything you save and learn.
-                  </p>
-                </div>
-              ) : null}
+              
+              <p className="text-xs text-muted-foreground text-center">
+                You can skip this and add it later.
+              </p>
             </div>
           )}
 
@@ -347,7 +318,7 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
           {/* Actions */}
           <div className="flex items-center justify-between w-full gap-3">
             {currentStep > 0 ? (
-              <Button variant="ghost" onClick={handleBack} className="gap-2" disabled={saving || generatingAction}>
+              <Button variant="ghost" onClick={handleBack} className="gap-2" disabled={saving}>
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
@@ -359,9 +330,9 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
             <Button 
               onClick={handleNext} 
               className="gap-2" 
-              disabled={!canProceed() || saving || generatingAction}
+              disabled={!canProceed() || saving}
             >
-              {saving ? "Saving..." : isLastStep ? "Start Using Weave" : "Continue"}
+              {saving ? "Saving..." : isLastStep ? "Start" : step.type === "identity" && !identitySeed.trim() ? "Skip for Now" : "Continue"}
               {!isLastStep && !saving && <ArrowRight className="h-4 w-4" />}
             </Button>
           </div>
