@@ -15,9 +15,9 @@ interface WelcomeWizardProps {
 const STEPS = [
   {
     icon: Brain,
-    title: "You're Not Broken",
-    description: "You're overloaded.",
-    content: "Too many ideas. Too much advice. Too many open tabs. You don't need more information. You need clarity on what to do next.",
+    title: "Too Many Inputs",
+    description: "Not enough outputs.",
+    content: "You save videos, articles, ideas. They pile up. The gap between what you know and what you do keeps growing. Weave closes that gap.",
     type: "hook" as const,
   },
   {
