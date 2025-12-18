@@ -419,6 +419,64 @@ export async function fetchDocumentContext(
   };
 }
 
+// Detect integration patterns - ONE practice showing up across contexts
+function detectIntegrationPatterns(context: CompactContext): string {
+  const patterns: string[] = [];
+  
+  // Combine all text sources to find recurring themes
+  const allText = [
+    context.identity_seed || '',
+    context.weekly_focus || '',
+    context.core_values || '',
+    ...context.key_insights.map((i: any) => `${i.title} ${i.content}`),
+    ...context.completed_actions.map((a: any) => a.action_text || ''),
+    ...(context.experiments.in_progress || []).map((e: any) => `${e.title} ${e.description || ''}`),
+  ].join(' ').toLowerCase();
+  
+  // Core practice detection - the ONE thing they're practicing everywhere
+  const practiceSignals = [
+    { pattern: /stay(ing)? (with|present|grounded|expanded)/gi, practice: "staying present with discomfort" },
+    { pattern: /trust(ing)? (yourself|the process|your)/gi, practice: "building self-trust" },
+    { pattern: /let(ting)? go|release|surrender/gi, practice: "letting go of control" },
+    { pattern: /consistent|consistency|show(ing)? up/gi, practice: "consistent action over perfection" },
+    { pattern: /express(ion)?|create|build|ship/gi, practice: "expression over consumption" },
+    { pattern: /presence|breath|ground/gi, practice: "nervous system regulation" },
+    { pattern: /connect|reach out|relationship/gi, practice: "authentic connection" },
+  ];
+  
+  for (const signal of practiceSignals) {
+    const matches = allText.match(signal.pattern);
+    if (matches && matches.length >= 2) {
+      patterns.push(signal.practice);
+    }
+  }
+  
+  // Context detection - where the practice shows up
+  const contexts: string[] = [];
+  const contextSignals = [
+    { keywords: ['gym', 'workout', 'body', 'weight', 'physical', 'fitness', 'lift'], context: 'body' },
+    { keywords: ['upath', 'weave', 'build', 'ship', 'product', 'startup', 'code'], context: 'creation' },
+    { keywords: ['content', 'twitter', 'linkedin', 'post', 'write', 'youtube', 'tiktok'], context: 'content' },
+    { keywords: ['relationship', 'friend', 'social', 'connection', 'reach out'], context: 'relationships' },
+    { keywords: ['money', 'income', 'mrr', 'revenue', 'financial'], context: 'financial' },
+    { keywords: ['learn', 'read', 'study', 'curiosity', 'skill'], context: 'learning' },
+    { keywords: ['bartend', 'job', 'work', 'career'], context: 'work' },
+    { keywords: ['la', 'move', 'santa barbara', 'location'], context: 'life transition' },
+  ];
+  
+  for (const signal of contextSignals) {
+    if (signal.keywords.some(k => allText.includes(k))) {
+      contexts.push(signal.context);
+    }
+  }
+  
+  if (patterns.length > 0 && contexts.length > 1) {
+    return `\nINTEGRATION DETECTED:\nYou're practicing "${patterns[0]}" across ${contexts.slice(0, 4).join(', ')}. These aren't separate areas to manage—they're ONE practice in different contexts.\n`;
+  }
+  
+  return '';
+}
+
 // IDENTITY-FIRST context formatter
 // Priority: Identity Seed (40%) > Insights (30%) > Experiments (20%) > Documents (5%) > Phase (5%)
 export function formatContextForAI(context: CompactContext): string {
@@ -428,10 +486,21 @@ export function formatContextForAI(context: CompactContext): string {
   if (context.identity_seed) {
     formatted += `IDENTITY (PRIMARY DRIVER):\n${context.identity_seed}\n\n`;
   }
+  
+  // Core values - what they stand for
+  if (context.core_values) {
+    formatted += `CORE VALUES:\n${context.core_values}\n\n`;
+  }
 
   // Current reality - user's situation in natural language
   if (context.weekly_focus) {
     formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
+  }
+  
+  // Integration pattern detection - reflect the ONE practice across contexts
+  const integrationPattern = detectIntegrationPatterns(context);
+  if (integrationPattern) {
+    formatted += integrationPattern;
   }
 
   // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals with FULL content
