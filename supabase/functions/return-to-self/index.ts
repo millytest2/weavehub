@@ -55,20 +55,30 @@ serve(async (req) => {
     const hour = parseInt(hourStr, 10);
     const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
 
-    // Fetch identity seed
-    const { data: identitySeed } = await supabase
-      .from("identity_seeds")
-      .select("content, core_values, weekly_focus")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Fetch identity seed and recent activity for pattern detection
+    const [identitySeedResult, insightsResult, actionsResult] = await Promise.all([
+      supabase
+        .from("identity_seeds")
+        .select("content, core_values, weekly_focus")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("insights")
+        .select("id, title, content, relevance_score")
+        .eq("user_id", user.id)
+        .order("relevance_score", { ascending: false })
+        .limit(10),
+      supabase
+        .from("action_history")
+        .select("action_text, pillar")
+        .eq("user_id", user.id)
+        .order("action_date", { ascending: false })
+        .limit(15)
+    ]);
 
-    // Fetch recent insights (top 5 by relevance)
-    const { data: insights } = await supabase
-      .from("insights")
-      .select("id, title, content, relevance_score")
-      .eq("user_id", user.id)
-      .order("relevance_score", { ascending: false })
-      .limit(10);
+    const identitySeed = identitySeedResult.data;
+    const insights = insightsResult.data;
+    const recentActions = actionsResult.data || [];
 
     // Pick a random relevant insight
     const randomInsight = insights && insights.length > 0 
@@ -78,6 +88,24 @@ serve(async (req) => {
     const identity = identitySeed?.content || "You are becoming someone who takes aligned action.";
     const values = identitySeed?.core_values || "Growth, Presence, Creation";
     const currentReality = identitySeed?.weekly_focus || "You are here. That is enough.";
+
+    // Detect integration pattern - the ONE practice across contexts
+    const allText = [identity, values, currentReality, ...recentActions.map(a => a.action_text || '')].join(' ').toLowerCase();
+    
+    const practicePatterns = [
+      { regex: /stay(ing)? (with|present|grounded|expanded)/gi, practice: "staying present with discomfort" },
+      { regex: /trust(ing)? (yourself|the process|your)/gi, practice: "building self-trust" },
+      { regex: /consistent|consistency|show(ing)? up/gi, practice: "consistent action over perfection" },
+      { regex: /express|create|build|ship/gi, practice: "expression over consumption" },
+    ];
+    
+    let corePractice = "";
+    for (const p of practicePatterns) {
+      if ((allText.match(p.regex) || []).length >= 2) {
+        corePractice = p.practice;
+        break;
+      }
+    }
 
     // Time-appropriate grounding
     const timeContext = {
@@ -91,6 +119,10 @@ serve(async (req) => {
     const systemPrompt = `You surface what the user already knows. The user is drifting (bored, anxious, lonely, overthinking, or wanting to numb out). 
 Based on their saved identity and values, bring them back to themselves with one gentle micro-action.
 
+CORE PHILOSOPHY:
+The user is NOT managing separate life areas. They're living ONE integrated life. Your job is to reflect back who they already are, not prescribe who they should become.
+${corePractice ? `\nDETECTED CORE PRACTICE: "${corePractice}" - this is what they're practicing everywhere. Reference it.` : ''}
+
 TIME: ${timeOfDay}
 ${timeContext[timeOfDay as keyof typeof timeContext]}
 
@@ -100,8 +132,8 @@ CURRENT REALITY: ${currentReality}
 ${randomInsight ? `RELEVANT INSIGHT: "${randomInsight.title}" - ${randomInsight.content.substring(0, 300)}` : ""}
 
 Return a JSON object with exactly these fields:
-- gentleRep: A single 2-5 minute action appropriate for ${timeOfDay}. Reference their actual identity/values. Something that reconnects them to who they're becoming.
-- reminder: One sentence (under 15 words) that reminds them what they're doing with their life. Pull from their identity. Be specific.
+- gentleRep: A single 2-5 minute action appropriate for ${timeOfDay}. Reference their actual identity/values. Something that reconnects them to who they're becoming. If a core practice was detected, the action should be an expression of that practice.
+- reminder: One sentence (under 15 words) that reminds them what they're doing with their life. ${corePractice ? `Connect it to their core practice: "${corePractice}"` : 'Pull from their identity.'} Be specific.
 
 Rules:
 - Match energy to ${timeOfDay} (${timeOfDay === 'night' ? 'very calm, wind-down only' : timeOfDay === 'evening' ? 'gentle' : timeOfDay === 'afternoon' ? 'balanced' : 'can be slightly more active'})
@@ -110,7 +142,8 @@ Rules:
 - No therapeutic framing ("I know it's hard", "Give yourself grace")
 - No motivational fluff
 - Reference their actual identity/values from what they've saved
-- Keep it concrete and immediate`;
+- Keep it concrete and immediate
+- Frame as PERMISSION to live what they're already becoming, not another thing to manage`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
