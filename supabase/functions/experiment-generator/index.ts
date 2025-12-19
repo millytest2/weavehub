@@ -134,42 +134,42 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     },
     challenge_24h: {
       "Presence": {
-        title: "24h Talk to 10 Strangers → Real Conversations",
-        description: "Talk to 10 new people in 24 hours. Not small talk. Real conversations. Get one contact from each.",
+        title: "48h Talk to 15 Strangers → Real Conversations",
+        description: "Talk to 15 new people in 48 hours. Not small talk. Real conversations. Get one contact from each.",
         steps: [
-          "Morning: Talk to 3 strangers. Ask about their work/life.",
-          "Afternoon: Talk to 4 more. Exchange contact with at least 2.",
-          "Evening: Talk to 3 more. Follow up with one via text."
+          "Day 1: Talk to 7 strangers. Ask about their work/life.",
+          "Day 2: Talk to 8 more. Exchange contact with at least 4.",
+          "End: Follow up with two via text within 24h."
         ],
-        duration: "24 hours",
+        duration: "48 hours",
         identity_shift_target: "I connect with anyone, anywhere.",
         pillar: "Presence",
         sprint_type: "challenge_24h",
         intensity: "push"
       },
       "Health": {
-        title: "24h Move Every Hour → Track Energy",
-        description: "Set hourly alarms. Move for 10 minutes every hour you're awake. Track energy levels. See what changes.",
+        title: "48h Move Every Hour → Track Energy",
+        description: "Set hourly alarms for 48 hours. Move for 10 minutes every hour you're awake. Track energy levels. See what changes.",
         steps: [
-          "Set 16 hourly alarms from 6am to 10pm",
+          "Set hourly alarms from 6am to 10pm for both days",
           "10 min movement each alarm: walk, stretch, pushups, anything",
-          "Rate energy 1-10 after each session. Compare start vs end."
+          "Rate energy 1-10 after each session. Compare day 1 vs day 2."
         ],
-        duration: "24 hours",
+        duration: "48 hours",
         identity_shift_target: "I move constantly.",
         pillar: "Health",
         sprint_type: "challenge_24h",
         intensity: "push"
       },
       "default": {
-        title: "24h Do The Opposite → Break One Pattern",
-        description: "Identify your biggest avoidance pattern. Do the opposite for 24 hours straight. Track what shifts.",
+        title: "48h Do The Opposite → Break One Pattern",
+        description: "Identify your biggest avoidance pattern. Do the opposite for 48 hours straight. Track what shifts.",
         steps: [
           "Identify: What do you always avoid? That's your target.",
-          "24 hours: Every time you want to avoid, do the opposite instead.",
+          "48 hours: Every time you want to avoid, do the opposite instead.",
           "End: Write what changed. What was easier than expected?"
         ],
-        duration: "24 hours",
+        duration: "48 hours",
         identity_shift_target: "I break patterns on command.",
         pillar: pillar,
         sprint_type: "challenge_24h",
@@ -178,29 +178,29 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     },
     deep_dive: {
       "Learning": {
-        title: "4-Day Skill Sprint → Build + Ship + Teach",
-        description: "Pick one skill. Learn it by building. Ship something real. Teach one concept publicly.",
+        title: "7-Day Skill Sprint → Build + Ship + Teach",
+        description: "Pick one skill. Learn it by building. Ship something real each day. Teach one concept publicly by day 7.",
         steps: [
-          "Day 1: Foundations. Build first tiny project.",
-          "Day 2-3: Build something real with the skill.",
-          "Day 4: Ship publicly. Write one post teaching what you learned."
+          "Day 1-2: Foundations. Build first tiny projects to understand basics.",
+          "Day 3-5: Build something real with the skill. Ship daily updates.",
+          "Day 6-7: Final polish and ship publicly. Write one post teaching what you learned."
         ],
-        duration: "4 days",
+        duration: "7 days",
         identity_shift_target: "I learn by shipping.",
         pillar: "Learning",
         sprint_type: "deep_dive",
         intensity: "push"
       },
       "default": {
-        title: "4-Day Build Sprint → 4 Visible Outputs",
-        description: "Ship one visible thing every day for 4 days. Each builds on the last. No planning days. Only shipping.",
+        title: "7-Day Build Sprint → 7 Visible Outputs",
+        description: "Ship one visible thing every day for 7 days. Each builds on the last. No planning days. Only shipping.",
         steps: [
-          "Day 1: Ship smallest viable version of your main project feature",
-          "Day 2: Add one improvement. Ship again.",
-          "Day 3: Add one more. Ship.",
-          "Day 4: Final ship. Document what you built."
+          "Day 1-2: Ship smallest viable version of your main project feature",
+          "Day 3-4: Add improvements. Ship daily.",
+          "Day 5-6: Polish and expand. Ship.",
+          "Day 7: Final ship. Document what you built. Reflect on identity shift."
         ],
-        duration: "4 days",
+        duration: "7 days",
         identity_shift_target: "I ship daily.",
         pillar: pillar,
         sprint_type: "deep_dive",
@@ -245,7 +245,7 @@ function getFallbackExperiment(pillar: string, sprint: SprintConfig): Experiment
     return [sprintGroup[pillar] || sprintGroup["default"]];
   }
 
-  // Standard fallbacks - 48h to 5 days max
+  // Standard fallbacks - 48h to 7 days max
   const standardFallbacks: { [key: string]: ExperimentOutput } = {
     "Stability": {
       title: "5-Day Revenue Focus → Ship + 3 Sales Calls",
@@ -382,15 +382,15 @@ async function selectSprintType(
     };
   }
   
-  // STUCK IN PATTERN: Same pillar 3+ times → Challenge to break pattern
+// STUCK IN PATTERN: Same pillar 3+ times → Challenge to break pattern
   if (recentPillars.length >= 3) {
     const lastPillar = recentPillars[0];
     const sameCount = recentPillars.slice(0, 5).filter(p => p === lastPillar).length;
     if (sameCount >= 3) {
-      console.log(`Stuck in ${lastPillar} pattern - suggesting 24h Challenge`);
+      console.log(`Stuck in ${lastPillar} pattern - suggesting 48h Challenge`);
       return { 
         type: "challenge_24h", 
-        duration: "24 hours", 
+        duration: "48 hours", 
         intensity: "push", 
         reason: `Break the ${lastPillar} loop` 
       };
@@ -423,7 +423,7 @@ async function selectSprintType(
       console.log(`Hot topic detected: ${topic?.name || topicId} (${count} insights) - suggesting Deep Dive`);
       return { 
         type: "deep_dive", 
-        duration: "5 days", 
+        duration: "7 days", 
         intensity: "push", 
         reason: `Apply accumulated knowledge in ${topic?.name || 'this area'}`,
         topicId,
@@ -443,8 +443,8 @@ async function selectSprintType(
     };
   }
   
-// DEFAULT: Standard experiment (48h-5 days, with variation)
-  const durationOptions = ["48 hours", "3 days", "5 days"];
+// DEFAULT: Standard experiment (48h-7 days, with variation)
+  const durationOptions = ["48 hours", "3 days", "5 days", "7 days"];
   const randomDuration = durationOptions[Math.floor(Math.random() * durationOptions.length)];
   return { 
     type: "standard", 
@@ -638,10 +638,10 @@ DESCRIPTION FORMAT:
    "Did you send 50 emails? Yes/No"
 
 ═══════════════════════════════════════════════════════════════
-EXPERIMENT DURATION: 48 hours to 5 days ONLY
+EXPERIMENT DURATION: 48 hours to 7 days ONLY
 ═══════════════════════════════════════════════════════════════
 
-Never exceed 5 days. Options: "48 hours", "3 days", "4 days", "5 days"
+Options: "48 hours", "3 days", "5 days", "7 days"
 
 EXPERIMENT TYPES TO MIX:
 ═══════════════════════════════════════════════════════════════
@@ -654,12 +654,16 @@ EXPERIMENT TYPES TO MIX:
    - "5-Day Content Sprint → 1 Post Every Morning"
    - "3-Day Early Riser → 6am Wake + 1 Hour Deep Work Before Phone"
 
-3. SOCIAL EXPERIMENTS (48h-5 days): Real-world action
-   - "48h Social Blitz → 1 Event + 10 Conversations"
-   - "5-Day Outreach Sprint → 3 DMs + 1 Call Daily"
+3. WEEK-LONG EXPERIMENTS (7 days): Full week commitments for deeper transformation
+   - "7-Day Content Machine → Daily Post + Weekly Summary"
+   - "7-Day Morning Mastery → 6am Wake + Cold Shower + Deep Work Before Phone"
 
-4. HYBRID EXPERIMENTS: Mix work output with social action
-   - "5-Day Launch Week → Ship Feature + 1 Event + 15 Outreach"
+4. SOCIAL EXPERIMENTS (48h-7 days): Real-world action
+   - "48h Social Blitz → 1 Event + 10 Conversations"
+   - "7-Day Outreach Sprint → 5 DMs + 1 Call Daily"
+
+5. HYBRID EXPERIMENTS: Mix work output with social action
+   - "7-Day Launch Week → Ship Feature + 2 Events + 35 Outreach"
    - "3-Day Full Send → 2 Hours Deep Work + 5 DMs Daily"
 
 ═══════════════════════════════════════════════════════════════
