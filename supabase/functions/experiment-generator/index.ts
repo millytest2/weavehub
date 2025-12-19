@@ -361,17 +361,79 @@ function choosePillar(recentPillars: string[]): string {
   return available[Math.floor(Math.random() * available.length)];
 }
 
-// Determine sprint type based on user momentum and patterns
+// Analyze deletion patterns to understand what user is rejecting
+async function analyzeDeletedPatterns(
+  supabase: any,
+  userId: string,
+  recentExperiments: any[]
+): Promise<{ avoidedThemes: string[], avoidedPillars: string[], preferShortDuration: boolean }> {
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  
+  // Extract themes from recent experiment titles to avoid
+  const avoidedThemes: string[] = [];
+  const themeCounts: { [key: string]: number } = {};
+  
+  // Look for repeated words in recent non-completed experiments
+  recentExperiments.filter(e => e.status !== 'completed').forEach(exp => {
+    const words = exp.title.toLowerCase()
+      .replace(/[0-9]+[hd]?/g, '') // Remove durations like 48h, 5d
+      .split(/[\s→\-]+/)
+      .filter((w: string) => w.length > 3);
+    
+    words.forEach((word: string) => {
+      themeCounts[word] = (themeCounts[word] || 0) + 1;
+    });
+  });
+  
+  // Themes that appear 2+ times in failed/deleted experiments should be avoided
+  Object.entries(themeCounts).forEach(([theme, count]) => {
+    if (count >= 2 && !['days', 'hours', 'ship', 'daily', 'every', 'morning'].includes(theme)) {
+      avoidedThemes.push(theme);
+    }
+  });
+  
+  // Check pillar completion rates
+  const avoidedPillars: string[] = [];
+  
+  // Check if user prefers shorter experiments (look at completion rate by duration)
+  const shortCompleted = recentExperiments.filter(e => 
+    e.status === 'completed' && 
+    (e.duration?.includes('48') || e.duration?.includes('2 day') || e.duration?.includes('3 day'))
+  ).length;
+  const longCompleted = recentExperiments.filter(e => 
+    e.status === 'completed' && 
+    (e.duration?.includes('5 day') || e.duration?.includes('7 day') || e.duration?.includes('week'))
+  ).length;
+  const shortTotal = recentExperiments.filter(e => 
+    e.duration?.includes('48') || e.duration?.includes('2 day') || e.duration?.includes('3 day')
+  ).length;
+  const longTotal = recentExperiments.filter(e => 
+    e.duration?.includes('5 day') || e.duration?.includes('7 day') || e.duration?.includes('week')
+  ).length;
+  
+  // If short experiments have higher completion rate, prefer short
+  const shortRate = shortTotal > 0 ? shortCompleted / shortTotal : 0;
+  const longRate = longTotal > 0 ? longCompleted / longTotal : 0;
+  const preferShortDuration = shortRate > longRate || (longTotal > 0 && longCompleted === 0);
+  
+  console.log(`Deletion pattern analysis: avoided themes [${avoidedThemes.join(', ')}], prefer short: ${preferShortDuration}`);
+  
+  return { avoidedThemes, avoidedPillars, preferShortDuration };
+}
+
+// Determine sprint type based on momentum, patterns, and deletion history
 async function selectSprintType(
   supabase: any, 
   userId: string, 
-  context: CompactContext
+  context: CompactContext,
+  deletionPatterns?: { avoidedThemes: string[], avoidedPillars: string[], preferShortDuration: boolean }
 ): Promise<SprintConfig> {
   const recentCompleted = context.recent_actions.filter((a: any) => a.completed).length;
   const recentPillars = context.pillar_history;
+  const preferShort = deletionPatterns?.preferShortDuration ?? false;
   
-  // HIGH MOMENTUM: 10+ completed actions recently → Blitz mode (very high threshold)
-  // Only trigger blitz 25% of the time for active users - prefer variety
+  // HIGH MOMENTUM: 10+ completed actions → Blitz mode (25% chance)
   if (recentCompleted >= 10 && Math.random() > 0.75) {
     console.log("High momentum detected - suggesting 48h Blitz");
     return { 
@@ -382,7 +444,7 @@ async function selectSprintType(
     };
   }
   
-// STUCK IN PATTERN: Same pillar 3+ times → Challenge to break pattern
+  // STUCK IN PATTERN: Same pillar 3+ times → Challenge
   if (recentPillars.length >= 3) {
     const lastPillar = recentPillars[0];
     const sameCount = recentPillars.slice(0, 5).filter(p => p === lastPillar).length;
@@ -397,42 +459,43 @@ async function selectSprintType(
     }
   }
   
-  // TOPIC CLUSTERING: 10+ insights in one topic → Deep Dive
-  const { data: topicCounts } = await supabase
-    .from("insights")
-    .select("topic_id")
-    .eq("user_id", userId)
-    .not("topic_id", "is", null);
-  
-  if (topicCounts && topicCounts.length > 0) {
-    const counts: { [key: string]: number } = {};
-    topicCounts.forEach((i: any) => {
-      counts[i.topic_id] = (counts[i.topic_id] || 0) + 1;
-    });
+  // TOPIC CLUSTERING: 10+ insights in one topic → Deep Dive (only if not preferring short)
+  if (!preferShort) {
+    const { data: topicCounts } = await supabase
+      .from("insights")
+      .select("topic_id")
+      .eq("user_id", userId)
+      .not("topic_id", "is", null);
     
-    const hotTopicEntry = Object.entries(counts).find(([_, count]) => count >= 10);
-    if (hotTopicEntry) {
-      const [topicId, count] = hotTopicEntry;
-      // Get topic name
-      const { data: topic } = await supabase
-        .from("topics")
-        .select("name")
-        .eq("id", topicId)
-        .maybeSingle();
+    if (topicCounts && topicCounts.length > 0) {
+      const counts: { [key: string]: number } = {};
+      topicCounts.forEach((i: any) => {
+        counts[i.topic_id] = (counts[i.topic_id] || 0) + 1;
+      });
       
-      console.log(`Hot topic detected: ${topic?.name || topicId} (${count} insights) - suggesting Deep Dive`);
-      return { 
-        type: "deep_dive", 
-        duration: "7 days", 
-        intensity: "push", 
-        reason: `Apply accumulated knowledge in ${topic?.name || 'this area'}`,
-        topicId,
-        topicName: topic?.name
-      };
+      const hotTopicEntry = Object.entries(counts).find(([_, count]) => count >= 10);
+      if (hotTopicEntry) {
+        const [topicId, count] = hotTopicEntry;
+        const { data: topic } = await supabase
+          .from("topics")
+          .select("name")
+          .eq("id", topicId)
+          .maybeSingle();
+        
+        console.log(`Hot topic detected: ${topic?.name || topicId} (${count} insights) - suggesting Deep Dive`);
+        return { 
+          type: "deep_dive", 
+          duration: "7 days", 
+          intensity: "push", 
+          reason: `Apply accumulated knowledge in ${topic?.name || 'this area'}`,
+          topicId,
+          topicName: topic?.name
+        };
+      }
     }
   }
   
-  // LOW MOMENTUM: Less than 2 completed actions → Recovery mode
+  // LOW MOMENTUM: Less than 2 completed actions → Recovery
   if (recentCompleted < 2) {
     console.log("Low momentum detected - suggesting Recovery");
     return { 
@@ -443,8 +506,21 @@ async function selectSprintType(
     };
   }
   
-// DEFAULT: Standard experiment (48h-7 days, with variation)
-  const durationOptions = ["48 hours", "3 days", "5 days", "7 days"];
+  // ADAPTIVE DURATION based on completion patterns
+  let durationOptions: string[];
+  if (preferShort) {
+    // User completes shorter experiments better - favor 48h-3 days
+    durationOptions = ["48 hours", "48 hours", "3 days", "3 days", "5 days"];
+    console.log("User prefers shorter durations based on completion patterns");
+  } else if (recentCompleted >= 5) {
+    // High completion rate - can handle longer experiments
+    durationOptions = ["3 days", "5 days", "5 days", "7 days"];
+    console.log("User has strong completion rate - offering longer options");
+  } else {
+    // Default mix weighted toward medium duration
+    durationOptions = ["48 hours", "3 days", "3 days", "5 days", "5 days", "7 days"];
+  }
+  
   const randomDuration = durationOptions[Math.floor(Math.random() * durationOptions.length)];
   return { 
     type: "standard", 
@@ -521,16 +597,19 @@ serve(async (req) => {
       );
     }
 
-    // Fetch past experiment titles to avoid duplicates
+    // Fetch past experiments (with full data for pattern analysis)
     const { data: pastExperiments } = await supabase
       .from("experiments")
-      .select("title")
+      .select("title, status, duration, hypothesis, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(30);
 
     const pastTitles = pastExperiments?.map(e => e.title.toLowerCase()) || [];
     console.log(`Past experiments to avoid: ${pastTitles.length}`);
+
+    // Analyze deletion/abandonment patterns
+    const deletionPatterns = await analyzeDeletedPatterns(supabase, user.id, pastExperiments || []);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -538,17 +617,22 @@ serve(async (req) => {
     // Use experiment-specific weights: Documents 35%, Identity 40%, Insights 15%
     const context = formatWeightedContextForAgent(userContext, "experiment", { includeDocContent: true });
     
-    // Select sprint type based on momentum
-    const sprintConfig = await selectSprintType(supabase, user.id, userContext);
+    // Select sprint type based on momentum + deletion patterns
+    const sprintConfig = await selectSprintType(supabase, user.id, userContext, deletionPatterns);
     console.log(`Sprint type: ${sprintConfig.type} (${sprintConfig.intensity}) - ${sprintConfig.reason}`);
     
     const recentPillars = userContext.pillar_history;
     const forcedPillar = choosePillar(recentPillars);
     console.log(`Experiment pillar: ${forcedPillar}`);
 
-    const avoidList = pastTitles.length > 0 
-      ? `\n\nAVOID THESE PAST EXPERIMENTS (do not repeat similar titles or concepts):\n${pastTitles.slice(0, 10).map(t => `- ${t}`).join('\n')}`
-      : '';
+    // Build avoid list including detected themes
+    let avoidList = '';
+    if (pastTitles.length > 0) {
+      avoidList = `\n\nAVOID THESE PAST EXPERIMENTS (do not repeat similar titles or concepts):\n${pastTitles.slice(0, 10).map(t => `- ${t}`).join('\n')}`;
+    }
+    if (deletionPatterns.avoidedThemes.length > 0) {
+      avoidList += `\n\nUSER KEEPS REJECTING THESE THEMES (try completely different topics):\n${deletionPatterns.avoidedThemes.map(t => `- ${t}`).join('\n')}`;
+    }
 
     // Build sprint-specific instructions
     const sprintInstructions = sprintConfig.type !== "standard" ? `
