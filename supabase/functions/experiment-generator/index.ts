@@ -890,11 +890,43 @@ Make it challenging. Make it concrete. Make it exciting. No therapy-speak.` }
       }),
     });
 
+    // Helper function to insert experiments and return response
+    async function insertAndReturnExperiments(exps: ExperimentOutput[], sprint: SprintConfig): Promise<Response> {
+      const insertedIds: string[] = [];
+      for (const exp of exps) {
+        const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
+          user_id: user!.id,
+          title: exp.title,
+          description: exp.description,
+          steps: exp.steps.join("\n"),
+          duration: exp.duration,
+          identity_shift_target: exp.identity_shift_target,
+          hypothesis: `Sprint: ${sprint.type} | Intensity: ${sprint.intensity} | ${sprint.reason}`,
+          status: "planning"
+        }).select("id").single();
+        
+        if (inserted?.id) {
+          insertedIds.push(inserted.id);
+        } else if (insertError) {
+          console.error("Insert error:", insertError);
+        }
+      }
+      
+      console.log(`Inserted experiment: ${exps[0].title}`);
+      
+      return new Response(JSON.stringify({ 
+        experiments: exps.map((exp, idx) => ({ ...exp, id: insertedIds[idx] })),
+        sprint: sprint,
+        inserted_ids: insertedIds
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (!response.ok) {
       console.error("AI Gateway error:", response.status);
       if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+      return await insertAndReturnExperiments(fallback, sprintConfig);
     }
 
     const data = await response.json();
@@ -902,7 +934,8 @@ Make it challenging. Make it concrete. Make it exciting. No therapy-speak.` }
     
     if (!toolCall) {
       console.log("No tool call returned, using fallback");
-      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+      return await insertAndReturnExperiments(fallback, sprintConfig);
     }
 
     let experiments;
@@ -925,14 +958,16 @@ Make it challenging. Make it concrete. Make it exciting. No therapy-speak.` }
       
       if (isDuplicate) {
         console.log("Generated experiment too similar to past, using fallback");
-        return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+        return await insertAndReturnExperiments(fallback, sprintConfig);
       }
     } catch (parseError) {
       console.error("Parse/validation error:", parseError);
-      return new Response(JSON.stringify({ experiments: getFallbackExperiment(forcedPillar, sprintConfig) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+      return await insertAndReturnExperiments(fallback, sprintConfig);
     }
 
-    // Insert experiment with sprint metadata and return the ID
+    // Insert AI-generated experiment with sprint metadata and return the ID
     const insertedIds: string[] = [];
     for (const exp of experiments) {
       const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
