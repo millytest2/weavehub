@@ -81,3 +81,6 @@ verify_jwt = true
 
 [functions.path-suggester]
 verify_jwt = true
+
+[functions.alignment-engine]
+verify_jwt = true
