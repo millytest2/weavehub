@@ -380,7 +380,7 @@ async function fetchTweetContent(url: string): Promise<{ title: string; content:
   }
 }
 
-// Match content to best topic using AI
+// Match content to best topic using AI - ALWAYS picks closest match
 async function matchToTopic(
   content: string, 
   title: string, 
@@ -389,10 +389,13 @@ async function matchToTopic(
   if (topics.length === 0) return null;
   
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return null;
+  if (!LOVABLE_API_KEY) {
+    // Fallback: keyword-based matching if no API key
+    return keywordMatchTopic(content + " " + title, topics);
+  }
   
   try {
-    const topicList = topics.map(t => `- ${t.name}${t.description ? `: ${t.description}` : ''}`).join('\n');
+    const topicList = topics.map((t, i) => `${i + 1}. ${t.name}${t.description ? ` - ${t.description}` : ''}`).join('\n');
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -401,42 +404,129 @@ async function matchToTopic(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `You are a content classifier. Match the content to the BEST fitting topic from this list. Return ONLY the exact topic name, nothing else. If no topic fits well, return "none".
+            content: `You MUST classify content into ONE of these topics. ALWAYS pick the closest match - never say "none" or refuse.
 
-Available topics:
-${topicList}`
+TOPICS:
+${topicList}
+
+Rules:
+- Return ONLY the topic number (1, 2, 3, etc.)
+- Every piece of content relates to at least one topic
+- If content touches multiple topics, pick the PRIMARY one
+- Personal development content usually fits "Identity" topics
+- Relationship/social content fits "Relationships" topics
+- Business/career content fits "Career" or "Financial" topics
+- If truly ambiguous, pick the first topic that could apply`
           },
           {
             role: "user",
-            content: `Title: ${title}\n\nContent:\n${content.substring(0, 2000)}`
+            content: `Classify this content:\n\nTitle: ${title}\n\nContent:\n${content.substring(0, 3000)}`
           }
         ],
       }),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.log("AI topic match failed, using keyword fallback");
+      return keywordMatchTopic(content + " " + title, topics);
+    }
     
     const data = await response.json();
-    const matchedName = data.choices[0].message.content.trim();
+    const responseText = data.choices[0].message.content.trim();
     
-    if (matchedName.toLowerCase() === 'none') return null;
+    // Extract number from response
+    const numberMatch = responseText.match(/\d+/);
+    if (numberMatch) {
+      const index = parseInt(numberMatch[0]) - 1;
+      if (index >= 0 && index < topics.length) {
+        console.log(`Topic matched: "${topics[index].name}" for "${title.substring(0, 50)}"`);
+        return topics[index].id;
+      }
+    }
     
-    // Find the topic by name (case-insensitive)
+    // If AI returned topic name instead of number, try to match it
     const matched = topics.find(t => 
-      t.name.toLowerCase() === matchedName.toLowerCase() ||
-      t.name.toLowerCase().includes(matchedName.toLowerCase()) ||
-      matchedName.toLowerCase().includes(t.name.toLowerCase())
+      responseText.toLowerCase().includes(t.name.toLowerCase()) ||
+      t.name.toLowerCase().includes(responseText.toLowerCase())
     );
     
-    return matched?.id || null;
+    if (matched) {
+      console.log(`Topic matched by name: "${matched.name}" for "${title.substring(0, 50)}"`);
+      return matched.id;
+    }
+    
+    // Final fallback: keyword matching
+    console.log("AI response unclear, using keyword fallback");
+    return keywordMatchTopic(content + " " + title, topics);
   } catch (e) {
     console.error("Topic matching error:", e);
-    return null;
+    return keywordMatchTopic(content + " " + title, topics);
   }
+}
+
+// Keyword-based topic matching fallback
+function keywordMatchTopic(
+  text: string,
+  topics: { id: string; name: string; description: string | null }[]
+): string | null {
+  const lowerText = text.toLowerCase();
+  
+  // Common keyword mappings
+  const keywordMap: Record<string, string[]> = {
+    'identity': ['identity', 'belief', 'mindset', 'self', 'ego', 'who you are', 'becoming', 'transform', 'rewire', 'reprogram', 'subconscious', 'inner', 'thoughts', 'mental'],
+    'relationship': ['relationship', 'dating', 'love', 'partner', 'connection', 'social', 'people', 'communicate', 'attraction', 'presence', 'listening'],
+    'career': ['career', 'job', 'work', 'business', 'money', 'income', 'entrepreneur', 'startup', 'professional', 'skill', 'productivity'],
+    'health': ['health', 'fitness', 'exercise', 'body', 'sleep', 'energy', 'workout', 'nutrition', 'wellness'],
+    'finance': ['finance', 'money', 'invest', 'wealth', 'income', 'financial', 'savings', 'budget'],
+    'creative': ['creative', 'content', 'create', 'art', 'write', 'design', 'build', 'make', 'audience'],
+    'spiritual': ['spiritual', 'purpose', 'meaning', 'soul', 'meditation', 'consciousness', 'awareness'],
+  };
+  
+  // Score each topic
+  let bestTopic: { id: string; score: number } | null = null;
+  
+  for (const topic of topics) {
+    let score = 0;
+    const topicLower = topic.name.toLowerCase();
+    const descLower = (topic.description || '').toLowerCase();
+    
+    // Direct name match in content
+    if (lowerText.includes(topicLower)) score += 10;
+    
+    // Check keyword categories
+    for (const [category, keywords] of Object.entries(keywordMap)) {
+      if (topicLower.includes(category) || descLower.includes(category)) {
+        for (const keyword of keywords) {
+          if (lowerText.includes(keyword)) score += 2;
+        }
+      }
+    }
+    
+    // Words from topic name appearing in content
+    const topicWords = topicLower.split(/\s+/).filter(w => w.length > 3);
+    for (const word of topicWords) {
+      if (lowerText.includes(word)) score += 3;
+    }
+    
+    if (!bestTopic || score > bestTopic.score) {
+      bestTopic = { id: topic.id, score };
+    }
+  }
+  
+  // Return best match if score is reasonable, otherwise first topic
+  if (bestTopic && bestTopic.score >= 2) {
+    const matched = topics.find(t => t.id === bestTopic!.id);
+    console.log(`Keyword matched: "${matched?.name}" (score: ${bestTopic.score})`);
+    return bestTopic.id;
+  }
+  
+  // Default to first topic rather than null
+  console.log(`No strong match, defaulting to first topic: "${topics[0].name}"`);
+  return topics[0].id;
 }
 
 // Generate insights from content
