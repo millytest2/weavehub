@@ -57,6 +57,11 @@ export interface CompactContext {
   connections: any[];
   active_projects: string[];  // Extracted active projects/builds from user's data
   last_project_focus: string | null;  // Last project that received attention
+  // NEW: Deep personal extraction
+  current_hurdles: string[];  // Specific friction points holding them back
+  aspirational_figures: string[];  // People they look up to from their content
+  story_arc: string | null;  // The narrative of their transformation
+  recurring_themes: string[];  // Themes that keep showing up across their data
 }
 
 export interface DocumentContext {
@@ -241,6 +246,13 @@ export async function fetchUserContext(
     ...recentActionTexts
   ].join(' ').toLowerCase();
   
+  // Extended text including insights and documents for deeper extraction
+  const extendedText = [
+    allText,
+    ...keyInsights.map((i: any) => `${i.title} ${i.content}`),
+    ...(documents.data || []).map((d: any) => `${d.title} ${d.summary || ''} ${d.extracted_content || ''}`),
+  ].join(' ');
+  
   // Extract unique project names (capitalized words that appear in context)
   const activeProjects: string[] = [];
   const commonProjects = ['UPath', 'Weave', 'LinkedIn', 'Twitter', 'YouTube', 'Instagram'];
@@ -275,6 +287,113 @@ export async function fetchUserContext(
     if (lastProjectFocus) break;
   }
 
+  // ==== NEW: Extract current hurdles from all text ====
+  const hurdlePatterns = [
+    { pattern: /(?:struggle|struggling|hard|difficult|can't|cannot|fear|afraid|scared|anxious|worry|worried|stuck|block|blocking|holding.?back|avoid|avoiding|procrastinat|resist|hesitat)/gi, type: 'friction' },
+    { pattern: /(?:posting|content|share|sharing|put.*out|public|visibility|showing up|social media|cross.?platform)/gi, type: 'content' },
+    { pattern: /(?:what.*think|judgment|judging|authentic|real|honest|vulnerability|vulnerable|caring.*opinion|others.*think)/gi, type: 'authenticity' },
+    { pattern: /(?:consistent|consistency|daily|every day|regularly|habit|routine|discipline)/gi, type: 'consistency' },
+    { pattern: /(?:perfecti|edit.*forever|never.*good|not.*ready|overthink|over.?think|too.*much.*time)/gi, type: 'perfectionism' },
+    { pattern: /(?:connect|reach.*out|network|community|isolat|alone|lonely)/gi, type: 'connection' },
+  ];
+  
+  const currentHurdles: string[] = [];
+  const extendedLower = extendedText.toLowerCase();
+  
+  // Extract specific hurdle phrases
+  const hurdlePhrases: string[] = [];
+  if (extendedLower.includes('post') && (extendedLower.includes('consistent') || extendedLower.includes('daily') || extendedLower.includes('every day'))) {
+    hurdlePhrases.push('posting content consistently');
+  }
+  if (extendedLower.includes('what') && extendedLower.includes('think') || extendedLower.includes('caring what')) {
+    hurdlePhrases.push('caring what others think');
+  }
+  if (extendedLower.includes('authentic') || extendedLower.includes('real') && extendedLower.includes('self')) {
+    hurdlePhrases.push('showing up authentically');
+  }
+  if (extendedLower.includes('document') || extendedLower.includes('story') && extendedLower.includes('tell')) {
+    hurdlePhrases.push('documenting and telling my story');
+  }
+  if (extendedLower.includes('perfect') || extendedLower.includes('edit') && extendedLower.includes('too')) {
+    hurdlePhrases.push('perfectionism and over-editing');
+  }
+  if (extendedLower.includes('cross') && extendedLower.includes('platform')) {
+    hurdlePhrases.push('posting across multiple platforms');
+  }
+  if (extendedLower.includes('let') && extendedLower.includes('go')) {
+    hurdlePhrases.push('letting go of control');
+  }
+  if (extendedLower.includes('reach') && extendedLower.includes('out') || extendedLower.includes('connect')) {
+    hurdlePhrases.push('reaching out and connecting');
+  }
+  
+  // Add unique hurdles
+  hurdlePhrases.forEach(h => {
+    if (!currentHurdles.includes(h)) currentHurdles.push(h);
+  });
+
+  // ==== NEW: Extract aspirational figures from content ====
+  const aspirationalFigures: string[] = [];
+  const namePatterns = [
+    /(?:like\s+|from\s+|learned.*from\s+|inspired.*by\s+|watch.*|follow.*|said\s+by\s+|by\s+|admire\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/g,
+  ];
+  
+  // Common creator/entrepreneur names to look for
+  const knownFigures = [
+    'Ali Abdaal', 'MrBeast', 'Gary Vee', 'Gary Vaynerchuk', 'Naval', 'Naval Ravikant',
+    'Tim Ferriss', 'Jocko', 'Jocko Willink', 'David Goggins', 'Huberman', 'Andrew Huberman',
+    'Casey Neistat', 'Logan Paul', 'Mr Beast', 'Hormozi', 'Alex Hormozi', 'Lex Fridman',
+    'Joe Rogan', 'Elon', 'Elon Musk', 'Sam Altman', 'Paul Graham', 'Naval', 'Marcus Aurelius',
+    'Ryan Holiday', 'Sahil Bloom', 'Dickie Bush', 'Nicolas Cole', 'Dan Koe', 'Justin Welsh',
+    'Pieter Levels', 'Levels', 'Marc Lou', 'Tony Robbins', 'Jordan Peterson',
+    'Codie Sanchez', 'Chris Williamson', 'Hamza', 'Iman Gadzhi'
+  ];
+  
+  for (const figure of knownFigures) {
+    if (extendedText.toLowerCase().includes(figure.toLowerCase())) {
+      if (!aspirationalFigures.includes(figure)) {
+        aspirationalFigures.push(figure);
+      }
+    }
+  }
+
+  // ==== NEW: Build story arc from identity and context ====
+  let storyArc: string | null = null;
+  const identity = identitySeed.data?.content || '';
+  const weeklyFocus = identitySeed.data?.weekly_focus || '';
+  const coreValues = identitySeed.data?.core_values || '';
+  
+  if (identity || weeklyFocus) {
+    // Extract key transformation elements
+    const fromPatterns = identity.match(/(?:from|was|used to be|before)[^.]*(?:\.|$)/gi) || [];
+    const toPatterns = identity.match(/(?:becoming|want to be|moving toward|working on|building|creating)[^.]*(?:\.|$)/gi) || [];
+    
+    if (fromPatterns.length > 0 || toPatterns.length > 0) {
+      const from = fromPatterns[0]?.trim() || 'where I was';
+      const to = toPatterns[0]?.trim() || weeklyFocus || 'who I am becoming';
+      storyArc = `${from} → ${to}`;
+    } else if (weeklyFocus) {
+      storyArc = `Currently focused on: ${weeklyFocus}`;
+    }
+  }
+
+  // ==== NEW: Extract recurring themes ====
+  const themeKeywords: Record<string, number> = {};
+  const themeWords = extendedText.toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 4 && !['about', 'their', 'there', 'these', 'those', 'which', 'would', 'could', 'should', 'being', 'having'].includes(w));
+  
+  themeWords.forEach(word => {
+    themeKeywords[word] = (themeKeywords[word] || 0) + 1;
+  });
+  
+  const recurringThemes = Object.entries(themeKeywords)
+    .filter(([_, count]) => count >= 3)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([word]) => word);
+
   return {
     identity_seed: identitySeed.data?.content || null,
     core_values: identitySeed.data?.core_values || null,
@@ -293,8 +412,13 @@ export async function fetchUserContext(
     pillar_history: pillarHistory,
     topics: topics.data || [],
     connections: connections.data || [],
-    active_projects: activeProjects.slice(0, 8),  // Cap at 8 projects
+    active_projects: activeProjects.slice(0, 8),
     last_project_focus: lastProjectFocus,
+    // NEW: Deep personal extraction
+    current_hurdles: currentHurdles.slice(0, 5),
+    aspirational_figures: aspirationalFigures.slice(0, 5),
+    story_arc: storyArc,
+    recurring_themes: recurringThemes,
   };
 }
 
@@ -828,9 +952,29 @@ export function formatWeightedContextForAgent(
     }
   }
 
+  // ==== NEW: CURRENT HURDLES (critical for experiment design) ====
+  if (context.current_hurdles && context.current_hurdles.length > 0) {
+    formatted += `\nCURRENT HURDLES (friction points to push through):\n${context.current_hurdles.map(h => `- ${h}`).join('\n')}\n`;
+  }
+
+  // ==== NEW: ASPIRATIONAL FIGURES ====
+  if (context.aspirational_figures && context.aspirational_figures.length > 0) {
+    formatted += `\nASPIRATIONAL FIGURES (people this user looks up to):\n${context.aspirational_figures.join(', ')}\n`;
+  }
+
+  // ==== NEW: STORY ARC ====
+  if (context.story_arc) {
+    formatted += `\nSTORY ARC (the transformation they're living):\n${context.story_arc}\n`;
+  }
+
+  // ==== NEW: RECURRING THEMES ====
+  if (context.recurring_themes && context.recurring_themes.length > 0) {
+    formatted += `\nRECURRING THEMES: ${context.recurring_themes.slice(0, 8).join(', ')}\n`;
+  }
+
   // Topics for context
   if (context.topics.length > 0) {
-    formatted += `TOPICS: ${context.topics.map((t: any) => t.name).join(', ')}\n`;
+    formatted += `\nTOPICS: ${context.topics.map((t: any) => t.name).join(', ')}\n`;
   }
 
   // Phase context
