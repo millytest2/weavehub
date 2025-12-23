@@ -798,18 +798,32 @@ LOOK AT THEIR DATA FOR:
 ═══════════════════════════════════════════════════════════════
 
 1. What content they saved (videos, articles, insights)
-2. What their identity says they're becoming
+2. What their identity says they're becoming (their IDEAL SELF)
 3. What projects they're working on
 4. What they keep avoiding (that's the friction point)
 5. Are they isolated? → Add social/event component
 6. Are they shipping but not connecting? → Add outreach/event
 7. Are they consuming but not creating? → Add daily output requirement
 
+CRITICAL - WEAVE'S OBJECTIVE: "Do cool shit"
+This means experiments should:
+- Push toward the IDEAL SELF they're becoming
+- Align with their core VALUES
+- Create CONTENT FUEL (stories, results, learnings worth sharing)
+- Force REAL ACTION that compounds into identity change
+
+CONTENT FUEL CHECK - Every experiment should generate:
+- A story worth telling (what happened, what you learned)
+- A result worth sharing (numbers, outputs, artifacts)
+- A transformation worth documenting (who you became through this)
+
 Then design an experiment that:
 - Cites a specific source from their data
 - Has a Navy SEAL-style constraint (hard, clear, binary)
 - Produces a real deliverable tied to their actual project
 - Mixes work output with real-world action when appropriate
+- Creates CONTENT FUEL (the experience itself is worth documenting)
+- Pushes toward their IDEAL SELF and core VALUES
 - Feels like "fuck yeah let's try that" not "ugh, homework"
 
 Duration: ${sprintConfig.duration}

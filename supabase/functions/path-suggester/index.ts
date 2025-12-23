@@ -82,10 +82,20 @@ ${documentContext}
 
 ${identityContext}
 
+WEAVE OBJECTIVE: Help users "do cool shit" - learn by DOING, create CONTENT, push toward IDEAL SELF.
+
 TASK: Look at what they've ACTUALLY saved. Identify 2-3 learning topics that:
 1. Appear MULTIPLE TIMES in their saved content (cite the pattern)
 2. Have enough depth for a 30-day learning path
 3. Connect to skills they could BUILD, not just consume
+4. Align with their IDENTITY and VALUES
+5. Have high CONTENT FUEL potential (learning this would create shareable content)
+
+TOPIC CLUSTERING RULES:
+- Group related content into coherent skill areas
+- Look for repeated themes across insights and documents
+- Prioritize topics that connect to their active projects
+- Topics should lead to TANGIBLE OUTPUTS (shipped code, published content, real skills)
 
 RULES:
 - ONLY suggest topics that are CLEARLY present in their data
@@ -93,7 +103,8 @@ RULES:
 - Topics should be specific skills or domains, not abstract concepts
 - NO generic suggestions - everything must trace back to their saved content
 - NO therapy-speak or self-help fluff
-- Focus on learnable, applicable skills
+- Focus on learnable, applicable skills that produce OUTPUT
+- Consider: Would completing this path give them something to POST ABOUT?
 
 BAD EXAMPLES (too generic):
 - "Personal Development"
@@ -101,11 +112,11 @@ BAD EXAMPLES (too generic):
 - "Mindfulness"
 - "Productivity"
 
-GOOD EXAMPLES (specific, learnable):
-- "Video Editing" (they saved 8 videos about editing)
-- "Cold Outreach" (they saved content about sales, DMs, networking)
-- "Public Speaking" (they saved multiple videos on presentation skills)
-- "System Design" (they saved technical architecture content)`;
+GOOD EXAMPLES (specific, learnable, content-worthy):
+- "Video Editing" (they saved 8 videos about editing → can post editing tips)
+- "Cold Outreach" (they saved content about sales, DMs → can post about results)
+- "Public Speaking" (they saved presentation skills → can post speaking clips)
+- "System Design" (they saved architecture content → can post technical breakdowns)`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -127,22 +138,23 @@ GOOD EXAMPLES (specific, learnable):
               description: "Return 2-3 learning topic suggestions based on user's saved content",
               parameters: {
                 type: "object",
-                properties: {
-                  suggestions: {
-                    type: "array",
-                    items: { 
-                      type: "object",
-                      properties: {
-                        topic: { type: "string", description: "The specific, learnable topic name" },
-                        sourceCount: { type: "number", description: "How many sources in their content relate to this topic (must be 5+)" }
-                      },
-                      required: ["topic", "sourceCount"]
+              properties: {
+                suggestions: {
+                  type: "array",
+                  items: { 
+                    type: "object",
+                    properties: {
+                      topic: { type: "string", description: "The specific, learnable topic name" },
+                      sourceCount: { type: "number", description: "How many sources in their content relate to this topic (must be 5+)" },
+                      contentPotential: { type: "string", description: "What kind of content they could create while learning this" }
                     },
-                    minItems: 1,
-                    maxItems: 3,
-                    description: "2-3 specific topics with source counts"
-                  }
-                },
+                    required: ["topic", "sourceCount", "contentPotential"]
+                  },
+                  minItems: 1,
+                  maxItems: 3,
+                  description: "2-3 specific topics with source counts and content potential"
+                }
+              },
                 required: ["suggestions"]
               }
             }
@@ -177,9 +189,13 @@ GOOD EXAMPLES (specific, learnable):
       // Normalize response - handle both string[] and object[] formats
       suggestions = suggestions.map((s: any) => {
         if (typeof s === 'string') {
-          return { topic: s, sourceCount: 5 };
+          return { topic: s, sourceCount: 5, contentPotential: 'Posts and threads about learnings' };
         }
-        return { topic: s.topic, sourceCount: s.sourceCount || 5 };
+        return { 
+          topic: s.topic, 
+          sourceCount: s.sourceCount || 5,
+          contentPotential: s.contentPotential || 'Posts and threads about learnings'
+        };
       });
       
       console.log(`Path suggester: Found ${suggestions.length} topics for user`);
