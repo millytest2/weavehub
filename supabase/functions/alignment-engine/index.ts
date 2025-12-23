@@ -12,6 +12,8 @@ interface AlignmentScore {
   current_reality_fit: number;     // How relevant to current situation
   objective_alignment: number;     // How aligned to Weave's purpose (doing cool shit)
   action_potential: number;        // How actionable this is
+  content_fuel: number;            // How shareable/documentable for content creation
+  ideal_self_push: number;         // How much this pushes toward ideal self
   overall: number;                 // Weighted composite
 }
 
@@ -403,7 +405,16 @@ IDEAL SELF: ${identity.ideal_self}
 VALUES: ${identity.values.join(', ')}
 OBJECTIVES: ${identity.objectives.join(', ')}
 
-WEAVE OBJECTIVE: Help users "do cool shit" - take action, run experiments, build things, grow through friction.
+WEAVE OBJECTIVE: Help users "do cool shit" - take action, run experiments, build things, grow through friction, and CREATE CONTENT about the journey.
+
+SCORING DIMENSIONS:
+- identity_alignment: How aligned to who they ARE currently
+- values_alignment: How aligned to their core VALUES
+- current_reality_fit: How relevant to their current situation and projects
+- objective_alignment: How aligned to Weave's purpose (doing cool shit, taking action)
+- action_potential: How directly actionable this content is
+- content_fuel: How shareable/documentable this would be for their content (stories, results, learnings)
+- ideal_self_push: How much this content pushes toward their IDEAL SELF
 
 CONTENT ITEMS:
 ${itemList}
@@ -416,7 +427,9 @@ Return array of scores for each item index:
     "values_alignment": 0.0-1.0,
     "current_reality_fit": 0.0-1.0,
     "objective_alignment": 0.0-1.0,
-    "action_potential": 0.0-1.0
+    "action_potential": 0.0-1.0,
+    "content_fuel": 0.0-1.0,
+    "ideal_self_push": 0.0-1.0
   }
 ]`;
 
@@ -443,12 +456,15 @@ Return array of scores for each item index:
         for (const score of parsed) {
           const item = batch[score.index];
           if (item) {
+            // Weighted composite favoring ideal self push and content fuel
             const overall = (
-              score.identity_alignment * 0.25 +
-              score.values_alignment * 0.20 +
-              score.current_reality_fit * 0.20 +
-              score.objective_alignment * 0.20 +
-              score.action_potential * 0.15
+              score.identity_alignment * 0.15 +
+              score.values_alignment * 0.15 +
+              score.current_reality_fit * 0.10 +
+              score.objective_alignment * 0.15 +
+              score.action_potential * 0.15 +
+              (score.content_fuel || 0.5) * 0.15 +
+              (score.ideal_self_push || 0.5) * 0.15
             );
             
             scores[item.id] = {
@@ -457,6 +473,8 @@ Return array of scores for each item index:
               current_reality_fit: score.current_reality_fit,
               objective_alignment: score.objective_alignment,
               action_potential: score.action_potential,
+              content_fuel: score.content_fuel || 0.5,
+              ideal_self_push: score.ideal_self_push || 0.5,
               overall: Math.min(1, Math.max(0, overall))
             };
           }
@@ -472,6 +490,8 @@ Return array of scores for each item index:
           current_reality_fit: 0.5,
           objective_alignment: 0.5,
           action_potential: 0.5,
+          content_fuel: 0.5,
+          ideal_self_push: 0.5,
           overall: 0.5
         };
       }

@@ -254,31 +254,41 @@ serve(async (req) => {
 
     const systemPrompt = `You are generating a ${durationDays}-day structured learning path. Your job is to break down the user's saved sources into a digestible daily curriculum that combines LEARNING (consuming content) with APPLICATION (testing understanding).
 
+WEAVE OBJECTIVE: Help users "do cool shit" - learn by DOING, create CONTENT along the way, and push toward their IDEAL SELF.
+
 CRITICAL RULES:
 1. ONLY reference sources the user has saved - cite them as [1], [2], etc.
 2. Each learning task should be 15-30 minutes max
-3. Each application task should be 15 minutes max
+3. Each application task should be 15 minutes max AND produce something SHAREABLE
 4. Include REST DAYS every 5th day (Day 5, 10, 15, 20, 25, 30)
 5. Progress from basics to advanced
 6. Final week (days 26-30) is synthesis and creation
 7. Be SPECIFIC about which part of each source to consume
-8. Application tasks must TEST understanding (not busy work)
+8. Application tasks must TEST understanding AND create CONTENT FUEL (something worth sharing)
+
+CONTENT FUEL REQUIREMENT:
+Every application task should produce something documentable:
+- A short post about what you learned
+- A mini-project demonstrating the concept
+- A teaching moment you can share
+- A question or insight worth posting
 
 BANNED:
 - Generic advice not tied to their sources
 - Vague tasks like "reflect on your learnings"
 - Suggesting external sources they haven't saved
 - Emotional or motivational language
+- Application tasks with no output
 
 OUTPUT FORMAT:
 Return valid JSON with this exact structure:
 {
   "sub_topics": ["Sub-topic 1", "Sub-topic 2", "Sub-topic 3", "Sub-topic 4"],
-  "why_this_matters": "One sentence connecting to user's identity/projects",
-  "final_deliverable": "Specific creation like 'Blog post explaining X' or 'Framework for Y'",
+  "why_this_matters": "One sentence connecting to user's identity/projects AND content creation potential",
+  "final_deliverable": "Specific SHAREABLE creation like 'Blog post explaining X' or 'Thread teaching Y' or 'Video demo of Z'",
   "daily_structure": [
-    { "day": 1, "learning_task": "Watch [1] (first 15 minutes) focusing on...", "learning_source_ref": "[1]", "application_task": "Explain the core concept in 3 sentences", "is_rest_day": false },
-    { "day": 2, "learning_task": "...", "learning_source_ref": "[2]", "application_task": "...", "is_rest_day": false },
+    { "day": 1, "learning_task": "Watch [1] (first 15 minutes) focusing on...", "learning_source_ref": "[1]", "application_task": "Write a 2-sentence post explaining the core concept to test understanding", "is_rest_day": false },
+    { "day": 2, "learning_task": "...", "learning_source_ref": "[2]", "application_task": "Build a mini-example and screenshot it for a future post", "is_rest_day": false },
     { "day": 5, "learning_task": "", "learning_source_ref": "", "application_task": "", "is_rest_day": true },
     ...continue for all ${durationDays} days
   ]
@@ -287,6 +297,7 @@ Return valid JSON with this exact structure:
     const userPrompt = `Generate a ${durationDays}-day learning path for: ${topic}
 
 ${identitySeed ? `User's identity: ${identitySeed.content?.substring(0, 300)}` : ""}
+${identitySeed?.core_values ? `Core values: ${identitySeed.core_values}` : ""}
 
 User's saved sources about this topic:
 ${sourcesForPrompt}
@@ -294,9 +305,10 @@ ${sourcesForPrompt}
 Create a structured path that:
 1. Extracts 4-5 sub-topics from these sources
 2. Orders learning from basics to advanced
-3. Each day has ONE learning task + ONE application task
+3. Each day has ONE learning task + ONE application task that creates OUTPUT
 4. Rest days on days 5, 10, 15, 20, 25, 30
-5. Final week is synthesis + creating proof of learning
+5. Final week is synthesis + creating SHAREABLE proof of learning
+6. Every application task should produce something worth posting/sharing
 
 Return ONLY valid JSON.`;
 
