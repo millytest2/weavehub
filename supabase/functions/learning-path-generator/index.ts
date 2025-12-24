@@ -254,41 +254,42 @@ serve(async (req) => {
 
     const systemPrompt = `You are generating a ${durationDays}-day structured learning path. Your job is to break down the user's saved sources into a digestible daily curriculum that combines LEARNING (consuming content) with APPLICATION (testing understanding).
 
-WEAVE OBJECTIVE: Help users "do cool shit" - learn by DOING, create CONTENT along the way, and push toward their IDEAL SELF.
+WEAVE OBJECTIVE: Help users turn saved content into ACTION. Learn by DOING, create tangible outputs, and push toward their IDEAL SELF.
 
 CRITICAL RULES:
 1. ONLY reference sources the user has saved - cite them as [1], [2], etc.
 2. Each learning task should be 15-30 minutes max
-3. Each application task should be 15 minutes max AND produce something SHAREABLE
+3. Each application task should be 15 minutes max AND produce something TANGIBLE
 4. Include REST DAYS every 5th day (Day 5, 10, 15, 20, 25, 30)
 5. Progress from basics to advanced
 6. Final week (days 26-30) is synthesis and creation
 7. Be SPECIFIC about which part of each source to consume
-8. Application tasks must TEST understanding AND create CONTENT FUEL (something worth sharing)
+8. Application tasks must TEST understanding AND create value based on user archetype
 
-CONTENT FUEL REQUIREMENT:
-Every application task should produce something documentable:
-- A short post about what you learned
-- A mini-project demonstrating the concept
-- A teaching moment you can share
-- A question or insight worth posting
+VALUE OUTPUT REQUIREMENT (adapt to user type):
+Every application task should produce something tangible based on who the user is:
+- FOR CREATORS: A short post, story, or teaching moment worth sharing
+- FOR BUILDERS: A mini-project, prototype, or code snippet that works
+- FOR PROFESSIONALS: A skill demo, framework applied to work, or network-building action
+- FOR STUDENTS: A portfolio piece, study summary, or practical exercise
+- FOR GENERAL: A concrete test of understanding with visible output
 
 BANNED:
 - Generic advice not tied to their sources
 - Vague tasks like "reflect on your learnings"
 - Suggesting external sources they haven't saved
 - Emotional or motivational language
-- Application tasks with no output
+- Application tasks with no tangible output
 
 OUTPUT FORMAT:
 Return valid JSON with this exact structure:
 {
   "sub_topics": ["Sub-topic 1", "Sub-topic 2", "Sub-topic 3", "Sub-topic 4"],
-  "why_this_matters": "One sentence connecting to user's identity/projects AND content creation potential",
-  "final_deliverable": "Specific SHAREABLE creation like 'Blog post explaining X' or 'Thread teaching Y' or 'Video demo of Z'",
+  "why_this_matters": "One sentence connecting to user's identity/projects AND their primary value focus",
+  "final_deliverable": "Specific TANGIBLE creation appropriate to their archetype",
   "daily_structure": [
-    { "day": 1, "learning_task": "Watch [1] (first 15 minutes) focusing on...", "learning_source_ref": "[1]", "application_task": "Write a 2-sentence post explaining the core concept to test understanding", "is_rest_day": false },
-    { "day": 2, "learning_task": "...", "learning_source_ref": "[2]", "application_task": "Build a mini-example and screenshot it for a future post", "is_rest_day": false },
+    { "day": 1, "learning_task": "Watch [1] (first 15 minutes) focusing on...", "learning_source_ref": "[1]", "application_task": "Write a 2-sentence summary explaining the core concept to test understanding", "is_rest_day": false },
+    { "day": 2, "learning_task": "...", "learning_source_ref": "[2]", "application_task": "Build a mini-example demonstrating the concept", "is_rest_day": false },
     { "day": 5, "learning_task": "", "learning_source_ref": "", "application_task": "", "is_rest_day": true },
     ...continue for all ${durationDays} days
   ]
@@ -307,8 +308,8 @@ Create a structured path that:
 2. Orders learning from basics to advanced
 3. Each day has ONE learning task + ONE application task that creates OUTPUT
 4. Rest days on days 5, 10, 15, 20, 25, 30
-5. Final week is synthesis + creating SHAREABLE proof of learning
-6. Every application task should produce something worth posting/sharing
+5. Final week is synthesis + creating TANGIBLE proof of learning
+6. Every application task produces something concrete (appropriate to their situation)
 
 Return ONLY valid JSON.`;
 

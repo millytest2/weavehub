@@ -663,9 +663,9 @@ This person has told you who they are, what they're struggling with, who they lo
 WEAVING REQUIREMENTS:
 1. REFERENCE THEIR SPECIFIC HURDLES - not generic "productivity" but THEIR exact friction points
 2. CHANNEL THEIR ASPIRATIONAL FIGURES - if they follow Goggins, make it intense; if they follow Ali Abdaal, make it systematic
-3. TIE TO THEIR ACTUAL PROJECTS - not "build something" but work on THEIR specific builds (UPath, Weave, content, etc.)
+3. TIE TO THEIR ACTUAL PROJECTS - not "build something" but work on THEIR specific builds
 4. HONOR THEIR STORY ARC - the experiment should feel like a chapter in their transformation story
-5. CREATE CONTENT FUEL - every experiment should be DOCUMENTABLE and SHAREABLE
+5. DELIVER VALUE BASED ON ARCHETYPE - the context tells you their primary value focus (content fuel, shipping velocity, career momentum, accelerated mastery, or tangible life shifts). Design the experiment's deliverable around THAT value.
 
 THE TEST: Would this experiment make them think "holy shit, that's exactly what I need to push through right now"?
 
@@ -821,19 +821,23 @@ LOOK AT THEIR DATA FOR:
 4. STORY ARC - What transformation are they living? Make this a chapter.
 5. RECURRING THEMES - What keeps coming up? Address THAT pattern.
 
-CONTENT FUEL CHECK - Every experiment should generate:
-- A story worth telling (what happened, what you learned)
-- A result worth sharing (numbers, outputs, artifacts)
-- A transformation worth documenting (who you became through this)
+VALUE CHECK - Every experiment should deliver the user's primary value:
+- For CREATORS: generates a story worth telling, a result worth sharing, a transformation worth documenting
+- For BUILDERS: produces shipped code, deployed features, launched products, acquired users
+- For PROFESSIONALS: builds demonstrable skills, expands network, increases visibility
+- For STUDENTS: creates portfolio projects, accelerates skill acquisition, produces tangible proof of learning
+- For GENERAL: creates visible life shifts - behavior changes, capability gains, or situation improvements
+
+The context tells you their archetype. Design the deliverable accordingly.
 
 Then design an experiment that:
 - DIRECTLY addresses one of their current hurdles
 - Channels the energy of their aspirational figures
 - Ties to their actual projects, not generic ones
 - Feels like a chapter in their transformation story
-- Creates documentable content along the way
+- Delivers their primary value (based on archetype)
 - Has a Navy SEAL-style constraint (hard, clear, binary)
-- Produces a real deliverable tied to their actual project
+- Produces a real deliverable tied to their actual situation
 - Feels like "fuck yeah let's try that" not "ugh, homework"
 
 Duration: ${sprintConfig.duration}

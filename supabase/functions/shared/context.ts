@@ -37,6 +37,9 @@ export const AGENT_WEIGHTS: Record<AgentType, ContextWeights> = {
   default: { identity: 0.40, insights: 0.30, documents: 0.10, experiments: 0.15, actions: 0.05 },
 };
 
+// User archetypes for adaptive value delivery
+export type UserArchetype = "creator" | "professional" | "student" | "builder" | "general";
+
 export interface CompactContext {
   identity_seed: string | null;
   core_values: string | null;
@@ -57,11 +60,14 @@ export interface CompactContext {
   connections: any[];
   active_projects: string[];  // Extracted active projects/builds from user's data
   last_project_focus: string | null;  // Last project that received attention
-  // NEW: Deep personal extraction
+  // Deep personal extraction
   current_hurdles: string[];  // Specific friction points holding them back
   aspirational_figures: string[];  // People they look up to from their content
   story_arc: string | null;  // The narrative of their transformation
   recurring_themes: string[];  // Themes that keep showing up across their data
+  // Adaptive value system
+  user_archetype: UserArchetype;  // Auto-detected user type for adaptive recommendations
+  value_focus: string;  // What value to emphasize based on archetype
 }
 
 export interface DocumentContext {
@@ -377,7 +383,7 @@ export async function fetchUserContext(
     }
   }
 
-  // ==== NEW: Extract recurring themes ====
+  // ==== Extract recurring themes ====
   const themeKeywords: Record<string, number> = {};
   const themeWords = extendedText.toLowerCase()
     .replace(/[^a-z\s]/g, ' ')
@@ -393,6 +399,51 @@ export async function fetchUserContext(
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([word]) => word);
+
+  // ==== ARCHETYPE DETECTION - Adaptive value system ====
+  // Detect user archetype to deliver appropriate value (not just content fuel)
+  const archetypeSignals = {
+    creator: ['content', 'youtube', 'twitter', 'instagram', 'tiktok', 'podcast', 'creator', 'audience', 'followers', 'views', 'viral', 'document', 'story', 'publish', 'post'],
+    builder: ['build', 'ship', 'code', 'product', 'startup', 'launch', 'app', 'saas', 'mrr', 'revenue', 'customers', 'users', 'deploy'],
+    professional: ['career', 'job', 'promotion', 'manager', 'leadership', 'corporate', 'interview', 'salary', 'office', 'team', 'meeting'],
+    student: ['learn', 'study', 'course', 'degree', 'university', 'college', 'exam', 'grade', 'professor', 'homework', 'research'],
+  };
+  
+  // Count signals for each archetype
+  const archetypeCounts: Record<string, number> = { creator: 0, builder: 0, professional: 0, student: 0 };
+  
+  for (const [archetype, signals] of Object.entries(archetypeSignals)) {
+    for (const signal of signals) {
+      if (extendedLower.includes(signal)) {
+        archetypeCounts[archetype]++;
+      }
+    }
+  }
+  
+  // Determine primary archetype
+  const sortedArchetypes = Object.entries(archetypeCounts).sort((a, b) => b[1] - a[1]);
+  let userArchetype: UserArchetype = 'general';
+  let valueFocus = 'Transformative action - experiments should produce tangible shifts in capability, behavior, or situation that the user can see and feel.';
+  
+  if (sortedArchetypes[0][1] >= 3) {
+    userArchetype = sortedArchetypes[0][0] as UserArchetype;
+    
+    // Set appropriate value focus based on archetype
+    switch (userArchetype) {
+      case 'creator':
+        valueFocus = 'Content fuel - experiments should generate documentable stories, shareable results, and transformations worth telling. The experiment itself becomes content.';
+        break;
+      case 'builder':
+        valueFocus = 'Shipping velocity - experiments should result in tangible outputs: features shipped, products launched, code deployed, users acquired.';
+        break;
+      case 'professional':
+        valueFocus = 'Career momentum - experiments should build skills, expand network, increase visibility, or position for advancement.';
+        break;
+      case 'student':
+        valueFocus = 'Accelerated mastery - experiments should compress learning curves, build practical skills faster, and create portfolio-worthy projects.';
+        break;
+    }
+  }
 
   return {
     identity_seed: identitySeed.data?.content || null,
@@ -414,11 +465,14 @@ export async function fetchUserContext(
     connections: connections.data || [],
     active_projects: activeProjects.slice(0, 8),
     last_project_focus: lastProjectFocus,
-    // NEW: Deep personal extraction
+    // Deep personal extraction
     current_hurdles: currentHurdles.slice(0, 5),
     aspirational_figures: aspirationalFigures.slice(0, 5),
     story_arc: storyArc,
     recurring_themes: recurringThemes,
+    // Adaptive value system
+    user_archetype: userArchetype,
+    value_focus: valueFocus,
   };
 }
 
@@ -972,6 +1026,12 @@ export function formatWeightedContextForAgent(
     formatted += `\nRECURRING THEMES: ${context.recurring_themes.slice(0, 8).join(', ')}\n`;
   }
 
+  // ==== USER ARCHETYPE & VALUE FOCUS ====
+  if (context.user_archetype && context.value_focus) {
+    formatted += `\nUSER ARCHETYPE: ${context.user_archetype.toUpperCase()}\n`;
+    formatted += `VALUE FOCUS: ${context.value_focus}\n`;
+  }
+
   // Topics for context
   if (context.topics.length > 0) {
     formatted += `\nTOPICS: ${context.topics.map((t: any) => t.name).join(', ')}\n`;
@@ -1015,6 +1075,32 @@ export function formatWeightedContextForAgent(
     const pastPathTitles = context.past_paths.slice(0, 10).map((p: any) => `- ${p.title}`).join('\n');
     formatted += `\nALREADY CREATED PATHS (DO NOT RECREATE SIMILAR):\n${pastPathTitles}\n`;
   }
+
+  // ==== WEAVE CORE MISSION (for all agents) ====
+  formatted += `
+═══════════════════════════════════════════════════════════════
+WEAVE CORE MISSION - WHY THIS APP EXISTS:
+═══════════════════════════════════════════════════════════════
+Weave exists because people save endless content but never act on it.
+The goal is NOT to automate thinking (like ChatGPT) but to REFLECT the user's OWN wisdom back to them.
+
+UNIVERSAL PRINCIPLES (apply to ALL users):
+1. ONE CLEAR ACTION > 10 options. Always recommend ONE thing, not many.
+2. ACTIONS from THEIR saved content - cite what they've saved, not generic advice
+3. BUILD SELF-TRUST - the user should feel like they figured it out, not that AI told them what to do
+4. IDENTITY-FIRST - actions come from WHO THEY'RE BECOMING, not arbitrary goals
+5. NO STREAKS, NO GUILT - miss a day, come back, get right back on track
+
+VALUE DELIVERY based on user archetype:
+- CREATOR: ${context.user_archetype === 'creator' ? 'PRIMARY' : 'secondary'} - experiments create content fuel (stories to tell, results to share)
+- BUILDER: ${context.user_archetype === 'builder' ? 'PRIMARY' : 'secondary'} - experiments produce shipped outputs (features, products, launches)
+- PROFESSIONAL: ${context.user_archetype === 'professional' ? 'PRIMARY' : 'secondary'} - experiments build career momentum (skills, network, visibility)
+- STUDENT: ${context.user_archetype === 'student' ? 'PRIMARY' : 'secondary'} - experiments accelerate mastery (faster learning, portfolio projects)
+- GENERAL: ${context.user_archetype === 'general' ? 'PRIMARY' : 'secondary'} - experiments create tangible life shifts (visible changes in capability or situation)
+
+This user's primary value focus: ${context.value_focus}
+═══════════════════════════════════════════════════════════════
+`;
 
   return formatted.trim();
 }
