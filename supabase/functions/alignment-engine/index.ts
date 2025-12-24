@@ -10,9 +10,9 @@ interface AlignmentScore {
   identity_alignment: number;      // How aligned to who they're becoming
   values_alignment: number;        // How aligned to core values
   current_reality_fit: number;     // How relevant to current situation
-  objective_alignment: number;     // How aligned to Weave's purpose (doing cool shit)
+  objective_alignment: number;     // How aligned to Weave's purpose (turning saved content into action)
   action_potential: number;        // How actionable this is
-  content_fuel: number;            // How shareable/documentable for content creation
+  archetype_value: number;         // How well it delivers value based on user archetype (replaces content_fuel)
   ideal_self_push: number;         // How much this pushes toward ideal self
   overall: number;                 // Weighted composite
 }
@@ -405,15 +405,15 @@ IDEAL SELF: ${identity.ideal_self}
 VALUES: ${identity.values.join(', ')}
 OBJECTIVES: ${identity.objectives.join(', ')}
 
-WEAVE OBJECTIVE: Help users "do cool shit" - take action, run experiments, build things, grow through friction, and CREATE CONTENT about the journey.
+WEAVE OBJECTIVE: Help users turn saved content into action. Build self-trust by reflecting their own wisdom back to them.
 
 SCORING DIMENSIONS:
 - identity_alignment: How aligned to who they ARE currently
 - values_alignment: How aligned to their core VALUES
 - current_reality_fit: How relevant to their current situation and projects
-- objective_alignment: How aligned to Weave's purpose (doing cool shit, taking action)
+- objective_alignment: How aligned to Weave's purpose (action from saved content, building self-trust)
 - action_potential: How directly actionable this content is
-- content_fuel: How shareable/documentable this would be for their content (stories, results, learnings)
+- archetype_value: How well this delivers value based on user type (creators=content fuel, builders=shipping velocity, professionals=career momentum, students=accelerated mastery, general=tangible life shifts)
 - ideal_self_push: How much this content pushes toward their IDEAL SELF
 
 CONTENT ITEMS:
@@ -428,7 +428,7 @@ Return array of scores for each item index:
     "current_reality_fit": 0.0-1.0,
     "objective_alignment": 0.0-1.0,
     "action_potential": 0.0-1.0,
-    "content_fuel": 0.0-1.0,
+    "archetype_value": 0.0-1.0,
     "ideal_self_push": 0.0-1.0
   }
 ]`;
@@ -456,14 +456,14 @@ Return array of scores for each item index:
         for (const score of parsed) {
           const item = batch[score.index];
           if (item) {
-            // Weighted composite favoring ideal self push and content fuel
+            // Weighted composite favoring ideal self push and archetype value
             const overall = (
               score.identity_alignment * 0.15 +
               score.values_alignment * 0.15 +
               score.current_reality_fit * 0.10 +
               score.objective_alignment * 0.15 +
               score.action_potential * 0.15 +
-              (score.content_fuel || 0.5) * 0.15 +
+              (score.archetype_value || score.content_fuel || 0.5) * 0.15 +
               (score.ideal_self_push || 0.5) * 0.15
             );
             
@@ -473,7 +473,7 @@ Return array of scores for each item index:
               current_reality_fit: score.current_reality_fit,
               objective_alignment: score.objective_alignment,
               action_potential: score.action_potential,
-              content_fuel: score.content_fuel || 0.5,
+              archetype_value: score.archetype_value || score.content_fuel || 0.5,
               ideal_self_push: score.ideal_self_push || 0.5,
               overall: Math.min(1, Math.max(0, overall))
             };
@@ -490,7 +490,7 @@ Return array of scores for each item index:
           current_reality_fit: 0.5,
           objective_alignment: 0.5,
           action_potential: 0.5,
-          content_fuel: 0.5,
+          archetype_value: 0.5,
           ideal_self_push: 0.5,
           overall: 0.5
         };
