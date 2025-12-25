@@ -241,38 +241,70 @@ serve(async (req) => {
       });
     }
 
-    // Fetch identity seed for context
+    // Fetch identity seed + archetype context
     const { data: identitySeed } = await supabase
       .from("identity_seeds")
-      .select("content, core_values")
+      .select("content, core_values, weekly_focus")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    // Detect archetype from identity and content
+    const allContent = [
+      identitySeed?.content || '',
+      identitySeed?.core_values || '',
+      identitySeed?.weekly_focus || '',
+      ...sources.map(s => s.content),
+    ].join(' ').toLowerCase();
+    
+    const archetypeSignals = {
+      creator: ['content', 'youtube', 'twitter', 'instagram', 'tiktok', 'podcast', 'creator', 'audience', 'followers', 'document', 'story', 'publish', 'post'].filter(s => allContent.includes(s)).length,
+      builder: ['build', 'ship', 'code', 'product', 'startup', 'launch', 'app', 'saas', 'revenue', 'customers', 'users', 'deploy'].filter(s => allContent.includes(s)).length,
+      professional: ['career', 'job', 'promotion', 'manager', 'leadership', 'corporate', 'interview', 'salary', 'team'].filter(s => allContent.includes(s)).length,
+      student: ['learn', 'study', 'course', 'degree', 'university', 'college', 'exam', 'research'].filter(s => allContent.includes(s)).length,
+    };
+    
+    const sortedArchetypes = Object.entries(archetypeSignals).sort((a, b) => b[1] - a[1]);
+    const archetype = sortedArchetypes[0][1] >= 2 ? sortedArchetypes[0][0] : 'general';
+    
+    const archetypeValueMap: Record<string, string> = {
+      creator: 'CONTENT FUEL - every application task should produce something postable (thread, story, teaching moment)',
+      builder: 'SHIPPING - every application task should produce working code, deployed feature, or tangible prototype',
+      professional: 'CAREER CAPITAL - every application task should demonstrate skill, expand network, or increase visibility',
+      student: 'PORTFOLIO - every application task should create study artifact or portfolio-worthy project piece',
+      general: 'TANGIBLE OUTPUT - every application task should produce visible result they can point to',
+    };
+    
+    console.log(`Detected archetype for learning path: ${archetype}`);
 
     const sourcesForPrompt = sources.slice(0, 12).map((s, idx) => 
       `[${idx + 1}] "${s.title}" (${s.type}): ${s.content.substring(0, 400)}`
     ).join("\n\n");
 
-    const systemPrompt = `You are generating a ${durationDays}-day structured learning path. Your job is to break down the user's saved sources into a digestible daily curriculum that combines LEARNING (consuming content) with APPLICATION (testing understanding).
+    const systemPrompt = `You are generating a ${durationDays}-day DEEPLY PERSONALIZED learning path. Not generic curriculum - a path designed for THIS person's transformation.
 
-WEAVE OBJECTIVE: Help users turn saved content into ACTION. Learn by DOING, create tangible outputs, and push toward their IDEAL SELF.
+${identitySeed?.content ? `WHO THEY ARE: ${identitySeed.content.substring(0, 400)}` : ''}
+${identitySeed?.core_values ? `THEIR VALUES: ${identitySeed.core_values}` : ''}
+${identitySeed?.weekly_focus ? `CURRENT FOCUS: ${identitySeed.weekly_focus}` : ''}
+
+ARCHETYPE: ${archetype.toUpperCase()}
+VALUE REQUIREMENT: ${archetypeValueMap[archetype]}
+
+WEAVE MISSION: This replaces ChatGPT/Claude by being IDENTITY-ALIGNED. Every day should feel like a chapter in THEIR transformation story, not generic learning.
 
 CRITICAL RULES:
 1. ONLY reference sources the user has saved - cite them as [1], [2], etc.
-2. Each learning task should be 15-30 minutes max
-3. Each application task should be 15 minutes max AND produce something TANGIBLE
-4. Include REST DAYS every 5th day (Day 5, 10, 15, 20, 25, 30)
+2. Each learning task: 15-30 minutes
+3. Each application task: 15 minutes AND produces TANGIBLE OUTPUT for their archetype
+4. REST DAYS every 5th day (Day 5, 10, 15, 20, 25, 30)
 5. Progress from basics to advanced
-6. Final week (days 26-30) is synthesis and creation
+6. Final week (days 26-30) is synthesis + creating their FINAL DELIVERABLE
 7. Be SPECIFIC about which part of each source to consume
-8. Application tasks must TEST understanding AND create value based on user archetype
+8. Application tasks must create value THEY can use (not busy work)
 
-VALUE OUTPUT REQUIREMENT (adapt to user type):
-Every application task should produce something tangible based on who the user is:
-- FOR CREATORS: A short post, story, or teaching moment worth sharing
-- FOR BUILDERS: A mini-project, prototype, or code snippet that works
-- FOR PROFESSIONALS: A skill demo, framework applied to work, or network-building action
-- FOR STUDENTS: A portfolio piece, study summary, or practical exercise
-- FOR GENERAL: A concrete test of understanding with visible output
+CONNECTION TO IDENTITY:
+- "why_this_matters" must connect to their SPECIFIC identity/values/focus
+- Application tasks should reinforce WHO THEY'RE BECOMING
+- Final deliverable should be something they'd be PROUD to share
 
 BANNED:
 - Generic advice not tied to their sources
@@ -280,16 +312,19 @@ BANNED:
 - Suggesting external sources they haven't saved
 - Emotional or motivational language
 - Application tasks with no tangible output
+- One-size-fits-all curriculum
+
+THE TEST: Would they think "this path was made for ME" or "this is generic learning"?
 
 OUTPUT FORMAT:
 Return valid JSON with this exact structure:
 {
   "sub_topics": ["Sub-topic 1", "Sub-topic 2", "Sub-topic 3", "Sub-topic 4"],
-  "why_this_matters": "One sentence connecting to user's identity/projects AND their primary value focus",
-  "final_deliverable": "Specific TANGIBLE creation appropriate to their archetype",
+  "why_this_matters": "One sentence connecting to THEIR identity/values/weekly focus - make it personal",
+  "final_deliverable": "Specific TANGIBLE creation appropriate to their archetype that they'd share",
   "daily_structure": [
-    { "day": 1, "learning_task": "Watch [1] (first 15 minutes) focusing on...", "learning_source_ref": "[1]", "application_task": "Write a 2-sentence summary explaining the core concept to test understanding", "is_rest_day": false },
-    { "day": 2, "learning_task": "...", "learning_source_ref": "[2]", "application_task": "Build a mini-example demonstrating the concept", "is_rest_day": false },
+    { "day": 1, "learning_task": "Watch [1] (first 15 minutes) focusing on...", "learning_source_ref": "[1]", "application_task": "Create a [archetype-specific output] demonstrating...", "is_rest_day": false },
+    { "day": 2, "learning_task": "...", "learning_source_ref": "[2]", "application_task": "Build/Post/Ship...", "is_rest_day": false },
     { "day": 5, "learning_task": "", "learning_source_ref": "", "application_task": "", "is_rest_day": true },
     ...continue for all ${durationDays} days
   ]

@@ -380,11 +380,12 @@ async function fetchTweetContent(url: string): Promise<{ title: string; content:
   }
 }
 
-// Match content to best topic using AI - ALWAYS picks closest match
+// Match content to best topic using AI - IDENTITY-WEIGHTED matching
 async function matchToTopic(
   content: string, 
   title: string, 
-  topics: { id: string; name: string; description: string | null }[]
+  topics: { id: string; name: string; description: string | null }[],
+  identityContext?: { identity_seed?: string; core_values?: string; weekly_focus?: string }
 ): Promise<string | null> {
   if (topics.length === 0) return null;
   
@@ -397,6 +398,16 @@ async function matchToTopic(
   try {
     const topicList = topics.map((t, i) => `${i + 1}. ${t.name}${t.description ? ` - ${t.description}` : ''}`).join('\n');
     
+    // Include identity context for better matching
+    const identityPrompt = identityContext ? `
+USER CONTEXT (weight topics toward what matters to THEM):
+${identityContext.identity_seed ? `Identity: ${identityContext.identity_seed.substring(0, 300)}` : ''}
+${identityContext.core_values ? `Values: ${identityContext.core_values}` : ''}
+${identityContext.weekly_focus ? `Current focus: ${identityContext.weekly_focus}` : ''}
+
+Match content to topics that ALIGN with their current focus and values.
+` : '';
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -408,19 +419,18 @@ async function matchToTopic(
         messages: [
           {
             role: "system",
-            content: `You MUST classify content into ONE of these topics. ALWAYS pick the closest match - never say "none" or refuse.
-
+            content: `You MUST classify content into ONE of these user-defined topics. Pick the topic that BEST SERVES their current transformation.
+${identityPrompt}
 TOPICS:
 ${topicList}
 
-Rules:
-- Return ONLY the topic number (1, 2, 3, etc.)
-- Every piece of content relates to at least one topic
-- If content touches multiple topics, pick the PRIMARY one
-- Personal development content usually fits "Identity" topics
-- Relationship/social content fits "Relationships" topics
-- Business/career content fits "Career" or "Financial" topics
-- If truly ambiguous, pick the first topic that could apply`
+MATCHING PRIORITY:
+1. Does this content directly support a topic they're actively working on?
+2. Does this content connect to their stated values or identity?
+3. Does this content relate to their weekly/current focus?
+4. Which topic would make this content most USEFUL to them?
+
+Return ONLY the topic number (1, 2, 3, etc.). Never refuse.`
           },
           {
             role: "user",
@@ -678,20 +688,27 @@ serve(async (req) => {
 
     if (docError) throw docError;
     
-    // Fetch user's topics for matching
-    const { data: userTopics } = await supabase
-      .from("topics")
-      .select("id, name, description")
-      .eq("user_id", user.id);
+    // Fetch user's topics AND identity for better matching
+    const [topicsResult, identityResult] = await Promise.all([
+      supabase.from("topics").select("id, name, description").eq("user_id", user.id),
+      supabase.from("identity_seeds").select("content, core_values, weekly_focus").eq("user_id", user.id).maybeSingle(),
+    ]);
     
-    // Generate and save insights with topic matching
+    const userTopics = topicsResult.data || [];
+    const identityData = identityResult.data;
+    
+    // Generate and save insights with IDENTITY-WEIGHTED topic matching
     let insightsCreated = 0;
     if (content && content.length > 50) {
       const insights = await generateInsights(content, title, detected.type);
       
-      // Match content to best topic (do once for all insights from same content)
-      const matchedTopicId = userTopics && userTopics.length > 0
-        ? await matchToTopic(content, title, userTopics)
+      // Match content to best topic using identity context
+      const matchedTopicId = userTopics.length > 0
+        ? await matchToTopic(content, title, userTopics, identityData ? {
+            identity_seed: identityData.content,
+            core_values: identityData.core_values,
+            weekly_focus: identityData.weekly_focus,
+          } : undefined)
         : null;
       
       console.log("Matched topic:", matchedTopicId);
