@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { fetchUserContext, formatContextForAI } from "../shared/context.ts";
+import { fetchUserContext, formatWeightedContextForAgent } from "../shared/context.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,7 +47,8 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     const userContext = await fetchUserContext(supabase, user.id);
-    const context = formatContextForAI(userContext);
+    // Use weighted context for better synthesis
+    const context = formatWeightedContextForAgent(userContext, "decision-mirror");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -60,23 +61,31 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a strategic mirror. Give a SHORT direction check.
+            content: `You are a strategic mirror. Give a SHORT direction check grounded in THIS PERSON'S specific context.
 
-CORE QUESTION: Is behavior aligned with identity? What's the gap?
+CORE QUESTION: Is their behavior aligned with their stated identity? What's the gap?
 
 ${context}
 
-Your job:
-1. See patterns in identity + insights + experiments
-2. Identify if actions match identity direction
-3. Name the ONE focus now
-4. Give ONE concrete next step (15-45 min)
+YOUR JOB:
+1. See patterns in THEIR identity + insights + experiments + hurdles
+2. Identify if recent actions match identity direction
+3. Name the ONE focus now (based on their weekly focus or active experiment)
+4. Give ONE concrete next step (15-45 min) that advances THEIR specific situation
+
+WEAVE MISSION: This replaces generic AI advice. The direction check should feel like it was written for THEM specifically.
+
+PERSONALIZATION REQUIREMENTS:
+- Reference their specific hurdles, projects, or experiments by name
+- Connect to their weekly focus or values
+- The next step should directly address something in their context
 
 RULES:
 - No emojis
 - No fluff
 - Keep it short
-- Identity-first, not productivity-first`
+- Identity-first, not productivity-first
+- SPECIFIC to their situation, not generic`
           },
           {
             role: "user",

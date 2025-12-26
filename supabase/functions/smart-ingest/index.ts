@@ -400,12 +400,15 @@ async function matchToTopic(
     
     // Include identity context for better matching
     const identityPrompt = identityContext ? `
-USER CONTEXT (weight topics toward what matters to THEM):
-${identityContext.identity_seed ? `Identity: ${identityContext.identity_seed.substring(0, 300)}` : ''}
-${identityContext.core_values ? `Values: ${identityContext.core_values}` : ''}
-${identityContext.weekly_focus ? `Current focus: ${identityContext.weekly_focus}` : ''}
+USER'S TRANSFORMATION CONTEXT (critical for matching):
+${identityContext.identity_seed ? `IDENTITY: ${identityContext.identity_seed.substring(0, 400)}` : ''}
+${identityContext.core_values ? `VALUES: ${identityContext.core_values}` : ''}
+${identityContext.weekly_focus ? `CURRENT FOCUS: ${identityContext.weekly_focus}` : ''}
 
-Match content to topics that ALIGN with their current focus and values.
+Match content to topics that SERVE THEIR CURRENT TRANSFORMATION. Ask:
+- Does this content help them with what they're actively working on?
+- Which topic would make this content most USEFUL and ACTIONABLE for them?
+- If content spans multiple topics, pick the one most aligned with their focus.
 ` : '';
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -419,18 +422,20 @@ Match content to topics that ALIGN with their current focus and values.
         messages: [
           {
             role: "system",
-            content: `You MUST classify content into ONE of these user-defined topics. Pick the topic that BEST SERVES their current transformation.
+            content: `You MUST classify content into ONE of these user-defined topics. This is for a personal knowledge system - pick the topic that will make this content most FINDABLE and USEFUL when they need it.
 ${identityPrompt}
-TOPICS:
+USER'S TOPICS:
 ${topicList}
 
-MATCHING PRIORITY:
-1. Does this content directly support a topic they're actively working on?
-2. Does this content connect to their stated values or identity?
-3. Does this content relate to their weekly/current focus?
-4. Which topic would make this content most USEFUL to them?
+MATCHING PRIORITY (in order):
+1. WEEKLY FOCUS MATCH - Does this directly support what they're focused on this week?
+2. ACTIVE WORK MATCH - Does this content relate to something they're actively building/doing?
+3. VALUES MATCH - Does this connect to their stated values or identity direction?
+4. CONTENT MATCH - Which topic best describes the content itself?
 
-Return ONLY the topic number (1, 2, 3, etc.). Never refuse.`
+CLUSTERING PRINCIPLE: Topics should cluster content that the user will want to access TOGETHER. Think about future retrieval.
+
+Return ONLY the topic number (1, 2, 3, etc.). Never refuse. If truly unclear, pick the most general applicable topic.`
           },
           {
             role: "user",
