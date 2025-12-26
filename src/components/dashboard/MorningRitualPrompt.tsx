@@ -3,30 +3,121 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sunrise, X, Sparkles } from "lucide-react";
+import { Sunrise, X, Sparkles, Target, Flame } from "lucide-react";
 
 interface MorningRitualPromptProps {
   onComplete: () => void;
 }
 
-// Daily focus prompts that rotate
-const DAILY_FOCUSES = [
-  "What would the person you're becoming do first today?",
-  "One small action today that proves you're changing.",
-  "Today's edge: where will you stretch just a little?",
-  "What conversation with yourself ends today?",
-  "Today, prove it to yourself through action.",
-  "What would feel like a win by tonight?",
-  "Where does today's energy want to go?",
-];
+// Dynamic morning prompts based on context
+function generateDynamicPrompt(context: {
+  identity?: string;
+  values?: string;
+  weeklyFocus?: string;
+  recentExperiment?: string;
+  streak?: number;
+  dayOfWeek: number;
+}): { prompt: string; subtext?: string } {
+  const { identity, values, weeklyFocus, recentExperiment, streak, dayOfWeek } = context;
+  
+  // Monday = fresh start energy
+  if (dayOfWeek === 1) {
+    if (weeklyFocus) {
+      return { 
+        prompt: `This week: ${weeklyFocus}. What's your first move?`,
+        subtext: "Monday sets the tone."
+      };
+    }
+    return { prompt: "New week. What would the person you're becoming tackle first?" };
+  }
+  
+  // Friday = reflection + push energy
+  if (dayOfWeek === 5) {
+    return { 
+      prompt: "What would make you proud by end of day?",
+      subtext: "Finish the week strong."
+    };
+  }
+  
+  // Weekend = different energy
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    if (recentExperiment) {
+      return { 
+        prompt: `Weekend check: How can you push your experiment forward?`,
+        subtext: recentExperiment
+      };
+    }
+    return { prompt: "Weekend mode: What would feel like a win today?" };
+  }
+  
+  // Active experiment = orient around it
+  if (recentExperiment) {
+    return { 
+      prompt: `Today's focus: ${recentExperiment}. What's the rep?`,
+      subtext: "One action compounds."
+    };
+  }
+  
+  // Weekly focus = orient around it
+  if (weeklyFocus) {
+    return { 
+      prompt: `"${weeklyFocus}" — What action proves it today?`,
+      subtext: "Your focus shapes your reality."
+    };
+  }
+  
+  // Values-based prompt
+  if (values) {
+    const valueList = values.split(',').map(v => v.trim());
+    const randomValue = valueList[Math.floor(Math.random() * valueList.length)];
+    return { 
+      prompt: `${randomValue} in action. What does that look like today?`,
+      subtext: "Values aren't ideas. They're actions."
+    };
+  }
+  
+  // Identity-based fallback
+  if (identity) {
+    const patterns = [/becoming[^.]+/i, /someone who[^.]+/i, /I am[^.]+/i];
+    for (const pattern of patterns) {
+      const match = identity.match(pattern);
+      if (match) {
+        return { 
+          prompt: `You're ${match[0].toLowerCase()}. What's one proof point today?`,
+          subtext: "Identity is built through reps."
+        };
+      }
+    }
+  }
+  
+  // Streak-based motivation
+  if (streak && streak > 2) {
+    return { 
+      prompt: `${streak} days of momentum. Keep the thread going.`,
+      subtext: "What's today's action?"
+    };
+  }
+  
+  // Generic but still good fallbacks
+  const fallbacks = [
+    { prompt: "What would the person you're becoming do first today?" },
+    { prompt: "One small action today that proves you're changing." },
+    { prompt: "Today's edge: where will you stretch just a little?" },
+    { prompt: "What would feel like a win by tonight?" },
+  ];
+  
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
 
 export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [identitySeed, setIdentitySeed] = useState<string | null>(null);
   const [coreValues, setCoreValues] = useState<string | null>(null);
-  const [dailyFocus, setDailyFocus] = useState<string>("");
+  const [weeklyFocus, setWeeklyFocus] = useState<string | null>(null);
+  const [dynamicPrompt, setDynamicPrompt] = useState<{ prompt: string; subtext?: string }>({ prompt: "" });
   const [recentInsight, setRecentInsight] = useState<string | null>(null);
+  const [activeExperiment, setActiveExperiment] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,12 +145,19 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
     }
 
     try {
-      // Get identity and a recent insight in parallel
-      const [identityRes, insightRes] = await Promise.all([
+      // Get identity, experiments, and insights in parallel
+      const [identityRes, experimentRes, insightRes] = await Promise.all([
         supabase
           .from("identity_seeds")
-          .select("content, core_values")
+          .select("content, core_values, weekly_focus")
           .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("experiments")
+          .select("title")
+          .eq("user_id", user.id)
+          .eq("status", "in_progress")
+          .limit(1)
           .maybeSingle(),
         supabase
           .from("insights")
@@ -72,22 +170,30 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
       if (identityRes.data?.content) {
         setIdentitySeed(identityRes.data.content);
         setCoreValues(identityRes.data.core_values);
+        setWeeklyFocus(identityRes.data.weekly_focus);
         
-        // Pick daily focus based on day of year for variety
-        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-        setDailyFocus(DAILY_FOCUSES[dayOfYear % DAILY_FOCUSES.length]);
+        // Set active experiment if exists
+        if (experimentRes.data?.title) {
+          setActiveExperiment(experimentRes.data.title);
+        }
+        
+        // Generate dynamic prompt based on full context
+        const dayOfWeek = new Date().getDay();
+        const prompt = generateDynamicPrompt({
+          identity: identityRes.data.content,
+          values: identityRes.data.core_values,
+          weeklyFocus: identityRes.data.weekly_focus,
+          recentExperiment: experimentRes.data?.title,
+          dayOfWeek,
+        });
+        setDynamicPrompt(prompt);
         
         // Pick a random recent insight if available
         if (insightRes.data && insightRes.data.length > 0) {
           const randomInsight = insightRes.data[Math.floor(Math.random() * insightRes.data.length)];
           const content = randomInsight.content;
-          // Extract first sentence or truncate
           const firstSentence = content.split('.')[0];
-          if (firstSentence.length > 120) {
-            setRecentInsight(firstSentence.substring(0, 117) + "...");
-          } else {
-            setRecentInsight(firstSentence);
-          }
+          setRecentInsight(firstSentence.length > 120 ? firstSentence.substring(0, 117) + "..." : firstSentence);
         }
         
         setOpen(true);
@@ -122,13 +228,11 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
   // Extract key identity phrase - more dynamic extraction
   const getIdentityPhrase = () => {
     if (!identitySeed) return "";
-    // Try to find "I am becoming" or similar patterns
     const patterns = [/I am becoming[^.]+/i, /I am someone who[^.]+/i, /someone who[^.]+/i];
     for (const pattern of patterns) {
       const match = identitySeed.match(pattern);
       if (match) return match[0];
     }
-    // Fallback to first sentence
     return identitySeed.split('.')[0];
   };
 
@@ -156,8 +260,11 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
               </Button>
             </div>
             <DialogTitle className="text-2xl font-bold tracking-tight text-left pt-2">
-              {dailyFocus}
+              {dynamicPrompt.prompt}
             </DialogTitle>
+            {dynamicPrompt.subtext && (
+              <p className="text-sm text-muted-foreground">{dynamicPrompt.subtext}</p>
+            )}
             <DialogDescription className="sr-only">
               Your morning grounding ritual
             </DialogDescription>
@@ -184,8 +291,21 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
             )}
           </div>
 
+          {/* Active experiment callout */}
+          {activeExperiment && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20">
+              <Flame className="h-4 w-4 text-accent mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-accent uppercase tracking-wide">Active Experiment</p>
+                <p className="text-sm text-foreground/80 leading-relaxed mt-0.5">
+                  {activeExperiment}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Recent insight spark */}
-          {recentInsight && (
+          {recentInsight && !activeExperiment && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
               <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
               <p className="text-sm text-foreground/70 leading-relaxed">
