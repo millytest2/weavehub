@@ -10,7 +10,6 @@ import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { WeaveLoader } from "@/components/ui/weave-loader";
-import { ProgressGameView } from "@/components/dashboard/ProgressGameView";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -27,11 +26,6 @@ const Dashboard = () => {
   // Active experiment state
   const [activeExperiment, setActiveExperiment] = useState<any>(null);
   
-  // Weekly progress stats for gamification
-  const [weeklyStats, setWeeklyStats] = useState<{ pillar: string; count: number; color: string }[]>([]);
-  const [streak, setStreak] = useState(0);
-  const [insightsThisWeek, setInsightsThisWeek] = useState(0);
-  const [pathsActive, setPathsActive] = useState(0);
 
   const getLocalToday = () => {
     const now = new Date();
@@ -115,74 +109,6 @@ const Dashboard = () => {
       
       setActiveExperiment(expRes);
       
-      // Fetch weekly stats for gamification
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week
-      weekStart.setHours(0, 0, 0, 0);
-      
-      const { data: weeklyActions } = await supabase
-        .from("action_history")
-        .select("pillar")
-        .eq("user_id", user.id)
-        .gte("action_date", weekStart.toISOString().split('T')[0]);
-      
-      if (weeklyActions) {
-        const pillarCounts: Record<string, number> = {};
-        weeklyActions.forEach(a => {
-          if (a.pillar) {
-            pillarCounts[a.pillar] = (pillarCounts[a.pillar] || 0) + 1;
-          }
-        });
-        setWeeklyStats(Object.entries(pillarCounts).map(([pillar, count]) => ({
-          pillar,
-          count,
-          color: ""
-        })));
-      }
-      
-      // Fetch insights this week
-      const { count: insightCount } = await supabase
-        .from("insights")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .gte("created_at", weekStart.toISOString());
-      
-      setInsightsThisWeek(insightCount || 0);
-      
-      // Fetch active learning paths
-      const { count: pathCount } = await supabase
-        .from("learning_paths")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "active");
-      
-      setPathsActive(pathCount || 0);
-      
-      // Calculate streak (consecutive days with completed actions)
-      const { data: recentDays } = await supabase
-        .from("action_history")
-        .select("action_date")
-        .eq("user_id", user.id)
-        .order("action_date", { ascending: false })
-        .limit(30);
-      
-      if (recentDays) {
-        const uniqueDates = [...new Set(recentDays.map(d => d.action_date))];
-        let currentStreak = 0;
-        const todayStr = getLocalToday();
-        const checkDate = new Date();
-        
-        for (const dateStr of uniqueDates) {
-          const expectedDate = checkDate.toISOString().split('T')[0];
-          if (dateStr === expectedDate || dateStr === todayStr) {
-            currentStreak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-          } else {
-            break;
-          }
-        }
-        setStreak(currentStreak);
-      }
     };
 
     fetchData();
@@ -376,17 +302,6 @@ const Dashboard = () => {
       )}
 
       <div className="flex-1 space-y-6">
-        {/* Weekly Progress Game View */}
-        <ProgressGameView
-          completedToday={completedCount}
-          totalToday={3}
-          weeklyStats={weeklyStats}
-          streak={streak}
-          experimentsActive={activeExperiment ? 1 : 0}
-          pathsActive={pathsActive}
-          insightsThisWeek={insightsThisWeek}
-        />
-        
         {/* Today's Invitation Card */}
         <Card className="border-0 shadow-sm bg-card/50">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
