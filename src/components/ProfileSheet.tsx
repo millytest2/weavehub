@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { TopicClusterVisualization } from "./dashboard/TopicClusterVisualization";
+import { ProgressGameView } from "./dashboard/ProgressGameView";
 
 interface ActionHistoryItem {
   id: string;
@@ -58,6 +59,12 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("progress");
+  
+  // Gamification stats
+  const [weeklyStats, setWeeklyStats] = useState<{ pillar: string; count: number; color: string }[]>([]);
+  const [streak, setStreak] = useState(0);
+  const [insightsThisWeek, setInsightsThisWeek] = useState(0);
+  const [pathsActive, setPathsActive] = useState(0);
 
   // Extract keywords from identity seed for alignment scoring
   const identityKeywords = useMemo(() => {
@@ -121,6 +128,55 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       // Cluster insights by topic
       const clusters = clusterInsightsByTopic(insightsResult.data as InsightWithTopic[] || []);
       setInsightClusters(clusters);
+      
+      // Calculate gamification stats
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      
+      // Pillar distribution
+      const pillarCounts: Record<string, number> = {};
+      (actionsResult.data || []).forEach(a => {
+        if (a.pillar) {
+          pillarCounts[a.pillar] = (pillarCounts[a.pillar] || 0) + 1;
+        }
+      });
+      setWeeklyStats(Object.entries(pillarCounts).map(([pillar, count]) => ({
+        pillar,
+        count,
+        color: ""
+      })));
+      
+      // Insights this week
+      const recentInsights = (insightsResult.data || []).filter(i => 
+        new Date(i.created_at) >= weekStart
+      );
+      setInsightsThisWeek(recentInsights.length);
+      
+      // Active paths
+      const { count: pathCount } = await supabase
+        .from("learning_paths")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "active");
+      setPathsActive(pathCount || 0);
+      
+      // Calculate streak
+      const uniqueDates = [...new Set((actionsResult.data || []).map(d => d.action_date))].sort().reverse();
+      let currentStreak = 0;
+      const today = new Date().toISOString().split('T')[0];
+      const checkDate = new Date();
+      
+      for (const dateStr of uniqueDates) {
+        const expectedDate = checkDate.toISOString().split('T')[0];
+        if (dateStr === expectedDate || dateStr === today) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      setStreak(currentStreak);
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
@@ -239,23 +295,16 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
             </div>
           ) : (
             <>
-              {/* Stats Summary */}
-              <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-muted/30 border border-border/20">
-                <div className="flex-1 text-center">
-                  <p className="text-2xl font-semibold text-foreground">{weeklyActions.length}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Done</p>
-                </div>
-                <div className="w-px h-8 bg-border/30" />
-                <div className="flex-1 text-center">
-                  <p className="text-2xl font-semibold text-foreground">{sortedDays.length}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Days</p>
-                </div>
-                <div className="w-px h-8 bg-border/30" />
-                <div className="flex-1 text-center">
-                  <p className="text-2xl font-semibold text-foreground">{activeExperiments.length}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Active</p>
-                </div>
-              </div>
+              {/* Gamification View */}
+              <ProgressGameView
+                completedToday={weeklyActions.filter(a => a.action_date === new Date().toISOString().split('T')[0]).length}
+                totalToday={3}
+                weeklyStats={weeklyStats}
+                streak={streak}
+                experimentsActive={activeExperiments.length}
+                pathsActive={pathsActive}
+                insightsThisWeek={insightsThisWeek}
+              />
 
               {/* Active Projects */}
               {activeExperiments.length > 0 && (
