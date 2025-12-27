@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Lightbulb, Scale, Compass, Sparkles } from "lucide-react";
+import { Plus, Lightbulb, Scale, Compass, Sparkles, Mic, MicOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,7 @@ import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
 import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
+import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 
 type CaptureType = "paste" | "insight" | "decision" | null;
 
@@ -42,6 +43,14 @@ export const QuickCapture = () => {
   const [showManualFallback, setShowManualFallback] = useState(false);
   const [pendingDocumentId, setPendingDocumentId] = useState<string | null>(null);
   const [pendingContentType, setPendingContentType] = useState<string>("");
+  
+  // Voice capture hook
+  const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
+    onTranscript: (text) => {
+      setContent(prev => prev ? `${prev}\n${text}` : text);
+      toast.success("Voice captured");
+    },
+  });
 
   const handleOpen = () => setIsOpen(true);
   
@@ -288,6 +297,22 @@ export const QuickCapture = () => {
                   <span className="text-xs font-medium">Decision Mirror</span>
                 </button>
               </div>
+              
+              {/* Voice Insight - primary voice capture */}
+              <button
+                onClick={() => {
+                  handleQuickCapture("insight");
+                  // Auto-start voice after a brief delay
+                  setTimeout(() => toggleRecording(), 100);
+                }}
+                className="w-full flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 hover:border-primary/50 transition-all text-left"
+              >
+                <Mic className="h-6 w-6 text-primary shrink-0" />
+                <div>
+                  <span className="text-sm font-medium block">Speak Your Insight</span>
+                  <span className="text-xs text-muted-foreground">Just talk. No typing needed.</span>
+                </div>
+              </button>
             </div>
           ) : (
             <div className="space-y-3 py-3">
@@ -301,20 +326,59 @@ export const QuickCapture = () => {
                 />
               )}
               
-              <Textarea
-                placeholder={
-                  captureType === "paste"
-                    ? "Paste any URL (YouTube, article, tweet, Instagram...)"
-                    : captureType === "decision"
-                    ? "What are you about to do?"
-                    : "What did you learn or realize?"
-                }
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[100px] sm:min-h-[120px] text-base"
-                style={{ fontSize: '16px' }}
-                autoFocus
-              />
+              <div className="relative">
+                <Textarea
+                  placeholder={
+                    captureType === "paste"
+                      ? "Paste any URL (YouTube, article, tweet, Instagram...)"
+                      : captureType === "decision"
+                      ? "What are you about to do?"
+                      : "What did you learn or realize?"
+                  }
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[100px] sm:min-h-[120px] text-base pr-12"
+                  style={{ fontSize: '16px' }}
+                  autoFocus
+                />
+                
+                {/* Voice input button */}
+                {captureType === "insight" && (
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    disabled={isTranscribing}
+                    className={`absolute right-2 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      isRecording 
+                        ? 'bg-destructive text-destructive-foreground animate-pulse' 
+                        : isTranscribing
+                        ? 'bg-muted text-muted-foreground'
+                        : 'bg-primary/10 text-primary hover:bg-primary/20'
+                    }`}
+                    aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                  >
+                    {isTranscribing ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : isRecording ? (
+                      <MicOff className="h-5 w-5" />
+                    ) : (
+                      <Mic className="h-5 w-5" />
+                    )}
+                  </button>
+                )}
+              </div>
+              
+              {isRecording && (
+                <p className="text-xs text-destructive animate-pulse">
+                  Recording... tap mic to stop
+                </p>
+              )}
+              
+              {isTranscribing && (
+                <p className="text-xs text-muted-foreground animate-pulse">
+                  Transcribing...
+                </p>
+              )}
               
               {isProcessing && (
                 <p className="text-xs text-muted-foreground animate-pulse">
@@ -324,7 +388,7 @@ export const QuickCapture = () => {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || isSubmitting}
+                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing}
                 className="w-full h-10"
               >
                 {isSubmitting 
