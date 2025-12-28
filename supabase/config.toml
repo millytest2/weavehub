@@ -84,3 +84,6 @@ verify_jwt = true
 
 [functions.alignment-engine]
 verify_jwt = true
+
+[functions.voice-transcribe]
+verify_jwt = true

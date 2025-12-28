@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
+import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -147,6 +148,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Global Quick Capture FAB */}
       <QuickCapture />
+      <DecisionMirror />
 
       {/* Main Content */}
       <main className="flex-1 pt-12 pb-16 md:pb-0">
