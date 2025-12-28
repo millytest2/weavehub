@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
+import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Lightbulb, Scale, Compass, Sparkles, Mic, MicOff, Loader2 } from "lucide-react";
+import { Plus, Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,12 +9,11 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { toast } from "sonner";
 import { detectCareerKeywords } from "@/lib/careerDetection";
 import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
-import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
 import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 
-type CaptureType = "paste" | "insight" | "decision" | null;
+type CaptureType = "paste" | "insight" | null;
 
 interface ReturnToSelfData {
   identity: string;
@@ -35,8 +34,6 @@ export const QuickCapture = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCareerPrompt, setShowCareerPrompt] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
-  const [showMirrorResponse, setShowMirrorResponse] = useState(false);
-  const [mirrorText, setMirrorText] = useState("");
   const [showReturnToSelf, setShowReturnToSelf] = useState(false);
   const [returnToSelfData, setReturnToSelfData] = useState<ReturnToSelfData | null>(null);
   const [isLoadingReturnToSelf, setIsLoadingReturnToSelf] = useState(false);
@@ -78,7 +75,6 @@ export const QuickCapture = () => {
   };
 
   const showCareerToastForPaste = (textToCheck: string) => {
-    // Only used for paste type - insights/decisions use the dialog instead
     if (detectCareerKeywords(textToCheck)) {
       setTimeout(() => {
         toast("Career clarity on your mind?", {
@@ -99,7 +95,6 @@ export const QuickCapture = () => {
     setIsSubmitting(true);
     try {
       if (captureType === "paste") {
-        // Smart ingest - auto-detect and process any URL
         setIsProcessing(true);
         toast.info("Processing...");
         
@@ -109,7 +104,6 @@ export const QuickCapture = () => {
         
         if (error) throw error;
         
-        // Check if we need manual content (Instagram/Twitter metadata only)
         if (data.needsManualContent && data.documentId) {
           toast.info(data.message);
           setPendingDocumentId(data.documentId);
@@ -121,11 +115,8 @@ export const QuickCapture = () => {
         }
         
         toast.success(data.message || "Saved");
-        
-        // Check for career keywords in pasted content (toast only for paste type)
         showCareerToastForPaste(content);
       } else if (captureType === "insight") {
-        // Process through brain for categorization
         setIsProcessing(true);
         const processed = await processWithBrain(content);
         
@@ -136,22 +127,6 @@ export const QuickCapture = () => {
           source: "quick_capture",
         });
         toast.success("Insight captured");
-        // Career detection handled by pre-save dialog for insights
-      } else if (captureType === "decision") {
-        // Call decision-mirror edge function
-        setIsProcessing(true);
-        const { data, error } = await supabase.functions.invoke("decision-mirror", {
-          body: { decision: content },
-        });
-        
-        if (error) throw error;
-        
-        setMirrorText(data.mirror);
-        setShowMirrorResponse(true);
-        setIsSubmitting(false);
-        setIsProcessing(false);
-        // Career detection handled by pre-save dialog for decisions
-        return;
       }
       
       handleClose();
@@ -167,7 +142,6 @@ export const QuickCapture = () => {
   const handleSubmit = () => {
     if (!user || !content.trim()) return;
     
-    // Check for career-related keywords (skip for paste type)
     if (captureType !== "paste") {
       const textToCheck = `${title} ${content}`;
       if (detectCareerKeywords(textToCheck)) {
@@ -214,18 +188,6 @@ export const QuickCapture = () => {
 
   return (
     <>
-      {/* Decision Mirror - Secondary Button */}
-      <button
-        onClick={() => {
-          setCaptureType("decision");
-          setIsOpen(true);
-        }}
-        className="fixed bottom-20 md:bottom-6 right-[5.5rem] z-50 w-10 h-10 rounded-full bg-muted/80 backdrop-blur text-muted-foreground border border-border shadow-md hover:shadow-lg hover:bg-muted hover:text-foreground transition-all flex items-center justify-center"
-        aria-label="Decision mirror"
-      >
-        <Scale className="h-4 w-4" />
-      </button>
-
       {/* Floating Action Button */}
       <button
         onClick={handleOpen}
@@ -267,7 +229,7 @@ export const QuickCapture = () => {
                 </div>
               </button>
 
-              {/* Smart Paste - Primary capture method */}
+              {/* Smart Paste */}
               <button
                 onClick={() => handleQuickCapture("paste")}
                 className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
@@ -279,30 +241,22 @@ export const QuickCapture = () => {
                 </div>
               </button>
 
-              {/* Other capture options */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleQuickCapture("insight")}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <Lightbulb className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Manual Insight</span>
-                </button>
-                
-                <button
-                  onClick={() => handleQuickCapture("decision")}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <Scale className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Decision Mirror</span>
-                </button>
-              </div>
+              {/* Manual Insight */}
+              <button
+                onClick={() => handleQuickCapture("insight")}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+              >
+                <Lightbulb className="h-6 w-6 text-primary shrink-0" />
+                <div>
+                  <span className="text-sm font-medium block">Manual Insight</span>
+                  <span className="text-xs text-muted-foreground">Type or dictate your thought</span>
+                </div>
+              </button>
               
               {/* Voice Insight - primary voice capture */}
               <button
                 onClick={() => {
                   handleQuickCapture("insight");
-                  // Auto-start voice after a brief delay
                   setTimeout(() => toggleRecording(), 100);
                 }}
                 className="w-full flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 hover:border-primary/50 transition-all text-left"
@@ -331,8 +285,6 @@ export const QuickCapture = () => {
                   placeholder={
                     captureType === "paste"
                       ? "Paste any URL (YouTube, article, tweet, Instagram...)"
-                      : captureType === "decision"
-                      ? "What are you about to do?"
                       : "What did you learn or realize?"
                   }
                   value={content}
@@ -392,8 +344,8 @@ export const QuickCapture = () => {
                 className="w-full h-10"
               >
                 {isSubmitting 
-                  ? (captureType === "decision" ? "Reflecting..." : "Processing...") 
-                  : (captureType === "decision" ? "Mirror" : captureType === "paste" ? "Save & Extract" : "Capture")
+                  ? "Processing..." 
+                  : (captureType === "paste" ? "Save & Extract" : "Capture")
                 }
               </Button>
             </div>
@@ -410,17 +362,6 @@ export const QuickCapture = () => {
           }
         }}
         onContinue={handleCareerPromptContinue}
-      />
-
-      <DecisionMirrorResponse
-        open={showMirrorResponse}
-        onOpenChange={(open) => {
-          setShowMirrorResponse(open);
-          if (!open) {
-            handleClose();
-          }
-        }}
-        mirror={mirrorText}
       />
 
       <ReturnToSelfDialog
