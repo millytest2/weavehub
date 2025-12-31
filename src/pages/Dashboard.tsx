@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
+import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
@@ -291,12 +292,14 @@ const Dashboard = () => {
   );
 
   const [morningComplete, setMorningComplete] = useState(false);
+  const [eveningComplete, setEveningComplete] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-6">
       {user && (
         <>
           <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
+          <EveningLetGo onComplete={() => setEveningComplete(true)} />
           <WelcomeWizard userId={user.id} onComplete={() => {}} />
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
         </>
