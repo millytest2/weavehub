@@ -240,30 +240,30 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
-      <DialogContent className="max-w-md p-0 overflow-hidden border-0 bg-gradient-to-b from-card to-background shadow-xl">
-        <div className="p-6 space-y-5">
-          <DialogHeader className="space-y-2">
+      <DialogContent className="max-w-sm sm:max-w-md p-0 overflow-hidden border-0 bg-gradient-to-b from-card to-background shadow-xl mx-4">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+          <DialogHeader className="space-y-1.5 sm:space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Sunrise className="h-4 w-4 text-primary" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Sunrise className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">Morning</span>
+                <span className="text-xs sm:text-sm font-medium text-muted-foreground">Morning</span>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 -mr-2 -mt-2 hover:bg-muted/50"
+                className="h-7 w-7 sm:h-8 sm:w-8 -mr-2 -mt-2 hover:bg-muted/50"
                 onClick={handleSkip}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </div>
-            <DialogTitle className="text-2xl font-bold tracking-tight text-left pt-2">
+            <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-left pt-1 sm:pt-2 leading-snug">
               {dynamicPrompt.prompt}
             </DialogTitle>
             {dynamicPrompt.subtext && (
-              <p className="text-sm text-muted-foreground">{dynamicPrompt.subtext}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{dynamicPrompt.subtext}</p>
             )}
             <DialogDescription className="sr-only">
               Your morning grounding ritual
@@ -271,18 +271,18 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
           </DialogHeader>
 
           {/* Identity - sleek inline display */}
-          <div className="space-y-3">
-            <p className="text-base text-foreground/80 leading-relaxed italic">
+          <div className="space-y-2 sm:space-y-3">
+            <p className="text-sm sm:text-base text-foreground/80 leading-relaxed italic">
               "{identityPhrase}"
             </p>
 
             {/* Core values - subtle pills */}
             {coreValues && (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1 sm:gap-1.5">
                 {coreValues.split(',').slice(0, 4).map((value, i) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-muted/50 text-muted-foreground"
+                    className="px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded-md bg-muted/50 text-muted-foreground"
                   >
                     {value.trim()}
                   </span>
@@ -293,11 +293,11 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
 
           {/* Active experiment callout */}
           {activeExperiment && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20">
-              <Flame className="h-4 w-4 text-accent mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-2.5 sm:p-3 rounded-lg bg-accent/10 border border-accent/20">
+              <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs font-medium text-accent uppercase tracking-wide">Active Experiment</p>
-                <p className="text-sm text-foreground/80 leading-relaxed mt-0.5">
+                <p className="text-[10px] sm:text-xs font-medium text-accent uppercase tracking-wide">Active Experiment</p>
+                <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed mt-0.5">
                   {activeExperiment}
                 </p>
               </div>
@@ -306,9 +306,9 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
 
           {/* Recent insight spark */}
           {recentInsight && !activeExperiment && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-              <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-foreground/70 leading-relaxed">
+            <div className="flex items-start gap-2 p-2.5 sm:p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary mt-0.5 flex-shrink-0" />
+              <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed">
                 {recentInsight}
               </p>
             </div>
@@ -317,13 +317,13 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
           <div className="flex gap-2 pt-1">
             <Button
               variant="ghost"
-              className="flex-1 text-muted-foreground hover:text-foreground"
+              className="flex-1 text-xs sm:text-sm text-muted-foreground hover:text-foreground h-9 sm:h-10"
               onClick={handleSkip}
             >
               Not now
             </Button>
             <Button
-              className="flex-1"
+              className="flex-1 text-xs sm:text-sm h-9 sm:h-10"
               onClick={handleDismiss}
             >
               Let's go
