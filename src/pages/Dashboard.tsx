@@ -374,14 +374,12 @@ const Dashboard = () => {
               {(() => {
                 const createdDate = new Date(activeExperiment.created_at);
                 const now = new Date();
-                // Calculate day number using local dates (not timestamps)
                 const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                 
-                // Parse duration (e.g., "3 days", "1 week", "48h")
                 const durationStr = activeExperiment.duration?.toLowerCase() || '';
-                let totalDays = 7; // default
+                let totalDays = 7;
                 if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
                 else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
                 else if (durationStr.includes('3 day')) totalDays = 3;
@@ -405,16 +403,55 @@ const Dashboard = () => {
                 const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                const currentHour = now.getHours();
+                
+                // Determine time of day
+                const getTimeOfDay = (hour: number) => {
+                  if (hour >= 5 && hour < 12) return { label: 'Morning', icon: '🌅' };
+                  if (hour >= 12 && hour < 17) return { label: 'Afternoon', icon: '☀️' };
+                  if (hour >= 17 && hour < 21) return { label: 'Evening', icon: '🌆' };
+                  return { label: 'Night', icon: '🌙' };
+                };
+                const timeOfDay = getTimeOfDay(currentHour);
                 
                 const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
-                const todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)];
+                
+                // Smart step selection: if multiple steps per day, use time of day
+                let todayStep = '';
+                const stepsPerDay = Math.ceil(steps.length / 7); // estimate
+                
+                if (steps.length <= 7) {
+                  // One step per day
+                  todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)] || activeExperiment.description;
+                } else {
+                  // Multiple steps - use time slots
+                  const baseIndex = (dayNumber - 1) * stepsPerDay;
+                  const timeSlot = currentHour < 12 ? 0 : currentHour < 18 ? 1 : 2;
+                  const stepIndex = Math.min(baseIndex + Math.min(timeSlot, stepsPerDay - 1), steps.length - 1);
+                  todayStep = steps[stepIndex] || activeExperiment.description;
+                }
+                
+                // Format time display
+                const formatTime = (date: Date) => {
+                  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                };
                 
                 return (
                   <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground/70">{activeExperiment.title}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground/70">{activeExperiment.title}</p>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        {timeOfDay.icon} {timeOfDay.label} · {formatTime(now)}
+                      </span>
+                    </div>
                     <p className="text-base font-medium leading-relaxed">
-                      {todayStep || activeExperiment.description}
+                      {todayStep}
                     </p>
+                    {activeExperiment.identity_shift_target && (
+                      <p className="text-xs text-primary/70 italic">
+                        → {activeExperiment.identity_shift_target}
+                      </p>
+                    )}
                   </div>
                 );
               })()}
