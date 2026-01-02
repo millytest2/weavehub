@@ -369,12 +369,43 @@ const Dashboard = () => {
         {/* Micro-Experiment Card */}
         {activeExperiment && (
           <Card className="border-0 shadow-sm bg-card/50">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">Today's Experiment</CardTitle>
+              {(() => {
+                const createdDate = new Date(activeExperiment.created_at);
+                const now = new Date();
+                // Calculate day number using local dates (not timestamps)
+                const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                
+                // Parse duration (e.g., "3 days", "1 week", "48h")
+                const durationStr = activeExperiment.duration?.toLowerCase() || '';
+                let totalDays = 7; // default
+                if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
+                else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
+                else if (durationStr.includes('3 day')) totalDays = 3;
+                else if (durationStr.includes('5 day')) totalDays = 5;
+                else if (durationStr.includes('week')) totalDays = 7;
+                else if (durationStr.includes('2 week')) totalDays = 14;
+                
+                const daysLeft = Math.max(0, totalDays - dayNumber + 1);
+                
+                return (
+                  <span className="text-xs text-muted-foreground">
+                    Day {dayNumber}/{totalDays} · {daysLeft === 0 ? 'Last day' : `${daysLeft}d left`}
+                  </span>
+                );
+              })()}
             </CardHeader>
             <CardContent className="pt-0">
               {(() => {
-                const dayNumber = Math.ceil((Date.now() - new Date(activeExperiment.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                const createdDate = new Date(activeExperiment.created_at);
+                const now = new Date();
+                const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                
                 const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
                 const todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)];
                 
