@@ -147,37 +147,37 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
-      <DialogContent className="max-w-sm sm:max-w-md p-0 overflow-hidden border-0 bg-gradient-to-b from-card to-background shadow-xl mx-4">
-        <div className="p-4 sm:p-6 space-y-4">
-          <DialogHeader className="space-y-1.5">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-0 overflow-hidden border-0 bg-gradient-to-b from-card to-background shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="p-4 space-y-3">
+          <DialogHeader className="space-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Moon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Moon className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <span className="text-xs sm:text-sm font-medium text-muted-foreground">Evening</span>
+                <span className="text-xs font-medium text-muted-foreground">Evening</span>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 sm:h-8 sm:w-8 -mr-2 -mt-2 hover:bg-muted/50"
+                className="h-7 w-7 -mr-2 -mt-2 hover:bg-muted/50"
                 onClick={handleSkip}
               >
-                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <X className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-left pt-1 leading-snug">
+            <DialogTitle className="text-base font-bold tracking-tight text-left pt-1 leading-snug">
               Let it go
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-muted-foreground text-left">
+            <DialogDescription className="text-xs text-muted-foreground text-left">
               3 minutes. Close the day with clarity.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {/* What went well */}
-            <div className="space-y-1.5">
-              <label className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 text-amber-500" />
                 What went well today?
               </label>
@@ -185,13 +185,13 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
                 value={wentWell}
                 onChange={(e) => setWentWell(e.target.value)}
                 placeholder="One thing, big or small..."
-                className="min-h-[60px] text-sm resize-none bg-muted/30 border-muted"
+                className="min-h-[50px] text-sm resize-none bg-muted/30 border-muted"
               />
             </div>
 
             {/* What to release */}
-            <div className="space-y-1.5">
-              <label className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium flex items-center gap-1.5">
                 <Moon className="h-3 w-3 text-blue-400" />
                 What are you releasing?
               </label>
@@ -199,13 +199,13 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
                 value={release}
                 onChange={(e) => setRelease(e.target.value)}
                 placeholder="A thought, worry, or tension..."
-                className="min-h-[60px] text-sm resize-none bg-muted/30 border-muted"
+                className="min-h-[50px] text-sm resize-none bg-muted/30 border-muted"
               />
             </div>
 
             {/* Gratitude */}
-            <div className="space-y-1.5">
-              <label className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium flex items-center gap-1.5">
                 <span className="text-rose-400">♡</span>
                 What are you grateful for?
               </label>
@@ -213,7 +213,7 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
                 value={grateful}
                 onChange={(e) => setGrateful(e.target.value)}
                 placeholder="Person, moment, or thing..."
-                className="min-h-[60px] text-sm resize-none bg-muted/30 border-muted"
+                className="min-h-[50px] text-sm resize-none bg-muted/30 border-muted"
               />
             </div>
           </div>
@@ -221,13 +221,13 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
           <div className="flex gap-2 pt-1">
             <Button
               variant="ghost"
-              className="flex-1 text-xs sm:text-sm text-muted-foreground hover:text-foreground h-9 sm:h-10"
+              className="flex-1 text-xs text-muted-foreground hover:text-foreground h-9"
               onClick={handleSkip}
             >
               Not tonight
             </Button>
             <Button
-              className="flex-1 text-xs sm:text-sm h-9 sm:h-10"
+              className="flex-1 text-xs h-9"
               onClick={handleSave}
               disabled={saving}
             >
