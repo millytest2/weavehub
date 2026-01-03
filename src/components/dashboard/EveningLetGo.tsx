@@ -78,43 +78,25 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
 
     setSaving(true);
     try {
-      const insights = [];
       const today = new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
         month: 'short', 
         day: 'numeric' 
       });
 
-      // Create an insight for each non-empty field
-      if (wentWell.trim()) {
-        insights.push({
-          user_id: user.id,
-          title: `What went well - ${today}`,
-          content: wentWell.trim(),
-          source: "evening_letgo_well"
-        });
-      }
+      // Build combined content
+      const parts = [];
+      if (wentWell.trim()) parts.push(`**What went well:** ${wentWell.trim()}`);
+      if (release.trim()) parts.push(`**Releasing:** ${release.trim()}`);
+      if (grateful.trim()) parts.push(`**Grateful for:** ${grateful.trim()}`);
 
-      if (release.trim()) {
-        insights.push({
+      if (parts.length > 0) {
+        const { error } = await supabase.from("insights").insert({
           user_id: user.id,
-          title: `Releasing - ${today}`,
-          content: release.trim(),
-          source: "evening_letgo_release"
+          title: `Evening Reflection - ${today}`,
+          content: parts.join("\n\n"),
+          source: "evening_reflection"
         });
-      }
-
-      if (grateful.trim()) {
-        insights.push({
-          user_id: user.id,
-          title: `Grateful for - ${today}`,
-          content: grateful.trim(),
-          source: "evening_letgo_grateful"
-        });
-      }
-
-      if (insights.length > 0) {
-        const { error } = await supabase.from("insights").insert(insights);
         if (error) throw error;
         toast.success("Reflection saved");
       }
