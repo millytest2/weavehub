@@ -246,48 +246,95 @@ const LearningPaths = () => {
             {activePaths.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
-                {activePaths.map(path => (
-                  <Card key={path.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(`/learning-paths/${path.id}`)}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{path.topic_name || path.title}</CardTitle>
-                          <CardDescription className="mt-1">{path.description}</CardDescription>
-                        </div>
-                        {getStatusBadge(path.status)}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Day {path.current_day} of {path.duration_days}</span>
-                          {path.final_deliverable && <span className="flex items-center gap-1 line-clamp-1"><Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> {path.final_deliverable}</span>}
-                        </div>
-                        <Progress value={getProgress(path)} className="h-2" />
-                        {path.sub_topics && Array.isArray(path.sub_topics) && path.sub_topics.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {path.sub_topics.slice(0, 4).map((t: string, i: number) => <Badge key={i} variant="outline" className="text-xs font-normal">{t}</Badge>)}
+                <div className="grid gap-3 sm:gap-4">
+                  {activePaths.map(path => (
+                    <Card 
+                      key={path.id} 
+                      className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-md group" 
+                      onClick={() => navigate(`/learning-paths/${path.id}`)}
+                    >
+                      <CardHeader className="pb-2 px-4 sm:px-6 pt-4 sm:pt-6">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-base sm:text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                              {path.topic_name || path.title}
+                            </CardTitle>
+                            <CardDescription className="mt-1 text-xs sm:text-sm line-clamp-2">
+                              {path.description}
+                            </CardDescription>
                           </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                          <div className="shrink-0">
+                            {getStatusBadge(path.status)}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5" /> 
+                              <span>Day <strong className="text-foreground">{path.current_day}</strong> of {path.duration_days}</span>
+                            </span>
+                            {path.final_deliverable && (
+                              <span className="flex items-center gap-1.5 max-w-[200px] sm:max-w-none">
+                                <Target className="w-3.5 h-3.5 shrink-0" /> 
+                                <span className="truncate">{path.final_deliverable}</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Progress</span>
+                              <span className="font-medium text-foreground">{getProgress(path)}%</span>
+                            </div>
+                            <Progress value={getProgress(path)} className="h-2" />
+                          </div>
+                          {path.sub_topics && Array.isArray(path.sub_topics) && path.sub_topics.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {path.sub_topics.slice(0, 4).map((t: string, i: number) => (
+                                <Badge key={i} variant="outline" className="text-[10px] sm:text-xs font-normal px-2 py-0.5">
+                                  {t}
+                                </Badge>
+                              ))}
+                              {path.sub_topics.length > 4 && (
+                                <Badge variant="outline" className="text-[10px] sm:text-xs font-normal px-2 py-0.5 text-muted-foreground">
+                                  +{path.sub_topics.length - 4} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
             {otherPaths.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{activePaths.length > 0 ? "Past Paths" : "All Paths"}</h2>
-                <div className="grid gap-3">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                  {activePaths.length > 0 ? "Past Paths" : "All Paths"}
+                </h2>
+                <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
                   {otherPaths.map(path => (
-                    <Card key={path.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(`/learning-paths/${path.id}`)}>
-                      <CardHeader className="py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base">{path.topic_name || path.title}</CardTitle>
-                            <CardDescription className="text-xs mt-0.5">{path.duration_days} days · {getProgress(path)}% complete</CardDescription>
+                    <Card 
+                      key={path.id} 
+                      className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-sm group" 
+                      onClick={() => navigate(`/learning-paths/${path.id}`)}
+                    >
+                      <CardHeader className="py-3 sm:py-4 px-4 sm:px-5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-sm sm:text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                              {path.topic_name || path.title}
+                            </CardTitle>
+                            <CardDescription className="text-[11px] sm:text-xs mt-0.5">
+                              {path.duration_days} days · {getProgress(path)}% complete
+                            </CardDescription>
                           </div>
-                          {getStatusBadge(path.status)}
+                          <div className="shrink-0">
+                            {getStatusBadge(path.status)}
+                          </div>
                         </div>
                       </CardHeader>
                     </Card>
