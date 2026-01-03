@@ -316,6 +316,7 @@ export type Database = {
           updated_at: string
           user_id: string
           weekly_focus: string | null
+          year_note: string | null
         }
         Insert: {
           content: string
@@ -332,6 +333,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           weekly_focus?: string | null
+          year_note?: string | null
         }
         Update: {
           content?: string
@@ -348,6 +350,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weekly_focus?: string | null
+          year_note?: string | null
         }
         Relationships: []
       }
