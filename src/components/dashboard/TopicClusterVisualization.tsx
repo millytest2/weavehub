@@ -27,8 +27,14 @@ export function TopicClusterVisualization({ clusters, identityKeywords = [] }: T
         if (identityKeywords.length > 0) {
           const allText = cluster.insights.map(i => `${i.title} ${i.content}`).join(" ").toLowerCase();
           alignmentScore = identityKeywords.reduce((score, keyword) => {
-            const matches = (allText.match(new RegExp(keyword.toLowerCase(), "g")) || []).length;
-            return score + Math.min(matches, 5); // Cap at 5 matches per keyword
+            // Escape special regex characters to prevent invalid regex errors
+            const escapedKeyword = keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+              const matches = (allText.match(new RegExp(escapedKeyword, "g")) || []).length;
+              return score + Math.min(matches, 5);
+            } catch {
+              return score; // Skip invalid keywords
+            }
           }, 0) / (identityKeywords.length * 5);
         }
         
