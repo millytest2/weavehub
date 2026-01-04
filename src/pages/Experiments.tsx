@@ -218,8 +218,8 @@ const Experiments = () => {
               <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-pulse" />
             </div>
             <div className="text-center space-y-2">
-              <p className="text-lg font-medium text-foreground">Weaving your experiment</p>
-              <p className="text-sm text-muted-foreground">Analyzing your identity, insights, and patterns...</p>
+              <p className="text-lg font-medium text-foreground">Finding a life test for you</p>
+              <p className="text-sm text-muted-foreground">Based on your saved content and current focus...</p>
             </div>
           </div>
         </div>
@@ -227,9 +227,9 @@ const Experiments = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Experiments</h1>
+          <h1 className="text-3xl font-bold text-foreground">Life Tests</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Go do cool shit
+            Small shifts to try in daily life
           </p>
         </div>
         <div className="flex gap-2">
@@ -243,6 +243,17 @@ const Experiments = () => {
           </Button>
         </div>
       </div>
+      
+      {/* Context explanation */}
+      {experiments.length === 0 && (
+        <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Life Tests</strong> are small behavioral shifts you try for a few days. 
+            Examples: "Start every meeting by asking one question" or "Take 3 deep breaths before checking phone." 
+            They come from patterns in your saved content and help you test ideas in real life.
+          </p>
+        </div>
+      )}
 
       {/* Active Experiment - Prominent */}
       {experiments.filter((e) => e.status === "in_progress").length > 0 && (
@@ -342,10 +353,10 @@ const Experiments = () => {
 
       {experiments.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-sm text-muted-foreground mb-4">No experiments yet</p>
+          <p className="text-sm text-muted-foreground mb-4">No life tests yet</p>
           <Button onClick={handleGenerateExperiment} disabled={generating} variant="outline" size="sm">
             <Sparkles className="mr-2 h-4 w-4" />
-            Generate your first experiment
+            Generate your first life test
           </Button>
         </div>
       )}
@@ -353,11 +364,11 @@ const Experiments = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>New Experiment</DialogTitle>
+            <DialogTitle>New Life Test</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">What will you try?</Label>
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required className="mt-1.5" />
             </div>
             <div>
@@ -371,30 +382,32 @@ const Experiments = () => {
               />
             </div>
             <div>
-              <Label htmlFor="identityShift">Identity Shift Target</Label>
+              <Label htmlFor="identityShift">Who does this help you become?</Label>
               <Input
                 id="identityShift"
                 value={identityShift}
                 onChange={(e) => setIdentityShift(e.target.value)}
+                placeholder="e.g., Someone who listens more than they speak"
                 className="mt-1.5"
               />
             </div>
             <div>
-              <Label htmlFor="steps">Steps</Label>
+              <Label htmlFor="steps">Daily reminders (one per line)</Label>
               <Textarea
                 id="steps"
                 value={steps}
                 onChange={(e) => setSteps(e.target.value)}
+                placeholder="Morning: Set intention&#10;During day: Notice moments to apply&#10;Evening: Reflect on what happened"
                 rows={3}
                 className="mt-1.5"
               />
             </div>
             <div>
-              <Label htmlFor="duration">Duration</Label>
-              <Input id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-1.5" />
+              <Label htmlFor="duration">How long?</Label>
+              <Input id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g., 3 days, 1 week" className="mt-1.5" />
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
-              {loading ? "Creating..." : "Create Experiment"}
+              {loading ? "Creating..." : "Start Life Test"}
             </Button>
           </form>
         </DialogContent>

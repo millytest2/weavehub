@@ -366,11 +366,11 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Micro-Experiment Card */}
+        {/* Active Life Test Card */}
         {activeExperiment && (
           <Card className="border-0 shadow-sm bg-card/50">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Experiment</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Life Test</CardTitle>
               {(() => {
                 const createdDate = new Date(activeExperiment.created_at);
                 const now = new Date();
