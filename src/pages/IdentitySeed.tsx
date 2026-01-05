@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User, Star } from "lucide-react";
+import { Compass, User, Star, Target } from "lucide-react";
 import { z } from "zod";
 
 const identitySeedSchema = z.object({
@@ -17,6 +17,7 @@ export default function IdentitySeed() {
   const [content, setContent] = useState("");
   const [currentReality, setCurrentReality] = useState("");
   const [coreValues, setCoreValues] = useState("");
+  const [yearNote, setYearNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
@@ -26,6 +27,7 @@ export default function IdentitySeed() {
     setContent("");
     setCurrentReality("");
     setCoreValues("");
+    setYearNote("");
     setIdentitySeedId(null);
     
     if (user) {
@@ -63,11 +65,13 @@ export default function IdentitySeed() {
         setIdentitySeedId(data.id);
         setCurrentReality(data.weekly_focus || "");
         setCoreValues(data.core_values || "");
+        setYearNote(data.year_note || "");
       } else {
         // Ensure clean state for new users
         setContent("");
         setCurrentReality("");
         setCoreValues("");
+        setYearNote("");
         setIdentitySeedId(null);
       }
     } catch (error) {
@@ -91,6 +95,7 @@ export default function IdentitySeed() {
         content: validation.data.content,
         weekly_focus: currentReality || null,
         core_values: coreValues || null,
+        year_note: yearNote || null,
         current_phase: "baseline",
       };
 
@@ -167,6 +172,23 @@ export default function IdentitySeed() {
           />
           <p className="text-xs text-muted-foreground mt-2">
             3-5 values that define how you want to live.
+          </p>
+        </Card>
+
+        {/* Year Direction */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-medium text-muted-foreground">2026 Direction</h2>
+          </div>
+          <Textarea
+            value={yearNote}
+            onChange={(e) => setYearNote(e.target.value)}
+            placeholder="What's your focus this year? Key goals, themes, milestones? (e.g. Hit $100K revenue, move to LA, launch product, body transformation)"
+            className="min-h-[120px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Experiments will align with this direction without mentioning it explicitly.
           </p>
         </Card>
 

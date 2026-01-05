@@ -38,12 +38,12 @@ interface ExperimentOutput {
 }
 
 // BANNED THERAPY-SPEAK WORDS - experiments containing these get rejected
+// Reduced list to avoid too many false positives
 const BANNED_WORDS = [
-  "internal pressure", "anxiety", "saboteur", "deep dive", "embrace", "unlock",
-  "journey", "explore", "reflect", "consider", "mindfulness", "relationship with",
-  "lean into", "sit with", "unpack", "process", "heal", "inner", "authentic self",
-  "self-care", "self-love", "boundaries", "triggered", "trauma", "validate",
-  "space to", "permission to feel", "honor your", "gentle reminder"
+  "internal pressure", "saboteur", "embrace discomfort", "unlock potential",
+  "lean into", "sit with", "unpack", "permission to feel", "honor your", 
+  "gentle reminder", "safe space", "inner child", "authentic self",
+  "relationship with yourself", "journey of", "embrace the"
 ];
 
 function stripEmojis(text: string): string {
@@ -643,12 +643,44 @@ Reason: ${sprintConfig.reason}
 ${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
 ` : '';
 
+    // Extract key themes directly from identity seed for explicit use in prompt
+    const identityThemes: string[] = [];
+    const identitySeedText = userContext.identity_seed?.toLowerCase() || '';
+    
+    // Extract explicit goals/projects from identity
+    if (identitySeedText.includes('upath')) identityThemes.push('UPath - career clarity platform');
+    if (identitySeedText.includes('creator') && identitySeedText.includes('athlete')) identityThemes.push('Creator-Athlete identity');
+    if (identitySeedText.match(/\d{3}.*lbs|pounds/)) {
+      const weightMatch = identitySeedText.match(/(\d{3})[–-]?(\d{3})?\s*(lbs|pounds)/);
+      if (weightMatch) identityThemes.push(`Body goal: ${weightMatch[0]}`);
+    }
+    if (identitySeedText.includes('content') || identitySeedText.includes('audience')) identityThemes.push('Building authentic audience/content');
+    if (identitySeedText.includes('presence') || identitySeedText.includes('grounded')) identityThemes.push('Presence and groundedness');
+    if (identitySeedText.includes('experiment')) identityThemes.push('Experiments over pressure');
+    if (identitySeedText.includes('clarity')) identityThemes.push('Clarity in life and work');
+    if (identitySeedText.includes('spiritual') || identitySeedText.includes('creator/god')) identityThemes.push('Spiritual connection');
+    
+    // Extract from current reality/weekly focus
+    const weeklyFocus = userContext.weekly_focus?.toLowerCase() || '';
+    const yearNote = userContext.year_note?.toLowerCase() || '';
+    
+    // Build explicit context summary
+    const explicitThemes = identityThemes.length > 0 
+      ? `\n\nTHIS USER'S EXPLICIT THEMES (use these!):\n${identityThemes.map(t => `• ${t}`).join('\n')}`
+      : '';
+    
+    // Get recent topics as areas of interest
+    const topicNames = userContext.topics?.map((t: any) => t.name).join(', ') || '';
+    const topicsSection = topicNames ? `\nUSER'S LEARNING AREAS: ${topicNames}` : '';
+
     // NEW SYSTEM PROMPT - DEEPLY PERSONAL, ACTION-ORIENTED, NO THERAPY-SPEAK
     const systemPrompt = `You design DEEPLY PERSONAL, ACTION-BASED experiments. Not generic challenges. Not therapy homework. EXPERIMENTS THAT HIT HARD because they directly address THIS PERSON's specific story, hurdles, and aspirations.
 
 ${dateContext}
 
 ${context}
+${explicitThemes}
+${topicsSection}
 
 PILLAR: ${forcedPillar}
 ${sprintInstructions}
@@ -855,18 +887,29 @@ NO EMOJIS. NO THERAPY-SPEAK. DEEPLY PERSONAL. CONCRETE ONLY.`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Design ONE experiment for the "${forcedPillar}" pillar. 
+          { role: "user", content: `Design ONE experiment for the "${forcedPillar}" pillar.
+
+CRITICAL - READ THE CONTEXT ABOVE AND USE IT:
+1. The user's identity mentions specific projects (like UPath), body goals (like 165-175 lbs), and values (like Creator-Athlete)
+2. Their insights show what content they save and care about
+3. Their topics show what they're learning
+4. Design an experiment that DIRECTLY ties to their actual life, not generic advice
 
 FORMAT REQUIRED:
-- Title: "[Duration] [Constraint] → [Deliverable]"
-- Description: Start with "You saved..." citing their data, then constraint + deliverable + deadline
+- Title: "[Duration] [Constraint] → [Deliverable]" - USE THEIR ACTUAL PROJECTS/GOALS
+- Description: Reference their identity/projects directly. What specific thing from their life does this address?
 - Steps: 2-4 concrete daily actions with specific times/quantities
 - Duration: ${sprintConfig.duration}
-- Identity shift: "I am someone who [action verb]..."
+- Identity shift: "I am someone who [action verb]..." - tie to their stated identity
 
 Sprint: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}.
 
-Make it challenging. Make it concrete. Make it exciting. No therapy-speak.` }
+EXAMPLES OF GOOD PERSONALIZATION:
+- If they mention UPath: "5-Day UPath Sprint → Ship 3 Features + 5 User Interviews"
+- If they mention body goal: "7-Day Creator-Athlete Protocol → 6am Gym + Ship Content Daily"
+- If they mention presence: "48h Phone Blackout → Stay Fully Present + Journal Observations"
+
+Make it about THEIR specific life. No generic productivity experiments.` }
         ],
         tools: [
           {
