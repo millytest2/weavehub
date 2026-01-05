@@ -663,11 +663,12 @@ This person has told you who they are, what they're struggling with, who they lo
 WEAVING REQUIREMENTS:
 1. REFERENCE THEIR SPECIFIC HURDLES - not generic "productivity" but THEIR exact friction points
 2. CHANNEL THEIR ASPIRATIONAL FIGURES - if they follow Goggins, make it intense; if they follow Ali Abdaal, make it systematic
-3. TIE TO THEIR ACTUAL PROJECTS - not "build something" but work on THEIR specific builds
+3. TIE TO THEIR ACTUAL PROJECTS - not "build something" but work on THEIR specific builds (UPath, Weave, content platforms, etc.)
 4. HONOR THEIR STORY ARC - the experiment should feel like a chapter in their transformation story
 5. DELIVER VALUE BASED ON ARCHETYPE - the context tells you their primary value focus (content fuel, shipping velocity, career momentum, accelerated mastery, or tangible life shifts). Design the experiment's deliverable around THAT value.
+6. ALIGN WITH THEIR YEAR DIRECTION - if they've defined yearly themes, goals, or focuses (like building to $100K, hitting specific metrics, body goals, etc.), design experiments that move those forward WITHOUT explicitly mentioning "your yearly goal" - just naturally weave it into the experiment
 
-THE TEST: Would this experiment make them think "holy shit, that's exactly what I need to push through right now"?
+THE TEST: Would this experiment make them think "holy shit, that's exactly what I need to push through right now"? Does it move their actual goals forward?
 
 CRITICAL DATE AWARENESS:
 - Today is ${dayOfWeek}. Use CORRECT day names for deadlines.
