@@ -19,7 +19,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Identity", href: "/identity", icon: Compass },
     { name: "Insights", href: "/insights", icon: Lightbulb },
     { name: "Documents", href: "/documents", icon: FileText },
-    { name: "Life Tests", href: "/experiments", icon: FlaskConical },
+    { name: "Experiments", href: "/experiments", icon: FlaskConical },
     { name: "Paths", href: "/learning-paths", icon: Brain },
   ];
 

@@ -45,6 +45,7 @@ export interface CompactContext {
   core_values: string | null;
   current_phase: string | null;
   weekly_focus: string | null;
+  year_note: string | null;  // Yearly goals, themes, and direction
   experiments: {
     in_progress: any[];
     planning: any[];
@@ -210,7 +211,7 @@ export async function fetchUserContext(
   sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
   const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections] = await Promise.all([
-    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values").eq("user_id", userId).maybeSingle(),
+    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
@@ -450,6 +451,7 @@ export async function fetchUserContext(
     core_values: identitySeed.data?.core_values || null,
     current_phase: identitySeed.data?.current_phase || "baseline",
     weekly_focus: identitySeed.data?.weekly_focus || null,
+    year_note: identitySeed.data?.year_note || null,
     experiments: {
       in_progress: allExperiments.filter((e: any) => e.status === "in_progress"),
       planning: allExperiments.filter((e: any) => e.status === "planning"),
@@ -951,6 +953,13 @@ export function formatWeightedContextForAgent(
     const realityText = `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
     formatted += realityText;
     tokenEstimate += estimateTokens(realityText);
+  }
+
+  // YEAR CONTEXT - yearly goals and themes (for experiment/path alignment without stating it explicitly)
+  if (context.year_note && (agentType === 'experiment' || agentType === 'path')) {
+    const yearText = `YEAR DIRECTION:\n${context.year_note}\n\n`;
+    formatted += yearText;
+    tokenEstimate += estimateTokens(yearText);
   }
 
   // DOCUMENTS SECTION (weighted - higher for experiment/path agents)

@@ -218,7 +218,7 @@ const Experiments = () => {
               <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-pulse" />
             </div>
             <div className="text-center space-y-2">
-              <p className="text-lg font-medium text-foreground">Finding a life test for you</p>
+              <p className="text-lg font-medium text-foreground">Designing an experiment for you</p>
               <p className="text-sm text-muted-foreground">Based on your saved content and current focus...</p>
             </div>
           </div>
@@ -227,9 +227,9 @@ const Experiments = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Life Tests</h1>
+          <h1 className="text-3xl font-bold text-foreground">Experiments</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Small shifts to try in daily life
+            Test ideas from your saved content in real life
           </p>
         </div>
         <div className="flex gap-2">
@@ -248,9 +248,8 @@ const Experiments = () => {
       {experiments.length === 0 && (
         <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Life Tests</strong> are small behavioral shifts you try for a few days. 
-            Examples: "Start every meeting by asking one question" or "Take 3 deep breaths before checking phone." 
-            They come from patterns in your saved content and help you test ideas in real life.
+            <strong className="text-foreground">Experiments</strong> turn ideas from your saved content into action. 
+            Each one has a constraint, a deadline, and a deliverable. Try it for 2-7 days, see what shifts.
           </p>
         </div>
       )}
@@ -353,10 +352,10 @@ const Experiments = () => {
 
       {experiments.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-sm text-muted-foreground mb-4">No life tests yet</p>
+          <p className="text-sm text-muted-foreground mb-4">No experiments yet</p>
           <Button onClick={handleGenerateExperiment} disabled={generating} variant="outline" size="sm">
             <Sparkles className="mr-2 h-4 w-4" />
-            Generate your first life test
+            Generate your first experiment
           </Button>
         </div>
       )}
@@ -364,11 +363,11 @@ const Experiments = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>New Life Test</DialogTitle>
+            <DialogTitle>New Experiment</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <Label htmlFor="title">What will you try?</Label>
+              <Label htmlFor="title">Title</Label>
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required className="mt-1.5" />
             </div>
             <div>
@@ -407,7 +406,7 @@ const Experiments = () => {
               <Input id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g., 3 days, 1 week" className="mt-1.5" />
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
-              {loading ? "Creating..." : "Start Life Test"}
+              {loading ? "Creating..." : "Start Experiment"}
             </Button>
           </form>
         </DialogContent>
