@@ -274,7 +274,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-80 sm:w-96 p-0 flex flex-col bg-background/95 backdrop-blur-xl">
+      <SheetContent side="right" className="w-[320px] sm:w-[400px] md:w-[450px] p-0 flex flex-col bg-background/95 backdrop-blur-xl">
         <SheetHeader className="p-5 pb-2">
           <SheetTitle className="text-left text-lg">You</SheetTitle>
           <SheetDescription className="sr-only">
@@ -283,9 +283,9 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-5 mb-2 grid grid-cols-2">
-            <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
-            <TabsTrigger value="mind" className="text-xs">Your Mind</TabsTrigger>
+          <TabsList className="mx-5 mb-3 grid grid-cols-2">
+            <TabsTrigger value="progress" className="text-xs sm:text-sm">Progress</TabsTrigger>
+            <TabsTrigger value="mind" className="text-xs sm:text-sm">Your Mind</TabsTrigger>
           </TabsList>
 
           <TabsContent value="progress" className="flex-1 overflow-y-auto px-5 pb-4 space-y-6 mt-0">
@@ -411,30 +411,38 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           )}
           </TabsContent>
 
-          <TabsContent value="mind" className="flex-1 overflow-y-auto px-5 pb-4 mt-0">
+          <TabsContent value="mind" className="flex-1 overflow-y-auto px-5 pb-4 mt-0 space-y-4">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               </div>
             ) : (
               <>
+                {/* How It Works - Compact explainer */}
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">Your Mind</span> shows everything you've captured—insights, documents, experiments. 
+                    Topics are auto-detected from your content. Size = depth. ⚡ = recent activity. Connected topics share common themes.
+                  </p>
+                </div>
+
                 {/* Mind Stats */}
-                <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-muted/30 border border-border/20 mb-4">
+                <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-muted/30 border border-border/20">
                   <div className="flex-1 text-center">
-                    <p className="text-2xl font-semibold text-foreground">{totalInsights}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Insights</p>
+                    <p className="text-xl sm:text-2xl font-semibold text-foreground">{totalInsights}</p>
+                    <p className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground">Insights</p>
                   </div>
                   <div className="w-px h-8 bg-border/30" />
                   <div className="flex-1 text-center">
-                    <p className="text-2xl font-semibold text-foreground">{insightClusters.filter(c => c.theme !== "Uncategorized").length}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Topics</p>
+                    <p className="text-xl sm:text-2xl font-semibold text-foreground">{insightClusters.filter(c => c.theme !== "Uncategorized").length}</p>
+                    <p className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground">Topics</p>
                   </div>
                 </div>
 
                 {/* Topic Cluster Visualization */}
                 {insightClusters.filter(c => c.theme !== "Uncategorized").length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2">
+                  <div>
+                    <p className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground font-medium mb-2">
                       Knowledge Map
                     </p>
                     <TopicClusterVisualization 

@@ -207,7 +207,7 @@ const LearningPaths = () => {
 
   return (
     <>
-      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 px-1 sm:px-0">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 lg:space-y-8 px-2 sm:px-4 lg:px-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold">Learning Paths</h1>
@@ -246,7 +246,7 @@ const LearningPaths = () => {
             {activePaths.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
-                <div className="grid gap-3 sm:gap-4">
+                <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
                   {activePaths.map(path => (
                     <Card 
                       key={path.id} 
@@ -315,7 +315,7 @@ const LearningPaths = () => {
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                   {activePaths.length > 0 ? "Past Paths" : "All Paths"}
                 </h2>
-                <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
+                <div className="grid gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {otherPaths.map(path => (
                     <Card 
                       key={path.id} 
