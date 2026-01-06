@@ -240,90 +240,62 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-0 overflow-hidden border-0 bg-gradient-to-b from-card to-background shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="p-4 space-y-3">
-          <DialogHeader className="space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Sunrise className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">Morning</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 -mr-2 -mt-2 hover:bg-muted/50"
-                onClick={handleSkip}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-sm p-0 overflow-hidden border-0 bg-card shadow-lg">
+        <div className="p-3 space-y-2">
+          {/* Header - minimal */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sunrise className="h-3.5 w-3.5 text-primary" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Morning</span>
             </div>
-            <DialogTitle className="text-base font-bold tracking-tight text-left pt-1 leading-snug">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 -mr-1"
+              onClick={handleSkip}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          
+          <DialogHeader className="space-y-0.5">
+            <DialogTitle className="text-sm font-semibold leading-tight text-left">
               {dynamicPrompt.prompt}
             </DialogTitle>
             {dynamicPrompt.subtext && (
-              <p className="text-xs text-muted-foreground">{dynamicPrompt.subtext}</p>
+              <p className="text-[11px] text-muted-foreground">{dynamicPrompt.subtext}</p>
             )}
-            <DialogDescription className="sr-only">
-              Your morning grounding ritual
-            </DialogDescription>
+            <DialogDescription className="sr-only">Morning focus</DialogDescription>
           </DialogHeader>
 
-          {/* Identity - compact display */}
-          <div className="space-y-2">
-            <p className="text-sm text-foreground/80 leading-relaxed italic">
-              "{identityPhrase}"
-            </p>
-
-            {/* Core values - subtle pills */}
-            {coreValues && (
-              <div className="flex flex-wrap gap-1">
-                {coreValues.split(',').slice(0, 4).map((value, i) => (
-                  <span
-                    key={i}
-                    className="px-1.5 py-0.5 text-[10px] font-medium rounded-md bg-muted/50 text-muted-foreground"
-                  >
-                    {value.trim()}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Active experiment callout */}
-          {activeExperiment && (
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-accent/10 border border-accent/20">
-              <Flame className="h-3.5 w-3.5 text-accent mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] font-medium text-accent uppercase tracking-wide">Active Experiment</p>
-                <p className="text-xs text-foreground/80 leading-relaxed mt-0.5">
-                  {activeExperiment}
-                </p>
-              </div>
+          {/* One context item only - either experiment OR values */}
+          {activeExperiment ? (
+            <div className="flex items-center gap-2 p-2 rounded-md bg-accent/10 border border-accent/20">
+              <Flame className="h-3 w-3 text-accent flex-shrink-0" />
+              <p className="text-[11px] text-foreground/80 truncate">{activeExperiment}</p>
             </div>
-          )}
-
-          {/* Recent insight spark */}
-          {recentInsight && !activeExperiment && (
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-              <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-foreground/70 leading-relaxed">
-                {recentInsight}
-              </p>
+          ) : coreValues ? (
+            <div className="flex flex-wrap gap-1">
+              {coreValues.split(',').slice(0, 3).map((value, i) => (
+                <span key={i} className="px-1.5 py-0.5 text-[10px] rounded bg-muted/50 text-muted-foreground">
+                  {value.trim()}
+                </span>
+              ))}
             </div>
-          )}
+          ) : null}
 
           <div className="flex gap-2 pt-1">
             <Button
               variant="ghost"
-              className="flex-1 text-xs text-muted-foreground hover:text-foreground h-9"
+              size="sm"
+              className="flex-1 text-[11px] h-8"
               onClick={handleSkip}
             >
-              Not now
+              Skip
             </Button>
             <Button
-              className="flex-1 text-xs h-9"
+              size="sm"
+              className="flex-1 text-[11px] h-8"
               onClick={handleDismiss}
             >
               Let's go

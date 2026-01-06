@@ -1,9 +1,89 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+interface UserContext {
+  identity?: string;
+  coreValues?: string;
+  weeklyFocus?: string;
+  yearNote?: string;
+  topics: string[];
+  recentInsights: string[];
+  activeExperiments: string[];
+}
+
+async function fetchUserContext(supabase: any, userId: string): Promise<UserContext> {
+  const [identityRes, topicsRes, insightsRes, experimentsRes] = await Promise.all([
+    supabase
+      .from("identity_seeds")
+      .select("content, core_values, weekly_focus, year_note")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabase
+      .from("topics")
+      .select("name")
+      .eq("user_id", userId)
+      .limit(8),
+    supabase
+      .from("insights")
+      .select("title, content")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("experiments")
+      .select("title, hypothesis")
+      .eq("user_id", userId)
+      .eq("status", "in_progress")
+      .limit(3),
+  ]);
+
+  return {
+    identity: identityRes.data?.content,
+    coreValues: identityRes.data?.core_values,
+    weeklyFocus: identityRes.data?.weekly_focus,
+    yearNote: identityRes.data?.year_note,
+    topics: (topicsRes.data || []).map((t: any) => t.name),
+    recentInsights: (insightsRes.data || []).map((i: any) => 
+      `${i.title}: ${i.content?.substring(0, 100) || ''}`
+    ),
+    activeExperiments: (experimentsRes.data || []).map((e: any) => 
+      `${e.title}${e.hypothesis ? ` (${e.hypothesis})` : ''}`
+    ),
+  };
+}
+
+function buildContextPrompt(ctx: UserContext): string {
+  const sections: string[] = [];
+  
+  if (ctx.identity) {
+    sections.push(`WHO I'M BECOMING: ${ctx.identity.substring(0, 300)}`);
+  }
+  if (ctx.yearNote) {
+    sections.push(`2026 DIRECTION: ${ctx.yearNote.substring(0, 300)}`);
+  }
+  if (ctx.coreValues) {
+    sections.push(`VALUES: ${ctx.coreValues}`);
+  }
+  if (ctx.weeklyFocus) {
+    sections.push(`THIS WEEK: ${ctx.weeklyFocus}`);
+  }
+  if (ctx.topics.length > 0) {
+    sections.push(`MY FOCUS AREAS: ${ctx.topics.join(', ')}`);
+  }
+  if (ctx.activeExperiments.length > 0) {
+    sections.push(`ACTIVE EXPERIMENTS: ${ctx.activeExperiments.join(' | ')}`);
+  }
+  if (ctx.recentInsights.length > 0) {
+    sections.push(`RECENT INSIGHTS (what I've been learning):\n${ctx.recentInsights.slice(0, 5).join('\n')}`);
+  }
+  
+  return sections.join('\n\n');
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,9 +91,17 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("authorization");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader! } } }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const { input } = await req.json();
     
-    // Input validation
     if (!input || typeof input !== 'string') {
       return new Response(
         JSON.stringify({ error: 'Input is required and must be a string' }),
@@ -35,6 +123,40 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
+    // Fetch user context if authenticated
+    let contextBlock = "";
+    if (user) {
+      const ctx = await fetchUserContext(supabase, user.id);
+      contextBlock = buildContextPrompt(ctx);
+      console.log("Brain context loaded:", ctx.topics.length, "topics,", ctx.recentInsights.length, "insights");
+    }
+
+    const systemPrompt = `You are the Brain of Weave - a personal intelligence system that helps this specific person think clearly and act aligned with who they're becoming.
+
+${contextBlock ? `=== THIS PERSON'S CONTEXT ===
+${contextBlock}
+
+===` : ''}
+
+YOUR ROLE:
+- You KNOW this person. Reference their specific goals, values, experiments, and insights when relevant.
+- Connect their input to what they've already captured or are working on.
+- Help them see patterns across their topics and insights.
+- Keep responses SHORT and ACTIONABLE. No fluff.
+
+RESPONSE STRUCTURE (brief):
+1. What this connects to (in their context)
+2. Why it matters for their direction
+3. Smallest next step
+
+If they share something new, tell them which topic it belongs to.
+If they're stuck, reference relevant insights they've already captured.
+If they're making progress, connect it to their experiments or identity.
+
+CAREER NOTE: If they mention career/job/professional direction, suggest: "For deeper career exploration, check out upath.ai"
+
+Be direct. Be specific to THEM. Be useful.`;
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -44,18 +166,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          {
-            role: "system",
-            content: `You are the Brain. Whenever the user gives ANY input (idea, confusion, goal, update), tell me: what category it belongs to (identity, value, project, topic, experiment, daily focus), why it matters, and the next simplest step. Always keep answers short, simple, and not overwhelming.
-
-IMPORTANT: If the user mentions ANYTHING related to career, jobs, career path, career confusion, career exploration, career transition, job search, professional direction, career decisions, or feeling lost about their career/professional path, you MUST include this recommendation in your response: "For deeper career path exploration, check out upath.ai - it's built specifically to help you navigate career decisions and find your professional direction."
-
-Only include this recommendation when the topic is genuinely career-related.`
-          },
-          {
-            role: "user",
-            content: sanitizedInput
-          }
+          { role: "system", content: systemPrompt },
+          { role: "user", content: sanitizedInput }
         ],
       }),
     });
