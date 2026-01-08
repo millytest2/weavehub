@@ -34,14 +34,18 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Parse timezone from request
+    // Parse timezone and emotional state from request
     let timezone = 'UTC';
+    let emotionalState: string | null = null;
     try {
       const body = await req.json();
       timezone = body.timezone || 'UTC';
+      emotionalState = body.emotionalState || null;
     } catch {
       // No body or invalid JSON
     }
+
+    console.log("Return to self - emotional state:", emotionalState);
 
     // Get time context
     const now = new Date();
@@ -54,6 +58,15 @@ serve(async (req) => {
     const hourStr = formatter.format(now);
     const hour = parseInt(hourStr, 10);
     const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+
+    // Map emotional states to search keywords for better insight matching
+    const emotionalKeywords: Record<string, string[]> = {
+      scattered: ["focus", "clarity", "one thing", "priority", "simplify", "present", "attention"],
+      anxious: ["calm", "trust", "fear", "control", "surrender", "breathe", "ground", "safe"],
+      overthinking: ["action", "move", "decide", "paralysis", "analysis", "just do", "start", "imperfect"],
+      bored: ["purpose", "meaning", "spark", "curiosity", "experiment", "explore", "play"],
+      lonely: ["connect", "community", "reach out", "belong", "presence", "show up", "relationship"],
+    };
 
     // Fetch identity seed and recent activity for pattern detection
     const [identitySeedResult, insightsResult, actionsResult] = await Promise.all([
@@ -77,13 +90,38 @@ serve(async (req) => {
     ]);
 
     const identitySeed = identitySeedResult.data;
-    const insights = insightsResult.data;
+    let insights = insightsResult.data || [];
     const recentActions = actionsResult.data || [];
 
-    // Pick a random relevant insight
-    const randomInsight = insights && insights.length > 0 
+    // If emotional state provided, try to find insights that match
+    let matchedInsight = null;
+    if (emotionalState && emotionalKeywords[emotionalState] && insights.length > 0) {
+      const keywords = emotionalKeywords[emotionalState];
+      
+      // Score insights by keyword matches
+      const scoredInsights = insights.map(insight => {
+        const text = `${insight.title} ${insight.content}`.toLowerCase();
+        const matchCount = keywords.filter(kw => text.includes(kw.toLowerCase())).length;
+        return { ...insight, matchScore: matchCount };
+      });
+
+      // Sort by match score, then relevance
+      scoredInsights.sort((a, b) => {
+        if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+        return (b.relevance_score || 0) - (a.relevance_score || 0);
+      });
+
+      // Pick best match if it has any keyword matches
+      if (scoredInsights[0]?.matchScore > 0) {
+        matchedInsight = scoredInsights[0];
+        console.log("Found matching insight:", matchedInsight.title, "score:", matchedInsight.matchScore);
+      }
+    }
+
+    // Use matched insight or fall back to random relevant one
+    const randomInsight = matchedInsight || (insights.length > 0 
       ? insights[Math.floor(Math.random() * Math.min(5, insights.length))]
-      : null;
+      : null);
 
     const identity = identitySeed?.content || "You are becoming someone who takes aligned action.";
     const values = identitySeed?.core_values || "Growth, Presence, Creation";
@@ -115,13 +153,23 @@ serve(async (req) => {
       night: "Night - pure calm (breathing, stillness, preparing for rest)"
     };
 
+    // Emotional state context for AI
+    const emotionalContext = emotionalState ? {
+      scattered: "They're feeling scattered - too many thoughts, no clear direction. Help them focus on ONE thing.",
+      anxious: "They're feeling on edge - something feels off. Ground them without being therapeutic.",
+      overthinking: "They're stuck in mental loops. Get them to take one concrete action, not think more.",
+      bored: "Nothing feels interesting. Reconnect them to purpose or suggest a small experiment.",
+      lonely: "They feel disconnected from themselves. Reflect back who they are becoming.",
+    }[emotionalState] : "";
+
     // Generate a gentle identity-aligned rep
-    const systemPrompt = `You surface what the user already knows. The user is drifting (bored, anxious, lonely, overthinking, or wanting to numb out). 
+    const systemPrompt = `You surface what the user already knows. The user is drifting${emotionalState ? ` (specifically: ${emotionalState})` : ' (bored, anxious, lonely, overthinking, or wanting to numb out)'}. 
 Based on their saved identity and values, bring them back to themselves with one gentle micro-action.
 
 CORE PHILOSOPHY:
 The user is NOT managing separate life areas. They're living ONE integrated life. Your job is to reflect back who they already are, not prescribe who they should become.
 ${corePractice ? `\nDETECTED CORE PRACTICE: "${corePractice}" - this is what they're practicing everywhere. Reference it.` : ''}
+${emotionalContext ? `\nEMOTIONAL CONTEXT: ${emotionalContext}` : ''}
 
 TIME: ${timeOfDay}
 ${timeContext[timeOfDay as keyof typeof timeContext]}
@@ -129,10 +177,10 @@ ${timeContext[timeOfDay as keyof typeof timeContext]}
 USER IDENTITY: ${identity}
 USER VALUES: ${values}
 CURRENT REALITY: ${currentReality}
-${randomInsight ? `RELEVANT INSIGHT: "${randomInsight.title}" - ${randomInsight.content.substring(0, 300)}` : ""}
+${randomInsight ? `RELEVANT INSIGHT FROM THEIR VAULT: "${randomInsight.title}" - ${randomInsight.content.substring(0, 300)}${matchedInsight ? ' (matched to their current state)' : ''}` : ""}
 
 Return a JSON object with exactly these fields:
-- gentleRep: A single 2-5 minute action appropriate for ${timeOfDay}. Reference their actual identity/values. Something that reconnects them to who they're becoming. If a core practice was detected, the action should be an expression of that practice.
+- gentleRep: A single 2-5 minute action appropriate for ${timeOfDay}. Reference their actual identity/values. Something that reconnects them to who they're becoming.${emotionalState ? ` Address their ${emotionalState} state directly but practically.` : ''} If a core practice was detected, the action should be an expression of that practice.
 - reminder: One sentence (under 15 words) that reminds them what they're doing with their life. ${corePractice ? `Connect it to their core practice: "${corePractice}"` : 'Pull from their identity.'} Be specific.
 
 Rules:
@@ -142,6 +190,7 @@ Rules:
 - No therapeutic framing ("I know it's hard", "Give yourself grace")
 - No motivational fluff
 - Reference their actual identity/values from what they've saved
+${randomInsight ? '- Reference their own insight back to them if relevant' : ''}
 - Keep it concrete and immediate
 - Frame as PERMISSION to live what they're already becoming, not another thing to manage`;
 

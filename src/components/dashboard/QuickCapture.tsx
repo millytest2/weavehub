@@ -15,6 +15,16 @@ import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 
 type CaptureType = "paste" | "insight" | null;
 
+const EMOTIONAL_STATES = [
+  { id: "scattered", label: "Scattered", desc: "Too many thoughts" },
+  { id: "anxious", label: "On edge", desc: "Something feels off" },
+  { id: "overthinking", label: "Overthinking", desc: "Stuck in loops" },
+  { id: "bored", label: "Bored", desc: "Nothing feels interesting" },
+  { id: "lonely", label: "Disconnected", desc: "Far from myself" },
+] as const;
+
+type EmotionalState = typeof EMOTIONAL_STATES[number]["id"] | null;
+
 interface ReturnToSelfData {
   identity: string;
   values: string;
@@ -22,6 +32,7 @@ interface ReturnToSelfData {
   relevantInsight: { title: string; content: string } | null;
   gentleRep: string;
   reminder: string;
+  emotionalState?: string;
 }
 
 export const QuickCapture = () => {
@@ -40,6 +51,7 @@ export const QuickCapture = () => {
   const [showManualFallback, setShowManualFallback] = useState(false);
   const [pendingDocumentId, setPendingDocumentId] = useState<string | null>(null);
   const [pendingContentType, setPendingContentType] = useState<string>("");
+  const [showEmotionalPicker, setShowEmotionalPicker] = useState(false);
   
   // Voice capture hook
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
@@ -56,8 +68,8 @@ export const QuickCapture = () => {
     setCaptureType(null);
     setContent("");
     setTitle("");
+    setShowEmotionalPicker(false);
   };
-
   const handleQuickCapture = async (type: CaptureType) => {
     setCaptureType(type);
   };
@@ -159,7 +171,8 @@ export const QuickCapture = () => {
     executeSubmit();
   };
 
-  const handleReturnToSelf = async () => {
+  const handleReturnToSelfWithState = async (emotionalState: EmotionalState) => {
+    setShowEmotionalPicker(false);
     setIsLoadingReturnToSelf(true);
     setShowReturnToSelf(true);
     setIsOpen(false);
@@ -167,7 +180,7 @@ export const QuickCapture = () => {
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke("return-to-self", {
-        body: { timezone }
+        body: { timezone, emotionalState }
       });
       if (error) throw error;
       setReturnToSelfData(data);
@@ -184,6 +197,10 @@ export const QuickCapture = () => {
     } finally {
       setIsLoadingReturnToSelf(false);
     }
+  };
+
+  const handleReturnToSelfClick = () => {
+    setShowEmotionalPicker(true);
   };
 
   return (
@@ -215,11 +232,39 @@ export const QuickCapture = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {!captureType ? (
+          {showEmotionalPicker ? (
+            <div className="space-y-4 py-3">
+              <p className="text-sm text-muted-foreground">What's happening right now?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {EMOTIONAL_STATES.map((state) => (
+                  <button
+                    key={state.id}
+                    onClick={() => handleReturnToSelfWithState(state.id)}
+                    className="flex flex-col items-start p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+                  >
+                    <span className="text-sm font-medium">{state.label}</span>
+                    <span className="text-xs text-muted-foreground">{state.desc}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => handleReturnToSelfWithState(null)}
+                className="w-full p-3 rounded-lg border border-border/50 hover:border-border text-sm text-muted-foreground hover:text-foreground transition-all"
+              >
+                Just ground me
+              </button>
+              <button
+                onClick={() => setShowEmotionalPicker(false)}
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+              >
+                ← Back
+              </button>
+            </div>
+          ) : !captureType ? (
             <div className="space-y-3 py-3">
               {/* Return to Self - Primary */}
               <button
-                onClick={handleReturnToSelf}
+                onClick={handleReturnToSelfClick}
                 className="w-full flex items-center gap-3 p-4 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all text-left"
               >
                 <Compass className="h-6 w-6 text-primary shrink-0" />
