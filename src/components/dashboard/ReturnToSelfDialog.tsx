@@ -9,6 +9,7 @@ interface ReturnToSelfData {
   relevantInsight: { title: string; content: string } | null;
   gentleRep: string;
   reminder: string;
+  emotionalState?: string;
 }
 
 interface ReturnToSelfDialogProps {
