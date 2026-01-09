@@ -87,3 +87,6 @@ verify_jwt = true
 
 [functions.voice-transcribe]
 verify_jwt = true
+
+[functions.realign]
+verify_jwt = true

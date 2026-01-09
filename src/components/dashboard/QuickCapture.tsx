@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2 } from "lucide-react";
+import { Plus, Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,9 +11,11 @@ import { detectCareerKeywords } from "@/lib/careerDetection";
 import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
+import { RealignDialog, RealignData } from "./RealignDialog";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 
 type CaptureType = "paste" | "insight" | null;
+type RealignMode = "push" | "flow" | null;
 
 const EMOTIONAL_STATES = [
   { id: "scattered", label: "Scattered", desc: "Too many thoughts" },
@@ -52,6 +54,10 @@ export const QuickCapture = () => {
   const [pendingDocumentId, setPendingDocumentId] = useState<string | null>(null);
   const [pendingContentType, setPendingContentType] = useState<string>("");
   const [showEmotionalPicker, setShowEmotionalPicker] = useState(false);
+  const [showRealignPicker, setShowRealignPicker] = useState(false);
+  const [showRealign, setShowRealign] = useState(false);
+  const [realignData, setRealignData] = useState<RealignData | null>(null);
+  const [isLoadingRealign, setIsLoadingRealign] = useState(false);
   
   // Voice capture hook
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
@@ -69,6 +75,7 @@ export const QuickCapture = () => {
     setContent("");
     setTitle("");
     setShowEmotionalPicker(false);
+    setShowRealignPicker(false);
   };
   const handleQuickCapture = async (type: CaptureType) => {
     setCaptureType(type);
@@ -203,6 +210,39 @@ export const QuickCapture = () => {
     setShowEmotionalPicker(true);
   };
 
+  const handleRealignClick = () => {
+    setShowRealignPicker(true);
+  };
+
+  const handleRealign = async (mode: RealignMode) => {
+    if (!mode) return;
+    setShowRealignPicker(false);
+    setIsLoadingRealign(true);
+    setShowRealign(true);
+    setIsOpen(false);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("realign", {
+        body: { mode }
+      });
+      if (error) throw error;
+      setRealignData(data);
+    } catch (error) {
+      console.error("Realign error:", error);
+      setRealignData({
+        mode,
+        headline: mode === "push" ? "You're building momentum" : "You're already aligned",
+        currentState: "You are here, ready to move.",
+        dreamReality: "The version of you that has already arrived.",
+        oneMove: mode === "push" 
+          ? "What's the hardest thing you've been avoiding? Start there."
+          : "What feels right to do next? Trust that."
+      });
+    } finally {
+      setIsLoadingRealign(false);
+    }
+  };
+
   return (
     <>
       {/* Floating Action Button */}
@@ -232,7 +272,39 @@ export const QuickCapture = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {showEmotionalPicker ? (
+          {showRealignPicker ? (
+            <div className="space-y-4 py-3">
+              <p className="text-sm text-muted-foreground">How do you want to move today?</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleRealign("push")}
+                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-orange-500/30 bg-orange-500/5 hover:bg-orange-500/10 transition-all text-left"
+                >
+                  <Zap className="h-6 w-6 text-orange-500 shrink-0" />
+                  <div>
+                    <span className="text-sm font-medium block">Push</span>
+                    <span className="text-xs text-muted-foreground">Show me the gap. I want to move fast.</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleRealign("flow")}
+                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 transition-all text-left"
+                >
+                  <Waves className="h-6 w-6 text-blue-500 shrink-0" />
+                  <div>
+                    <span className="text-sm font-medium block">Flow</span>
+                    <span className="text-xs text-muted-foreground">What matters today? Keep me aligned.</span>
+                  </div>
+                </button>
+              </div>
+              <button
+                onClick={() => setShowRealignPicker(false)}
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+              >
+                ← Back
+              </button>
+            </div>
+          ) : showEmotionalPicker ? (
             <div className="space-y-4 py-3">
               <p className="text-sm text-muted-foreground">What's happening right now?</p>
               <div className="grid grid-cols-2 gap-2">
@@ -262,10 +334,22 @@ export const QuickCapture = () => {
             </div>
           ) : !captureType ? (
             <div className="space-y-3 py-3">
-              {/* Return to Self - Primary */}
+              {/* Realign - New Primary */}
+              <button
+                onClick={handleRealignClick}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all text-left"
+              >
+                <Target className="h-6 w-6 text-primary shrink-0" />
+                <div>
+                  <span className="text-sm font-medium block">Realign</span>
+                  <span className="text-xs text-muted-foreground">Push or flow. Get back on track.</span>
+                </div>
+              </button>
+
+              {/* Return to Self */}
               <button
                 onClick={handleReturnToSelfClick}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all text-left"
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
               >
                 <Compass className="h-6 w-6 text-primary shrink-0" />
                 <div>
@@ -426,6 +510,13 @@ export const QuickCapture = () => {
           setPendingDocumentId(null);
           setPendingContentType("");
         }}
+      />
+
+      <RealignDialog
+        open={showRealign}
+        onOpenChange={setShowRealign}
+        data={realignData}
+        isLoading={isLoadingRealign}
       />
     </>
   );
