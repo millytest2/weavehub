@@ -3,22 +3,21 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sunrise, X, Sparkles, Target, Flame } from "lucide-react";
+import { Sunrise, X, Lightbulb, Heart } from "lucide-react";
 
 interface MorningRitualPromptProps {
   onComplete: () => void;
 }
 
-// Dynamic morning prompts based on context
+// Dynamic morning prompts based on context (no experiments)
 function generateDynamicPrompt(context: {
   identity?: string;
   values?: string;
   weeklyFocus?: string;
-  recentExperiment?: string;
   streak?: number;
   dayOfWeek: number;
 }): { prompt: string; subtext?: string } {
-  const { identity, values, weeklyFocus, recentExperiment, streak, dayOfWeek } = context;
+  const { identity, values, weeklyFocus, streak, dayOfWeek } = context;
   
   // Monday = fresh start energy
   if (dayOfWeek === 1) {
@@ -41,21 +40,13 @@ function generateDynamicPrompt(context: {
   
   // Weekend = different energy
   if (dayOfWeek === 0 || dayOfWeek === 6) {
-    if (recentExperiment) {
+    if (weeklyFocus) {
       return { 
-        prompt: `Weekend check: How can you push your experiment forward?`,
-        subtext: recentExperiment
+        prompt: `Weekend: How can you live "${weeklyFocus}" today?`,
+        subtext: "Integration over hustle."
       };
     }
     return { prompt: "Weekend mode: What would feel like a win today?" };
-  }
-  
-  // Active experiment = orient around it
-  if (recentExperiment) {
-    return { 
-      prompt: `Today's focus: ${recentExperiment}. What's the rep?`,
-      subtext: "One action compounds."
-    };
   }
   
   // Weekly focus = orient around it
@@ -117,7 +108,6 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
   const [weeklyFocus, setWeeklyFocus] = useState<string | null>(null);
   const [dynamicPrompt, setDynamicPrompt] = useState<{ prompt: string; subtext?: string }>({ prompt: "" });
   const [recentInsight, setRecentInsight] = useState<string | null>(null);
-  const [activeExperiment, setActiveExperiment] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -145,25 +135,18 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
     }
 
     try {
-      // Get identity, experiments, and insights in parallel
-      const [identityRes, experimentRes, insightRes] = await Promise.all([
+      // Get identity and insights only (no experiments)
+      const [identityRes, insightRes] = await Promise.all([
         supabase
           .from("identity_seeds")
-          .select("content, core_values, weekly_focus")
+          .select("content, core_values, weekly_focus, year_note")
           .eq("user_id", user.id)
-          .maybeSingle(),
-        supabase
-          .from("experiments")
-          .select("title")
-          .eq("user_id", user.id)
-          .eq("status", "in_progress")
-          .limit(1)
           .maybeSingle(),
         supabase
           .from("insights")
-          .select("content")
+          .select("content, title")
           .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
+          .order("relevance_score", { ascending: false })
           .limit(10)
       ]);
 
@@ -172,18 +155,12 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
         setCoreValues(identityRes.data.core_values);
         setWeeklyFocus(identityRes.data.weekly_focus);
         
-        // Set active experiment if exists
-        if (experimentRes.data?.title) {
-          setActiveExperiment(experimentRes.data.title);
-        }
-        
-        // Generate dynamic prompt based on full context
+        // Generate dynamic prompt based on identity context (no experiments)
         const dayOfWeek = new Date().getDay();
         const prompt = generateDynamicPrompt({
           identity: identityRes.data.content,
           values: identityRes.data.core_values,
           weeklyFocus: identityRes.data.weekly_focus,
-          recentExperiment: experimentRes.data?.title,
           dayOfWeek,
         });
         setDynamicPrompt(prompt);
@@ -191,7 +168,7 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
         // Pick a random recent insight if available
         if (insightRes.data && insightRes.data.length > 0) {
           const randomInsight = insightRes.data[Math.floor(Math.random() * insightRes.data.length)];
-          const content = randomInsight.content;
+          const content = randomInsight.title || randomInsight.content;
           const firstSentence = content.split('.')[0];
           setRecentInsight(firstSentence.length > 120 ? firstSentence.substring(0, 117) + "..." : firstSentence);
         }
@@ -268,19 +245,22 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
             <DialogDescription className="sr-only">Morning focus</DialogDescription>
           </DialogHeader>
 
-          {/* One context item only - either experiment OR values */}
-          {activeExperiment ? (
-            <div className="flex items-center gap-2 p-2 rounded-md bg-accent/10 border border-accent/20">
-              <Flame className="h-3 w-3 text-accent flex-shrink-0" />
-              <p className="text-[11px] text-foreground/80 truncate">{activeExperiment}</p>
+          {/* Show insight or values */}
+          {recentInsight ? (
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border border-border/50">
+              <Lightbulb className="h-3 w-3 text-primary flex-shrink-0" />
+              <p className="text-[11px] text-foreground/80 truncate">{recentInsight}</p>
             </div>
           ) : coreValues ? (
-            <div className="flex flex-wrap gap-1">
-              {coreValues.split(',').slice(0, 3).map((value, i) => (
-                <span key={i} className="px-1.5 py-0.5 text-[10px] rounded bg-muted/50 text-muted-foreground">
-                  {value.trim()}
-                </span>
-              ))}
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+              <Heart className="h-3 w-3 text-primary flex-shrink-0" />
+              <div className="flex flex-wrap gap-1">
+                {coreValues.split(',').slice(0, 3).map((value, i) => (
+                  <span key={i} className="text-[10px] text-foreground/70">
+                    {value.trim()}{i < Math.min(coreValues.split(',').length - 1, 2) ? ' ·' : ''}
+                  </span>
+                ))}
+              </div>
             </div>
           ) : null}
 
