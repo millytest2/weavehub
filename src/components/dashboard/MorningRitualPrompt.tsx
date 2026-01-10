@@ -38,15 +38,14 @@ function generateDynamicPrompt(context: {
     };
   }
   
-  // Weekend = different energy
+  // Weekend = different energy - simpler prompt, don't use weeklyFocus (could be long)
   if (dayOfWeek === 0 || dayOfWeek === 6) {
-    if (weeklyFocus) {
-      return { 
-        prompt: `Weekend: How can you live "${weeklyFocus}" today?`,
-        subtext: "Integration over hustle."
-      };
+    if (values) {
+      const valueList = values.split(',').map(v => v.trim());
+      const randomValue = valueList[Math.floor(Math.random() * valueList.length)];
+      return { prompt: `Weekend: How does "${randomValue}" show up today?` };
     }
-    return { prompt: "Weekend mode: What would feel like a win today?" };
+    return { prompt: "What would feel like a win today?" };
   }
   
   // Weekly focus = orient around it
