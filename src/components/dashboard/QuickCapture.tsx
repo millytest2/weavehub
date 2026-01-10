@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -245,156 +245,129 @@ export const QuickCapture = () => {
 
   return (
     <>
-      {/* Floating Action Button */}
+      {/* Floating Action Button - Now "Weave" */}
       <button
         onClick={handleOpen}
         className="fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center"
-        aria-label="Quick capture"
+        aria-label="Weave"
       >
-        <Plus className="h-6 w-6" />
+        <Sparkles className="h-5 w-5" />
       </button>
 
-      {/* Capture Dialog */}
+      {/* Unified Weave Menu */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-xl p-4 sm:p-6">
-          <DialogHeader className="pb-2">
-            <DialogTitle className="text-base sm:text-lg">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm mx-auto rounded-xl p-4">
+          <DialogHeader className="pb-1">
+            <DialogTitle className="text-base">
               {captureType ? (
                 <button onClick={() => setCaptureType(null)} className="text-muted-foreground hover:text-foreground text-sm">
                   ← Back
                 </button>
+              ) : showRealignPicker || showEmotionalPicker ? (
+                <button 
+                  onClick={() => { setShowRealignPicker(false); setShowEmotionalPicker(false); }} 
+                  className="text-muted-foreground hover:text-foreground text-sm"
+                >
+                  ← Back
+                </button>
               ) : (
-                "Capture"
+                "Weave"
               )}
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
-              {captureType ? "Add your content below" : "Save or reflect"}
-            </DialogDescription>
+            <DialogDescription className="sr-only">Quick actions</DialogDescription>
           </DialogHeader>
 
           {showRealignPicker ? (
-            <div className="space-y-4 py-3">
-              <p className="text-sm text-muted-foreground">How do you want to move today?</p>
-              <div className="space-y-3">
-                <button
-                  onClick={() => handleRealign("push")}
-                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-orange-500/30 bg-orange-500/5 hover:bg-orange-500/10 transition-all text-left"
-                >
-                  <Zap className="h-6 w-6 text-orange-500 shrink-0" />
-                  <div>
-                    <span className="text-sm font-medium block">Push</span>
-                    <span className="text-xs text-muted-foreground">Show me the gap. I want to move fast.</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleRealign("flow")}
-                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 transition-all text-left"
-                >
-                  <Waves className="h-6 w-6 text-blue-500 shrink-0" />
-                  <div>
-                    <span className="text-sm font-medium block">Flow</span>
-                    <span className="text-xs text-muted-foreground">What matters today? Keep me aligned.</span>
-                  </div>
-                </button>
-              </div>
+            <div className="space-y-2 py-2">
               <button
-                onClick={() => setShowRealignPicker(false)}
-                className="w-full text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => handleRealign("push")}
+                className="w-full flex items-center gap-3 p-3 rounded-lg border border-orange-500/30 bg-orange-500/5 hover:bg-orange-500/10 transition-all text-left"
               >
-                ← Back
+                <Zap className="h-5 w-5 text-orange-500 shrink-0" />
+                <div>
+                  <span className="text-sm font-medium">Push</span>
+                  <span className="text-xs text-muted-foreground block">Show me the gap</span>
+                </div>
+              </button>
+              <button
+                onClick={() => handleRealign("flow")}
+                className="w-full flex items-center gap-3 p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 transition-all text-left"
+              >
+                <Waves className="h-5 w-5 text-blue-500 shrink-0" />
+                <div>
+                  <span className="text-sm font-medium">Flow</span>
+                  <span className="text-xs text-muted-foreground block">What matters today</span>
+                </div>
               </button>
             </div>
           ) : showEmotionalPicker ? (
-            <div className="space-y-4 py-3">
-              <p className="text-sm text-muted-foreground">What's happening right now?</p>
+            <div className="space-y-2 py-2">
               <div className="grid grid-cols-2 gap-2">
                 {EMOTIONAL_STATES.map((state) => (
                   <button
                     key={state.id}
                     onClick={() => handleReturnToSelfWithState(state.id)}
-                    className="flex flex-col items-start p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+                    className="flex flex-col items-start p-2.5 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
                   >
-                    <span className="text-sm font-medium">{state.label}</span>
-                    <span className="text-xs text-muted-foreground">{state.desc}</span>
+                    <span className="text-xs font-medium">{state.label}</span>
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => handleReturnToSelfWithState(null)}
-                className="w-full p-3 rounded-lg border border-border/50 hover:border-border text-sm text-muted-foreground hover:text-foreground transition-all"
+                className="w-full p-2.5 rounded-lg border border-border/50 text-xs text-muted-foreground hover:text-foreground transition-all"
               >
                 Just ground me
               </button>
-              <button
-                onClick={() => setShowEmotionalPicker(false)}
-                className="w-full text-xs text-muted-foreground hover:text-foreground"
-              >
-                ← Back
-              </button>
             </div>
           ) : !captureType ? (
-            <div className="space-y-3 py-3">
-              {/* Realign - New Primary */}
-              <button
-                onClick={handleRealignClick}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all text-left"
-              >
-                <Target className="h-6 w-6 text-primary shrink-0" />
-                <div>
-                  <span className="text-sm font-medium block">Realign</span>
-                  <span className="text-xs text-muted-foreground">Push or flow. Get back on track.</span>
-                </div>
-              </button>
+            <div className="space-y-2 py-2">
+              {/* Primary row: Realign + Return to Self */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleRealignClick}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all"
+                >
+                  <Target className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Realign</span>
+                </button>
+                <button
+                  onClick={handleReturnToSelfClick}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Compass className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Feeling Off</span>
+                </button>
+              </div>
+              
+              {/* Capture row */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleQuickCapture("paste")}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Paste</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleQuickCapture("insight");
+                    setTimeout(() => toggleRecording(), 100);
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Mic className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Voice</span>
+                </button>
+              </div>
 
-              {/* Return to Self */}
-              <button
-                onClick={handleReturnToSelfClick}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
-              >
-                <Compass className="h-6 w-6 text-primary shrink-0" />
-                <div>
-                  <span className="text-sm font-medium block">Return to Self</span>
-                  <span className="text-xs text-muted-foreground">Drifting? Ground yourself here.</span>
-                </div>
-              </button>
-
-              {/* Smart Paste */}
-              <button
-                onClick={() => handleQuickCapture("paste")}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
-              >
-                <Sparkles className="h-6 w-6 text-primary shrink-0" />
-                <div>
-                  <span className="text-sm font-medium block">Paste Anything</span>
-                  <span className="text-xs text-muted-foreground">YouTube, article, tweet, Instagram - auto-detect</span>
-                </div>
-              </button>
-
-              {/* Manual Insight */}
+              {/* Type insight as smaller option */}
               <button
                 onClick={() => handleQuickCapture("insight")}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+                className="w-full flex items-center justify-center gap-2 p-2 text-xs text-muted-foreground hover:text-foreground transition-all"
               >
-                <Lightbulb className="h-6 w-6 text-primary shrink-0" />
-                <div>
-                  <span className="text-sm font-medium block">Manual Insight</span>
-                  <span className="text-xs text-muted-foreground">Type or dictate your thought</span>
-                </div>
-              </button>
-              
-              {/* Voice Insight - primary voice capture */}
-              <button
-                onClick={() => {
-                  handleQuickCapture("insight");
-                  setTimeout(() => toggleRecording(), 100);
-                }}
-                className="w-full flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 hover:border-primary/50 transition-all text-left"
-              >
-                <Mic className="h-6 w-6 text-primary shrink-0" />
-                <div>
-                  <span className="text-sm font-medium block">Speak Your Insight</span>
-                  <span className="text-xs text-muted-foreground">Just talk. No typing needed.</span>
-                </div>
+                <Lightbulb className="h-3.5 w-3.5" />
+                Type an insight
               </button>
             </div>
           ) : (

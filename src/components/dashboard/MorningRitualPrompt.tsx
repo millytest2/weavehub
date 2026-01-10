@@ -217,7 +217,7 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-sm p-0 overflow-hidden border-0 bg-card shadow-lg">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-xs p-0 overflow-hidden border-0 bg-card shadow-lg">
         <div className="p-3 space-y-2">
           {/* Header - minimal */}
           <div className="flex items-center justify-between">
@@ -235,47 +235,25 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
             </Button>
           </div>
           
-          <DialogHeader className="space-y-0.5">
+          <DialogHeader className="space-y-0">
             <DialogTitle className="text-sm font-semibold leading-tight text-left">
               {dynamicPrompt.prompt}
             </DialogTitle>
-            {dynamicPrompt.subtext && (
-              <p className="text-[11px] text-muted-foreground">{dynamicPrompt.subtext}</p>
-            )}
             <DialogDescription className="sr-only">Morning focus</DialogDescription>
           </DialogHeader>
 
-          {/* Show insight or values */}
-          {recentInsight ? (
-            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border border-border/50">
-              <Lightbulb className="h-3 w-3 text-primary flex-shrink-0" />
-              <p className="text-[11px] text-foreground/80 truncate">{recentInsight}</p>
-            </div>
-          ) : coreValues ? (
-            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
-              <Heart className="h-3 w-3 text-primary flex-shrink-0" />
-              <div className="flex flex-wrap gap-1">
-                {coreValues.split(',').slice(0, 3).map((value, i) => (
-                  <span key={i} className="text-[10px] text-foreground/70">
-                    {value.trim()}{i < Math.min(coreValues.split(',').length - 1, 2) ? ' ·' : ''}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2">
             <Button
               variant="ghost"
               size="sm"
-              className="flex-1 text-[11px] h-8"
+              className="flex-1 text-[11px] h-7"
               onClick={handleSkip}
             >
               Skip
             </Button>
             <Button
               size="sm"
-              className="flex-1 text-[11px] h-8"
+              className="flex-1 text-[11px] h-7"
               onClick={handleDismiss}
             >
               Let's go
