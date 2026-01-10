@@ -149,8 +149,8 @@ const Dashboard = () => {
       .eq("user_id", user.id)
       .eq("task_date", today);
     
-    if (existingTasks && existingTasks.length >= 3) {
-      toast.info("All 3 invitations done for today");
+    if (existingTasks && existingTasks.length >= 4) {
+      toast.info("All invitations done for today");
       return;
     }
     
@@ -238,6 +238,9 @@ const Dashboard = () => {
         setTodayTask(null);
         // Auto-generate next
         setTimeout(() => handleGenerateTask(), 500);
+      } else if (currentSequence === 4) {
+        toast.success("Bonus complete. Great work.");
+        setTodayTask(null);
       } else {
         toast.success("All 3 done. Great work.");
         setTodayTask(null);
@@ -268,28 +271,33 @@ const Dashboard = () => {
   };
 
   const completedCount = tasksForToday.filter(t => t.completed).length;
-  const allDone = completedCount >= 3;
+  const threeComplete = completedCount >= 3;
+  const allDone = completedCount >= 4 || (threeComplete && !tasksForToday.some(t => t.task_sequence === 4));
+  const showBonusOption = threeComplete && completedCount === 3 && !tasksForToday.some(t => t.task_sequence === 4);
 
-  const ProgressDots = ({ current }: { current: number }) => (
-    <div className="flex items-center gap-1.5">
-      {[1, 2, 3].map((num) => {
-        const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
-        const isCurrent = num === current && !allDone;
-        return (
-          <div
-            key={num}
-            className={`w-2 h-2 rounded-full transition-all ${
-              isCompleted
-                ? 'bg-primary'
-                : isCurrent
-                  ? 'bg-primary/40'
-                  : 'bg-muted-foreground/20'
-            }`}
-          />
-        );
-      })}
-    </div>
-  );
+  const ProgressDots = ({ current }: { current: number }) => {
+    const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
+    return (
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: dotsToShow }, (_, i) => i + 1).map((num) => {
+          const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
+          const isCurrent = num === current && !allDone;
+          return (
+            <div
+              key={num}
+              className={`w-2 h-2 rounded-full transition-all ${
+                isCompleted
+                  ? 'bg-primary'
+                  : isCurrent
+                    ? 'bg-primary/40'
+                    : 'bg-muted-foreground/20'
+              }`}
+            />
+          );
+        })}
+      </div>
+    );
+  };
 
   const [morningComplete, setMorningComplete] = useState(false);
   const [eveningComplete, setEveningComplete] = useState(false);
@@ -317,13 +325,32 @@ const Dashboard = () => {
               <div className="py-10 flex flex-col items-center justify-center">
                 <WeaveLoader size="lg" text="Preparing your invitation..." />
               </div>
+            ) : showBonusOption ? (
+              <div className="py-8 text-center space-y-4">
+                <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                  <Check className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">All 3 done</p>
+                  <p className="text-sm text-muted-foreground">Great work today.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateTask}
+                  className="mt-2"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  I'm motivated — one more
+                </Button>
+              </div>
             ) : allDone ? (
               <div className="py-10 text-center space-y-3">
                 <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                   <Check className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">All 3 done</p>
+                  <p className="font-medium">All done</p>
                   <p className="text-sm text-muted-foreground">Great work today.</p>
                 </div>
               </div>
