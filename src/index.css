@@ -109,4 +109,20 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Display font for headers */
+  h1, h2, h3, .font-display {
+    font-family: 'Instrument Serif', Georgia, serif;
+  }
+}
+
+/* Utility classes for enhanced interactions */
+@layer utilities {
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .card-hover:hover {
+    @apply shadow-lg -translate-y-0.5;
+  }
 }

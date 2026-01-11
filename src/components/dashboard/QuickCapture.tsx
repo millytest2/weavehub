@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -245,14 +246,32 @@ export const QuickCapture = () => {
 
   return (
     <>
-      {/* Floating Action Button - Now "Weave" */}
-      <button
+      {/* Floating Action Button - Now "Weave" with micro-interactions */}
+      <motion.button
         onClick={handleOpen}
-        className="fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center"
+        className="fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center"
         aria-label="Weave"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ 
+          scale: 1.1, 
+          boxShadow: "0 20px 40px -10px hsl(var(--primary) / 0.4)"
+        }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 400, 
+          damping: 17,
+          opacity: { duration: 0.2 }
+        }}
       >
-        <Sparkles className="h-5 w-5" />
-      </button>
+        <motion.div
+          animate={isOpen ? { rotate: 45 } : { rotate: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <Sparkles className="h-5 w-5" />
+        </motion.div>
+      </motion.button>
 
       {/* Unified Weave Menu */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
