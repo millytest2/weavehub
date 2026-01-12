@@ -237,20 +237,67 @@ export type Database = {
           },
         ]
       }
+      experiment_logs: {
+        Row: {
+          created_at: string
+          day_number: number
+          energy_level: number | null
+          experiment_id: string
+          id: string
+          metrics_data: Json | null
+          observations: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          energy_level?: number | null
+          experiment_id: string
+          id?: string
+          metrics_data?: Json | null
+          observations?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          energy_level?: number | null
+          experiment_id?: string
+          id?: string
+          metrics_data?: Json | null
+          observations?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiment_logs_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "experiments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experiments: {
         Row: {
           baseline_impact: number | null
+          completed_at: string | null
           content_fuel: number | null
           created_at: string
+          current_day: number | null
           description: string | null
           duration: string | null
+          duration_days: number | null
+          experiment_type: string | null
           hypothesis: string | null
           id: string
           identity_alignment: number | null
           identity_shift_target: string | null
           learning_path_id: string | null
+          metrics_tracked: Json | null
           result_summary: string | null
           results: string | null
+          started_at: string | null
           status: string | null
           steps: string | null
           title: string
@@ -260,17 +307,23 @@ export type Database = {
         }
         Insert: {
           baseline_impact?: number | null
+          completed_at?: string | null
           content_fuel?: number | null
           created_at?: string
+          current_day?: number | null
           description?: string | null
           duration?: string | null
+          duration_days?: number | null
+          experiment_type?: string | null
           hypothesis?: string | null
           id?: string
           identity_alignment?: number | null
           identity_shift_target?: string | null
           learning_path_id?: string | null
+          metrics_tracked?: Json | null
           result_summary?: string | null
           results?: string | null
+          started_at?: string | null
           status?: string | null
           steps?: string | null
           title: string
@@ -280,17 +333,23 @@ export type Database = {
         }
         Update: {
           baseline_impact?: number | null
+          completed_at?: string | null
           content_fuel?: number | null
           created_at?: string
+          current_day?: number | null
           description?: string | null
           duration?: string | null
+          duration_days?: number | null
+          experiment_type?: string | null
           hypothesis?: string | null
           id?: string
           identity_alignment?: number | null
           identity_shift_target?: string | null
           learning_path_id?: string | null
+          metrics_tracked?: Json | null
           result_summary?: string | null
           results?: string | null
+          started_at?: string | null
           status?: string | null
           steps?: string | null
           title?: string
@@ -471,6 +530,62 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      observations: {
+        Row: {
+          content: string
+          created_at: string
+          experiment_id: string | null
+          generated_post: string | null
+          id: string
+          observation_type: string
+          platform: string | null
+          post_drafted: boolean | null
+          posted_at: string | null
+          source: string | null
+          updated_at: string
+          user_id: string
+          your_data: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          experiment_id?: string | null
+          generated_post?: string | null
+          id?: string
+          observation_type?: string
+          platform?: string | null
+          post_drafted?: boolean | null
+          posted_at?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id: string
+          your_data?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          experiment_id?: string | null
+          generated_post?: string | null
+          id?: string
+          observation_type?: string
+          platform?: string | null
+          post_drafted?: boolean | null
+          posted_at?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+          your_data?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observations_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "experiments"
             referencedColumns: ["id"]
           },
         ]
