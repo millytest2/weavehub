@@ -45,9 +45,139 @@ serve(async (req) => {
     if (!user) throw new Error("Unauthorized");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    
+    // Check if this is a post generation request
+    const body = await req.json().catch(() => ({}));
+    const { mode, observation, experiment } = body;
 
+    // POST GENERATOR MODE
+    if (mode === "post_generator" && observation) {
+      const templateMap: Record<string, string> = {
+        quote: `Curated Synthesis Template:
+- Lead with the quote or insight
+- Add your personal data/results that validate or challenge it
+- End with a takeaway or question for the reader
+- Keep it punchy, 280 chars ideal, can go up to thread if needed`,
+        
+        decision: `Building Decision Template:
+- Start with the decision you made
+- Share the context briefly
+- Show the result or what you learned
+- End with what you'd tell someone facing the same choice`,
+        
+        presence: `Presence Template:
+- Set the scene (who, where, context)
+- Share the unexpected insight or moment
+- Connect it to a bigger principle
+- Keep it human and relatable`,
+        
+        insight: `Insight Template:
+- Lead with the insight/realization
+- Show how you discovered it
+- Add specific data or example if you have it
+- End with the "so what" for the reader`
+      };
+
+      const systemPrompt = `You are a content strategist helping create authentic, data-backed social media posts.
+
+Your style:
+- No fluff, no filler words
+- Real data beats generic advice
+- Personal experience > theory
+- Contrarian when honest
+- Never use: "game-changer", "unlock", "leverage", "mindset shift"
+- Write like you talk to a smart friend
+
+${templateMap[observation.type] || templateMap.insight}`;
+
+      const userPrompt = `Create a post from this observation:
+
+Type: ${observation.type}
+Content: ${observation.content}
+${observation.source ? `Source: ${observation.source}` : ''}
+${observation.your_data ? `My data/results: ${observation.your_data}` : ''}
+
+Write a compelling post that I can use on Twitter/LinkedIn. Make it authentic and backed by the data I provided. If I didn't provide data, focus on the insight itself.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to generate post");
+      }
+
+      const data = await response.json();
+      const post = data.choices?.[0]?.message?.content || '';
+
+      return new Response(JSON.stringify({ post }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // EXPERIMENT SYNTHESIS MODE
+    if (mode === "experiment_synthesis" && experiment) {
+      const systemPrompt = `You are helping synthesize experiment results into shareable content.
+
+Style:
+- Data-first
+- Honest about what worked and didn't
+- No hype, just facts
+- Include specific numbers when available`;
+
+      const userPrompt = `Create a synthesis post for this completed experiment:
+
+Title: ${experiment.title}
+Duration: ${experiment.duration_days} days
+Hypothesis: ${experiment.hypothesis || 'Not specified'}
+Results: ${JSON.stringify(experiment.results || {})}
+
+Write a thread-style post (can be multiple tweets) summarizing what I tested, what I found, and what I'm testing next.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 1500,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to generate synthesis");
+      }
+
+      const data = await response.json();
+      const post = data.choices?.[0]?.message?.content || '';
+
+      return new Response(JSON.stringify({ post }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // ORIGINAL DIRECTION CHECK MODE (default)
     const userContext = await fetchUserContext(supabase, user.id);
-    // Use weighted context for better synthesis
     const context = formatWeightedContextForAgent(userContext, "decision-mirror");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

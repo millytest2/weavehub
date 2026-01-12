@@ -18,6 +18,7 @@ import LearningPaths from "./pages/LearningPaths";
 import LearningPathDetail from "./pages/LearningPathDetail";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import Lab from "./pages/Lab";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
@@ -138,6 +139,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Admin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lab"
+              element={
+                <ProtectedRoute>
+                  <Lab />
                 </ProtectedRoute>
               }
             />
