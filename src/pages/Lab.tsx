@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
+import { Slider } from "@/components/ui/slider";
 import { 
   FlaskConical, 
   Plus, 
@@ -30,7 +31,14 @@ import {
   Users,
   Sparkles,
   Copy,
-  Check
+  Check,
+  Activity,
+  Brain,
+  Heart,
+  Gamepad2,
+  FileText,
+  Briefcase,
+  Download
 } from "lucide-react";
 
 interface Experiment {
@@ -72,6 +80,38 @@ interface Observation {
   created_at: string;
 }
 
+interface WeeklyIntegration {
+  id: string;
+  week_start: string;
+  week_number: number;
+  year: number;
+  business_score: number | null;
+  body_score: number | null;
+  content_score: number | null;
+  relationship_score: number | null;
+  mind_score: number | null;
+  play_score: number | null;
+  business_notes: string | null;
+  body_notes: string | null;
+  content_notes: string | null;
+  relationship_notes: string | null;
+  mind_notes: string | null;
+  play_notes: string | null;
+  pattern_detected: string | null;
+  cross_domain_insights: any[];
+  export_generated: boolean;
+  created_at: string;
+}
+
+const DOMAINS = [
+  { key: 'business', label: 'Business', icon: Briefcase, color: 'text-blue-500' },
+  { key: 'body', label: 'Body', icon: Activity, color: 'text-green-500' },
+  { key: 'content', label: 'Content', icon: FileText, color: 'text-purple-500' },
+  { key: 'relationship', label: 'Relationship', icon: Heart, color: 'text-pink-500' },
+  { key: 'mind', label: 'Mind', icon: Brain, color: 'text-orange-500' },
+  { key: 'play', label: 'Play', icon: Gamepad2, color: 'text-cyan-500' },
+] as const;
+
 const Lab = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -82,14 +122,18 @@ const Lab = () => {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [experimentLogs, setExperimentLogs] = useState<ExperimentLog[]>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
+  const [weeklyIntegrations, setWeeklyIntegrations] = useState<WeeklyIntegration[]>([]);
   
   // Dialogs
   const [showNewExperiment, setShowNewExperiment] = useState(false);
   const [showDailyLog, setShowDailyLog] = useState(false);
   const [showNewObservation, setShowNewObservation] = useState(false);
   const [showPostGenerator, setShowPostGenerator] = useState(false);
+  const [showWeeklyCheckin, setShowWeeklyCheckin] = useState(false);
+  const [showWeeklyExport, setShowWeeklyExport] = useState(false);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
+  const [selectedWeekly, setSelectedWeekly] = useState<WeeklyIntegration | null>(null);
   
   // Form state
   const [newExperiment, setNewExperiment] = useState({
@@ -113,6 +157,13 @@ const Lab = () => {
   const [generatedPost, setGeneratedPost] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [weeklyScores, setWeeklyScores] = useState({
+    business: 5, body: 5, content: 5, relationship: 5, mind: 5, play: 5
+  });
+  const [weeklyNotes, setWeeklyNotes] = useState({
+    business: "", body: "", content: "", relationship: "", mind: "", play: ""
+  });
+  const [weeklyExportText, setWeeklyExportText] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -136,7 +187,7 @@ const Lab = () => {
     if (!user) return;
     
     try {
-      const [expResult, logsResult, obsResult] = await Promise.all([
+      const [expResult, logsResult, obsResult, weeklyResult] = await Promise.all([
         supabase
           .from("experiments")
           .select("*")
@@ -151,12 +202,18 @@ const Lab = () => {
           .from("observations")
           .select("*")
           .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("weekly_integrations")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("week_start", { ascending: false })
       ]);
 
       if (expResult.data) setExperiments(expResult.data as any);
       if (logsResult.data) setExperimentLogs(logsResult.data as any);
       if (obsResult.data) setObservations(obsResult.data as any);
+      if (weeklyResult.data) setWeeklyIntegrations(weeklyResult.data as any);
     } catch (error) {
       console.error("Error fetching lab data:", error);
     } finally {
@@ -295,6 +352,108 @@ const Lab = () => {
   const activeExperiments = experiments.filter(e => e.status === "in_progress");
   const completedExperiments = experiments.filter(e => e.status === "completed");
 
+  // Get current week info
+  const getWeekInfo = () => {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const weekNum = Math.ceil(((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    return { weekNum, year: now.getFullYear(), weekStart: startOfWeek.toISOString().split('T')[0] };
+  };
+
+  const currentWeekInfo = getWeekInfo();
+  const hasCurrentWeekCheckin = weeklyIntegrations.some(
+    w => w.week_start === currentWeekInfo.weekStart
+  );
+
+  const handleWeeklyCheckin = async () => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase.from("weekly_integrations").insert({
+        user_id: user.id,
+        week_start: currentWeekInfo.weekStart,
+        week_number: currentWeekInfo.weekNum,
+        year: currentWeekInfo.year,
+        business_score: weeklyScores.business,
+        body_score: weeklyScores.body,
+        content_score: weeklyScores.content,
+        relationship_score: weeklyScores.relationship,
+        mind_score: weeklyScores.mind,
+        play_score: weeklyScores.play,
+        business_notes: weeklyNotes.business || null,
+        body_notes: weeklyNotes.body || null,
+        content_notes: weeklyNotes.content || null,
+        relationship_notes: weeklyNotes.relationship || null,
+        mind_notes: weeklyNotes.mind || null,
+        play_notes: weeklyNotes.play || null,
+      });
+
+      if (error) throw error;
+      
+      toast.success("Weekly check-in saved!");
+      setShowWeeklyCheckin(false);
+      setWeeklyScores({ business: 5, body: 5, content: 5, relationship: 5, mind: 5, play: 5 });
+      setWeeklyNotes({ business: "", body: "", content: "", relationship: "", mind: "", play: "" });
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleGenerateWeeklyPattern = async (weekly: WeeklyIntegration) => {
+    setSelectedWeekly(weekly);
+    setIsGenerating(true);
+    setShowWeeklyExport(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("synthesizer", {
+        body: {
+          mode: "weekly_integration",
+          weekly: {
+            business: weekly.business_score,
+            body: weekly.body_score,
+            content: weekly.content_score,
+            relationship: weekly.relationship_score,
+            mind: weekly.mind_score,
+            play: weekly.play_score,
+            business_notes: weekly.business_notes,
+            body_notes: weekly.body_notes,
+            content_notes: weekly.content_notes,
+            relationship_notes: weekly.relationship_notes,
+            mind_notes: weekly.mind_notes,
+            play_notes: weekly.play_notes,
+            week_number: weekly.week_number,
+          }
+        }
+      });
+
+      if (error) throw error;
+      
+      setWeeklyExportText(data.post || "Could not generate export");
+      
+      // Update the weekly integration with pattern detected
+      await supabase.from("weekly_integrations").update({
+        pattern_detected: data.pattern || null,
+        export_generated: true
+      }).eq("id", weekly.id);
+      
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate weekly export");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCopyWeeklyExport = () => {
+    navigator.clipboard.writeText(weeklyExportText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success("Copied to clipboard!");
+  };
+
   if (authLoading || adminLoading) {
     return (
       <MainLayout>
@@ -324,7 +483,7 @@ const Lab = () => {
         </div>
 
         <Tabs defaultValue="experiments" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="experiments" className="gap-2">
               <FlaskConical className="h-4 w-4" />
               Experiments
@@ -332,6 +491,10 @@ const Lab = () => {
             <TabsTrigger value="observations" className="gap-2">
               <MessageSquare className="h-4 w-4" />
               Observations
+            </TabsTrigger>
+            <TabsTrigger value="integration" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Weekly
             </TabsTrigger>
           </TabsList>
 
@@ -541,6 +704,117 @@ const Lab = () => {
                   <Button onClick={() => setShowNewObservation(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Capture Your First Observation
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* WEEKLY INTEGRATION TAB */}
+          <TabsContent value="integration" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-muted-foreground">6-domain weekly scoring for integration tracking</p>
+              <Button 
+                size="sm" 
+                onClick={() => setShowWeeklyCheckin(true)}
+                disabled={hasCurrentWeekCheckin}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {hasCurrentWeekCheckin ? "Week Logged" : "Weekly Check-in"}
+              </Button>
+            </div>
+
+            {/* Current week status */}
+            {hasCurrentWeekCheckin && (
+              <Card className="border-green-500/30 bg-green-500/5">
+                <CardContent className="py-4 flex items-center gap-3">
+                  <Check className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-medium">Week {currentWeekInfo.weekNum} logged!</p>
+                    <p className="text-sm text-muted-foreground">Great job tracking your integration this week.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Weekly entries */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {weeklyIntegrations.map((weekly) => {
+                const scores = [
+                  { key: 'business', score: weekly.business_score, icon: Briefcase, color: 'text-blue-500' },
+                  { key: 'body', score: weekly.body_score, icon: Activity, color: 'text-green-500' },
+                  { key: 'content', score: weekly.content_score, icon: FileText, color: 'text-purple-500' },
+                  { key: 'relationship', score: weekly.relationship_score, icon: Heart, color: 'text-pink-500' },
+                  { key: 'mind', score: weekly.mind_score, icon: Brain, color: 'text-orange-500' },
+                  { key: 'play', score: weekly.play_score, icon: Gamepad2, color: 'text-cyan-500' },
+                ];
+                const avgScore = scores.reduce((sum, s) => sum + (s.score || 0), 0) / 6;
+                
+                return (
+                  <Card key={weekly.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Badge variant="outline" className="mb-2">
+                            Week {weekly.week_number}, {weekly.year}
+                          </Badge>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <span className="text-2xl font-bold">{avgScore.toFixed(1)}</span>
+                            <span className="text-sm font-normal text-muted-foreground">/10 avg</span>
+                          </CardTitle>
+                        </div>
+                        {weekly.export_generated && (
+                          <Badge variant="secondary" className="text-xs">Exported</Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {/* Score grid */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {scores.map(({ key, score, icon: Icon, color }) => (
+                          <div key={key} className="flex items-center gap-1.5 text-sm">
+                            <Icon className={`h-3.5 w-3.5 ${color}`} />
+                            <span className="capitalize">{key.slice(0, 3)}</span>
+                            <span className={`font-medium ml-auto ${
+                              (score || 0) <= 4 ? 'text-red-500' : 
+                              (score || 0) <= 6 ? 'text-yellow-500' : 'text-green-500'
+                            }`}>
+                              {score || 0}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pattern if detected */}
+                      {weekly.pattern_detected && (
+                        <div className="p-2 bg-muted rounded-lg">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Pattern Detected</p>
+                          <p className="text-sm">{weekly.pattern_detected}</p>
+                        </div>
+                      )}
+
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => handleGenerateWeeklyPattern(weekly)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export for Social
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {weeklyIntegrations.length === 0 && !loading && (
+              <Card className="border-dashed">
+                <CardContent className="py-12 text-center">
+                  <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground mb-4">No weekly check-ins yet</p>
+                  <Button onClick={() => setShowWeeklyCheckin(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Start Your First Weekly Check-in
                   </Button>
                 </CardContent>
               </Card>
@@ -829,6 +1103,102 @@ const Lab = () => {
                     </Button>
                   </div>
                 </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* WEEKLY CHECK-IN DIALOG */}
+        <Dialog open={showWeeklyCheckin} onOpenChange={setShowWeeklyCheckin}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Week {currentWeekInfo.weekNum} Check-in</DialogTitle>
+              <DialogDescription>
+                Score each domain 1-10 and add notes on what went well
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              {DOMAINS.map(({ key, label, icon: Icon, color }) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`h-4 w-4 ${color}`} />
+                    <Label className="font-medium">{label}</Label>
+                    <span className="ml-auto font-bold text-lg">
+                      {weeklyScores[key as keyof typeof weeklyScores]}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[weeklyScores[key as keyof typeof weeklyScores]]}
+                    onValueChange={([val]) => setWeeklyScores(p => ({ ...p, [key]: val }))}
+                    min={1}
+                    max={10}
+                    step={1}
+                    className="w-full"
+                  />
+                  <Input
+                    placeholder={`What went well in ${label.toLowerCase()}?`}
+                    value={weeklyNotes[key as keyof typeof weeklyNotes]}
+                    onChange={(e) => setWeeklyNotes(p => ({ ...p, [key]: e.target.value }))}
+                    className="text-sm"
+                  />
+                </div>
+              ))}
+              
+              <Button className="w-full" onClick={handleWeeklyCheckin}>
+                <Check className="h-4 w-4 mr-2" />
+                Save Week {currentWeekInfo.weekNum} Check-in
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* WEEKLY EXPORT DIALOG */}
+        <Dialog open={showWeeklyExport} onOpenChange={setShowWeeklyExport}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Export Week {selectedWeekly?.week_number}</DialogTitle>
+              <DialogDescription>
+                AI-generated post ready for social media
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {isGenerating ? (
+                <div className="py-12 text-center">
+                  <Sparkles className="h-8 w-8 mx-auto animate-spin text-primary mb-4" />
+                  <p className="text-muted-foreground">Analyzing patterns and generating export...</p>
+                </div>
+              ) : (
+                <>
+                  <Textarea 
+                    value={weeklyExportText}
+                    onChange={(e) => setWeeklyExportText(e.target.value)}
+                    rows={12}
+                    className="font-mono text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={handleCopyWeeklyExport} variant="outline" className="flex-1">
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      onClick={() => selectedWeekly && handleGenerateWeeklyPattern(selectedWeekly)} 
+                      variant="outline"
+                      disabled={isGenerating}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Regenerate
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           </DialogContent>

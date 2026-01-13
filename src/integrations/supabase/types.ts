@@ -813,6 +813,81 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_integrations: {
+        Row: {
+          body_notes: string | null
+          body_score: number | null
+          business_notes: string | null
+          business_score: number | null
+          content_notes: string | null
+          content_score: number | null
+          created_at: string
+          cross_domain_insights: Json | null
+          export_generated: boolean | null
+          id: string
+          mind_notes: string | null
+          mind_score: number | null
+          pattern_detected: string | null
+          play_notes: string | null
+          play_score: number | null
+          relationship_notes: string | null
+          relationship_score: number | null
+          updated_at: string
+          user_id: string
+          week_number: number
+          week_start: string
+          year: number
+        }
+        Insert: {
+          body_notes?: string | null
+          body_score?: number | null
+          business_notes?: string | null
+          business_score?: number | null
+          content_notes?: string | null
+          content_score?: number | null
+          created_at?: string
+          cross_domain_insights?: Json | null
+          export_generated?: boolean | null
+          id?: string
+          mind_notes?: string | null
+          mind_score?: number | null
+          pattern_detected?: string | null
+          play_notes?: string | null
+          play_score?: number | null
+          relationship_notes?: string | null
+          relationship_score?: number | null
+          updated_at?: string
+          user_id: string
+          week_number: number
+          week_start: string
+          year: number
+        }
+        Update: {
+          body_notes?: string | null
+          body_score?: number | null
+          business_notes?: string | null
+          business_score?: number | null
+          content_notes?: string | null
+          content_score?: number | null
+          created_at?: string
+          cross_domain_insights?: Json | null
+          export_generated?: boolean | null
+          id?: string
+          mind_notes?: string | null
+          mind_score?: number | null
+          pattern_detected?: string | null
+          play_notes?: string | null
+          play_score?: number | null
+          relationship_notes?: string | null
+          relationship_score?: number | null
+          updated_at?: string
+          user_id?: string
+          week_number?: number
+          week_start?: string
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
