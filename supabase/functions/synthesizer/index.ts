@@ -264,6 +264,147 @@ Write a thread-style post (can be multiple tweets) summarizing what I tested, wh
       });
     }
 
+    // PATTERN ANALYZER MODE - finds cross-domain connections
+    if (mode === "pattern_analyzer" && body.content) {
+      const { insights, observations, experiments } = body.content;
+      
+      const systemPrompt = `You are a polymath pattern finder. Your job is to find NON-OBVIOUS connections between different domains like physics, business, psychology, relationships, and life.
+
+You're looking for insights that prove the "Integration Thesis" - that knowledge from one domain can transform another.
+
+Examples of great connections:
+- "How thermodynamics improved my pricing strategy" (physics → business)
+- "System thinking from physics → relationship communication"
+- "What entropy taught me about startup chaos"
+- "Newton's laws applied to habit formation"
+- "Network effects in physics and viral growth"
+
+You MUST output valid JSON with this structure:
+{
+  "connections": [
+    {
+      "title": "Short punchy title like the examples above",
+      "insight": "2-3 sentences explaining the connection",
+      "domains": ["physics", "business"],
+      "sources": ["Source insight or observation titles that led to this"]
+    }
+  ]
+}
+
+Find 3-5 connections. Be creative but grounded in the actual content provided.`;
+
+      const contentSummary = `
+INSIGHTS (saved learnings):
+${insights.map((i: any) => `- ${i.title}: ${i.content?.slice(0, 200)}`).join('\n')}
+
+OBSERVATIONS (captured moments):
+${observations.map((o: any) => `- [${o.type}] ${o.content?.slice(0, 200)}`).join('\n')}
+
+EXPERIMENTS (things being tested):
+${experiments.map((e: any) => `- ${e.title}: ${e.hypothesis || 'No hypothesis'}`).join('\n')}
+`;
+
+      const userPrompt = `Analyze this content and find cross-domain connections:
+
+${contentSummary}
+
+Return ONLY valid JSON with 3-5 connections.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to analyze patterns");
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '{}';
+      
+      // Parse the JSON response
+      let parsed;
+      try {
+        // Try to extract JSON from the response
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { connections: [] };
+      } catch (e) {
+        console.error("Failed to parse connections JSON:", e);
+        parsed = { connections: [] };
+      }
+
+      return new Response(JSON.stringify(parsed), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // POLYMATH POST MODE - generates a post from a connection
+    if (mode === "polymath_post" && body.connection) {
+      const conn = body.connection;
+      
+      const systemPrompt = `You are a content creator with a unique polymath perspective. You make surprising connections between domains that specialists can't see.
+
+Your style:
+- Lead with the unexpected connection
+- Use concrete examples and data when possible
+- Write like you're explaining to a smart friend
+- End with a takeaway or insight
+- No fluff, no filler words
+- Never use: "game-changer", "unlock", "leverage", "mindset shift"
+- Format for Twitter (280 char chunks or a short thread)
+
+The goal: Create content that specialists in ONE domain couldn't create because they don't see across domains.`;
+
+      const userPrompt = `Create a social media post from this cross-domain connection:
+
+Title: ${conn.title}
+Domains: ${conn.domains?.join(' → ')}
+Insight: ${conn.insight}
+Sources: ${conn.sources?.join(', ') || 'Various observations'}
+
+Write a compelling post that shows how ${conn.domains?.[0] || 'one domain'} insights apply to ${conn.domains?.[1] || 'another domain'}. Make it feel like an "aha" moment.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to generate polymath post");
+      }
+
+      const data = await response.json();
+      const post = data.choices?.[0]?.message?.content || '';
+
+      return new Response(JSON.stringify({ post }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     // ORIGINAL DIRECTION CHECK MODE (default)
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatWeightedContextForAgent(userContext, "decision-mirror");
