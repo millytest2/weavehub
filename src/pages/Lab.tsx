@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { Slider } from "@/components/ui/slider";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   FlaskConical, 
   Plus, 
@@ -38,7 +39,11 @@ import {
   Gamepad2,
   FileText,
   Briefcase,
-  Download
+  Download,
+  Network,
+  Atom,
+  ArrowRight,
+  RefreshCw
 } from "lucide-react";
 
 interface Experiment {
@@ -164,6 +169,14 @@ const Lab = () => {
     business: "", body: "", content: "", relationship: "", mind: "", play: ""
   });
   const [weeklyExportText, setWeeklyExportText] = useState("");
+  
+  // Pattern Analyzer state
+  const [insights, setInsights] = useState<any[]>([]);
+  const [patternConnections, setPatternConnections] = useState<any[]>([]);
+  const [selectedConnection, setSelectedConnection] = useState<any | null>(null);
+  const [connectionPost, setConnectionPost] = useState("");
+  const [showConnectionPost, setShowConnectionPost] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -187,7 +200,7 @@ const Lab = () => {
     if (!user) return;
     
     try {
-      const [expResult, logsResult, obsResult, weeklyResult] = await Promise.all([
+      const [expResult, logsResult, obsResult, weeklyResult, insightsResult] = await Promise.all([
         supabase
           .from("experiments")
           .select("*")
@@ -207,13 +220,20 @@ const Lab = () => {
           .from("weekly_integrations")
           .select("*")
           .eq("user_id", user.id)
-          .order("week_start", { ascending: false })
+          .order("week_start", { ascending: false }),
+        supabase
+          .from("insights")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50)
       ]);
 
       if (expResult.data) setExperiments(expResult.data as any);
       if (logsResult.data) setExperimentLogs(logsResult.data as any);
       if (obsResult.data) setObservations(obsResult.data as any);
       if (weeklyResult.data) setWeeklyIntegrations(weeklyResult.data as any);
+      if (insightsResult.data) setInsights(insightsResult.data as any);
     } catch (error) {
       console.error("Error fetching lab data:", error);
     } finally {
@@ -454,6 +474,82 @@ const Lab = () => {
     toast.success("Copied to clipboard!");
   };
 
+  // Pattern Analyzer functions
+  const handleAnalyzePatterns = async () => {
+    if (!user) return;
+    
+    setIsAnalyzing(true);
+    try {
+      // Gather all content for analysis
+      const allContent = {
+        insights: insights.slice(0, 30).map(i => ({
+          title: i.title,
+          content: i.content,
+          source: i.source
+        })),
+        observations: observations.slice(0, 20).map(o => ({
+          type: o.observation_type,
+          content: o.content,
+          source: o.source,
+          your_data: o.your_data
+        })),
+        experiments: experiments.slice(0, 10).map(e => ({
+          title: e.title,
+          hypothesis: e.hypothesis,
+          type: e.experiment_type
+        }))
+      };
+
+      const { data, error } = await supabase.functions.invoke("synthesizer", {
+        body: {
+          mode: "pattern_analyzer",
+          content: allContent
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data.connections) {
+        setPatternConnections(data.connections);
+        toast.success(`Found ${data.connections.length} cross-domain connections!`);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to analyze patterns");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleGenerateConnectionPost = async (connection: any) => {
+    setSelectedConnection(connection);
+    setIsGenerating(true);
+    setShowConnectionPost(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("synthesizer", {
+        body: {
+          mode: "polymath_post",
+          connection
+        }
+      });
+
+      if (error) throw error;
+      
+      setConnectionPost(data.post || "Could not generate post");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate post");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCopyConnectionPost = () => {
+    navigator.clipboard.writeText(connectionPost);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success("Copied to clipboard!");
+  };
+
   if (authLoading || adminLoading) {
     return (
       <MainLayout>
@@ -483,18 +579,26 @@ const Lab = () => {
         </div>
 
         <Tabs defaultValue="experiments" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="experiments" className="gap-2">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="experiments" className="gap-2 text-xs sm:text-sm">
               <FlaskConical className="h-4 w-4" />
-              Experiments
+              <span className="hidden sm:inline">Experiments</span>
+              <span className="sm:hidden">Exp</span>
             </TabsTrigger>
-            <TabsTrigger value="observations" className="gap-2">
+            <TabsTrigger value="observations" className="gap-2 text-xs sm:text-sm">
               <MessageSquare className="h-4 w-4" />
-              Observations
+              <span className="hidden sm:inline">Observations</span>
+              <span className="sm:hidden">Obs</span>
             </TabsTrigger>
-            <TabsTrigger value="integration" className="gap-2">
+            <TabsTrigger value="integration" className="gap-2 text-xs sm:text-sm">
               <TrendingUp className="h-4 w-4" />
-              Weekly
+              <span className="hidden sm:inline">Weekly</span>
+              <span className="sm:hidden">Week</span>
+            </TabsTrigger>
+            <TabsTrigger value="patterns" className="gap-2 text-xs sm:text-sm">
+              <Network className="h-4 w-4" />
+              <span className="hidden sm:inline">Patterns</span>
+              <span className="sm:hidden">Pat</span>
             </TabsTrigger>
           </TabsList>
 
@@ -816,6 +920,147 @@ const Lab = () => {
                     <Plus className="h-4 w-4 mr-2" />
                     Start Your First Weekly Check-in
                   </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* CROSS-DOMAIN PATTERN ANALYZER TAB */}
+          <TabsContent value="patterns" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Find non-obvious connections across domains</p>
+                <p className="text-xs text-muted-foreground/70">Physics → Business → Life synthesis</p>
+              </div>
+              <Button 
+                size="sm" 
+                onClick={handleAnalyzePatterns}
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Network className="h-4 w-4 mr-2" />
+                    Analyze Patterns
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Info card about the analyzer */}
+            <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+              <CardContent className="py-4">
+                <div className="flex items-start gap-3">
+                  <Atom className="h-5 w-5 text-purple-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium">Cross-Domain Pattern Analyzer</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      This AI scans your insights, observations, and experiments to find unexpected connections. 
+                      It generates polymath synthesis posts that specialists can't replicate.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stats about content available */}
+            <div className="grid grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="py-4 text-center">
+                  <p className="text-2xl font-bold">{insights.length}</p>
+                  <p className="text-xs text-muted-foreground">Insights</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="py-4 text-center">
+                  <p className="text-2xl font-bold">{observations.length}</p>
+                  <p className="text-xs text-muted-foreground">Observations</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="py-4 text-center">
+                  <p className="text-2xl font-bold">{experiments.length}</p>
+                  <p className="text-xs text-muted-foreground">Experiments</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Pattern connections */}
+            {patternConnections.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  Cross-Domain Connections ({patternConnections.length})
+                </h3>
+                <div className="grid gap-4">
+                  {patternConnections.map((connection, i) => (
+                    <Card 
+                      key={i} 
+                      className="cursor-pointer hover:border-purple-500/50 transition-colors"
+                      onClick={() => handleGenerateConnectionPost(connection)}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2 mb-2">
+                          {connection.domains?.map((domain: string, j: number) => (
+                            <Badge 
+                              key={j} 
+                              variant="outline" 
+                              className={`text-xs ${
+                                domain === 'physics' ? 'border-blue-500 text-blue-500' :
+                                domain === 'business' ? 'border-green-500 text-green-500' :
+                                domain === 'life' ? 'border-pink-500 text-pink-500' :
+                                domain === 'mind' ? 'border-orange-500 text-orange-500' :
+                                'border-purple-500 text-purple-500'
+                              }`}
+                            >
+                              {domain}
+                            </Badge>
+                          ))}
+                        </div>
+                        <CardTitle className="text-base">{connection.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">{connection.insight}</p>
+                        {connection.sources && connection.sources.length > 0 && (
+                          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>Sources:</span>
+                            {connection.sources.slice(0, 3).map((src: string, j: number) => (
+                              <Badge key={j} variant="secondary" className="text-xs">
+                                {src.length > 20 ? src.slice(0, 20) + '...' : src}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-3 flex items-center text-xs text-purple-500">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          Click to generate post
+                          <ArrowRight className="h-3 w-3 ml-1" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Example templates */}
+            {patternConnections.length === 0 && !isAnalyzing && (
+              <Card className="border-dashed">
+                <CardContent className="py-8 text-center">
+                  <Network className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground mb-2">No patterns analyzed yet</p>
+                  <p className="text-sm text-muted-foreground/70 mb-4">
+                    Click "Analyze Patterns" to find connections like:
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <p className="italic text-muted-foreground">"How thermodynamics improved my pricing strategy"</p>
+                    <p className="italic text-muted-foreground">"System thinking from physics → relationship communication"</p>
+                    <p className="italic text-muted-foreground">"What entropy taught me about startup chaos"</p>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -1191,6 +1436,86 @@ const Lab = () => {
                     </Button>
                     <Button 
                       onClick={() => selectedWeekly && handleGenerateWeeklyPattern(selectedWeekly)} 
+                      variant="outline"
+                      disabled={isGenerating}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Regenerate
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* CONNECTION POST DIALOG */}
+        <Dialog open={showConnectionPost} onOpenChange={setShowConnectionPost}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Network className="h-5 w-5 text-purple-500" />
+                Polymath Synthesis Post
+              </DialogTitle>
+              <DialogDescription>
+                Cross-domain connection ready for social media
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Connection info */}
+              {selectedConnection && (
+                <Card className="bg-muted/50">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      {selectedConnection.domains?.map((domain: string, i: number) => (
+                        <Badge 
+                          key={i} 
+                          variant="outline" 
+                          className={`text-xs ${
+                            domain === 'physics' ? 'border-blue-500 text-blue-500' :
+                            domain === 'business' ? 'border-green-500 text-green-500' :
+                            'border-purple-500 text-purple-500'
+                          }`}
+                        >
+                          {domain}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="font-medium">{selectedConnection.title}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{selectedConnection.insight}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isGenerating ? (
+                <div className="py-12 text-center">
+                  <Sparkles className="h-8 w-8 mx-auto animate-spin text-purple-500 mb-4" />
+                  <p className="text-muted-foreground">Crafting your polymath synthesis...</p>
+                </div>
+              ) : (
+                <>
+                  <Textarea 
+                    value={connectionPost}
+                    onChange={(e) => setConnectionPost(e.target.value)}
+                    rows={10}
+                    className="font-mono text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={handleCopyConnectionPost} variant="outline" className="flex-1">
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      onClick={() => selectedConnection && handleGenerateConnectionPost(selectedConnection)} 
                       variant="outline"
                       disabled={isGenerating}
                     >
