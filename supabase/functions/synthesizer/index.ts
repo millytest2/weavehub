@@ -128,6 +128,94 @@ Write a compelling post that I can use on Twitter/LinkedIn. Make it authentic an
       });
     }
 
+    // WEEKLY INTEGRATION MODE
+    if (mode === "weekly_integration" && body.weekly) {
+      const w = body.weekly;
+      const scores = {
+        business: w.business || 5,
+        body: w.body || 5,
+        content: w.content || 5,
+        relationship: w.relationship || 5,
+        mind: w.mind || 5,
+        play: w.play || 5,
+      };
+      const avgScore = Object.values(scores).reduce((a, b) => a + b, 0) / 6;
+      
+      // Find lowest and highest domains
+      const sortedDomains = Object.entries(scores).sort((a, b) => a[1] - b[1]);
+      const lowestDomain = sortedDomains[0];
+      const highestDomain = sortedDomains[sortedDomains.length - 1];
+      
+      const systemPrompt = `You are helping create weekly integration posts for social media. The user tracks 6 life domains and posts their weekly scores with pattern insights.
+
+Style:
+- Data-first, show the actual numbers
+- Honest about what's working and what needs attention
+- Look for cross-domain patterns (e.g., skipping workouts affecting energy, which affects productivity)
+- End with what they're testing next week
+- No fluff, keep it real
+- Format for Twitter (can be a thread if needed)
+
+The user's brand is about the Integration Thesis - showing that all life domains are connected and affect each other.`;
+
+      const userPrompt = `Create a weekly integration post from this data:
+
+Week ${w.week_number}
+
+SCORES:
+Business: ${scores.business}/10 ${w.business_notes ? `(${w.business_notes})` : ''}
+Body: ${scores.body}/10 ${w.body_notes ? `(${w.body_notes})` : ''}
+Content: ${scores.content}/10 ${w.content_notes ? `(${w.content_notes})` : ''}
+Relationship: ${scores.relationship}/10 ${w.relationship_notes ? `(${w.relationship_notes})` : ''}
+Mind: ${scores.mind}/10 ${w.mind_notes ? `(${w.mind_notes})` : ''}
+Play: ${scores.play}/10 ${w.play_notes ? `(${w.play_notes})` : ''}
+
+Average: ${avgScore.toFixed(1)}/10
+Strongest domain: ${highestDomain[0]} (${highestDomain[1]})
+Needs attention: ${lowestDomain[0]} (${lowestDomain[1]})
+
+Create:
+1. A Twitter-ready post with all scores
+2. A pattern insight connecting 2+ domains
+3. What to test next week based on the lowest score
+
+Also extract the main pattern detected as a separate short phrase.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 1500,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to generate weekly export");
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      
+      // Try to extract a pattern (first sentence or line mentioning pattern)
+      const patternMatch = content.match(/pattern[:\s]+([^\n.]+)/i) || 
+                          content.match(/connection[:\s]+([^\n.]+)/i) ||
+                          content.match(/insight[:\s]+([^\n.]+)/i);
+      const pattern = patternMatch ? patternMatch[1].trim() : `${lowestDomain[0]} at ${lowestDomain[1]} affecting overall balance`;
+
+      return new Response(JSON.stringify({ post: content, pattern }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     // EXPERIMENT SYNTHESIS MODE
     if (mode === "experiment_synthesis" && experiment) {
       const systemPrompt = `You are helping synthesize experiment results into shareable content.
