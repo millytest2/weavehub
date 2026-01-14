@@ -3,13 +3,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Brain, Lightbulb } from "lucide-react";
+import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Brain, Lightbulb, Moon, Sun } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { TopicClusterVisualization } from "./dashboard/TopicClusterVisualization";
 import { ProgressGameView } from "./dashboard/ProgressGameView";
+import { useTheme } from "next-themes";
 
 interface ActionHistoryItem {
   id: string;
@@ -50,6 +51,7 @@ interface ProfileSheetProps {
 
 export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [weeklyActions, setWeeklyActions] = useState<ActionHistoryItem[]>([]);
   const [activeExperiments, setActiveExperiments] = useState<ActiveExperiment[]>([]);
   const [insightClusters, setInsightClusters] = useState<InsightCluster[]>([]);
@@ -519,7 +521,20 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           </TabsContent>
         </Tabs>
 
-        <div className="p-4 border-t border-border/20 mt-auto">
+        <div className="p-4 border-t border-border/20 mt-auto space-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground h-9"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+            <span className="text-sm">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
