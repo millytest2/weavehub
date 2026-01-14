@@ -221,10 +221,10 @@ const Lab = () => {
           .order("week_start", { ascending: false }),
         supabase
           .from("insights")
-          .select("*")
+          .select("*, topics(id, name)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(50)
+          .limit(200)
       ]);
 
       if (expResult.data) setExperiments(expResult.data as any);
