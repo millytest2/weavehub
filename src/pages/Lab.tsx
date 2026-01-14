@@ -186,18 +186,13 @@ const Lab = () => {
       navigate("/auth");
       return;
     }
-
-    if (!adminLoading && !isAdmin) {
-      navigate("/");
-      return;
-    }
-  }, [user, authLoading, isAdmin, adminLoading, navigate]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (user) {
       fetchData();
     }
-  }, [isAdmin]);
+  }, [user]);
 
   const fetchData = async () => {
     if (!user) return;
