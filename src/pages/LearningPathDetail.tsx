@@ -60,6 +60,21 @@ interface DailyProgress {
   completed_at: string | null;
 }
 
+interface Section {
+  section_number: number;
+  title: string;
+  days: number[];
+  objective: string;
+  key_understanding: string;
+  sources_used: string[];
+  section_deliverable: string;
+}
+
+interface PathStructure {
+  sections?: Section[];
+  daily_structure?: unknown[];
+}
+
 interface LearningPath {
   id: string;
   title: string;
@@ -73,6 +88,7 @@ interface LearningPath {
   started_at: string | null;
   completed_at: string | null;
   sources_used: Json | null;
+  structure: PathStructure | null;
 }
 
 const LearningPathDetail = () => {
@@ -120,7 +136,13 @@ const LearningPathDetail = () => {
       return;
     }
 
-    setPath(pathResult.data);
+    // Cast structure from Json to our PathStructure type
+    const pathData = {
+      ...pathResult.data,
+      structure: pathResult.data.structure as PathStructure | null,
+    };
+
+    setPath(pathData);
     setDailyProgress(progressResult.data || []);
     setLoading(false);
   };
@@ -515,8 +537,38 @@ const LearningPathDetail = () => {
               </CardContent>
             </Card>
 
-            {/* Topics Preview */}
-            {path.sub_topics && Array.isArray(path.sub_topics) && path.sub_topics.length > 0 && (
+            {/* Sections Preview (new structure) OR Topics Preview (legacy) */}
+            {path.structure?.sections && path.structure.sections.length > 0 ? (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Your Sprint Sections</CardTitle>
+                  <CardDescription>Clear milestones with tangible deliverables</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {path.structure.sections.map((section, i) => (
+                    <div key={i} className="p-4 rounded-lg bg-muted/50 border border-border/50">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                          {section.section_number}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{section.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Days {section.days[0]}-{section.days[section.days.length - 1]} • {section.objective}
+                          </p>
+                          {section.section_deliverable && (
+                            <div className="mt-2 flex items-center gap-1.5 text-xs text-primary">
+                              <Target className="w-3 h-3" />
+                              {section.section_deliverable}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : path.sub_topics && Array.isArray(path.sub_topics) && path.sub_topics.length > 0 ? (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Topics You'll Master</CardTitle>
@@ -531,7 +583,7 @@ const LearningPathDetail = () => {
                   </div>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
             {/* Start Button */}
             <Button 
