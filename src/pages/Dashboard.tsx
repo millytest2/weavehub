@@ -133,22 +133,29 @@ const Dashboard = () => {
   }, [user, tasksForToday]);
 
   const handleGenerateTask = async () => {
-    if (!user) return;
-    
-    const today = getLocalToday();
-    const { data: existingTasks } = await supabase
-      .from("daily_tasks")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("task_date", today);
-    
-    if (existingTasks && existingTasks.length >= 4) {
-      toast.info("All invitations done for today");
-      return;
-    }
+    if (!user || isGenerating) return;
     
     setIsGenerating(true);
+    const today = getLocalToday();
+    
     try {
+      // Re-fetch to get accurate count and avoid race conditions
+      const { data: existingTasks } = await supabase
+        .from("daily_tasks")
+        .select("id, task_sequence")
+        .eq("user_id", user.id)
+        .eq("task_date", today)
+        .order("task_sequence", { ascending: false });
+      
+      if (existingTasks && existingTasks.length >= 4) {
+        toast.info("All invitations done for today");
+        return;
+      }
+      
+      // Calculate next sequence from max existing + 1
+      const maxSeq = existingTasks?.[0]?.task_sequence || 0;
+      const nextSequence = maxSeq + 1;
+      
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke("navigator", {
         body: { timezone }
@@ -156,8 +163,6 @@ const Dashboard = () => {
       if (error) throw error;
       
       if (data) {
-        const nextSequence = (existingTasks?.length || 0) + 1;
-        
         const { error: insertError } = await supabase
           .from("daily_tasks")
           .insert({
@@ -172,7 +177,14 @@ const Dashboard = () => {
             completed: false,
           });
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          // Handle duplicate key gracefully - just refresh
+          if (insertError.code === '23505') {
+            console.log("Task already exists, refreshing...");
+            return;
+          }
+          throw insertError;
+        }
 
         const newTask = {
           task_sequence: nextSequence,
@@ -184,7 +196,7 @@ const Dashboard = () => {
           completed: false,
         };
         
-        setTasksForToday([...tasksForToday, newTask]);
+        setTasksForToday(prev => [...prev, newTask]);
         setTodayTask(newTask as any);
         setCurrentSequence(nextSequence);
       }
