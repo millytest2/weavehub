@@ -137,14 +137,6 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
               <span className="text-[10px] font-medium">{item.name}</span>
             </NavLink>
           ))}
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger asChild>
-              <button className="flex flex-col items-center gap-1 py-2 px-4 text-muted-foreground rounded-xl">
-                <Menu className="h-5 w-5" />
-                <span className="text-[10px] font-medium">More</span>
-              </button>
-            </SheetTrigger>
-          </Sheet>
         </nav>
       </div>
 
