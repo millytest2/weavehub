@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
+import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -297,6 +298,7 @@ const Dashboard = () => {
     <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-8 animate-fade-in overflow-x-hidden w-full">
       {user && (
         <>
+          <FirstTimeTooltip userId={user.id} isFirstTime={isFirstTime} />
           <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
           <EveningLetGo onComplete={() => setEveningComplete(true)} />
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
