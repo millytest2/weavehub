@@ -171,18 +171,17 @@ const Insights = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Insights</h1>
+          <h1 className="text-3xl font-bold text-foreground">Insights</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Capture thoughts, notes, ChatGPT snippets
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} size="default" className="h-10 sm:h-11 px-4 sm:px-6">
+        <Button onClick={() => setIsDialogOpen(true)} size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          <span className="hidden sm:inline">Add Insight</span>
-          <span className="sm:hidden">Add</span>
+          Add Insight
         </Button>
       </div>
 
@@ -192,21 +191,21 @@ const Insights = () => {
         </div>
       ) : (
         <>
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {insights.map((insight) => (
               <Card 
                 key={insight.id} 
-                className="rounded-xl sm:rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer touch-target"
+                className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer"
                 onClick={() => setSelectedInsight(insight)}
               >
-                <CardContent className="p-4 sm:pt-5 sm:pb-5">
-                  <div className="flex flex-col gap-2 sm:gap-3">
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                         <Lightbulb className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2">{insight.title}</h3>
+                        <h3 className="font-medium text-base mb-2">{insight.title}</h3>
                       </div>
                       <Button
                         variant="ghost"
@@ -215,12 +214,12 @@ const Insights = () => {
                           e.stopPropagation();
                           handleDelete(insight.id);
                         }}
-                        className="h-8 w-8 p-0 shrink-0 touch-target"
+                        className="h-8 w-8 p-0 shrink-0"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-4 sm:line-clamp-6 pl-10 sm:pl-11">{insight.content}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-6 pl-11">{insight.content}</p>
                   </div>
                 </CardContent>
               </Card>

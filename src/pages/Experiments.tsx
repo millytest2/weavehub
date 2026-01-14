@@ -208,7 +208,7 @@ const Experiments = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 relative">
+    <div className="space-y-6 max-w-6xl mx-auto relative">
       {/* Generation Overlay */}
       {generating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
@@ -225,19 +225,19 @@ const Experiments = () => {
         </div>
       )}
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Experiments</h1>
+          <h1 className="text-3xl font-bold text-foreground">Experiments</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Test ideas from your saved content in real life
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleGenerateExperiment} disabled={generating} size="default" variant="outline" className="h-10 sm:h-11 px-4">
+          <Button onClick={handleGenerateExperiment} disabled={generating} size="sm" variant="outline">
             <Sparkles className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Generate</span>
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} size="default" className="h-10 sm:h-11 px-4">
+          <Button onClick={() => setIsDialogOpen(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Add</span>
           </Button>
@@ -256,19 +256,19 @@ const Experiments = () => {
 
       {/* Active Experiment - Prominent */}
       {experiments.filter((e) => e.status === "in_progress").length > 0 && (
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {experiments
             .filter((e) => e.status === "in_progress")
             .map((exp) => (
               <Card
                 key={exp.id}
-                className="rounded-xl sm:rounded-[10px] border-primary/30 bg-primary/5 cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 touch-target"
+                className="rounded-[10px] border-primary/30 bg-primary/5 cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
                 onClick={() => handleViewDetails(exp)}
               >
-                <CardContent className="p-4 sm:pt-5 sm:pb-5">
-                  <div className="flex flex-col gap-2 sm:gap-3">
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20">
                         <FlaskConical className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -277,7 +277,7 @@ const Experiments = () => {
                             Active
                           </Badge>
                         </div>
-                        <h3 className="font-medium text-sm sm:text-base line-clamp-2">{exp.title}</h3>
+                        <h3 className="font-medium text-base">{exp.title}</h3>
                       </div>
                       <Button
                         variant="ghost"
@@ -286,14 +286,14 @@ const Experiments = () => {
                           e.stopPropagation();
                           handleDelete(exp.id);
                         }}
-                        className="h-8 w-8 p-0 shrink-0 touch-target"
+                        className="h-8 w-8 p-0 shrink-0"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-3 pl-10 sm:pl-11">{exp.description}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 pl-11">{exp.description}</p>
                     {exp.duration && (
-                      <p className="text-xs text-muted-foreground pl-10 sm:pl-11">{exp.duration}</p>
+                      <p className="text-xs text-muted-foreground pl-11">{exp.duration}</p>
                     )}
                   </div>
                 </CardContent>
@@ -306,23 +306,23 @@ const Experiments = () => {
       {experiments.filter((e) => e.status !== "in_progress").length > 0 && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">Past Experiments</p>
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {experiments
               .filter((e) => e.status !== "in_progress")
               .map((exp) => (
                 <Card
                   key={exp.id}
-                  className="rounded-xl sm:rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer touch-target"
+                  className="rounded-[10px] border-border/30 hover:shadow-lg hover:border-primary/50 transition-all duration-200 cursor-pointer"
                   onClick={() => handleViewDetails(exp)}
                 >
-                  <CardContent className="p-4 sm:pt-5 sm:pb-5">
-                    <div className="flex flex-col gap-2 sm:gap-3">
-                      <div className="flex items-start gap-2 sm:gap-3">
-                        <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <CardContent className="pt-5 pb-5">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
                           <FlaskConical className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm sm:text-base mb-1 line-clamp-2">{exp.title}</h3>
+                          <h3 className="font-medium text-base mb-1">{exp.title}</h3>
                           <Badge variant="outline" className={`${getStatusColor(exp.status)} text-xs`}>
                             {exp.status}
                           </Badge>
@@ -334,13 +334,13 @@ const Experiments = () => {
                             e.stopPropagation();
                             handleDelete(exp.id);
                           }}
-                          className="h-8 w-8 p-0 shrink-0 touch-target"
+                          className="h-8 w-8 p-0 shrink-0"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                       {exp.description && (
-                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2 pl-10 sm:pl-11">{exp.description}</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 pl-11">{exp.description}</p>
                       )}
                     </div>
                   </CardContent>

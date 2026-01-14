@@ -169,26 +169,14 @@
     @apply bg-background/80 backdrop-blur-xl;
   }
 
-  /* Invitation card - responsive across all devices */
+  /* Invitation card - consistent across all devices */
   .invitation-card {
-    @apply relative overflow-hidden rounded-xl sm:rounded-2xl border border-border/50 bg-card;
-    @apply p-4 sm:p-6 lg:p-8 shadow-soft;
+    @apply relative overflow-hidden rounded-2xl border border-border/50 bg-card p-6 shadow-soft;
     @apply transition-all duration-300 ease-out;
   }
 
   .invitation-card:hover {
     @apply border-border shadow-elevated;
-  }
-
-  /* Responsive card grid for content pages */
-  .content-grid {
-    @apply grid gap-3 sm:gap-4 lg:gap-6;
-    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
-  }
-
-  /* Touch-friendly minimum sizes */
-  .touch-target {
-    @apply min-h-[44px] min-w-[44px];
   }
 
   /* Progress indicator - stable transitions */
