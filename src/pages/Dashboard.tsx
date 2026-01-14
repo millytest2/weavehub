@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -56,55 +56,54 @@ const Dashboard = () => {
     return taskTimeOfDay !== currentTimeOfDay && hoursSinceCreation > 4 && !task.completed;
   };
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
 
-    const fetchData = async () => {
-      const today = getLocalToday();
-      
-      const { data: tasksRes } = await supabase
-        .from("daily_tasks")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("task_date", today)
-        .order("task_sequence", { ascending: true });
+    const today = getLocalToday();
 
-      if (tasksRes && tasksRes.length > 0) {
-        const incomplete = tasksRes.find(t => !t.completed);
-        
-        if (incomplete && isTaskStale(incomplete)) {
-          await supabase
-            .from("daily_tasks")
-            .delete()
-            .eq("id", incomplete.id);
-          
-          const remainingTasks = tasksRes.filter(t => t.id !== incomplete.id);
-          setTasksForToday(remainingTasks);
-          setTodayTask(null);
-          setCurrentSequence(remainingTasks.length + 1);
-          return;
-        }
-        
-        setTasksForToday(tasksRes);
-        setCurrentSequence(incomplete?.task_sequence || tasksRes.length);
-        setTodayTask(incomplete || tasksRes[tasksRes.length - 1]);
-      } else {
-        setTasksForToday([]);
+    const { data: tasksRes } = await supabase
+      .from("daily_tasks")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("task_date", today)
+      .order("task_sequence", { ascending: true });
+
+    if (tasksRes && tasksRes.length > 0) {
+      const incomplete = tasksRes.find((t) => !t.completed);
+
+      if (incomplete && isTaskStale(incomplete)) {
+        await supabase.from("daily_tasks").delete().eq("id", incomplete.id);
+
+        const remainingTasks = tasksRes.filter((t) => t.id !== incomplete.id);
+        setTasksForToday(remainingTasks);
         setTodayTask(null);
-        setCurrentSequence(1);
+        setCurrentSequence(remainingTasks.length + 1);
+        return;
       }
-      
-      const { data: expRes } = await supabase
-        .from("experiments")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "in_progress")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      setActiveExperiment(expRes);
-    };
+
+      setTasksForToday(tasksRes);
+      setCurrentSequence(incomplete?.task_sequence || tasksRes.length);
+      setTodayTask(incomplete || tasksRes[tasksRes.length - 1]);
+    } else {
+      setTasksForToday([]);
+      setTodayTask(null);
+      setCurrentSequence(1);
+    }
+
+    const { data: expRes } = await supabase
+      .from("experiments")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "in_progress")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    setActiveExperiment(expRes);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
 
     fetchData();
 
@@ -130,7 +129,7 @@ const Dashboard = () => {
       clearInterval(midnightCheck);
       supabase.removeChannel(taskChannel);
     };
-  }, [user, tasksForToday]);
+  }, [user, fetchData, tasksForToday]);
 
   const handleGenerateTask = async () => {
     if (!user || isGenerating) return;
@@ -178,27 +177,15 @@ const Dashboard = () => {
           });
 
         if (insertError) {
-          // Handle duplicate key gracefully - just refresh
-          if (insertError.code === '23505') {
-            console.log("Task already exists, refreshing...");
+          // Duplicate insert (double click / multiple tabs) - just refresh state
+          if (insertError.code === "23505") {
+            await fetchData();
             return;
           }
           throw insertError;
         }
 
-        const newTask = {
-          task_sequence: nextSequence,
-          priority_for_today: data.priority_for_today,
-          one_thing: data.do_this_now,
-          why_matters: data.why_it_matters,
-          description: data.time_required,
-          pillar: data.priority_for_today,
-          completed: false,
-        };
-        
-        setTasksForToday(prev => [...prev, newTask]);
-        setTodayTask(newTask as any);
-        setCurrentSequence(nextSequence);
+        await fetchData();
       }
     } catch (error: any) {
       console.error("Generate error:", error);
@@ -243,7 +230,7 @@ const Dashboard = () => {
         toast.success("Done. Generating next...");
         setTodayTask(null);
         setCurrentSequence(completedNow + 1);
-        setTimeout(() => handleGenerateTask(), 500);
+        await handleGenerateTask();
       } else if (currentSequence === 4) {
         toast.success("Bonus complete.");
         setTodayTask(null);
