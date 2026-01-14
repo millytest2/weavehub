@@ -272,7 +272,7 @@ const Dashboard = () => {
   const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-8 animate-fade-in overflow-x-hidden w-full">
+    <div className="min-h-screen flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in overflow-x-hidden">
       {user && (
         <>
           <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
@@ -282,14 +282,15 @@ const Dashboard = () => {
         </>
       )}
 
-      <div className="flex-1 space-y-6">
-        {/* Today's Invitation Card - Device Agnostic */}
-        <div className="invitation-card">
+      {/* Responsive grid layout for desktop */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Today's Invitation Card - Primary focus, spans full on mobile, left on desktop */}
+        <div className="invitation-card lg:row-span-2">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-muted-foreground">Today's Invitation</span>
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <span className="text-sm sm:text-base font-medium text-muted-foreground">Today's Invitation</span>
             </div>
             <div className="flex items-center gap-2">
               {Array.from({ length: dotsToShow }, (_, i) => i + 1).map((num) => {
@@ -307,86 +308,88 @@ const Dashboard = () => {
 
           {/* Content */}
           {isGenerating ? (
-            <div className="py-12 flex flex-col items-center justify-center">
+            <div className="py-8 sm:py-12 lg:py-16 flex flex-col items-center justify-center">
               <WeaveLoader size="lg" text="Preparing your invitation..." />
             </div>
           ) : showBonusOption ? (
-            <div className="py-10 text-center space-y-5">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
-                <Check className="h-7 w-7 text-success" />
+            <div className="py-8 sm:py-10 lg:py-12 text-center space-y-4 sm:space-y-5">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
+                <Check className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-success" />
               </div>
-              <div className="space-y-1">
-                <h3 className="text-xl font-display font-semibold">Complete</h3>
-                <p className="text-sm text-muted-foreground">Three aligned actions. Well done.</p>
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-display font-semibold">Complete</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">Three aligned actions. Well done.</p>
               </div>
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={handleGenerateTask}
-                className="mt-3 rounded-xl"
+                className="mt-2 sm:mt-3 rounded-xl h-11 sm:h-12 px-6"
               >
                 <Zap className="h-4 w-4 mr-2" />
                 I'm motivated — one more
               </Button>
             </div>
           ) : allDone ? (
-            <div className="py-12 text-center space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
-                <Check className="h-7 w-7 text-success" />
+            <div className="py-8 sm:py-12 lg:py-16 text-center space-y-3 sm:space-y-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
+                <Check className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-success" />
               </div>
-              <div className="space-y-1">
-                <h3 className="text-xl font-display font-semibold">Complete</h3>
-                <p className="text-sm text-muted-foreground">You showed up. That matters.</p>
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-display font-semibold">Complete</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">You showed up. That matters.</p>
               </div>
             </div>
           ) : todayTask ? (
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5 lg:space-y-6">
               {todayTask.pillar && (
-                <span className="inline-block px-3 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
+                <span className="inline-block px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-primary/10 text-primary">
                   {todayTask.pillar}
                 </span>
               )}
-              <div className="space-y-3">
-                <h3 className="text-xl font-display font-semibold leading-snug">
+              <div className="space-y-2 sm:space-y-3">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-display font-semibold leading-snug">
                   {todayTask.one_thing}
                 </h3>
                 {todayTask.why_matters && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
                     {todayTask.why_matters}
                   </p>
                 )}
                 {todayTask.description && (
-                  <p className="text-xs text-muted-foreground/70">{todayTask.description}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground/70">{todayTask.description}</p>
                 )}
               </div>
               <Button 
                 onClick={handleCompleteTask} 
-                className="w-full h-12 rounded-xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
+                className="w-full h-11 sm:h-12 lg:h-14 rounded-xl text-base sm:text-lg font-medium shadow-soft hover:shadow-elevated transition-all"
                 size="lg"
               >
-                Done <Check className="ml-2 h-4 w-4" />
+                Done <Check className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           ) : (
-            <div className="py-10 text-center">
+            <div className="py-8 sm:py-10 lg:py-14 text-center">
               <Button
                 onClick={handleGenerateTask}
                 size="lg"
-                className="px-10 h-12 rounded-xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
+                className="px-8 sm:px-10 h-11 sm:h-12 lg:h-14 rounded-xl text-base sm:text-lg font-medium shadow-soft hover:shadow-elevated transition-all"
               >
                 Start My Day
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           )}
         </div>
 
 
-        {/* Active Experiment Card */}
-        {activeExperiment && (
-          <div className="invitation-card">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-muted-foreground">Active Experiment</span>
+        {/* Right column on desktop - stacked cards */}
+        <div className="flex flex-col gap-4 sm:gap-6">
+          {/* Active Experiment Card */}
+          {activeExperiment && (
+            <div className="invitation-card">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <span className="text-sm sm:text-base font-medium text-muted-foreground">Active Experiment</span>
               {(() => {
                 const createdDate = new Date(activeExperiment.created_at);
                 const now = new Date();
@@ -406,7 +409,7 @@ const Dashboard = () => {
                 const daysLeft = Math.max(0, totalDays - dayNumber + 1);
                 
                 return (
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                  <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
                     Day {dayNumber}/{totalDays}
                   </span>
                 );
@@ -443,46 +446,47 @@ const Dashboard = () => {
               }
               
               return (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground/70 truncate max-w-[60%]">{activeExperiment.title}</p>
-                    <span className="text-xs text-muted-foreground">{timeOfDay}</span>
+                    <p className="text-xs sm:text-sm text-muted-foreground/70 truncate max-w-[60%]">{activeExperiment.title}</p>
+                    <span className="text-xs sm:text-sm text-muted-foreground">{timeOfDay}</span>
                   </div>
-                  <p className="text-base font-medium leading-relaxed">
+                  <p className="text-base sm:text-lg font-medium leading-relaxed">
                     {todayStep}
                   </p>
                   {activeExperiment.identity_shift_target && (
-                    <p className="text-xs text-primary/70 italic">
+                    <p className="text-xs sm:text-sm text-primary/70 italic">
                       → {activeExperiment.identity_shift_target}
                     </p>
                   )}
                 </div>
               );
             })()}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Next Best Rep Button */}
-        <button
-          onClick={handleNextRep}
-          disabled={isGettingRep}
-          className="w-full invitation-card group text-left hover:border-primary/30"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
-              <Zap className="h-5 w-5 text-primary" />
+          {/* Next Best Rep Button */}
+          <button
+            onClick={handleNextRep}
+            disabled={isGettingRep}
+            className="w-full invitation-card group text-left hover:border-primary/30"
+          >
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors flex-shrink-0">
+                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm sm:text-base">
+                  {isGettingRep ? "Finding your next move..." : "Feeling off?"}
+                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  One tap. One aligned action.
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-base">
-                {isGettingRep ? "Finding your next move..." : "Feeling off?"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                One tap. One aligned action.
-              </p>
-            </div>
-            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Next Best Rep Dialog */}

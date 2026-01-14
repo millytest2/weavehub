@@ -60,36 +60,36 @@ export const ProgressGameView = ({
 
   return (
     <Card className="border-0 shadow-sm bg-card/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+      <CardHeader className="pb-2 px-4 sm:px-6">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center justify-between">
           <span>This Week</span>
-          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+          <span className="text-[10px] sm:text-xs font-normal px-2 py-0.5 rounded-full bg-primary/10 text-primary">
             Level {level}
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
         {/* XP Progress Bar */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
             <span>{weeklyXP} XP this week</span>
             <span>{xpInLevel}/100 to next level</span>
           </div>
-          <Progress value={xpInLevel} className="h-2" />
+          <Progress value={xpInLevel} className="h-1.5 sm:h-2" />
         </div>
 
         {/* Pillar Distribution Pie Chart */}
         {pieData.length > 0 && (
-          <div className="flex items-center gap-4">
-            <div className="w-24 h-24">
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+            <div className="w-20 h-20 sm:w-24 sm:h-24">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={25}
-                    outerRadius={40}
+                    innerRadius={20}
+                    outerRadius={35}
                     paddingAngle={2}
                     dataKey="value"
                   >
@@ -102,7 +102,7 @@ export const ProgressGameView = ({
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                          <div className="bg-popover border border-border rounded px-2 py-1 text-xs shadow-sm">
+                          <div className="bg-popover border border-border rounded px-2 py-1 text-[10px] sm:text-xs shadow-sm">
                             {data.name}: {data.value} actions
                           </div>
                         );
@@ -113,11 +113,11 @@ export const ProgressGameView = ({
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <div className="flex-1 grid grid-cols-2 gap-x-3 sm:gap-x-4 gap-y-1 text-[10px] sm:text-xs w-full sm:w-auto">
               {pieData.slice(0, 6).map((item) => (
                 <div key={item.name} className="flex items-center gap-1.5">
                   <div 
-                    className="w-2 h-2 rounded-full" 
+                    className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full flex-shrink-0" 
                     style={{ backgroundColor: item.color }}
                   />
                   <span className="text-muted-foreground truncate">{item.name}</span>
@@ -129,18 +129,18 @@ export const ProgressGameView = ({
         )}
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50">
+        <div className="grid grid-cols-3 gap-2 pt-2 sm:pt-3 border-t border-border/50">
           <div className="text-center">
-            <div className="text-lg font-semibold">{streak}</div>
-            <div className="text-[10px] text-muted-foreground">Day streak</div>
+            <div className="text-base sm:text-lg font-semibold">{streak}</div>
+            <div className="text-[9px] sm:text-[10px] text-muted-foreground">Day streak</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold">{experimentsActive}</div>
-            <div className="text-[10px] text-muted-foreground">Experiments</div>
+            <div className="text-base sm:text-lg font-semibold">{experimentsActive}</div>
+            <div className="text-[9px] sm:text-[10px] text-muted-foreground">Experiments</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold">{insightsThisWeek}</div>
-            <div className="text-[10px] text-muted-foreground">Insights</div>
+            <div className="text-base sm:text-lg font-semibold">{insightsThisWeek}</div>
+            <div className="text-[9px] sm:text-[10px] text-muted-foreground">Insights</div>
           </div>
         </div>
       </CardContent>

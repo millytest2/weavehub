@@ -147,9 +147,9 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
       <QuickCapture />
       <DecisionMirror />
 
-      {/* Main Content */}
+      {/* Main Content - responsive padding and max-width */}
       <main className="flex-1 pt-14 pb-20 md:pb-6 overflow-x-hidden w-full">
-        <div className="mx-auto max-w-7xl p-4 md:p-6 overflow-x-hidden">{children}</div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">{children}</div>
       </main>
     </div>
   );
