@@ -134,9 +134,9 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
   };
 
   const content = (
-    <div className="py-4 px-1">
+    <div className="py-2 sm:py-3">
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
+        <div className="flex items-center justify-center py-6">
           <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       ) : (
@@ -147,7 +147,7 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
+              className="space-y-3"
             >
               {/* Source reference */}
               <div className="flex items-center justify-between">
@@ -163,8 +163,8 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
               </div>
               
               {/* Action */}
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                <p className="text-base sm:text-lg font-medium leading-relaxed">
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="text-sm sm:text-base font-medium leading-relaxed">
                   {currentAction.action_text}
                 </p>
               </div>
@@ -191,21 +191,21 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
               )}
               
               {/* Actions */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-2 pt-1">
                 <Button
                   onClick={handleComplete}
                   disabled={isCompleting}
-                  className="flex-1 h-12 sm:h-11 rounded-xl text-base sm:text-sm"
+                  className="flex-1 h-10 sm:h-9 rounded-lg text-sm"
                 >
-                  <Check className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
+                  <Check className="h-4 w-4 mr-1.5" />
                   Done
                 </Button>
                 <Button
                   onClick={handleSkip}
                   variant="outline"
-                  className="h-12 sm:h-11 rounded-xl px-5 sm:px-4"
+                  className="h-10 sm:h-9 rounded-lg px-3"
                 >
-                  <X className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             </motion.div>
@@ -213,13 +213,13 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-8"
+              className="text-center py-6"
             >
-              <div className="w-12 h-12 mx-auto rounded-xl bg-success/10 flex items-center justify-center mb-3">
-                <Check className="h-6 w-6 text-success" />
+              <div className="w-10 h-10 mx-auto rounded-lg bg-success/10 flex items-center justify-center mb-2">
+                <Check className="h-5 w-5 text-success" />
               </div>
-              <p className="text-base font-medium">All caught up!</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm font-medium">All caught up!</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Save content to queue new actions
               </p>
             </motion.div>
@@ -268,7 +268,7 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-xl">
+      <DialogContent className="max-w-sm p-4 rounded-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
