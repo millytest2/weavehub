@@ -14,7 +14,8 @@ interface RealignOutput {
   gap?: string; // push mode only
   intensity?: string; // push mode only
   todayMatters?: string; // flow mode only
-  valuesInPlay?: string; // flow mode only
+  valuesInPlay?: string[]; // flow mode - array of values
+  alignedAction?: string; // flow mode - the values-aligned action
   oneMove: string;
 }
 
@@ -36,7 +37,8 @@ function getFallback(mode: "push" | "flow"): RealignOutput {
     currentState: "Right here is exactly where you need to be.",
     dreamReality: "Alignment isn't a destination—it's how you move.",
     todayMatters: "Today matters because you showed up.",
-    valuesInPlay: "Presence. Growth. Creation.",
+    valuesInPlay: ["Presence", "Growth", "Creation"],
+    alignedAction: "Do what feels right. Trust that.",
     oneMove: "What feels right to do next? Trust that."
   };
 }
@@ -141,7 +143,11 @@ RULES:
 
       userMessage = "I want to push. Show me where I am vs where I want to be, and what move would close the gap fastest.";
     } else {
-      systemPrompt = `You are a grounding mirror for someone who wants to ALIGN, not grind. Not therapy. Not productivity. Just presence and values.
+      // Get current hour for time-aware suggestions
+      const currentHour = new Date().getHours();
+      const timeOfDay = currentHour < 12 ? "morning" : currentHour < 17 ? "afternoon" : currentHour < 21 ? "evening" : "night";
+      
+      systemPrompt = `You are a values check-in mirror. Not therapy. Not productivity. Just clarity on what matters.
 
 USER CONTEXT:
 - Who they're becoming: ${whoYouAre}
@@ -153,18 +159,19 @@ ${yourMind}
 ${recentMoves || "None tracked"}
 - Active experiments:
 ${activeExperiments || "None active"}
+- Current time: ${timeOfDay}
 
-Your job: Help them see what MATTERS today based on their values and current state. Not what's urgent—what's aligned.
+Your job: Surface which of their SPECIFIC VALUES are in play right now, why today matters for their journey, and suggest ONE aligned action.
 
 RULES:
-- Be grounding, not pushy
-- Focus on values, not tasks
-- Show them they're already on path
-- Suggest ONE aligned move, not a to-do list
-- No productivity hacks. Just alignment.
-- Reference their actual values and direction`;
+- Extract 2-3 of their ACTUAL stated values from core_values - don't make up generic ones
+- Connect today to their bigger picture from year_note
+- Consider the time of day (${timeOfDay}) when suggesting the aligned action
+- The aligned action should honor values, not be a task
+- Be grounding. No productivity speak. Just values and alignment.
+- Reference their real values and direction, not generic ones`;
 
-      userMessage = "I want to flow today. What actually matters based on my values and where I'm headed?";
+      userMessage = `It's ${timeOfDay}. I want to check in with my values. Which of my core values are most relevant right now, and what would honoring them look like today?`;
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -206,11 +213,16 @@ RULES:
                       headline: { type: "string", description: "One line grounding statement (max 10 words)" },
                       currentState: { type: "string", description: "Gentle reflection of where they are right now (2-3 sentences)" },
                       dreamReality: { type: "string", description: "Reminder of the life they're building, not rushing toward (2-3 sentences)" },
-                      todayMatters: { type: "string", description: "Why today matters in the bigger picture (1-2 sentences)" },
-                      valuesInPlay: { type: "string", description: "Which of their values are most relevant today (list 2-3)" },
-                      oneMove: { type: "string", description: "ONE aligned action that honors their values (1 sentence)" },
+                      todayMatters: { type: "string", description: "Why today matters in the bigger picture based on their year_note and direction (1-2 sentences)" },
+                      valuesInPlay: { 
+                        type: "array", 
+                        items: { type: "string" },
+                        description: "2-3 of their ACTUAL core values from core_values that are most relevant right now. Use their exact words." 
+                      },
+                      alignedAction: { type: "string", description: "ONE specific action that honors the values in play, considering time of day (1 sentence)" },
+                      oneMove: { type: "string", description: "The same aligned action, phrased as a gentle invitation (1 sentence)" },
                     },
-                    required: ["headline", "currentState", "dreamReality", "todayMatters", "valuesInPlay", "oneMove"],
+                    required: ["headline", "currentState", "dreamReality", "todayMatters", "valuesInPlay", "alignedAction", "oneMove"],
                   },
             },
           },
@@ -251,7 +263,13 @@ RULES:
         result.intensity = parsed.intensity;
       } else {
         result.todayMatters = parsed.todayMatters;
-        result.valuesInPlay = parsed.valuesInPlay;
+        // Handle valuesInPlay as array
+        result.valuesInPlay = Array.isArray(parsed.valuesInPlay) 
+          ? parsed.valuesInPlay 
+          : typeof parsed.valuesInPlay === "string" 
+            ? parsed.valuesInPlay.split(/[,.]/).map((v: string) => v.trim()).filter(Boolean)
+            : ["Presence", "Growth", "Creation"];
+        result.alignedAction = parsed.alignedAction;
       }
 
       return new Response(JSON.stringify(result), {
