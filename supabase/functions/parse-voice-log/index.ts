@@ -52,20 +52,21 @@ PILLARS (you MUST assign one to EVERY action):
 Rules:
 1. Fix obvious transcription errors (e.g., "weed" should be "Weave" if context suggests app work)
 2. Keep each item concise (5-10 words max)
-3. For completed items, add ✓ prefix
-4. For planned items, add → prefix
+3. For completed items, prefix with COMPLETED:
+4. For planned items, prefix with PLANNED:
 5. ALWAYS include a pillar in {braces} for EVERY item - make your best guess based on context
+6. DO NOT use any emojis
 
 Output format (just the list, no intro text):
-✓ [action] {pillar}
-→ [planned action] {pillar}
+COMPLETED: [action] {pillar}
+PLANNED: [planned action] {pillar}
 
 Example input: "So far today I worked on the app for an hour, went to the gym, gonna apply to some jobs, need to call mom about car repair"
 Example output:
-✓ Worked on app for 1 hour {business}
-✓ Went to the gym {body}
-→ Apply to jobs {business}
-→ Call mom about car repair {relationship}`
+COMPLETED: Worked on app for 1 hour {business}
+COMPLETED: Went to the gym {body}
+PLANNED: Apply to jobs {business}
+PLANNED: Call mom about car repair {relationship}`
           },
           {
             role: 'user',
@@ -92,7 +93,7 @@ Example output:
     // Also extract just the completed items as separate array for quick logging
     const lines = parsed.split('\n').filter((l: string) => l.trim());
     const completed = lines
-      .filter((l: string) => l.startsWith('✓'))
+      .filter((l: string) => l.toUpperCase().startsWith('COMPLETED:'))
       .map((l: string) => {
         const pillarMatch = l.match(/\{(\w+)\}/);
         let pillar = pillarMatch ? pillarMatch[1].toLowerCase().trim() : null;
@@ -100,19 +101,19 @@ Example output:
         if (pillar && !validPillars.includes(pillar)) {
           pillar = null;
         }
-        const text = l.replace('✓', '').replace(/\{(\w+)\}/, '').trim();
+        const text = l.replace(/^COMPLETED:\s*/i, '').replace(/\{(\w+)\}/, '').trim();
         return { text, pillar };
       });
     
     const planned = lines
-      .filter((l: string) => l.startsWith('→'))
+      .filter((l: string) => l.toUpperCase().startsWith('PLANNED:'))
       .map((l: string) => {
         const pillarMatch = l.match(/\{(\w+)\}/);
         let pillar = pillarMatch ? pillarMatch[1].toLowerCase().trim() : null;
         if (pillar && !validPillars.includes(pillar)) {
           pillar = null;
         }
-        const text = l.replace('→', '').replace(/\{(\w+)\}/, '').trim();
+        const text = l.replace(/^PLANNED:\s*/i, '').replace(/\{(\w+)\}/, '').trim();
         return { text, pillar };
       });
 
