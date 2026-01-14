@@ -23,7 +23,12 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Paths", href: "/learning-paths", icon: Brain },
   ];
 
-  const primaryNav = navigation.slice(0, 4);
+  // Mobile bottom nav: Dashboard, Experiments, Identity only
+  const mobileBottomNav = [
+    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Experiments", href: "/experiments", icon: FlaskConical },
+    { name: "Identity", href: "/identity", icon: Compass },
+  ];
 
   return (
     <div className="flex min-h-screen bg-background overflow-x-hidden">
@@ -120,7 +125,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Mobile Bottom Nav - Sleek */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 glass safe-area-bottom">
         <nav className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
-          {primaryNav.map((item) => (
+          {mobileBottomNav.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
