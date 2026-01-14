@@ -78,13 +78,20 @@ Example output:
     const result = await response.json();
     const parsed = result.choices?.[0]?.message?.content || transcript;
 
+    // Valid pillar names (lowercase)
+    const validPillars = ['business', 'body', 'content', 'relationship', 'mind', 'play'];
+
     // Also extract just the completed items as separate array for quick logging
     const lines = parsed.split('\n').filter((l: string) => l.trim());
     const completed = lines
       .filter((l: string) => l.startsWith('✓'))
       .map((l: string) => {
         const pillarMatch = l.match(/\{(\w+)\}/);
-        const pillar = pillarMatch ? pillarMatch[1] : null;
+        let pillar = pillarMatch ? pillarMatch[1].toLowerCase().trim() : null;
+        // Validate pillar is one of our valid options
+        if (pillar && !validPillars.includes(pillar)) {
+          pillar = null;
+        }
         const text = l.replace('✓', '').replace(/\{(\w+)\}/, '').trim();
         return { text, pillar };
       });
@@ -93,7 +100,10 @@ Example output:
       .filter((l: string) => l.startsWith('→'))
       .map((l: string) => {
         const pillarMatch = l.match(/\{(\w+)\}/);
-        const pillar = pillarMatch ? pillarMatch[1] : null;
+        let pillar = pillarMatch ? pillarMatch[1].toLowerCase().trim() : null;
+        if (pillar && !validPillars.includes(pillar)) {
+          pillar = null;
+        }
         const text = l.replace('→', '').replace(/\{(\w+)\}/, '').trim();
         return { text, pillar };
       });
