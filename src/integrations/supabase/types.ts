@@ -362,6 +362,8 @@ export type Database = {
       identity_seeds: {
         Row: {
           content: string
+          content_applied_count: number | null
+          content_saved_count: number | null
           core_values: string | null
           created_at: string
           current_monthly_income: number | null
@@ -379,6 +381,8 @@ export type Database = {
         }
         Insert: {
           content: string
+          content_applied_count?: number | null
+          content_saved_count?: number | null
           core_values?: string | null
           created_at?: string
           current_monthly_income?: number | null
@@ -396,6 +400,8 @@ export type Database = {
         }
         Update: {
           content?: string
+          content_applied_count?: number | null
+          content_saved_count?: number | null
           core_values?: string | null
           created_at?: string
           current_monthly_income?: number | null
@@ -724,6 +730,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pending_actions: {
+        Row: {
+          action_context: string | null
+          action_text: string
+          completed_at: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          source_id: string
+          source_title: string
+          source_type: string
+          status: string
+          suggested_path_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action_context?: string | null
+          action_text: string
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          source_id: string
+          source_title: string
+          source_type: string
+          status?: string
+          suggested_path_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action_context?: string | null
+          action_text?: string
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          source_id?: string
+          source_title?: string
+          source_type?: string
+          status?: string
+          suggested_path_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
