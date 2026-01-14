@@ -23,11 +23,11 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Paths", href: "/learning-paths", icon: Brain },
   ];
 
-  // Mobile bottom nav: Dashboard, Experiments, Identity only
+  // Mobile bottom nav: Dashboard, Identity, Experiments only
   const mobileBottomNav = [
     { name: "Dashboard", href: "/", icon: Home },
-    { name: "Experiments", href: "/experiments", icon: FlaskConical },
     { name: "Identity", href: "/identity", icon: Compass },
+    { name: "Experiments", href: "/experiments", icon: FlaskConical },
   ];
 
   return (
