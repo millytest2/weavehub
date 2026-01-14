@@ -67,6 +67,8 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [streak, setStreak] = useState(0);
   const [insightsThisWeek, setInsightsThisWeek] = useState(0);
   const [pathsActive, setPathsActive] = useState(0);
+  const [learningDebt, setLearningDebt] = useState({ saved: 0, applied: 0 });
+  const [pendingActionsCount, setPendingActionsCount] = useState(0);
 
   useEffect(() => {
     if (open && user) {
@@ -82,7 +84,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     try {
-      const [actionsResult, experimentsResult, insightsResult, identityResult] = await Promise.all([
+      const [actionsResult, experimentsResult, insightsResult, identityResult, pendingResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("id, action_text, pillar, action_date, completed_at")
@@ -104,9 +106,14 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .limit(500),
         supabase
           .from("identity_seeds")
-          .select("content")
+          .select("content, content_saved_count, content_applied_count")
           .eq("user_id", user.id)
-          .maybeSingle()
+          .maybeSingle(),
+        supabase
+          .from("pending_actions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("status", "pending")
       ]);
 
       if (actionsResult.error) throw actionsResult.error;
@@ -116,6 +123,15 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       setWeeklyActions(actionsResult.data || []);
       setActiveExperiments(experimentsResult.data || []);
       setIdentitySeed(identityResult.data?.content || "");
+      
+      // Set learning debt
+      if (identityResult.data) {
+        setLearningDebt({
+          saved: (identityResult.data as any).content_saved_count || 0,
+          applied: (identityResult.data as any).content_applied_count || 0,
+        });
+      }
+      setPendingActionsCount(pendingResult.count || 0);
       
       // Cluster insights by topic
       const clusters = clusterInsightsByTopic(insightsResult.data as InsightWithTopic[] || []);
@@ -286,6 +302,48 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                 pathsActive={pathsActive}
                 insightsThisWeek={insightsThisWeek}
               />
+
+              {/* Learning Debt / Apply Score */}
+              {(learningDebt.saved > 0 || pendingActionsCount > 0) && (
+                <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Apply Score</span>
+                    {pendingActionsCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                        {pendingActionsCount} queued
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all ${
+                            learningDebt.saved === 0 ? 'bg-muted-foreground' :
+                            (learningDebt.applied / learningDebt.saved) >= 0.7 ? 'bg-success' :
+                            (learningDebt.applied / learningDebt.saved) >= 0.4 ? 'bg-warning' :
+                            'bg-destructive'
+                          }`}
+                          style={{ 
+                            width: learningDebt.saved > 0 
+                              ? `${Math.min(100, (learningDebt.applied / learningDebt.saved) * 100)}%`
+                              : '100%'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-sm font-medium tabular-nums">
+                      {learningDebt.saved > 0 
+                        ? `${Math.round((learningDebt.applied / learningDebt.saved) * 100)}%`
+                        : '—'
+                      }
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    {learningDebt.applied} of {learningDebt.saved} saved content applied
+                  </p>
+                </div>
+              )}
 
               {/* Active Projects */}
               {activeExperiments.length > 0 && (
