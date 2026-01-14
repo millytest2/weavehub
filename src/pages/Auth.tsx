@@ -75,7 +75,7 @@ const Auth = () => {
         toast.success("Welcome back!");
         navigate("/");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -86,6 +86,25 @@ const Auth = () => {
           },
         });
         if (error) throw error;
+        
+        // Check for pending identity from landing page try-before-signup
+        const pendingIdentity = sessionStorage.getItem("pending_identity");
+        if (pendingIdentity && data.user) {
+          try {
+            const { identitySeed, selectedValues } = JSON.parse(pendingIdentity);
+            if (identitySeed || selectedValues?.length > 0) {
+              await supabase.from("identity_seeds").insert({
+                user_id: data.user.id,
+                content: identitySeed || "Someone who takes action daily.",
+                core_values: selectedValues?.join(", ") || null,
+              });
+            }
+            sessionStorage.removeItem("pending_identity");
+          } catch (e) {
+            console.error("Failed to save pending identity:", e);
+          }
+        }
+        
         toast.success("Account created! Welcome to Weave.");
         navigate("/");
       }
