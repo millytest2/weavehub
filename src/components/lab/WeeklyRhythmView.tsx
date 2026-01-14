@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { 
   Briefcase, 
   Activity, 
@@ -21,9 +22,13 @@ import {
   ChevronRight,
   Sparkles,
   Flame,
-  Calendar
+  Calendar,
+  Plus,
+  Loader2,
+  Send
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
+import { toast } from "sonner";
 
 interface ActionHistory {
   id: string;
@@ -67,6 +72,11 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [weeklyData, setWeeklyData] = useState<WeeklyIntegration | null>(null);
   const [prevWeekData, setPrevWeekData] = useState<WeeklyIntegration | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Quick log state
+  const [logInput, setLogInput] = useState("");
+  const [selectedPillar, setSelectedPillar] = useState<string | null>(null);
+  const [isLogging, setIsLogging] = useState(false);
 
   const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
@@ -74,6 +84,33 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const currentWeekNumber = getWeek(viewDate, { weekStartsOn: 1 });
   const currentYear = getYear(viewDate);
   const isCurrentWeek = isSameDay(weekStart, startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+  const handleQuickLog = async () => {
+    if (!user || !logInput.trim()) return;
+    
+    setIsLogging(true);
+    try {
+      const { error } = await supabase.from("action_history").insert({
+        user_id: user.id,
+        action_text: logInput.trim(),
+        action_date: format(new Date(), 'yyyy-MM-dd'),
+        pillar: selectedPillar,
+        completed_at: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      toast.success("Logged!");
+      setLogInput("");
+      setSelectedPillar(null);
+      fetchWeekData(); // Refresh the data
+    } catch (error) {
+      console.error("Error logging action:", error);
+      toast.error("Failed to log action");
+    } finally {
+      setIsLogging(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -219,6 +256,57 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Quick Log Input */}
+      {isCurrentWeek && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-3">
+              <Plus className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Log what you did</span>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. 30 min workout, wrote blog post, called mom..."
+                value={logInput}
+                onChange={(e) => setLogInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !isLogging && logInput.trim() && handleQuickLog()}
+                className="flex-1"
+              />
+              <Button 
+                size="icon" 
+                onClick={handleQuickLog} 
+                disabled={isLogging || !logInput.trim()}
+              >
+                {isLogging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+            {/* Pillar quick-select */}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
+                const Icon = config.icon;
+                const isSelected = selectedPillar === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedPillar(isSelected ? null : key)}
+                    className={`
+                      flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all
+                      ${isSelected 
+                        ? `${config.bgColor} text-white` 
+                        : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {config.label}
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Week at a Glance - The Weave */}
       <Card className="overflow-hidden">
