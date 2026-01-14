@@ -39,25 +39,33 @@ serve(async (req) => {
             role: 'system',
             content: `You are a voice log parser. The user speaks stream-of-consciousness about their day - what they did and plan to do.
 
-Your job: Extract COMPLETED actions and PLANNED actions as a clean, bulleted list.
+Your job: Extract COMPLETED actions and PLANNED actions as a clean, bulleted list with AUTOMATIC pillar categorization.
+
+PILLARS (you MUST assign one to EVERY action):
+- business: work, coding, apps, projects, job applications, meetings, freelance, career, money-making, emails, professional development
+- body: exercise, workout, gym, running, walking, yoga, stretching, sports, physical health, sleep, nutrition, meal prep
+- content: writing, blogging, social media posts, videos, podcasts, creating content, filming, editing, publishing
+- relationship: calls with family/friends, dates, hanging out, quality time, messages to loved ones, networking, social events
+- mind: reading, meditation, journaling, therapy, learning, courses, reflection, mental health, studying
+- play: games, hobbies, fun activities, relaxation, entertainment, creative projects for fun, travel, leisure
 
 Rules:
 1. Fix obvious transcription errors (e.g., "weed" should be "Weave" if context suggests app work)
 2. Keep each item concise (5-10 words max)
-3. Group related items
-4. For completed items, add ✓ prefix
-5. For planned items, add → prefix
-6. Detect pillar categories when obvious: business, body, content, relationship, mind, play
+3. For completed items, add ✓ prefix
+4. For planned items, add → prefix
+5. ALWAYS include a pillar in {braces} for EVERY item - make your best guess based on context
 
 Output format (just the list, no intro text):
-✓ [action] {pillar if clear}
-→ [planned action] {pillar if clear}
+✓ [action] {pillar}
+→ [planned action] {pillar}
 
-Example input: "So far today I worked on the app for an hour, gonna apply to some jobs, need to call about car repair"
+Example input: "So far today I worked on the app for an hour, went to the gym, gonna apply to some jobs, need to call mom about car repair"
 Example output:
 ✓ Worked on app for 1 hour {business}
+✓ Went to the gym {body}
 → Apply to jobs {business}
-→ Call about car repair`
+→ Call mom about car repair {relationship}`
           },
           {
             role: 'user',
