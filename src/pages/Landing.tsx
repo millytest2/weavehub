@@ -1,374 +1,369 @@
-import { ArrowRight, Zap, Compass, CheckCircle, Play, Sparkles, Brain, Target, Clock, TrendingUp, FileText, Video, Headphones, BookOpen } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, Sparkles, Check, User, Zap, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Core values users can pick from
+const CORE_VALUES = [
+  "Growth", "Presence", "Focus", "Creation", "Connection",
+  "Depth", "Action", "Freedom", "Clarity", "Courage",
+  "Discipline", "Play", "Authenticity", "Impact"
+] as const;
+
+// Quick identity starters
+const IDENTITY_STARTERS = [
+  "ships weekly, not someday",
+  "moves before screens",
+  "builds in public",
+  "chooses depth over distraction",
+  "creates more than consumes",
+];
+
+// Sample "Today's Invitation" to show after identity setup
+const SAMPLE_INVITATIONS = [
+  {
+    action: "Take 10 minutes to outline ONE thing you've been putting off",
+    insight: "Your saved content shows a pattern: you know what to do, you're just waiting for permission. This is it.",
+    source: "Based on your value of Action"
+  },
+  {
+    action: "Block 30 minutes today for deep work—no notifications, no tabs",
+    insight: "Focus isn't found, it's created. Start with one protected block.",
+    source: "Based on your value of Focus"
+  },
+  {
+    action: "Send one message to someone you've been meaning to reach out to",
+    insight: "Connection compounds. One message today could change everything.",
+    source: "Based on your value of Connection"
+  }
+];
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [step, setStep] = useState<"intro" | "identity" | "values" | "preview">("intro");
+  const [identitySeed, setIdentitySeed] = useState("");
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
+
+  const toggleValue = (value: string) => {
+    setSelectedValues(prev => {
+      if (prev.includes(value)) {
+        return prev.filter(v => v !== value);
+      }
+      if (prev.length >= 3) {
+        return [...prev.slice(1), value];
+      }
+      return [...prev, value];
+    });
+  };
+
+  const getPersonalizedInvitation = () => {
+    // Pick invitation based on first selected value
+    if (selectedValues.includes("Action") || selectedValues.includes("Discipline")) {
+      return SAMPLE_INVITATIONS[0];
+    }
+    if (selectedValues.includes("Focus") || selectedValues.includes("Depth") || selectedValues.includes("Clarity")) {
+      return SAMPLE_INVITATIONS[1];
+    }
+    if (selectedValues.includes("Connection") || selectedValues.includes("Authenticity")) {
+      return SAMPLE_INVITATIONS[2];
+    }
+    return SAMPLE_INVITATIONS[0];
+  };
+
+  const handleSignUp = () => {
+    // Store identity data temporarily for after signup
+    if (identitySeed || selectedValues.length > 0) {
+      sessionStorage.setItem("pending_identity", JSON.stringify({
+        identitySeed,
+        selectedValues
+      }));
+    }
+    navigate("/auth");
+  };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Hero Section - More Urgent */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 py-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
-        
-        {/* Floating badges for credibility */}
-        <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-3 text-xs">
-          <span className="px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">
-            Free forever
-          </span>
-          <span className="px-3 py-1 bg-muted text-muted-foreground rounded-full">
-            2 min setup
-          </span>
-        </div>
-        
-        <div className="relative z-10 max-w-3xl mx-auto text-center space-y-6">
-          <p className="text-primary font-medium text-sm sm:text-base tracking-wide uppercase">
-            For people drowning in saved content
-          </p>
-          
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
-            You saved 10,000 things.
-            <br />
-            <span className="text-muted-foreground">Did any of them change your life?</span>
-          </h1>
-          
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto">
-            Weave turns your saved videos, articles, and notes into 
-            <span className="text-foreground font-semibold"> one clear action per day</span>.
-          </p>
-          
-          <div className="flex flex-col items-center gap-4 pt-4">
-            <Button 
-              size="lg" 
-              className="px-10 h-14 text-lg font-semibold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all group"
-              onClick={() => navigate("/auth")}
-            >
-              Start Free — Takes 2 Minutes
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              No credit card • No spam • Unsubscribe anytime
-            </p>
-          </div>
-        </div>
-        
-        {/* Quick value props */}
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-primary" />
-            <span>Works with YouTube, articles, notes</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-primary" />
-            <span>AI-powered insights</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-primary" />
-            <span>Daily action suggestions</span>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <AnimatePresence mode="wait">
+        {/* INTRO - Hook them */}
+        {step === "intro" && (
+          <motion.div
+            key="intro"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex-1 flex flex-col items-center justify-center px-6 py-16"
+          >
+            <div className="max-w-lg mx-auto text-center space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                You saved 10,000 things.
+                <br />
+                <span className="text-muted-foreground">Did any of them change your life?</span>
+              </h1>
+              
+              <p className="text-lg text-muted-foreground">
+                Weave turns your saved content into <span className="text-foreground font-semibold">one clear action per day</span>.
+              </p>
+              
+              <p className="text-sm text-muted-foreground">
+                But first—let's figure out who you're becoming.
+              </p>
 
-      {/* Quick Demo / Preview Section */}
-      <section className="py-16 px-6 border-t border-border/40 bg-card">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-              See it in action
-            </h2>
-            <p className="text-muted-foreground">From scattered saves to focused action in seconds</p>
-          </div>
-          
-          {/* Visual workflow */}
-          <div className="relative">
-            <div className="grid md:grid-cols-3 gap-4 md:gap-2">
-              <div className="p-6 rounded-2xl border border-border bg-background text-center relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-primary text-primary-foreground text-xs font-bold rounded">
-                  BEFORE
+              <Button 
+                size="lg" 
+                className="px-10 h-14 text-lg font-semibold shadow-lg shadow-primary/20 group"
+                onClick={() => setStep("identity")}
+              >
+                Let's Go — 60 seconds
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              
+              <p className="text-xs text-muted-foreground">
+                No signup required yet. Try it first.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* STEP 1: Identity */}
+        {step === "identity" && (
+          <motion.div
+            key="identity"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="flex-1 flex flex-col items-center justify-center px-6 py-16"
+          >
+            {/* Progress */}
+            <div className="w-full max-w-md mb-8">
+              <div className="flex gap-2">
+                <div className="h-1 flex-1 rounded-full bg-primary" />
+                <div className="h-1 flex-1 rounded-full bg-muted" />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center">Step 1 of 2</p>
+            </div>
+
+            <div className="max-w-md mx-auto w-full space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <User className="h-6 w-6 text-primary" />
                 </div>
-                <div className="space-y-2 mt-2">
-                  <div className="flex justify-center gap-2 text-muted-foreground">
-                    <FileText className="h-6 w-6" />
-                    <Video className="h-6 w-6" />
-                    <Headphones className="h-6 w-6" />
-                    <BookOpen className="h-6 w-6" />
+                <h2 className="text-2xl font-bold">Who are you becoming?</h2>
+                <p className="text-muted-foreground">One sentence. This sharpens everything.</p>
+              </div>
+
+              <div className="space-y-4">
+                <Textarea
+                  value={identitySeed}
+                  onChange={(e) => setIdentitySeed(e.target.value)}
+                  placeholder="I'm becoming someone who..."
+                  className="min-h-[100px] text-base resize-none"
+                  style={{ fontSize: '16px' }}
+                  autoFocus
+                />
+                
+                {/* Quick starters */}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Quick start:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {IDENTITY_STARTERS.map((starter) => (
+                      <button
+                        key={starter}
+                        onClick={() => setIdentitySeed(`I'm becoming someone who ${starter}`)}
+                        className="text-sm px-3 py-1.5 rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors"
+                      >
+                        {starter}
+                      </button>
+                    ))}
                   </div>
-                  <p className="text-sm text-muted-foreground">47 saved YouTube videos</p>
-                  <p className="text-sm text-muted-foreground">23 bookmarked articles</p>
-                  <p className="text-sm text-muted-foreground">12 "read later" notes</p>
-                  <p className="text-sm font-medium text-destructive">Zero action taken</p>
                 </div>
               </div>
-              
-              <div className="flex items-center justify-center">
-                <div className="hidden md:flex items-center gap-2 text-primary">
-                  <div className="w-12 h-0.5 bg-primary/30" />
-                  <Sparkles className="h-6 w-6" />
-                  <div className="w-12 h-0.5 bg-primary/30" />
-                </div>
-                <div className="md:hidden py-4">
-                  <Sparkles className="h-6 w-6 text-primary mx-auto" />
-                </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button variant="ghost" onClick={() => setStep("intro")} className="flex-1">
+                  Back
+                </Button>
+                <Button onClick={() => setStep("values")} className="flex-1 gap-2">
+                  {identitySeed.trim() ? "Continue" : "Skip"}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
-              
-              <div className="p-6 rounded-2xl border-2 border-primary bg-primary/5 text-center relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-primary text-primary-foreground text-xs font-bold rounded">
-                  AFTER
+            </div>
+          </motion.div>
+        )}
+
+        {/* STEP 2: Values */}
+        {step === "values" && (
+          <motion.div
+            key="values"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="flex-1 flex flex-col items-center justify-center px-6 py-16"
+          >
+            {/* Progress */}
+            <div className="w-full max-w-md mb-8">
+              <div className="flex gap-2">
+                <div className="h-1 flex-1 rounded-full bg-primary" />
+                <div className="h-1 flex-1 rounded-full bg-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center">Step 2 of 2</p>
+            </div>
+
+            <div className="max-w-md mx-auto w-full space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Target className="h-6 w-6 text-primary" />
                 </div>
-                <div className="space-y-3 mt-2">
-                  <CheckCircle className="h-10 w-10 text-primary mx-auto" />
-                  <p className="font-semibold text-foreground">Today's Action:</p>
-                  <p className="text-sm text-muted-foreground italic">
-                    "Spend 15 mins applying the 'atomic habits' technique from James Clear to your morning routine"
+                <h2 className="text-2xl font-bold">Pick 3 values</h2>
+                <p className="text-muted-foreground">What guides your decisions?</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 justify-center">
+                {CORE_VALUES.map((value) => {
+                  const isSelected = selectedValues.includes(value);
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => toggleValue(value)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        isSelected
+                          ? 'bg-primary text-primary-foreground scale-105 shadow-md'
+                          : 'bg-muted hover:bg-muted/80 text-foreground'
+                      }`}
+                    >
+                      {isSelected && <Check className="h-3.5 w-3.5 inline mr-1.5" />}
+                      {value}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="text-sm text-center text-muted-foreground">
+                {selectedValues.length}/3 selected
+              </p>
+
+              <div className="flex gap-3 pt-4">
+                <Button variant="ghost" onClick={() => setStep("identity")} className="flex-1">
+                  Back
+                </Button>
+                <Button 
+                  onClick={() => setStep("preview")} 
+                  className="flex-1 gap-2"
+                  disabled={selectedValues.length === 0}
+                >
+                  See Your First Invitation
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* PREVIEW - Show personalized invitation then prompt signup */}
+        {step === "preview" && (
+          <motion.div
+            key="preview"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex-1 flex flex-col items-center justify-center px-6 py-16"
+          >
+            <div className="max-w-lg mx-auto w-full space-y-8">
+              {/* Today's Invitation Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="relative"
+              >
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-2xl blur-lg" />
+                <div className="relative p-6 rounded-2xl border-2 border-primary/30 bg-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Zap className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium text-primary">Today's Invitation</span>
+                  </div>
+                  
+                  <p className="text-xl font-semibold mb-4">
+                    {getPersonalizedInvitation().action}
                   </p>
-                  <p className="text-xs text-primary font-medium">Based on 3 videos you saved about habits</p>
+                  
+                  <p className="text-muted-foreground text-sm mb-4">
+                    {getPersonalizedInvitation().insight}
+                  </p>
+                  
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {getPersonalizedInvitation().source}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+              </motion.div>
 
-      {/* Pain Point - More Direct */}
-      <section className="py-16 px-6 border-t border-border/40 bg-muted/30">
-        <div className="max-w-2xl mx-auto text-center space-y-6">
-          <h2 className="text-2xl sm:text-3xl font-bold">
-            ChatGPT made the problem worse
-          </h2>
-          <div className="space-y-4 text-left max-w-lg mx-auto">
-            <p className="text-muted-foreground flex items-start gap-3">
-              <span className="text-destructive">❌</span>
-              Ask ChatGPT what to do. Get 10 options. Save the answer. Ask again tomorrow. <span className="text-destructive font-medium">Never act.</span>
-            </p>
-            <p className="text-muted-foreground flex items-start gap-3">
-              <span className="text-destructive">❌</span>
-              Become dependent on external AI. Your own judgment <span className="text-destructive font-medium">atrophies</span>.
-            </p>
-            <p className="text-muted-foreground flex items-start gap-3">
-              <span className="text-destructive">❌</span>
-              Generic advice from the internet. Not <span className="text-destructive font-medium">YOU</span>.
-            </p>
-          </div>
-          <div className="pt-6 p-6 bg-primary/5 rounded-2xl border border-primary/20">
-            <p className="text-lg font-semibold text-foreground flex items-center justify-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Weave is different
-            </p>
-            <p className="text-muted-foreground mt-2">
-              It reflects YOUR wisdom back to you. From YOUR saved content. Building YOUR judgment.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works - Visual */}
-      <section className="py-16 px-6 border-t border-border/40">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">
-            3 steps. 2 minutes. Life-changing clarity.
-          </h2>
-          <p className="text-center text-muted-foreground mb-12">
-            No complex setup. No learning curve.
-          </p>
-          
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="text-center group">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
-                <Play className="h-7 w-7 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2 text-lg">1. Paste anything</h3>
-              <p className="text-sm text-muted-foreground">
-                YouTube videos, articles, tweets, voice notes. Just paste the URL or text.
-              </p>
-              <p className="text-xs text-primary mt-2 font-medium">Takes 5 seconds</p>
-            </div>
-            
-            <div className="text-center group">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
-                <Brain className="h-7 w-7 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2 text-lg">2. AI finds patterns</h3>
-              <p className="text-sm text-muted-foreground">
-                Weave connects your content. Finds themes across physics, business, life.
-              </p>
-              <p className="text-xs text-primary mt-2 font-medium">Automatic</p>
-            </div>
-            
-            <div className="text-center group">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
-                <Target className="h-7 w-7 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2 text-lg">3. Get ONE action</h3>
-              <p className="text-sm text-muted-foreground">
-                Not 10 options. ONE thing based on what YOU saved. Do it today.
-              </p>
-              <p className="text-xs text-primary mt-2 font-medium">Daily clarity</p>
-            </div>
-          </div>
-          
-          <div className="text-center mt-10">
-            <Button 
-              size="lg"
-              variant="outline" 
-              className="px-8 h-12 font-semibold border-primary/30 hover:bg-primary/5"
-              onClick={() => navigate("/auth")}
-            >
-              Try It Free Now
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features - Emotional */}
-      <section className="py-16 px-6 border-t border-border/40 bg-muted/30">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">
-            When you feel stuck, bored, or lost
-          </h2>
-          <p className="text-center text-muted-foreground mb-12">
-            One tap brings you back to yourself
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <Zap className="h-5 w-5 text-primary" />
+              {/* Identity summary */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="space-y-3"
+              >
+                {identitySeed && (
+                  <div className="p-4 rounded-xl bg-muted/50">
+                    <p className="text-xs text-muted-foreground mb-1">Your identity:</p>
+                    <p className="font-medium">{identitySeed}</p>
+                  </div>
+                )}
+                
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {selectedValues.map(v => (
+                    <span key={v} className="text-sm px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                      {v}
+                    </span>
+                  ))}
                 </div>
-                <h3 className="font-semibold text-lg">Next Best Rep</h3>
-              </div>
-              <p className="text-muted-foreground mb-4">
-                Caught doomscrolling? Tap once. Get one small action that matches who you want to become. 
-                Break the loop in 5 minutes.
-              </p>
-              <p className="text-xs text-primary font-medium">→ Perfect for afternoon slumps</p>
-            </div>
+              </motion.div>
 
-            <div className="p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <Compass className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Return to Self</h3>
-              </div>
-              <p className="text-muted-foreground mb-4">
-                Anxious or overthinking? See your values, one insight from your notes, 
-                and one grounding action. Always available.
-              </p>
-              <p className="text-xs text-primary font-medium">→ Like a compass in your pocket</p>
-            </div>
-            
-            <div className="p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <Clock className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Morning & Evening Rituals</h3>
-              </div>
-              <p className="text-muted-foreground mb-4">
-                Start with intention, end with reflection. Two moments that compound over months.
-              </p>
-              <p className="text-xs text-primary font-medium">→ Takes 2 minutes each</p>
-            </div>
-            
-            <div className="p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Learning Paths</h3>
-              </div>
-              <p className="text-muted-foreground mb-4">
-                Turn a topic cluster into a structured sprint. Short, focused sections you'll actually finish.
-              </p>
-              <p className="text-xs text-primary font-medium">→ From consumption to mastery</p>
-            </div>
-          </div>
-        </div>
-      </section>
+              {/* CTA */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="text-center space-y-4 pt-4"
+              >
+                <p className="text-muted-foreground">
+                  Save your identity and get daily invitations like this.
+                </p>
+                
+                <Button 
+                  size="lg" 
+                  className="w-full h-14 text-lg font-semibold shadow-lg shadow-primary/20 group"
+                  onClick={handleSignUp}
+                >
+                  Create Free Account
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+                
+                <p className="text-xs text-muted-foreground">
+                  Free forever • No credit card • Takes 30 seconds
+                </p>
 
-      {/* Social Proof / Differentiator */}
-      <section className="py-16 px-6 border-t border-border/40">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-8">
-            Built different
-          </h2>
-          
-          <div className="space-y-4 text-left max-w-md mx-auto">
-            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-              <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <p className="text-muted-foreground">
-                <span className="text-foreground font-medium">No goals.</span> Actions come from your identity, not arbitrary targets.
-              </p>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setStep("values")}
+                  className="text-muted-foreground"
+                >
+                  ← Go back and edit
+                </Button>
+              </motion.div>
             </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-              <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <p className="text-muted-foreground">
-                <span className="text-foreground font-medium">No streaks.</span> Miss a day. Come back. No guilt. No shame.
-              </p>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-              <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <p className="text-muted-foreground">
-                <span className="text-foreground font-medium">No generic advice.</span> Every suggestion cites YOUR saved content.
-              </p>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-              <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <p className="text-muted-foreground">
-                <span className="text-foreground font-medium">Gets smarter.</span> The more you save, the better it knows you.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA - Urgency */}
-      <section className="py-20 px-6 border-t border-border/40 bg-gradient-to-b from-primary/10 to-primary/5">
-        <div className="max-w-2xl mx-auto text-center space-y-6">
-          <h2 className="text-3xl sm:text-4xl font-bold">
-            Stop saving. Start becoming.
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Every day you wait, more content gets saved and ignored.
-            <br />
-            <span className="text-foreground font-medium">Break the cycle in 2 minutes.</span>
-          </p>
-          <div className="pt-4 space-y-4">
-            <Button 
-              size="lg" 
-              className="px-12 h-14 text-lg font-semibold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all group"
-              onClick={() => navigate("/auth")}
-            >
-              Start Free Now
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-primary" /> Free forever
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-primary" /> No credit card
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-primary" /> Cancel anytime
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-border/40">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Compass className="h-4 w-4 text-primary" />
-            <span className="font-medium text-foreground">Weave</span>
-          </div>
-          <p>Turn saved content into action.</p>
-        </div>
-      </footer>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
