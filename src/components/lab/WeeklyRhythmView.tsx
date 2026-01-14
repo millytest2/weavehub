@@ -25,10 +25,13 @@ import {
   Calendar,
   Plus,
   Loader2,
-  Send
+  Send,
+  Mic,
+  MicOff
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
 import { toast } from "sonner";
+import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 
 interface ActionHistory {
   id: string;
@@ -77,6 +80,13 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [logInput, setLogInput] = useState("");
   const [selectedPillar, setSelectedPillar] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
+  
+  // Voice capture for quick log
+  const { isRecording, isTranscribing, isSupported: voiceSupported, toggleRecording } = useVoiceCapture({
+    onTranscript: (text) => {
+      setLogInput(prev => prev ? `${prev} ${text}` : text);
+    }
+  });
 
   const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
@@ -267,16 +277,34 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="e.g. 30 min workout, wrote blog post, called mom..."
+                placeholder={isRecording ? "Listening..." : "e.g. 30 min workout, wrote blog post..."}
                 value={logInput}
                 onChange={(e) => setLogInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !isLogging && logInput.trim() && handleQuickLog()}
                 className="flex-1"
+                disabled={isRecording}
               />
+              {voiceSupported && (
+                <Button 
+                  size="icon" 
+                  variant={isRecording ? "destructive" : "outline"}
+                  onClick={toggleRecording}
+                  disabled={isTranscribing}
+                  title={isRecording ? "Stop recording" : "Voice input"}
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
               <Button 
                 size="icon" 
                 onClick={handleQuickLog} 
-                disabled={isLogging || !logInput.trim()}
+                disabled={isLogging || !logInput.trim() || isRecording}
               >
                 {isLogging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>

@@ -59,13 +59,13 @@ serve(async (req) => {
     const hour = parseInt(hourStr, 10);
     const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
 
-    // Map emotional states to search keywords for better insight matching
-    const emotionalKeywords: Record<string, string[]> = {
-      scattered: ["focus", "clarity", "one thing", "priority", "simplify", "present", "attention"],
-      anxious: ["calm", "trust", "fear", "control", "surrender", "breathe", "ground", "safe"],
-      overthinking: ["action", "move", "decide", "paralysis", "analysis", "just do", "start", "imperfect"],
-      bored: ["purpose", "meaning", "spark", "curiosity", "experiment", "explore", "play"],
-      lonely: ["connect", "community", "reach out", "belong", "presence", "show up", "relationship"],
+    // Map states to keywords for insight matching (Weave-aligned, not emotional)
+    const stateKeywords: Record<string, string[]> = {
+      scattered: ["focus", "clarity", "one thing", "priority", "simplify", "present", "attention", "filter"],
+      drifting: ["direction", "vision", "purpose", "identity", "becoming", "north star", "why", "intention"],
+      stuck: ["action", "move", "start", "first step", "momentum", "begin", "rep", "ship"],
+      disconnected: ["identity", "values", "who", "becoming", "self", "core", "essence", "remember"],
+      overloaded: ["filter", "simplify", "less", "essential", "noise", "signal", "curate", "protect"],
     };
 
     // Fetch identity seed, insights, documents, and recent actions
@@ -106,15 +106,15 @@ serve(async (req) => {
       ...documents.filter(d => d.summary).map(d => ({ type: 'document' as const, title: d.title, content: d.summary!, relevance_score: d.relevance_score || 0 }))
     ];
 
-    // If emotional state provided, score items by keyword matches
+    // If state provided, score items by keyword matches
     let matchedItem = null;
-    if (emotionalState && emotionalKeywords[emotionalState] && yourMind.length > 0) {
-      const keywords = emotionalKeywords[emotionalState];
+    if (emotionalState && stateKeywords[emotionalState] && yourMind.length > 0) {
+      const keywords = stateKeywords[emotionalState];
       
       // Score all items by keyword matches
       const scoredItems = yourMind.map(item => {
         const text = `${item.title} ${item.content}`.toLowerCase();
-        const matchCount = keywords.filter(kw => text.includes(kw.toLowerCase())).length;
+        const matchCount = keywords.filter((kw: string) => text.includes(kw.toLowerCase())).length;
         return { ...item, matchScore: matchCount };
       });
 
@@ -167,23 +167,23 @@ serve(async (req) => {
       night: "Night - pure calm (breathing, stillness, preparing for rest)"
     };
 
-    // Emotional state context for AI
-    const emotionalContext = emotionalState ? {
-      scattered: "They're feeling scattered - too many thoughts, no clear direction. Help them focus on ONE thing.",
-      anxious: "They're feeling on edge - something feels off. Ground them without being therapeutic.",
-      overthinking: "They're stuck in mental loops. Get them to take one concrete action, not think more.",
-      bored: "Nothing feels interesting. Reconnect them to purpose or suggest a small experiment.",
-      lonely: "They feel disconnected from themselves. Reflect back who they are becoming.",
+    // State context for AI (Weave-aligned: patterns and identity, not therapy)
+    const stateContext = emotionalState ? {
+      scattered: "Too many threads. Help them pick ONE to pull on right now.",
+      drifting: "Lost sight of direction. Reflect their identity/vision back to them clearly.",
+      stuck: "Can't start. Give them one tiny first rep - action over planning.",
+      disconnected: "Far from who they're becoming. Mirror their identity seed back.",
+      overloaded: "Too much input. Help them filter to what actually matters for their path.",
     }[emotionalState] : "";
 
     // Generate a gentle identity-aligned rep
-    const systemPrompt = `You surface what the user already knows. The user is drifting${emotionalState ? ` (specifically: ${emotionalState})` : ' (bored, anxious, lonely, overthinking, or wanting to numb out)'}. 
-Based on their saved identity and values, bring them back to themselves with one gentle micro-action.
+    const systemPrompt = `You surface what the user already knows. The user is off-center${emotionalState ? ` (specifically: ${emotionalState})` : ''}. 
+Based on their saved identity and values, bring them back to themselves with one concrete micro-action.
 
 CORE PHILOSOPHY:
 The user is NOT managing separate life areas. They're living ONE integrated life. Your job is to reflect back who they already are, not prescribe who they should become.
 ${corePractice ? `\nDETECTED CORE PRACTICE: "${corePractice}" - this is what they're practicing everywhere. Reference it.` : ''}
-${emotionalContext ? `\nEMOTIONAL CONTEXT: ${emotionalContext}` : ''}
+${stateContext ? `\nSTATE CONTEXT: ${stateContext}` : ''}
 
 TIME: ${timeOfDay}
 ${timeContext[timeOfDay as keyof typeof timeContext]}
