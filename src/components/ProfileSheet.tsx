@@ -1,15 +1,15 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Brain, Lightbulb, Moon, Sun } from "lucide-react";
+import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Moon, Sun } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { TopicClusterVisualization } from "./dashboard/TopicClusterVisualization";
 import { ProgressGameView } from "./dashboard/ProgressGameView";
+import { WeaveView } from "./profile/WeaveView";
 import { useTheme } from "next-themes";
 
 interface ActionHistoryItem {
@@ -59,7 +59,6 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [loading, setLoading] = useState(false);
   const [showExperiments, setShowExperiments] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("progress");
   
   // Gamification stats
@@ -67,16 +66,6 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [streak, setStreak] = useState(0);
   const [insightsThisWeek, setInsightsThisWeek] = useState(0);
   const [pathsActive, setPathsActive] = useState(0);
-
-  // Extract keywords from identity seed for alignment scoring
-  const identityKeywords = useMemo(() => {
-    if (!identitySeed) return [];
-    return identitySeed
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(w => w.length > 4)
-      .slice(0, 20);
-  }, [identitySeed]);
 
   useEffect(() => {
     if (open && user) {
@@ -215,15 +204,6 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       });
   };
 
-  const toggleCluster = (theme: string) => {
-    const newSet = new Set(expandedClusters);
-    if (newSet.has(theme)) {
-      newSet.delete(theme);
-    } else {
-      newSet.add(theme);
-    }
-    setExpandedClusters(newSet);
-  };
 
   const handleSignOut = () => {
     signOut();
@@ -271,8 +251,6 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const sortedDays = Object.keys(actionsByDay).sort((a, b) => 
     new Date(b).getTime() - new Date(a).getTime()
   );
-
-  const totalInsights = insightClusters.reduce((sum, c) => sum + c.insights.length, 0);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -413,110 +391,35 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           )}
           </TabsContent>
 
-          <TabsContent value="mind" className="flex-1 overflow-y-auto px-5 pb-4 mt-0 space-y-4">
+          <TabsContent value="mind" className="flex-1 overflow-y-auto px-5 pb-4 mt-0">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               </div>
             ) : (
-              <>
-                {/* How It Works - Compact explainer */}
-                <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-                  <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">Your Mind</span> shows everything you've captured—insights, documents, experiments. 
-                    Topics are auto-detected from your content. Size = depth. Recent activity is highlighted. Connected topics share common themes.
-                  </p>
-                </div>
-
-                {/* Mind Stats */}
-                <div className="flex items-center gap-4 py-3 px-4 rounded-xl bg-muted/30 border border-border/20">
-                  <div className="flex-1 text-center">
-                    <p className="text-xl sm:text-2xl font-semibold text-foreground">{totalInsights}</p>
-                    <p className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground">Insights</p>
-                  </div>
-                  <div className="w-px h-8 bg-border/30" />
-                  <div className="flex-1 text-center">
-                    <p className="text-xl sm:text-2xl font-semibold text-foreground">{insightClusters.filter(c => c.theme !== "Uncategorized").length}</p>
-                    <p className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground">Topics</p>
-                  </div>
-                </div>
-
-                {/* Topic Cluster Visualization */}
-                {insightClusters.filter(c => c.theme !== "Uncategorized").length > 0 && (
-                  <div>
-                    <p className="text-[10px] sm:text-xs uppercase tracking-wide text-muted-foreground font-medium mb-2">
-                      Knowledge Map
-                    </p>
-                    <TopicClusterVisualization 
-                      clusters={insightClusters} 
-                      identityKeywords={identityKeywords}
-                    />
-                  </div>
-                )}
-
-                {/* Clustered Insights */}
-                {insightClusters.length === 0 ? (
-                  <div className="py-6 text-center">
-                    <Brain className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">Your mind is empty</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Capture what matters to you</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2">
-                      By Topic
-                    </p>
-                    {insightClusters.map((cluster) => {
-                      const isExpanded = expandedClusters.has(cluster.theme);
-                      return (
-                        <Collapsible key={cluster.theme} open={isExpanded} onOpenChange={() => toggleCluster(cluster.theme)}>
-                          <CollapsibleTrigger className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
-                            <div className="flex items-center gap-2">
-                              {cluster.color ? (
-                                <div 
-                                  className="h-3 w-3 rounded-full" 
-                                  style={{ backgroundColor: cluster.color }}
-                                />
-                              ) : (
-                                <Lightbulb className="h-4 w-4 text-muted-foreground" />
-                              )}
-                              <span className="text-sm font-medium text-foreground">{cluster.theme}</span>
-                              {cluster.recentCount > 0 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                                  +{cluster.recentCount}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">{cluster.insights.length}</span>
-                              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="space-y-2 pl-9 pr-3 pb-2">
-                              {cluster.insights.slice(0, 5).map((insight) => (
-                                <div key={insight.id} className="py-1.5">
-                                  <p className="text-sm font-medium text-foreground leading-snug">
-                                    {insight.title}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                    {insight.content}
-                                  </p>
-                                </div>
-                              ))}
-                              {cluster.insights.length > 5 && (
-                                <p className="text-xs text-muted-foreground/60 py-1">
-                                  +{cluster.insights.length - 5} more
-                                </p>
-                              )}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+              <WeaveView
+                insights={insightClusters.flatMap(c => c.insights.map(i => ({
+                  id: i.id,
+                  title: i.title,
+                  content: i.content,
+                  topic_id: i.topic_id,
+                  created_at: i.created_at,
+                  topics: i.topics ? { name: i.topics.name, color: i.topics.color } : null
+                })))}
+                actions={weeklyActions.map(a => ({
+                  id: a.id,
+                  action_text: a.action_text,
+                  pillar: a.pillar,
+                  action_date: a.action_date
+                }))}
+                experiments={activeExperiments.map(e => ({
+                  id: e.id,
+                  title: e.title,
+                  status: e.status,
+                  identity_shift_target: e.identity_shift_target
+                }))}
+                identitySeed={identitySeed}
+              />
             )}
           </TabsContent>
         </Tabs>
