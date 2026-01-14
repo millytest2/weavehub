@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Check, X, Clock, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +25,7 @@ interface ApplyThisDialogProps {
 
 export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +133,139 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
     return hoursLeft;
   };
 
+  const content = (
+    <div className="py-4 px-1">
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          {currentAction ? (
+            <motion.div
+              key={currentAction.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-4"
+            >
+              {/* Source reference */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground truncate max-w-[60%] sm:max-w-[70%]">
+                  From: {currentAction.source_title}
+                </p>
+                {getTimeRemaining() !== null && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>{getTimeRemaining()}h left</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Action */}
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                <p className="text-base sm:text-lg font-medium leading-relaxed">
+                  {currentAction.action_text}
+                </p>
+              </div>
+              
+              {/* Context */}
+              {currentAction.action_context && (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {currentAction.action_context}
+                </p>
+              )}
+              
+              {/* Progress indicator */}
+              {pendingActions.length > 1 && (
+                <div className="flex items-center justify-center gap-1.5">
+                  {pendingActions.map((_, i) => (
+                    <div 
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        i === currentIndex ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+              
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={handleComplete}
+                  disabled={isCompleting}
+                  className="flex-1 h-12 sm:h-11 rounded-xl text-base sm:text-sm"
+                >
+                  <Check className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
+                  Done
+                </Button>
+                <Button
+                  onClick={handleSkip}
+                  variant="outline"
+                  className="h-12 sm:h-11 rounded-xl px-5 sm:px-4"
+                >
+                  <X className="h-5 w-5 sm:h-4 sm:w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-8"
+            >
+              <div className="w-12 h-12 mx-auto rounded-xl bg-success/10 flex items-center justify-center mb-3">
+                <Check className="h-6 w-6 text-success" />
+              </div>
+              <p className="text-base font-medium">All caught up!</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Save content to queue new actions
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+    </div>
+  );
+
+  const header = (
+    <>
+      <div className="flex items-center gap-2">
+        <Zap className="h-5 w-5 text-primary" />
+        <span>Apply This</span>
+      </div>
+      <p className="text-sm text-muted-foreground mt-1">
+        {pendingActions.length > 0 
+          ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} queued from your saved content`
+          : "No pending actions"
+        }
+      </p>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="px-4 pb-8">
+          <DrawerHeader className="text-left px-0">
+            <DrawerTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Apply This
+            </DrawerTitle>
+            <DrawerDescription>
+              {pendingActions.length > 0 
+                ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} queued from your saved content`
+                : "No pending actions"
+              }
+            </DrawerDescription>
+          </DrawerHeader>
+          {content}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-xl">
@@ -145,100 +281,7 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
             }
           </DialogDescription>
         </DialogHeader>
-
-        <div className="py-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            </div>
-          ) : (
-            <AnimatePresence mode="wait">
-              {currentAction ? (
-                <motion.div
-                  key={currentAction.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-4"
-                >
-                  {/* Source reference */}
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground truncate max-w-[70%]">
-                      From: {currentAction.source_title}
-                    </p>
-                    {getTimeRemaining() !== null && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{getTimeRemaining()}h left</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Action */}
-                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                    <p className="text-base font-medium leading-relaxed">
-                      {currentAction.action_text}
-                    </p>
-                  </div>
-                  
-                  {/* Context */}
-                  {currentAction.action_context && (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {currentAction.action_context}
-                    </p>
-                  )}
-                  
-                  {/* Progress indicator */}
-                  {pendingActions.length > 1 && (
-                    <div className="flex items-center justify-center gap-1.5">
-                      {pendingActions.map((_, i) => (
-                        <div 
-                          key={i}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            i === currentIndex ? 'bg-primary' : 'bg-muted'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Actions */}
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      onClick={handleComplete}
-                      disabled={isCompleting}
-                      className="flex-1 h-11 rounded-xl"
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      Done
-                    </Button>
-                    <Button
-                      onClick={handleSkip}
-                      variant="outline"
-                      className="h-11 rounded-xl px-4"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-8"
-                >
-                  <div className="w-12 h-12 mx-auto rounded-xl bg-success/10 flex items-center justify-center mb-3">
-                    <Check className="h-6 w-6 text-success" />
-                  </div>
-                  <p className="text-base font-medium">All caught up!</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Save content to queue new actions
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          )}
-        </div>
+        {content}
       </DialogContent>
     </Dialog>
   );
