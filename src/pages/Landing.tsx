@@ -280,7 +280,7 @@ const Landing = () => {
                 <h3 className="font-semibold text-lg">Learning Paths</h3>
               </div>
               <p className="text-muted-foreground mb-4">
-                Turn a topic cluster into a structured journey. Complete in 7, 14, or 30 days.
+                Turn a topic cluster into a structured sprint. Short, focused sections you'll actually finish.
               </p>
               <p className="text-xs text-primary font-medium">→ From consumption to mastery</p>
             </div>
