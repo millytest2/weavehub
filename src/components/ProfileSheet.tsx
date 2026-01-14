@@ -422,7 +422,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                 <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
                   <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
                     <span className="font-medium text-foreground">Your Mind</span> shows everything you've captured—insights, documents, experiments. 
-                    Topics are auto-detected from your content. Size = depth. ⚡ = recent activity. Connected topics share common themes.
+                    Topics are auto-detected from your content. Size = depth. Recent activity is highlighted. Connected topics share common themes.
                   </p>
                 </div>
 

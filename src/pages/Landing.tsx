@@ -1,4 +1,4 @@
-import { ArrowRight, Zap, Compass, CheckCircle, Play, Sparkles, Brain, Target, Clock, TrendingUp } from "lucide-react";
+import { ArrowRight, Zap, Compass, CheckCircle, Play, Sparkles, Brain, Target, Clock, TrendingUp, FileText, Video, Headphones, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -87,7 +87,12 @@ const Landing = () => {
                   BEFORE
                 </div>
                 <div className="space-y-2 mt-2">
-                  <div className="text-4xl">📺📄🎧📚</div>
+                  <div className="flex justify-center gap-2 text-muted-foreground">
+                    <FileText className="h-6 w-6" />
+                    <Video className="h-6 w-6" />
+                    <Headphones className="h-6 w-6" />
+                    <BookOpen className="h-6 w-6" />
+                  </div>
                   <p className="text-sm text-muted-foreground">47 saved YouTube videos</p>
                   <p className="text-sm text-muted-foreground">23 bookmarked articles</p>
                   <p className="text-sm text-muted-foreground">12 "read later" notes</p>
@@ -111,7 +116,7 @@ const Landing = () => {
                   AFTER
                 </div>
                 <div className="space-y-3 mt-2">
-                  <div className="text-4xl">✅</div>
+                  <CheckCircle className="h-10 w-10 text-primary mx-auto" />
                   <p className="font-semibold text-foreground">Today's Action:</p>
                   <p className="text-sm text-muted-foreground italic">
                     "Spend 15 mins applying the 'atomic habits' technique from James Clear to your morning routine"
