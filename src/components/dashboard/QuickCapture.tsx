@@ -369,7 +369,7 @@ export const QuickCapture = () => {
                 </button>
               </div>
               
-              {/* Capture row */}
+              {/* Capture row: Paste + Insight (with voice inside) */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleQuickCapture("paste")}
@@ -379,30 +379,6 @@ export const QuickCapture = () => {
                   <span className="text-xs font-medium">Paste</span>
                 </button>
                 <button
-                  onClick={() => {
-                    handleQuickCapture("insight");
-                    setTimeout(() => toggleRecording(), 100);
-                  }}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <Mic className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Voice</span>
-                </button>
-              </div>
-
-              {/* Apply This + Type insight row */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setShowApplyThis(true);
-                  }}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <BookCheck className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Apply</span>
-                </button>
-                <button
                   onClick={() => handleQuickCapture("insight")}
                   className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
                 >
@@ -410,6 +386,18 @@ export const QuickCapture = () => {
                   <span className="text-xs font-medium">Insight</span>
                 </button>
               </div>
+
+              {/* Apply This */}
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  setShowApplyThis(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+              >
+                <BookCheck className="h-5 w-5 text-primary" />
+                <span className="text-xs font-medium">Apply What You Learned</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-3 py-3">
