@@ -18,15 +18,16 @@ import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 type CaptureType = "paste" | "insight" | null;
 type RealignMode = "push" | "flow" | null;
 
-const EMOTIONAL_STATES = [
-  { id: "scattered", label: "Scattered", desc: "Too many thoughts" },
-  { id: "anxious", label: "On edge", desc: "Something feels off" },
-  { id: "overthinking", label: "Overthinking", desc: "Stuck in loops" },
-  { id: "bored", label: "Bored", desc: "Nothing feels interesting" },
-  { id: "lonely", label: "Disconnected", desc: "Far from myself" },
+// Weave-aligned states: about patterns and identity, not emotions
+const FEELING_OFF_STATES = [
+  { id: "scattered", label: "Scattered", desc: "Need to refocus on one thread" },
+  { id: "drifting", label: "Drifting", desc: "Lost sight of my direction" },
+  { id: "stuck", label: "Stuck", desc: "Can't start, need a first rep" },
+  { id: "disconnected", label: "Disconnected", desc: "Far from who I'm becoming" },
+  { id: "overloaded", label: "Overloaded", desc: "Too many inputs, need to filter" },
 ] as const;
 
-type EmotionalState = typeof EMOTIONAL_STATES[number]["id"] | null;
+type EmotionalState = typeof FEELING_OFF_STATES[number]["id"] | null;
 
 interface ReturnToSelfData {
   identity: string;
@@ -328,7 +329,7 @@ export const QuickCapture = () => {
             <div className="space-y-3 py-3">
               <p className="text-xs text-muted-foreground text-center mb-2">What's pulling you off center?</p>
               <div className="grid grid-cols-2 gap-2">
-                {EMOTIONAL_STATES.map((state) => (
+                {FEELING_OFF_STATES.map((state) => (
                   <button
                     key={state.id}
                     onClick={() => handleReturnToSelfWithState(state.id)}
