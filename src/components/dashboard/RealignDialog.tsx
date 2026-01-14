@@ -6,7 +6,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Zap, Waves, Target, Compass, ArrowRight, Heart } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Zap, Waves, Target, Compass, ArrowRight, Heart, Sparkles } from "lucide-react";
 
 export interface RealignData {
   mode: "push" | "flow";
@@ -16,7 +17,8 @@ export interface RealignData {
   gap?: string;
   intensity?: string;
   todayMatters?: string;
-  valuesInPlay?: string;
+  valuesInPlay?: string[];
+  alignedAction?: string;
   oneMove: string;
 }
 
@@ -112,25 +114,48 @@ export const RealignDialog = ({
               </div>
             )}
 
-            {!isPush && data.todayMatters && (
-              <div className="space-y-2">
+            {!isPush && data.valuesInPlay && data.valuesInPlay.length > 0 && (
+              <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
-                  <Waves className="h-4 w-4" />
-                  Why Today Matters
+                  <Heart className="h-4 w-4" />
+                  Values in Play Today
                 </div>
-                <p className="text-sm leading-relaxed">{data.todayMatters}</p>
+                <div className="flex flex-wrap gap-2">
+                  {data.valuesInPlay.map((value, index) => (
+                    <Badge 
+                      key={index} 
+                      variant="secondary" 
+                      className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20 px-3 py-1"
+                    >
+                      {value}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
 
-            {!isPush && data.valuesInPlay && (
+            {!isPush && data.todayMatters && (
               <>
                 <Separator />
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
-                    <Heart className="h-4 w-4" />
-                    Values in Play
+                    <Sparkles className="h-4 w-4" />
+                    Why Today Matters
                   </div>
-                  <p className="text-sm leading-relaxed">{data.valuesInPlay}</p>
+                  <p className="text-sm leading-relaxed">{data.todayMatters}</p>
+                </div>
+              </>
+            )}
+
+            {!isPush && data.alignedAction && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+                    <Waves className="h-4 w-4" />
+                    Aligned Action
+                  </div>
+                  <p className="text-sm leading-relaxed">{data.alignedAction}</p>
                 </div>
               </>
             )}
