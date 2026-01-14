@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, BookCheck, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { ManualPasteFallback } from "./ManualPasteFallback";
 import { RealignDialog, RealignData } from "./RealignDialog";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 import { ApplyThisDialog } from "./ApplyThisDialog";
+import { Confetti, useConfetti } from "@/components/ui/confetti";
 
 type CaptureType = "paste" | "insight" | null;
 type RealignMode = "push" | "flow" | null;
@@ -48,6 +49,20 @@ export const QuickCapture = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCareerPrompt, setShowCareerPrompt] = useState(false);
+  const [isFirstPaste, setIsFirstPaste] = useState(false);
+  const { showConfetti, celebrate, handleComplete: handleConfettiComplete } = useConfetti();
+
+  // Check if this is user's first paste
+  useEffect(() => {
+    const checkFirstPaste = async () => {
+      if (!user) return;
+      const hasSeenConfetti = localStorage.getItem(`first_paste_${user.id}`);
+      if (!hasSeenConfetti) {
+        setIsFirstPaste(true);
+      }
+    };
+    checkFirstPaste();
+  }, [user]);
   const [pendingSubmit, setPendingSubmit] = useState(false);
   const [showReturnToSelf, setShowReturnToSelf] = useState(false);
   const [returnToSelfData, setReturnToSelfData] = useState<ReturnToSelfData | null>(null);
@@ -138,7 +153,15 @@ export const QuickCapture = () => {
           return;
         }
         
-        toast.success(data.message || "Saved");
+        // First paste celebration!
+        if (isFirstPaste && user) {
+          celebrate();
+          localStorage.setItem(`first_paste_${user.id}`, "true");
+          setIsFirstPaste(false);
+          toast.success("First capture! You're weaving. 🎉");
+        } else {
+          toast.success(data.message || "Saved");
+        }
         showCareerToastForPaste(content);
       } else if (captureType === "insight") {
         setIsProcessing(true);
@@ -509,6 +532,8 @@ export const QuickCapture = () => {
         open={showApplyThis}
         onOpenChange={setShowApplyThis}
       />
+
+      <Confetti show={showConfetti} onComplete={handleConfettiComplete} />
     </>
   );
 };
