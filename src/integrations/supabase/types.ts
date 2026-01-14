@@ -534,6 +534,47 @@ export type Database = {
           },
         ]
       }
+      metric_logs: {
+        Row: {
+          goal_id: string
+          id: string
+          logged_at: string
+          notes: string | null
+          user_id: string
+          value: number
+          week_number: number | null
+          year: number | null
+        }
+        Insert: {
+          goal_id: string
+          id?: string
+          logged_at?: string
+          notes?: string | null
+          user_id: string
+          value: number
+          week_number?: number | null
+          year?: number | null
+        }
+        Update: {
+          goal_id?: string
+          id?: string
+          logged_at?: string
+          notes?: string | null
+          user_id?: string
+          value?: number
+          week_number?: number | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metric_logs_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "user_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       observations: {
         Row: {
           content: string
@@ -788,6 +829,45 @@ export type Database = {
           hour_of_day?: number
           id?: string
           pillar?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_goals: {
+        Row: {
+          created_at: string
+          current_value: number | null
+          domain: string
+          goal_name: string
+          id: string
+          target_date: string | null
+          target_value: number
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number | null
+          domain: string
+          goal_name: string
+          id?: string
+          target_date?: string | null
+          target_value: number
+          unit: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: number | null
+          domain?: string
+          goal_name?: string
+          id?: string
+          target_date?: string | null
+          target_value?: number
+          unit?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

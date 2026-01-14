@@ -17,6 +17,9 @@ import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { WeeklyMetricsCheckin } from "@/components/lab/WeeklyMetricsCheckin";
+import { WeeklyExportGenerator } from "@/components/lab/WeeklyExportGenerator";
+import { WeeklyProgressCard } from "@/components/lab/WeeklyProgressCard";
 import { 
   FlaskConical, 
   Plus, 
@@ -825,112 +828,88 @@ const Lab = () => {
           {/* WEEKLY INTEGRATION TAB */}
           <TabsContent value="integration" className="space-y-4">
             <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">6-domain weekly scoring for integration tracking</p>
+              <p className="text-sm text-muted-foreground">Track real progress toward your goals</p>
               <Button 
                 size="sm" 
                 onClick={() => setShowWeeklyCheckin(true)}
-                disabled={hasCurrentWeekCheckin}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                {hasCurrentWeekCheckin ? "Week Logged" : "Weekly Check-in"}
+                Log Week {currentWeekInfo.weekNum}
               </Button>
             </div>
 
-            {/* Current week status */}
-            {hasCurrentWeekCheckin && (
-              <Card className="border-green-500/30 bg-green-500/5">
-                <CardContent className="py-4 flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="font-medium">Week {currentWeekInfo.weekNum} logged!</p>
-                    <p className="text-sm text-muted-foreground">Great job tracking your integration this week.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Current week progress card */}
+            <WeeklyProgressCard 
+              weekNumber={currentWeekInfo.weekNum}
+              year={currentWeekInfo.year}
+              onExport={() => setShowWeeklyExport(true)}
+            />
 
-            {/* Weekly entries */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {weeklyIntegrations.map((weekly) => {
-                const scores = [
-                  { key: 'business', score: weekly.business_score, icon: Briefcase, color: 'text-blue-500' },
-                  { key: 'body', score: weekly.body_score, icon: Activity, color: 'text-green-500' },
-                  { key: 'content', score: weekly.content_score, icon: FileText, color: 'text-purple-500' },
-                  { key: 'relationship', score: weekly.relationship_score, icon: Heart, color: 'text-pink-500' },
-                  { key: 'mind', score: weekly.mind_score, icon: Brain, color: 'text-orange-500' },
-                  { key: 'play', score: weekly.play_score, icon: Gamepad2, color: 'text-cyan-500' },
-                ];
-                const avgScore = scores.reduce((sum, s) => sum + (s.score || 0), 0) / 6;
-                
-                return (
-                  <Card key={weekly.id}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Badge variant="outline" className="mb-2">
-                            Week {weekly.week_number}, {weekly.year}
-                          </Badge>
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            <span className="text-2xl font-bold">{avgScore.toFixed(1)}</span>
-                            <span className="text-sm font-normal text-muted-foreground">/10 avg</span>
-                          </CardTitle>
-                        </div>
-                        {weekly.export_generated && (
-                          <Badge variant="secondary" className="text-xs">Exported</Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {/* Score grid */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {scores.map(({ key, score, icon: Icon, color }) => (
-                          <div key={key} className="flex items-center gap-1.5 text-sm">
-                            <Icon className={`h-3.5 w-3.5 ${color}`} />
-                            <span className="capitalize">{key.slice(0, 3)}</span>
-                            <span className={`font-medium ml-auto ${
-                              (score || 0) <= 4 ? 'text-red-500' : 
-                              (score || 0) <= 6 ? 'text-yellow-500' : 'text-green-500'
-                            }`}>
-                              {score || 0}
-                            </span>
+            {/* Previous weeks from old system (legacy view) */}
+            {weeklyIntegrations.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground">Previous Weeks (Legacy Scoring)</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {weeklyIntegrations.slice(0, 4).map((weekly) => {
+                    const scores = [
+                      { key: 'business', score: weekly.business_score, icon: Briefcase, color: 'text-blue-500' },
+                      { key: 'body', score: weekly.body_score, icon: Activity, color: 'text-green-500' },
+                      { key: 'content', score: weekly.content_score, icon: FileText, color: 'text-purple-500' },
+                      { key: 'relationship', score: weekly.relationship_score, icon: Heart, color: 'text-pink-500' },
+                      { key: 'mind', score: weekly.mind_score, icon: Brain, color: 'text-orange-500' },
+                      { key: 'play', score: weekly.play_score, icon: Gamepad2, color: 'text-cyan-500' },
+                    ];
+                    const avgScore = scores.reduce((sum, s) => sum + (s.score || 0), 0) / 6;
+                    
+                    return (
+                      <Card key={weekly.id} className="opacity-70">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Badge variant="outline" className="mb-2">
+                                Week {weekly.week_number}, {weekly.year}
+                              </Badge>
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <span className="text-2xl font-bold">{avgScore.toFixed(1)}</span>
+                                <span className="text-sm font-normal text-muted-foreground">/10 avg</span>
+                              </CardTitle>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-
-                      {/* Pattern if detected */}
-                      {weekly.pattern_detected && (
-                        <div className="p-2 bg-muted rounded-lg">
-                          <p className="text-xs font-medium text-muted-foreground mb-1">Pattern Detected</p>
-                          <p className="text-sm">{weekly.pattern_detected}</p>
-                        </div>
-                      )}
-
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={() => handleGenerateWeeklyPattern(weekly)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export for Social
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {weeklyIntegrations.length === 0 && !loading && (
-              <Card className="border-dashed">
-                <CardContent className="py-12 text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground mb-4">No weekly check-ins yet</p>
-                  <Button onClick={() => setShowWeeklyCheckin(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Start Your First Weekly Check-in
-                  </Button>
-                </CardContent>
-              </Card>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-3 gap-2">
+                            {scores.map(({ key, score, icon: Icon, color }) => (
+                              <div key={key} className="flex items-center gap-1.5 text-sm">
+                                <Icon className={`h-3.5 w-3.5 ${color}`} />
+                                <span className="capitalize">{key.slice(0, 3)}</span>
+                                <span className="font-medium ml-auto">
+                                  {score || 0}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
             )}
+
+            {/* Empty state when no goals set */}
+            <Card className="border-dashed">
+              <CardContent className="py-8 text-center">
+                <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground mb-2">Track real progress toward your goals</p>
+                <p className="text-sm text-muted-foreground/70 mb-4">
+                  Goals are extracted from your 2026 Direction on the Identity page
+                </p>
+                <Button onClick={() => setShowWeeklyCheckin(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Start Tracking
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* CROSS-DOMAIN PATTERN ANALYZER TAB */}
@@ -1361,51 +1340,23 @@ const Lab = () => {
           </DialogContent>
         </Dialog>
 
-        {/* WEEKLY CHECK-IN DIALOG */}
-        <Dialog open={showWeeklyCheckin} onOpenChange={setShowWeeklyCheckin}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Week {currentWeekInfo.weekNum} Check-in</DialogTitle>
-              <DialogDescription>
-                Score each domain 1-10 and add notes on what went well
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6">
-              {DOMAINS.map(({ key, label, icon: Icon, color }) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Icon className={`h-4 w-4 ${color}`} />
-                    <Label className="font-medium">{label}</Label>
-                    <span className="ml-auto font-bold text-lg">
-                      {weeklyScores[key as keyof typeof weeklyScores]}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[weeklyScores[key as keyof typeof weeklyScores]]}
-                    onValueChange={([val]) => setWeeklyScores(p => ({ ...p, [key]: val }))}
-                    min={1}
-                    max={10}
-                    step={1}
-                    className="w-full"
-                  />
-                  <Input
-                    placeholder={`What went well in ${label.toLowerCase()}?`}
-                    value={weeklyNotes[key as keyof typeof weeklyNotes]}
-                    onChange={(e) => setWeeklyNotes(p => ({ ...p, [key]: e.target.value }))}
-                    className="text-sm"
-                  />
-                </div>
-              ))}
-              
-              <Button className="w-full" onClick={handleWeeklyCheckin}>
-                <Check className="h-4 w-4 mr-2" />
-                Save Week {currentWeekInfo.weekNum} Check-in
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* WEEKLY METRICS CHECK-IN (NEW SYSTEM) */}
+        <WeeklyMetricsCheckin
+          open={showWeeklyCheckin}
+          onOpenChange={setShowWeeklyCheckin}
+          weekNumber={currentWeekInfo.weekNum}
+          year={currentWeekInfo.year}
+          weekStart={currentWeekInfo.weekStart}
+          onComplete={fetchData}
+        />
 
-        {/* WEEKLY EXPORT DIALOG */}
+        {/* WEEKLY EXPORT GENERATOR (NEW SYSTEM) */}
+        <WeeklyExportGenerator
+          open={showWeeklyExport}
+          onOpenChange={setShowWeeklyExport}
+          weekNumber={currentWeekInfo.weekNum}
+          year={currentWeekInfo.year}
+        />
         <Dialog open={showWeeklyExport} onOpenChange={setShowWeeklyExport}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>

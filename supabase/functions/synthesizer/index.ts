@@ -405,6 +405,159 @@ Write a compelling post that shows how ${conn.domains?.[0] || 'one domain'} insi
       });
     }
 
+    // EXTRACT GOALS MODE - parses identity to extract structured goals
+    if (mode === "extract_goals" && body.identity) {
+      const { year_note, core_values, content, weekly_focus } = body.identity;
+      
+      const systemPrompt = `You are helping extract structured goals from a user's identity and direction.
+
+The 6 domains are:
+- business (revenue, career, products, income)
+- body (weight, fitness, health)
+- content (followers, audience, content creation)
+- relationship (family, friends, partner time)
+- mind (learning, mental health, mindfulness)
+- play (hobbies, games, fun activities)
+
+You MUST output valid JSON with this structure:
+{
+  "goals": [
+    {
+      "domain": "business",
+      "goal_name": "Short name like 'UPath Revenue' or 'Weight'",
+      "target_value": 100000,
+      "unit": "$" or "lbs" or "followers" etc
+    }
+  ]
+}
+
+Rules:
+- Only extract goals that have clear numeric targets (explicit or implied)
+- Don't make up goals that aren't mentioned
+- If a goal is mentioned without a specific target, make a reasonable estimate
+- Maximum 6 goals (one per domain max)
+- Be specific with goal names - use their actual project names if mentioned`;
+
+      const userPrompt = `Extract structured goals from this identity:
+
+2026 DIRECTION:
+${year_note || 'Not specified'}
+
+CORE VALUES:
+${core_values || 'Not specified'}
+
+CURRENT FOCUS:
+${weekly_focus || 'Not specified'}
+
+IDENTITY:
+${content || 'Not specified'}
+
+Return ONLY valid JSON with goals array.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to extract goals");
+      }
+
+      const data = await response.json();
+      const responseContent = data.choices?.[0]?.message?.content || '{}';
+      
+      let parsed;
+      try {
+        const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { goals: [] };
+      } catch (e) {
+        console.error("Failed to parse goals JSON:", e);
+        parsed = { goals: [] };
+      }
+
+      return new Response(JSON.stringify(parsed), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // WEEKLY PATTERN MODE - generates pattern insight from weekly metrics
+    if (mode === "weekly_pattern" && body.metrics) {
+      const metrics = body.metrics;
+      const weekNumber = body.week_number;
+      
+      const systemPrompt = `You are finding patterns in weekly progress data across life domains.
+
+Your job:
+- Look for connections between domains (e.g., gym consistency affecting work energy)
+- Identify what's driving progress or stalling it
+- Suggest one focus for next week
+
+Be concise and specific. No fluff.`;
+
+      const metricsStr = metrics.map((m: any) => 
+        `${m.domain}: ${m.goal_name} - ${m.current}/${m.target} ${m.unit}${m.notes ? ` (${m.notes})` : ''}`
+      ).join('\n');
+
+      const userPrompt = `Week ${weekNumber} metrics:
+
+${metricsStr}
+
+Return JSON with:
+{
+  "pattern": "One sentence pattern/insight across domains",
+  "target": "One focus for next week"
+}`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 500,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to generate pattern");
+      }
+
+      const data = await response.json();
+      const responseContent = data.choices?.[0]?.message?.content || '{}';
+      
+      let parsed;
+      try {
+        const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { pattern: "", target: "" };
+      } catch (e) {
+        console.error("Failed to parse pattern JSON:", e);
+        parsed = { pattern: "", target: "" };
+      }
+
+      return new Response(JSON.stringify(parsed), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     // ORIGINAL DIRECTION CHECK MODE (default)
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatWeightedContextForAgent(userContext, "decision-mirror");
