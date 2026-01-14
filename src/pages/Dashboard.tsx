@@ -272,7 +272,7 @@ const Dashboard = () => {
   const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
 
   return (
-    <div className="min-h-screen flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in overflow-x-hidden">
+    <div className="min-h-screen flex flex-col w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in overflow-x-hidden">
       {user && (
         <>
           <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
@@ -282,10 +282,10 @@ const Dashboard = () => {
         </>
       )}
 
-      {/* Responsive grid layout for desktop */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Today's Invitation Card - Primary focus, spans full on mobile, left on desktop */}
-        <div className="invitation-card lg:row-span-2">
+      {/* Single column flow - adapts spacing per device */}
+      <div className="flex-1 flex flex-col gap-4 sm:gap-6">
+        {/* Today's Invitation Card - Primary focus */}
+        <div className="invitation-card">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <div className="flex items-center gap-2">
@@ -382,14 +382,11 @@ const Dashboard = () => {
           )}
         </div>
 
-
-        {/* Right column on desktop - stacked cards */}
-        <div className="flex flex-col gap-4 sm:gap-6">
-          {/* Active Experiment Card */}
-          {activeExperiment && (
-            <div className="invitation-card">
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <span className="text-sm sm:text-base font-medium text-muted-foreground">Active Experiment</span>
+        {/* Active Experiment Card */}
+        {activeExperiment && (
+          <div className="invitation-card">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <span className="text-sm sm:text-base font-medium text-muted-foreground">Active Experiment</span>
               {(() => {
                 const createdDate = new Date(activeExperiment.created_at);
                 const now = new Date();
@@ -405,8 +402,6 @@ const Dashboard = () => {
                 else if (durationStr.includes('5 day')) totalDays = 5;
                 else if (durationStr.includes('week')) totalDays = 7;
                 else if (durationStr.includes('2 week')) totalDays = 14;
-                
-                const daysLeft = Math.max(0, totalDays - dayNumber + 1);
                 
                 return (
                   <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
@@ -462,31 +457,30 @@ const Dashboard = () => {
                 </div>
               );
             })()}
-            </div>
-          )}
+          </div>
+        )}
 
-          {/* Next Best Rep Button */}
-          <button
-            onClick={handleNextRep}
-            disabled={isGettingRep}
-            className="w-full invitation-card group text-left hover:border-primary/30"
-          >
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors flex-shrink-0">
-                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm sm:text-base">
-                  {isGettingRep ? "Finding your next move..." : "Feeling off?"}
-                </p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  One tap. One aligned action.
-                </p>
-              </div>
-              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+        {/* Next Best Rep Button */}
+        <button
+          onClick={handleNextRep}
+          disabled={isGettingRep}
+          className="w-full invitation-card group text-left hover:border-primary/30"
+        >
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors flex-shrink-0">
+              <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-          </button>
-        </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm sm:text-base">
+                {isGettingRep ? "Finding your next move..." : "Feeling off?"}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                One tap. One aligned action.
+              </p>
+            </div>
+            <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </div>
+        </button>
       </div>
 
       {/* Next Best Rep Dialog */}
