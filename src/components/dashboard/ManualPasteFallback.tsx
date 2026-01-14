@@ -39,7 +39,6 @@ export function ManualPasteFallback({
       if (updateError) throw updateError;
 
       // Generate insights from the content
-      const LOVABLE_API_KEY = import.meta.env.VITE_LOVABLE_API_KEY;
       
       // Call the edge function to generate insights
       const { data, error } = await supabase.functions.invoke("brain", {
