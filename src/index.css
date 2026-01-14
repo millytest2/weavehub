@@ -197,13 +197,13 @@
     @apply bg-muted-foreground/20;
   }
 
-  /* Lab tabs - sleek styling */
-  .lab-tabs [data-state="active"] {
-    @apply bg-primary text-primary-foreground shadow-sm;
+  /* Elegant shadows */
+  .shadow-soft {
+    box-shadow: 0 2px 8px -2px hsl(var(--foreground) / 0.06);
   }
 
-  .lab-tabs [data-state="inactive"] {
-    @apply hover:bg-muted/60;
+  .shadow-elevated {
+    box-shadow: 0 8px 24px -8px hsl(var(--foreground) / 0.1);
   }
 
   /* Editorial link style */
