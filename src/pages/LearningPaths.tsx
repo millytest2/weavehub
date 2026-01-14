@@ -222,7 +222,7 @@ const LearningPaths = () => {
               Sprint Paths
             </h1>
             <p className="text-sm text-muted-foreground mt-2 max-w-md">
-              Turn your 190+ saved insights into structured mini-courses. Each sprint produces real deliverables in 3-7 days.
+              Turn saved insights into structured learning sprints. Each path produces real deliverables in 3-7 days.
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -262,13 +262,13 @@ const LearningPaths = () => {
             </div>
             <h3 className="font-semibold text-xl mb-3">What do you want to master?</h3>
             <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
-              Sprint paths analyze your saved insights and documents to create personalized mini-courses. 
+              Sprint paths analyze saved insights and documents to create personalized learning experiences. 
               Each sprint produces something tangible you can use or share.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Button onClick={generateTopicSuggestions} variant="outline" size="lg" className="gap-2">
                 <Sparkles className="w-4 h-4" />
-                Find patterns in my content
+                Find patterns in content
               </Button>
               <Button onClick={() => setIsCreateOpen(true)} size="lg" className="gap-2">
                 <Plus className="w-4 h-4" />
@@ -406,7 +406,7 @@ const LearningPaths = () => {
           <DialogHeader>
             <DialogTitle className="text-xl">Create a Sprint Path</DialogTitle>
             <DialogDescription className="text-base">
-              Pick a topic from your saved content. We'll analyze related insights and create a focused learning sprint.
+              Pick a topic from saved content. Related insights will be analyzed to create a focused learning sprint.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 pt-4">
@@ -426,7 +426,7 @@ const LearningPaths = () => {
               <div className="space-y-3">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  Patterns detected in your content
+                  Patterns detected
                 </p>
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {suggestedTopics.map((s) => (
@@ -459,21 +459,21 @@ const LearningPaths = () => {
             {loadingSuggestions && suggestedTopics.length === 0 && (
               <div className="text-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary mb-3" />
-                <p className="text-sm text-muted-foreground">Analyzing your content for patterns...</p>
+                <p className="text-sm text-muted-foreground">Analyzing content for patterns...</p>
               </div>
             )}
 
             {checkingSource && (
               <p className="text-xs text-muted-foreground flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                Searching your content...
+                Searching content...
               </p>
             )}
 
             {sourceCheckResult && (
               <div className={`p-3 rounded-xl text-sm ${sourceCheckResult.sufficient ? 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20' : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'}`}>
                 Found <strong>{sourceCheckResult.count}</strong> related sources
-                {sourceCheckResult.sufficient ? ` — ready to create your sprint!` : ' (need at least 5)'}
+                {sourceCheckResult.sufficient ? ` — ready to create sprint` : ' (need at least 5)'}
               </div>
             )}
 
@@ -485,7 +485,7 @@ const LearningPaths = () => {
               {generating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Creating your personalized path...
+                  Creating personalized path...
                 </>
               ) : (
                 <>

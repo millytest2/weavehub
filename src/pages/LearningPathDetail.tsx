@@ -418,7 +418,7 @@ const LearningPathDetail = () => {
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
-                <p className="text-xs font-medium text-primary uppercase tracking-wider">Learning from YOUR saved content</p>
+                <p className="text-xs font-medium text-primary uppercase tracking-wider">Learning Sprint</p>
                 <CardTitle className="text-xl sm:text-2xl">{path.topic_name || path.title}</CardTitle>
               </div>
               <div className="flex gap-1.5 shrink-0">
