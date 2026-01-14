@@ -26,7 +26,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const primaryNav = navigation.slice(0, 4);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background overflow-x-hidden">
       {/* Top Bar - Refined */}
       <div className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 glass">
         <div className="flex h-14 items-center justify-between px-4 max-w-7xl mx-auto">
@@ -151,8 +151,8 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
       <DecisionMirror />
 
       {/* Main Content */}
-      <main className="flex-1 pt-14 pb-20 md:pb-6">
-        <div className="mx-auto max-w-7xl p-4 md:p-6">{children}</div>
+      <main className="flex-1 pt-14 pb-20 md:pb-6 overflow-x-hidden w-full">
+        <div className="mx-auto max-w-7xl p-4 md:p-6 overflow-x-hidden">{children}</div>
       </main>
     </div>
   );
