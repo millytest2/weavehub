@@ -20,20 +20,27 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check if user arrived from password reset email
+  // Redirect to landing if user hasn't gone through try-before-signup flow
   useEffect(() => {
-    const checkForRecovery = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const type = hashParams.get("type");
-      
-      if (type === "recovery") {
-        setIsResettingPassword(true);
-      }
-    };
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get("type");
     
-    checkForRecovery();
+    // Don't redirect if this is a password recovery
+    if (type === "recovery") {
+      setIsResettingPassword(true);
+      return;
+    }
+    
+    // Check if user has pending identity from landing flow
+    const hasPendingIdentity = sessionStorage.getItem("pending_identity");
+    
+    // If no pending identity and not a special flow, redirect to landing
+    if (!hasPendingIdentity && !type) {
+      navigate("/landing");
+      return;
+    }
 
-    // Also listen for auth state changes
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsResettingPassword(true);
@@ -41,7 +48,7 @@ const Auth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
