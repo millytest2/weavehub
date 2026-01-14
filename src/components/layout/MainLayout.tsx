@@ -14,13 +14,13 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const navigation = [
-    { name: "Today", href: "/", icon: Home },
-    { name: "Focus", href: "/daily", icon: ListTodo },
-    { name: "North Star", href: "/identity", icon: Compass },
-    { name: "Mind", href: "/insights", icon: Lightbulb },
-    { name: "Library", href: "/documents", icon: FileText },
-    { name: "Lab", href: "/experiments", icon: FlaskConical },
-    { name: "Journeys", href: "/learning-paths", icon: Brain },
+    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Daily", href: "/daily", icon: ListTodo },
+    { name: "Identity", href: "/identity", icon: Compass },
+    { name: "Insights", href: "/insights", icon: Lightbulb },
+    { name: "Documents", href: "/documents", icon: FileText },
+    { name: "Experiments", href: "/experiments", icon: FlaskConical },
+    { name: "Paths", href: "/learning-paths", icon: Brain },
   ];
 
   const primaryNav = navigation.slice(0, 4);

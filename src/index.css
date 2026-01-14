@@ -8,134 +8,124 @@
 }
 
 /* ============================================
-   DESIGN SYSTEM: The Personal Thinking Space
+   DESIGN SYSTEM: Minimal + Editorial Elegance
    ============================================
-   A calm, intentional aesthetic that suggests
-   connection and weaving of ideas. Threads, not boxes.
+   A refined, sophisticated aesthetic that combines
+   clean minimalism with editorial touches.
    All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* Core backgrounds - warm parchment */
-    --background: 42 25% 97%;
-    --foreground: 220 25% 10%;
+    /* Core backgrounds - warm off-white */
+    --background: 40 20% 98%;
+    --foreground: 220 20% 12%;
 
-    /* Cards - warm white with depth */
-    --card: 40 20% 99%;
-    --card-foreground: 220 25% 10%;
+    /* Cards - pure white with subtle warmth */
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 12%;
 
     /* Popover matches card */
-    --popover: 40 20% 99%;
-    --popover-foreground: 220 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 12%;
 
-    /* Primary - rich indigo blue */
-    --primary: 230 55% 42%;
+    /* Primary - deep warm blue */
+    --primary: 220 60% 35%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - warm sand */
-    --secondary: 38 20% 94%;
-    --secondary-foreground: 220 20% 18%;
+    /* Secondary - subtle warm gray */
+    --secondary: 40 10% 95%;
+    --secondary-foreground: 220 20% 20%;
 
-    /* Muted - subtle warmth */
-    --muted: 40 15% 92%;
-    --muted-foreground: 220 12% 48%;
+    /* Muted - for backgrounds */
+    --muted: 40 10% 93%;
+    --muted-foreground: 220 10% 45%;
 
-    /* Accent - warm amber for growth moments */
-    --accent-warm: 32 85% 52%;
-    --accent: 230 55% 42%;
+    /* Accent - matches primary for consistency */
+    --accent: 220 60% 35%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive - warm red */
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success - forest green */
-    --success: 158 50% 38%;
+    /* Success - warm green */
+    --success: 160 55% 35%;
     --success-foreground: 0 0% 100%;
 
-    /* Borders - refined and subtle */
-    --border: 40 15% 86%;
-    --input: 40 15% 89%;
-    --ring: 230 55% 42%;
+    /* Borders - subtle and refined */
+    --border: 40 10% 88%;
+    --input: 40 10% 90%;
+    --ring: 220 60% 35%;
 
-    /* Radius - softer, more organic */
-    --radius: 0.875rem;
-    
-    /* Thread accent for visual connections */
-    --thread: 230 55% 42%;
-    --thread-glow: 230 60% 65%;
+    /* Radius - slightly softer */
+    --radius: 0.75rem;
     
     /* Smooth transitions */
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Sidebar */
-    --sidebar-background: 40 20% 99%;
-    --sidebar-foreground: 220 25% 10%;
-    --sidebar-primary: 230 55% 42%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 12%;
+    --sidebar-primary: 220 60% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 38 20% 94%;
-    --sidebar-accent-foreground: 220 25% 10%;
-    --sidebar-border: 40 15% 86%;
-    --sidebar-ring: 230 55% 42%;
+    --sidebar-accent: 40 10% 95%;
+    --sidebar-accent-foreground: 220 20% 12%;
+    --sidebar-border: 40 10% 88%;
+    --sidebar-ring: 220 60% 35%;
   }
 
   .dark {
-    /* Dark backgrounds - deep charcoal with warmth */
-    --background: 225 18% 7%;
-    --foreground: 40 15% 94%;
+    /* Dark backgrounds - rich charcoal */
+    --background: 220 15% 8%;
+    --foreground: 40 10% 95%;
 
-    /* Cards - elevated with subtle depth */
-    --card: 225 16% 10%;
-    --card-foreground: 40 15% 94%;
+    /* Cards - slightly elevated */
+    --card: 220 15% 11%;
+    --card-foreground: 40 10% 95%;
 
     /* Popover */
-    --popover: 225 16% 10%;
-    --popover-foreground: 40 15% 94%;
+    --popover: 220 15% 11%;
+    --popover-foreground: 40 10% 95%;
 
-    /* Primary - luminous for dark mode */
-    --primary: 230 60% 62%;
+    /* Primary - brighter for dark mode */
+    --primary: 220 60% 55%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
-    --secondary: 225 14% 14%;
-    --secondary-foreground: 40 12% 88%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 40 10% 90%;
 
     /* Muted */
-    --muted: 225 14% 13%;
-    --muted-foreground: 220 12% 58%;
+    --muted: 220 15% 14%;
+    --muted-foreground: 220 10% 55%;
 
-    /* Accent warm */
-    --accent-warm: 32 80% 55%;
-    --accent: 230 60% 62%;
+    /* Accent */
+    --accent: 220 60% 55%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive */
-    --destructive: 0 60% 58%;
+    --destructive: 0 60% 55%;
     --destructive-foreground: 0 0% 100%;
 
     /* Success */
-    --success: 158 45% 48%;
+    --success: 160 50% 45%;
     --success-foreground: 0 0% 100%;
 
     /* Borders */
-    --border: 225 14% 17%;
-    --input: 225 14% 17%;
-    --ring: 230 60% 62%;
-
-    /* Thread for dark mode */
-    --thread: 230 60% 62%;
-    --thread-glow: 230 65% 72%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 220 60% 55%;
 
     /* Sidebar */
-    --sidebar-background: 225 18% 7%;
-    --sidebar-foreground: 40 15% 94%;
-    --sidebar-primary: 230 60% 62%;
+    --sidebar-background: 220 15% 8%;
+    --sidebar-foreground: 40 10% 95%;
+    --sidebar-primary: 220 60% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 225 14% 13%;
-    --sidebar-accent-foreground: 40 15% 94%;
-    --sidebar-border: 225 14% 17%;
-    --sidebar-ring: 230 60% 62%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 40 10% 95%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 220 60% 55%;
   }
 }
 
@@ -176,50 +166,44 @@
 
   /* Glass morphism effect */
   .glass {
-    @apply bg-background/85 backdrop-blur-xl;
+    @apply bg-background/80 backdrop-blur-xl;
   }
 
   /* Invitation card - consistent across all devices */
   .invitation-card {
-    @apply relative overflow-hidden rounded-2xl border border-border/40 bg-card p-8 shadow-soft;
+    @apply relative overflow-hidden rounded-2xl border border-border/50 bg-card p-6 shadow-soft;
     @apply transition-all duration-300 ease-out;
   }
 
   .invitation-card:hover {
-    @apply border-border/60 shadow-elevated;
+    @apply border-border shadow-elevated;
   }
 
-  /* Stream card - for flowing content like insights */
-  .stream-card {
-    @apply relative py-6 px-1 border-l-2 border-transparent;
-    @apply transition-all duration-200 ease-out;
+  /* Progress indicator - stable transitions */
+  .progress-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+    transition: background-color 0.4s ease, transform 0.3s ease;
   }
 
-  .stream-card:hover {
-    @apply border-l-primary/30 bg-card/50;
+  .progress-dot.active {
+    @apply bg-primary scale-110;
   }
 
-  /* Thread line - visual connection element */
-  .thread-line {
-    @apply absolute w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent;
+  .progress-dot.complete {
+    @apply bg-primary;
   }
 
-  /* Elegant shadows with warmth */
+  .progress-dot.pending {
+    @apply bg-muted-foreground/20;
+  }
+
+  /* Elegant shadows */
   .shadow-soft {
-    box-shadow: 
-      0 1px 3px hsl(var(--foreground) / 0.04),
-      0 4px 12px -2px hsl(var(--foreground) / 0.06);
+    box-shadow: 0 2px 8px -2px hsl(var(--foreground) / 0.06);
   }
 
   .shadow-elevated {
-    box-shadow: 
-      0 2px 4px hsl(var(--foreground) / 0.04),
-      0 12px 32px -8px hsl(var(--foreground) / 0.12);
-  }
-
-  /* Glow effect for emphasis */
-  .glow-subtle {
-    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.15);
+    box-shadow: 0 8px 24px -8px hsl(var(--foreground) / 0.1);
   }
 
   /* Editorial link style */
@@ -235,16 +219,6 @@
 
   .link-editorial:hover::after {
     @apply origin-left scale-x-100;
-  }
-
-  /* Breathing animation for hero elements */
-  .breathing {
-    animation: breathing 4s ease-in-out infinite;
-  }
-
-  @keyframes breathing {
-    0%, 100% { opacity: 0.9; }
-    50% { opacity: 1; }
   }
 }
 
