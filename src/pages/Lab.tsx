@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { WeeklyMetricsCheckin } from "@/components/lab/WeeklyMetricsCheckin";
 import { WeeklyExportGenerator } from "@/components/lab/WeeklyExportGenerator";
 import { WeeklyProgressCard } from "@/components/lab/WeeklyProgressCard";
+import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
 import { 
   FlaskConical, 
   Plus, 
@@ -823,89 +824,75 @@ const Lab = () => {
 
           {/* WEEKLY INTEGRATION TAB */}
           <TabsContent value="integration" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">Track real progress toward your goals</p>
-              <Button 
-                size="sm" 
-                onClick={() => setShowWeeklyCheckin(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Log Week {currentWeekInfo.weekNum}
-              </Button>
-            </div>
-
-            {/* Current week progress card */}
-            <WeeklyProgressCard 
-              weekNumber={currentWeekInfo.weekNum}
-              year={currentWeekInfo.year}
-              onExport={() => setShowWeeklyExport(true)}
-            />
-
-            {/* Previous weeks from old system (legacy view) */}
-            {weeklyIntegrations.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Previous Weeks (Legacy Scoring)</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {weeklyIntegrations.slice(0, 4).map((weekly) => {
-                    const scores = [
-                      { key: 'business', score: weekly.business_score, icon: Briefcase, color: 'text-blue-500' },
-                      { key: 'body', score: weekly.body_score, icon: Activity, color: 'text-green-500' },
-                      { key: 'content', score: weekly.content_score, icon: FileText, color: 'text-purple-500' },
-                      { key: 'relationship', score: weekly.relationship_score, icon: Heart, color: 'text-pink-500' },
-                      { key: 'mind', score: weekly.mind_score, icon: Brain, color: 'text-orange-500' },
-                      { key: 'play', score: weekly.play_score, icon: Gamepad2, color: 'text-cyan-500' },
-                    ];
-                    const avgScore = scores.reduce((sum, s) => sum + (s.score || 0), 0) / 6;
-                    
-                    return (
-                      <Card key={weekly.id} className="opacity-70">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Badge variant="outline" className="mb-2">
-                                Week {weekly.week_number}, {weekly.year}
-                              </Badge>
-                              <CardTitle className="text-lg flex items-center gap-2">
-                                <span className="text-2xl font-bold">{avgScore.toFixed(1)}</span>
-                                <span className="text-sm font-normal text-muted-foreground">/10 avg</span>
-                              </CardTitle>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-3 gap-2">
-                            {scores.map(({ key, score, icon: Icon, color }) => (
-                              <div key={key} className="flex items-center gap-1.5 text-sm">
-                                <Icon className={`h-3.5 w-3.5 ${color}`} />
-                                <span className="capitalize">{key.slice(0, 3)}</span>
-                                <span className="font-medium ml-auto">
-                                  {score || 0}
-                                </span>
+            {/* New Week-by-Week Rhythm View */}
+            <WeeklyRhythmView onCheckin={() => setShowWeeklyCheckin(true)} />
+            
+            {/* Goals Progress (Collapsible) */}
+            <details className="group">
+              <summary className="cursor-pointer text-sm font-medium text-muted-foreground flex items-center gap-2 py-2">
+                <TrendingUp className="h-4 w-4" />
+                Year Goals Progress
+                <span className="text-xs">(click to expand)</span>
+              </summary>
+              <div className="pt-4 space-y-4">
+                <WeeklyProgressCard 
+                  weekNumber={currentWeekInfo.weekNum}
+                  year={currentWeekInfo.year}
+                  onExport={() => setShowWeeklyExport(true)}
+                />
+                
+                {/* Previous weeks from old system (legacy view) */}
+                {weeklyIntegrations.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Previous Weeks (Legacy Scoring)</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {weeklyIntegrations.slice(0, 4).map((weekly) => {
+                        const scores = [
+                          { key: 'business', score: weekly.business_score, icon: Briefcase, color: 'text-blue-500' },
+                          { key: 'body', score: weekly.body_score, icon: Activity, color: 'text-green-500' },
+                          { key: 'content', score: weekly.content_score, icon: FileText, color: 'text-purple-500' },
+                          { key: 'relationship', score: weekly.relationship_score, icon: Heart, color: 'text-pink-500' },
+                          { key: 'mind', score: weekly.mind_score, icon: Brain, color: 'text-orange-500' },
+                          { key: 'play', score: weekly.play_score, icon: Gamepad2, color: 'text-cyan-500' },
+                        ];
+                        const avgScore = scores.reduce((sum, s) => sum + (s.score || 0), 0) / 6;
+                        
+                        return (
+                          <Card key={weekly.id} className="opacity-70">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <Badge variant="outline" className="mb-2">
+                                    Week {weekly.week_number}, {weekly.year}
+                                  </Badge>
+                                  <CardTitle className="text-lg flex items-center gap-2">
+                                    <span className="text-2xl font-bold">{avgScore.toFixed(1)}</span>
+                                    <span className="text-sm font-normal text-muted-foreground">/10 avg</span>
+                                  </CardTitle>
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-3 gap-2">
+                                {scores.map(({ key, score, icon: Icon, color }) => (
+                                  <div key={key} className="flex items-center gap-1.5 text-sm">
+                                    <Icon className={`h-3.5 w-3.5 ${color}`} />
+                                    <span className="capitalize">{key.slice(0, 3)}</span>
+                                    <span className="font-medium ml-auto">
+                                      {score || 0}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Empty state when no goals set */}
-            <Card className="border-dashed">
-              <CardContent className="py-8 text-center">
-                <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground mb-2">Track real progress toward your goals</p>
-                <p className="text-sm text-muted-foreground/70 mb-4">
-                  Goals are extracted from your 2026 Direction on the Identity page
-                </p>
-                <Button onClick={() => setShowWeeklyCheckin(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Start Tracking
-                </Button>
-              </CardContent>
-            </Card>
+            </details>
           </TabsContent>
 
           {/* CROSS-DOMAIN PATTERN ANALYZER TAB */}
