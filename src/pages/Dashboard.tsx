@@ -268,30 +268,8 @@ const Dashboard = () => {
   const allDone = completedCount >= 4 || (threeComplete && !tasksForToday.some(t => t.task_sequence === 4));
   const showBonusOption = threeComplete && completedCount === 3 && !tasksForToday.some(t => t.task_sequence === 4);
 
-  // Progress dots component - consistent across all devices
-  const ProgressDots = ({ current }: { current: number }) => {
-    const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
-    return (
-      <div className="flex items-center gap-2">
-        {Array.from({ length: dotsToShow }, (_, i) => i + 1).map((num) => {
-          const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
-          const isCurrent = num === current && !allDone;
-          return (
-            <div
-              key={num}
-              className={`progress-dot ${
-                isCompleted
-                  ? 'complete'
-                  : isCurrent
-                    ? 'active animate-pulse-subtle'
-                    : 'pending'
-              }`}
-            />
-          );
-        })}
-      </div>
-    );
-  };
+  // Memoized dot count to prevent flickering
+  const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
 
   return (
     <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-8 animate-fade-in">
@@ -313,7 +291,18 @@ const Dashboard = () => {
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-muted-foreground">Today's Invitation</span>
             </div>
-            <ProgressDots current={currentSequence} />
+            <div className="flex items-center gap-2">
+              {Array.from({ length: dotsToShow }, (_, i) => i + 1).map((num) => {
+                const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
+                const isCurrent = num === currentSequence && !allDone;
+                return (
+                  <div
+                    key={num}
+                    className={`progress-dot ${isCompleted ? 'complete' : isCurrent ? 'active' : 'pending'}`}
+                  />
+                );
+              })}
+            </div>
           </div>
 
           {/* Content */}

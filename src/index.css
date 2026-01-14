@@ -179,9 +179,10 @@
     @apply border-border shadow-elevated;
   }
 
-  /* Progress indicator */
+  /* Progress indicator - stable transitions */
   .progress-dot {
-    @apply w-2.5 h-2.5 rounded-full transition-all duration-300;
+    @apply w-2.5 h-2.5 rounded-full;
+    transition: background-color 0.4s ease, transform 0.3s ease;
   }
 
   .progress-dot.active {
@@ -194,6 +195,15 @@
 
   .progress-dot.pending {
     @apply bg-muted-foreground/20;
+  }
+
+  /* Lab tabs - sleek styling */
+  .lab-tabs [data-state="active"] {
+    @apply bg-primary text-primary-foreground shadow-sm;
+  }
+
+  .lab-tabs [data-state="inactive"] {
+    @apply hover:bg-muted/60;
   }
 
   /* Editorial link style */
