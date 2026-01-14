@@ -17,14 +17,42 @@ const CORE_VALUES = [
   "Discipline", "Play", "Authenticity", "Impact"
 ] as const;
 
-// Quick identity starters
-const IDENTITY_STARTERS = [
+// Quick identity starters - rotated for split testing
+const IDENTITY_STARTERS_POOL = [
+  // Core Weave philosophy
+  "closes the gap between saving and becoming",
+  "turns consumption into action",
+  "stops saving, starts becoming",
+  "makes every saved thing count",
+  
+  // Action-oriented
   "ships weekly, not someday",
-  "moves before screens",
-  "builds in public",
+  "does the thing before feeling ready",
+  "takes imperfect action daily",
+  "moves before the motivation arrives",
+  
+  // Anti-distraction
   "chooses depth over distraction",
+  "protects their attention like treasure",
+  "moves before screens capture them",
+  
+  // Creative/Building
   "creates more than consumes",
+  "builds in public without permission",
+  "treats life as one long experiment",
+  
+  // Unconventional/Bold
+  "trusts their gut over the algorithm",
+  "makes decisions in 5 minutes, not 5 months",
+  "burns the backup plan",
+  "says no to good so they can say yes to great",
 ];
+
+// Get 5 random starters, weighted toward different categories
+const getRotatedStarters = (): string[] => {
+  const shuffled = [...IDENTITY_STARTERS_POOL].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 5);
+};
 
 // Compelling "Today's Invitation" samples based on values
 const SAMPLE_INVITATIONS = [
@@ -68,6 +96,10 @@ const Auth = () => {
   const [identitySeed, setIdentitySeed] = useState("");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [customValue, setCustomValue] = useState("");
+  
+  // Rotated starters for split testing (memoized per session)
+  const [displayedStarters] = useState(() => getRotatedStarters());
+  const [starterClicks, setStarterClicks] = useState<Record<string, number>>({});
   
   // Auth state
   const [isLogin, setIsLogin] = useState(true);
@@ -197,11 +229,21 @@ const Auth = () => {
         // Save identity from onboarding flow
         if (data.user && (identitySeed || selectedValues.length > 0)) {
           try {
+            // Check which starter was used (if any) for split test analytics
+            const usedStarter = IDENTITY_STARTERS_POOL.find(starter => 
+              identitySeed.includes(starter)
+            );
+            
             await supabase.from("identity_seeds").insert({
               user_id: data.user.id,
               content: identitySeed || "Someone who takes action daily.",
               core_values: selectedValues.join(", ") || null,
             });
+            
+            // Log starter conversion for split testing
+            if (usedStarter) {
+              console.log('[Split Test] Converted with starter:', usedStarter);
+            }
           } catch (e) {
             console.error("Failed to save identity:", e);
           }
@@ -269,10 +311,16 @@ const Auth = () => {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">Quick start:</p>
                   <div className="flex flex-wrap gap-2">
-                    {IDENTITY_STARTERS.map((starter) => (
+                    {displayedStarters.map((starter) => (
                       <button
                         key={starter}
-                        onClick={() => setIdentitySeed(`I'm becoming someone who ${starter}`)}
+                        onClick={() => {
+                          setIdentitySeed(`I'm becoming someone who ${starter}`);
+                          // Track click for split testing
+                          setStarterClicks(prev => ({ ...prev, [starter]: (prev[starter] || 0) + 1 }));
+                          // Log to console for now (can be sent to analytics later)
+                          console.log('[Split Test] Starter clicked:', starter);
+                        }}
                         className="text-xs px-2.5 py-1.5 rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors"
                       >
                         {starter}
