@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, BookCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
 import { RealignDialog, RealignData } from "./RealignDialog";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
+import { ApplyThisDialog } from "./ApplyThisDialog";
 
 type CaptureType = "paste" | "insight" | null;
 type RealignMode = "push" | "flow" | null;
@@ -60,6 +61,7 @@ export const QuickCapture = () => {
   const [showRealign, setShowRealign] = useState(false);
   const [realignData, setRealignData] = useState<RealignData | null>(null);
   const [isLoadingRealign, setIsLoadingRealign] = useState(false);
+  const [showApplyThis, setShowApplyThis] = useState(false);
   
   // Voice capture hook
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
@@ -388,14 +390,26 @@ export const QuickCapture = () => {
                 </button>
               </div>
 
-              {/* Type insight as smaller option */}
-              <button
-                onClick={() => handleQuickCapture("insight")}
-                className="w-full flex items-center justify-center gap-2 p-2 text-xs text-muted-foreground hover:text-foreground transition-all"
-              >
-                <Lightbulb className="h-3.5 w-3.5" />
-                Type an insight
-              </button>
+              {/* Apply This + Type insight row */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setShowApplyThis(true);
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <BookCheck className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Apply</span>
+                </button>
+                <button
+                  onClick={() => handleQuickCapture("insight")}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Lightbulb className="h-5 w-5 text-primary" />
+                  <span className="text-xs font-medium">Insight</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3 py-3">
@@ -517,6 +531,11 @@ export const QuickCapture = () => {
         onOpenChange={setShowRealign}
         data={realignData}
         isLoading={isLoadingRealign}
+      />
+
+      <ApplyThisDialog
+        open={showApplyThis}
+        onOpenChange={setShowApplyThis}
       />
     </>
   );

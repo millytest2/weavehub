@@ -10,7 +10,6 @@ import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRe
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { WeaveLoader } from "@/components/ui/weave-loader";
-import { ApplyThisCard } from "@/components/dashboard/ApplyThisCard";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -382,8 +381,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Apply This Card - Zero Information Waste */}
-        <ApplyThisCard />
 
         {/* Active Experiment Card */}
         {activeExperiment && (
