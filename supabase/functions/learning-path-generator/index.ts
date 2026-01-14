@@ -40,7 +40,19 @@ interface DailyTask {
   is_rest_day: boolean;
 }
 
+interface Section {
+  section_number: number;
+  title: string;
+  days: number[];
+  objective: string;
+  key_understanding: string;
+  sources_used: string[];
+  daily_breakdown: Array<{ day: number; learning_task: string; application_task: string }>;
+  section_deliverable: string;
+}
+
 interface PathStructure {
+  sections?: Section[];
   sub_topics: string[];
   why_this_matters: string;
   final_deliverable: string;
@@ -74,7 +86,10 @@ serve(async (req) => {
       });
     }
 
-    const { topic, durationDays = 30, regenerate = false, pathId = null } = await req.json();
+    const { topic, durationDays = 14, regenerate = false, pathId = null } = await req.json();
+
+    // Cap duration at 14 days max for focused learning
+    const actualDuration = Math.min(durationDays, 14);
 
     if (!topic) {
       return new Response(JSON.stringify({ error: "Topic is required" }), {
@@ -97,7 +112,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Generating ${durationDays}-day learning path for topic: ${topic}${regenerate ? ' (regenerating)' : ''}`);
+    console.log(`Generating ${actualDuration}-day learning path for topic: ${topic}${regenerate ? ' (regenerating)' : ''}`);
 
     let sources: Source[] = [];
     let existingPath: any = null;
@@ -280,7 +295,7 @@ serve(async (req) => {
       `[${idx + 1}] "${s.title}" (${s.type}): ${s.content.substring(0, 400)}`
     ).join("\n\n");
 
-    const systemPrompt = `You are generating a ${durationDays}-day DEEPLY PERSONALIZED learning path. Not generic curriculum - a path designed for THIS person's transformation.
+    const systemPrompt = `You are generating a ${actualDuration}-day SECTION-BASED learning path. Not overwhelming daily curriculum - a FOCUSED path with clear sections.
 
 ${identitySeed?.content ? `WHO THEY ARE: ${identitySeed.content.substring(0, 400)}` : ''}
 ${identitySeed?.core_values ? `THEIR VALUES: ${identitySeed.core_values}` : ''}
@@ -289,48 +304,62 @@ ${identitySeed?.weekly_focus ? `CURRENT FOCUS: ${identitySeed.weekly_focus}` : '
 ARCHETYPE: ${archetype.toUpperCase()}
 VALUE REQUIREMENT: ${archetypeValueMap[archetype]}
 
-WEAVE MISSION: This replaces ChatGPT/Claude by being IDENTITY-ALIGNED. Every day should feel like a chapter in THEIR transformation story, not generic learning.
+PATH STRUCTURE (${actualDuration} days total):
+- 3-4 SECTIONS, each 3-4 days
+- Each section has: clear OBJECTIVE, what you'll UNDERSTAND, what you'll DO
+- Day 7 and Day 14 are REST/REVIEW days if applicable
+- Final section is SYNTHESIS + creating TANGIBLE deliverable
 
 CRITICAL RULES:
 1. ONLY reference sources the user has saved - cite them as [1], [2], etc.
-2. Each learning task: 15-30 minutes
-3. Each application task: 15 minutes AND produces TANGIBLE OUTPUT for their archetype
-4. REST DAYS every 5th day (Day 5, 10, 15, 20, 25, 30)
-5. Progress from basics to advanced
-6. Final week (days 26-30) is synthesis + creating their FINAL DELIVERABLE
-7. Be SPECIFIC about which part of each source to consume
-8. Application tasks must create value THEY can use (not busy work)
+2. Each day: 20-30 mins learning + 15-20 mins application
+3. Every section ends with something CONCRETE produced
+4. Be SPECIFIC about which part of each source to consume
+5. Connect to their identity - this is THEIR path, not generic learning
 
-CONNECTION TO IDENTITY:
-- "why_this_matters" must connect to their SPECIFIC identity/values/focus
-- Application tasks should reinforce WHO THEY'RE BECOMING
-- Final deliverable should be something they'd be PROUD to share
+SECTION FORMAT:
+Each section should feel like a mini-sprint with:
+- Clear objective (what you'll be able to do)
+- Learning focus (what concepts from sources)
+- Application output (what you'll create/ship)
+- Why it matters for them specifically
 
 BANNED:
+- Overwhelming 30-day calendars
+- Daily minutiae without purpose
 - Generic advice not tied to their sources
 - Vague tasks like "reflect on your learnings"
-- Suggesting external sources they haven't saved
-- Emotional or motivational language
-- Application tasks with no tangible output
-- One-size-fits-all curriculum
-
-THE TEST: Would they think "this path was made for ME" or "this is generic learning"?
+- Course-like language (module, bootcamp, curriculum)
 
 OUTPUT FORMAT:
 Return valid JSON with this exact structure:
 {
-  "sub_topics": ["Sub-topic 1", "Sub-topic 2", "Sub-topic 3", "Sub-topic 4"],
-  "why_this_matters": "One sentence connecting to THEIR identity/values/weekly focus - make it personal",
-  "final_deliverable": "Specific TANGIBLE creation appropriate to their archetype that they'd share",
+  "sections": [
+    {
+      "section_number": 1,
+      "title": "Section title (action-oriented)",
+      "days": [1, 2, 3],
+      "objective": "By end of this section, you'll be able to...",
+      "key_understanding": "The core concept you'll grasp",
+      "sources_used": ["[1]", "[2]"],
+      "daily_breakdown": [
+        { "day": 1, "learning_task": "Watch [1] first 15 min...", "application_task": "Draft/Create/Build..." },
+        { "day": 2, "learning_task": "Continue [1]...", "application_task": "Refine/Test..." },
+        { "day": 3, "learning_task": "Review [2]...", "application_task": "Complete section deliverable" }
+      ],
+      "section_deliverable": "Specific thing produced by end of section"
+    }
+  ],
+  "sub_topics": ["Sub-topic 1", "Sub-topic 2", "Sub-topic 3"],
+  "why_this_matters": "One sentence connecting to THEIR identity - make it personal",
+  "final_deliverable": "The TANGIBLE thing they'll have created by day ${actualDuration}",
   "daily_structure": [
-    { "day": 1, "learning_task": "Watch [1] (first 15 minutes) focusing on...", "learning_source_ref": "[1]", "application_task": "Create a [archetype-specific output] demonstrating...", "is_rest_day": false },
-    { "day": 2, "learning_task": "...", "learning_source_ref": "[2]", "application_task": "Build/Post/Ship...", "is_rest_day": false },
-    { "day": 5, "learning_task": "", "learning_source_ref": "", "application_task": "", "is_rest_day": true },
-    ...continue for all ${durationDays} days
+    { "day": 1, "learning_task": "...", "learning_source_ref": "[1]", "application_task": "...", "is_rest_day": false },
+    { "day": 7, "learning_task": "", "learning_source_ref": "", "application_task": "", "is_rest_day": true }
   ]
 }`;
 
-    const userPrompt = `Generate a ${durationDays}-day learning path for: ${topic}
+    const userPrompt = `Generate a ${actualDuration}-day SECTION-BASED learning path for: ${topic}
 
 ${identitySeed ? `User's identity: ${identitySeed.content?.substring(0, 300)}` : ""}
 ${identitySeed?.core_values ? `Core values: ${identitySeed.core_values}` : ""}
@@ -338,13 +367,13 @@ ${identitySeed?.core_values ? `Core values: ${identitySeed.core_values}` : ""}
 User's saved sources about this topic:
 ${sourcesForPrompt}
 
-Create a structured path that:
-1. Extracts 4-5 sub-topics from these sources
-2. Orders learning from basics to advanced
-3. Each day has ONE learning task + ONE application task that creates OUTPUT
-4. Rest days on days 5, 10, 15, 20, 25, 30
-5. Final week is synthesis + creating TANGIBLE proof of learning
-6. Every application task produces something concrete (appropriate to their situation)
+Create a structured path with:
+1. 3-4 clear SECTIONS (not overwhelming daily tasks)
+2. Each section has an objective, key understanding, and deliverable
+3. Progress from basics to advanced within sections
+4. Rest day on day 7${actualDuration > 7 ? ' and day 14' : ''}
+5. Final section is synthesis + creating TANGIBLE proof of learning
+6. Every section produces something concrete
 
 Return ONLY valid JSON.`;
 
@@ -402,12 +431,13 @@ Return ONLY valid JSON.`;
       const { data, error: pathError } = await supabase
         .from("learning_paths")
         .update({
-          title: `${durationDays}-Day ${topic} Learning Path`,
+          title: `${actualDuration}-Day ${topic} Sprint`,
           description: pathStructure.why_this_matters,
-          structure: pathStructure.daily_structure,
+          structure: { daily_structure: pathStructure.daily_structure, sections: pathStructure.sections },
           sources_used: sources.slice(0, 12).map(s => ({ id: s.id, title: s.title, type: s.type })),
           sub_topics: pathStructure.sub_topics,
           final_deliverable: pathStructure.final_deliverable,
+          duration_days: actualDuration,
           current_day: 1,
           started_at: new Date().toISOString(),
           status: "active",
@@ -428,11 +458,11 @@ Return ONLY valid JSON.`;
         .from("learning_paths")
         .insert({
           user_id: user.id,
-          title: `${durationDays}-Day ${topic} Learning Path`,
+          title: `${actualDuration}-Day ${topic} Sprint`,
           description: pathStructure.why_this_matters,
           topic_name: topic,
-          duration_days: durationDays,
-          structure: pathStructure.daily_structure,
+          duration_days: actualDuration,
+          structure: { daily_structure: pathStructure.daily_structure, sections: pathStructure.sections },
           sources_used: sources.slice(0, 12).map(s => ({ id: s.id, title: s.title, type: s.type })),
           sub_topics: pathStructure.sub_topics,
           final_deliverable: pathStructure.final_deliverable,
