@@ -75,6 +75,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [weeklyData, setWeeklyData] = useState<WeeklyIntegration | null>(null);
   const [prevWeekData, setPrevWeekData] = useState<WeeklyIntegration | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pillarScope, setPillarScope] = useState<'day' | 'week'>('day');
   
   // Quick log state
   const [logInput, setLogInput] = useState("");
@@ -285,6 +286,35 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       maxStreak
     };
   }, [actions, weekDays]);
+
+
+  // Analyze today's actions (for day-by-day view)
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayAnalysis = useMemo(() => {
+    const todayActions = actions.filter(a => a.action_date === todayStr);
+    const byPillar: Record<string, number> = {};
+
+    todayActions.forEach(action => {
+      const pillar = action.pillar || 'other';
+      byPillar[pillar] = (byPillar[pillar] || 0) + 1;
+    });
+
+    const pillars = Object.entries(byPillar).sort((a, b) => b[1] - a[1]);
+    const dominantPillar = pillars[0]?.[0];
+    const activePillars = pillars.filter(([_, count]) => count > 0).length;
+
+    return {
+      byPillar,
+      dominantPillar,
+      activePillars,
+      totalActions: todayActions.length,
+    };
+  }, [actions, todayStr]);
+
+  const effectivePillarScope: 'day' | 'week' = isCurrentWeek ? pillarScope : 'week';
+  const pillarAnalysis = effectivePillarScope === 'day'
+    ? ({ byPillar: todayAnalysis.byPillar, dominantPillar: todayAnalysis.dominantPillar, activePillars: todayAnalysis.activePillars, totalActions: todayAnalysis.totalActions } as const)
+    : ({ byPillar: weekAnalysis.byPillar, dominantPillar: weekAnalysis.dominantPillar, activePillars: weekAnalysis.activePillars, totalActions: weekAnalysis.totalActions } as const);
 
   // Compare with previous week
   const weekComparison = useMemo(() => {
@@ -570,18 +600,47 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       {/* Pillar Balance */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Pillar Balance</CardTitle>
-          <CardDescription>Where your energy went this week</CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Pillar Balance</CardTitle>
+              <CardDescription>
+                {effectivePillarScope === 'day' ? 'Where your energy went today' : 'Where your energy went this week'}
+              </CardDescription>
+            </div>
+
+            {isCurrentWeek && (
+              <div className="flex items-center gap-1 rounded-md bg-muted/50 p-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={effectivePillarScope === 'day' ? 'secondary' : 'ghost'}
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setPillarScope('day')}
+                >
+                  Today
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={effectivePillarScope === 'week' ? 'secondary' : 'ghost'}
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setPillarScope('week')}
+                >
+                  Week
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
-              const count = weekAnalysis.byPillar[key] || 0;
-              const maxCount = Math.max(...Object.values(weekAnalysis.byPillar), 1);
+              const count = pillarAnalysis.byPillar[key] || 0;
+              const maxCount = Math.max(...Object.values(pillarAnalysis.byPillar), 1);
               const percentage = Math.round((count / maxCount) * 100);
               const Icon = config.icon;
-              const comparison = weekComparison?.[key];
-              
+              const comparison = effectivePillarScope === 'week' ? weekComparison?.[key] : null;
+
               return (
                 <div key={key} className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
@@ -594,7 +653,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
                         <span className="text-sm text-muted-foreground">{count} actions</span>
                         {comparison && (
                           <span className={`flex items-center text-xs ${
-                            comparison.trend === 'up' ? 'text-green-500' : 
+                            comparison.trend === 'up' ? 'text-green-500' :
                             comparison.trend === 'down' ? 'text-red-500' : 'text-muted-foreground'
                           }`}>
                             {comparison.trend === 'up' && <TrendingUp className="h-3 w-3" />}
@@ -605,7 +664,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
                       </div>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className={`h-full transition-all duration-500 ${count > 0 ? config.bgColor : 'bg-muted'}`}
                         style={{ width: count > 0 ? `${percentage}%` : '0%' }}
                       />
@@ -616,13 +675,21 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             })}
           </div>
 
-          {/* Insight */}
-          {weekAnalysis.dominantPillar && weekAnalysis.activePillars < 4 && (
+          {pillarAnalysis.totalActions === 0 && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/30 text-center">
+              <p className="text-sm text-muted-foreground">
+                {effectivePillarScope === 'day' ? "No actions logged today yet." : "No actions logged this week yet."}
+              </p>
+            </div>
+          )}
+
+          {pillarAnalysis.dominantPillar && pillarAnalysis.activePillars < 4 && pillarAnalysis.totalActions > 0 && (
             <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
               <p className="text-sm text-amber-700 dark:text-amber-400">
-                <span className="font-medium">Notice:</span> {weekAnalysis.activePillars === 1 
-                  ? `All energy in ${PILLAR_CONFIG[weekAnalysis.dominantPillar]?.label}. Consider spreading focus.`
-                  : `${6 - weekAnalysis.activePillars} pillars untouched. Balance creates resilience.`
+                <span className="font-medium">Notice:</span>{' '}
+                {pillarAnalysis.activePillars === 1
+                  ? `All energy in ${PILLAR_CONFIG[pillarAnalysis.dominantPillar]?.label}. Consider spreading focus.`
+                  : `${6 - pillarAnalysis.activePillars} pillars untouched. Balance creates resilience.`
                 }
               </p>
             </div>
