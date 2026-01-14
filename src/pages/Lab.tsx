@@ -571,10 +571,7 @@ const Lab = () => {
     <MainLayout>
       <div className="p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FlaskConical className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl sm:text-3xl font-bold">Lab</h1>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Lab</h1>
           <Badge variant="outline" className="text-xs">Private</Badge>
         </div>
 
