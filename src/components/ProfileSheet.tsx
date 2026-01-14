@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Moon, Sun } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -100,7 +101,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .select("id, title, content, source, topic_id, created_at, topics(id, name, color)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(100),
+          .limit(500),
         supabase
           .from("identity_seeds")
           .select("content")
@@ -424,20 +425,21 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           </TabsContent>
         </Tabs>
 
-        <div className="p-4 border-t border-border/20 mt-auto space-y-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground h-9"
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-            <span className="text-sm">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-          </Button>
+        <div className="p-4 border-t border-border/20 mt-auto space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              {theme === "dark" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
+              <span className="text-sm">Dark Mode</span>
+            </div>
+            <Switch
+              checked={theme === "dark"}
+              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+            />
+          </div>
           <Button
             variant="ghost"
             size="sm"
