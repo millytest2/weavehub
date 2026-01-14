@@ -578,32 +578,32 @@ const Lab = () => {
           <Badge variant="outline" className="text-xs">Private</Badge>
         </div>
 
-        <Tabs defaultValue="experiments" className="lab-tabs space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-12 p-1 bg-muted/50 rounded-xl">
+        <Tabs defaultValue="experiments" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 h-11 p-1 bg-card border border-border rounded-xl shadow-sm">
             <TabsTrigger 
               value="experiments" 
-              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
             >
               <FlaskConical className="h-4 w-4" />
               <span className="hidden sm:inline">Experiments</span>
             </TabsTrigger>
             <TabsTrigger 
               value="observations" 
-              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
             >
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Observations</span>
             </TabsTrigger>
             <TabsTrigger 
               value="integration" 
-              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
             >
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Weekly</span>
             </TabsTrigger>
             <TabsTrigger 
               value="patterns" 
-              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
             >
               <Network className="h-4 w-4" />
               <span className="hidden sm:inline">Patterns</span>

@@ -297,44 +297,51 @@ export const QuickCapture = () => {
           </DialogHeader>
 
           {showRealignPicker ? (
-            <div className="space-y-2 py-2">
+            <div className="space-y-3 py-3">
+              <p className="text-xs text-muted-foreground text-center mb-2">Choose your mode</p>
               <button
                 onClick={() => handleRealign("push")}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border border-orange-500/30 bg-orange-500/5 hover:bg-orange-500/10 transition-all text-left"
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:border-orange-500/40 hover:shadow-md transition-all duration-200 text-left group"
               >
-                <Zap className="h-5 w-5 text-orange-500 shrink-0" />
-                <div>
-                  <span className="text-sm font-medium">Push</span>
-                  <span className="text-xs text-muted-foreground block">Show me the gap</span>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Zap className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <span className="text-sm font-semibold block">Push</span>
+                  <span className="text-xs text-muted-foreground">Show me the gap between where I am and where I'm going</span>
                 </div>
               </button>
               <button
                 onClick={() => handleRealign("flow")}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 transition-all text-left"
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gradient-to-r from-blue-500/10 to-cyan-500/10 hover:border-blue-500/40 hover:shadow-md transition-all duration-200 text-left group"
               >
-                <Waves className="h-5 w-5 text-blue-500 shrink-0" />
-                <div>
-                  <span className="text-sm font-medium">Flow</span>
-                  <span className="text-xs text-muted-foreground block">What matters today</span>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Waves className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <span className="text-sm font-semibold block">Flow</span>
+                  <span className="text-xs text-muted-foreground">Ground me in what matters today</span>
                 </div>
               </button>
             </div>
           ) : showEmotionalPicker ? (
-            <div className="space-y-2 py-2">
+            <div className="space-y-3 py-3">
+              <p className="text-xs text-muted-foreground text-center mb-2">What's pulling you off center?</p>
               <div className="grid grid-cols-2 gap-2">
                 {EMOTIONAL_STATES.map((state) => (
                   <button
                     key={state.id}
                     onClick={() => handleReturnToSelfWithState(state.id)}
-                    className="flex flex-col items-start p-2.5 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+                    className="flex flex-col items-start p-3 rounded-xl border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 text-left group"
                   >
-                    <span className="text-xs font-medium">{state.label}</span>
+                    <span className="text-sm font-medium group-hover:text-primary transition-colors">{state.label}</span>
+                    <span className="text-xs text-muted-foreground mt-0.5">{state.desc}</span>
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => handleReturnToSelfWithState(null)}
-                className="w-full p-2.5 rounded-lg border border-border/50 text-xs text-muted-foreground hover:text-foreground transition-all"
+                className="w-full p-3 rounded-xl bg-muted/50 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
               >
                 Just ground me
               </button>
