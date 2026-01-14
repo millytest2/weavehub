@@ -212,35 +212,42 @@ const LearningPaths = () => {
   const otherPaths = paths.filter(p => p.status !== "active");
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Sprint Paths</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Ship real deliverables in 3-7 days using your saved content
-          </p>
+    <div className="space-y-8 max-w-6xl mx-auto">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-background to-accent/5 border border-border/50 p-6 sm:p-8">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
+              <BookOpen className="h-7 w-7 text-primary" />
+              Sprint Paths
+            </h1>
+            <p className="text-sm text-muted-foreground mt-2 max-w-md">
+              Turn your 190+ saved insights into structured mini-courses. Each sprint produces real deliverables in 3-7 days.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button 
+              variant="outline" 
+              size="default"
+              onClick={generateTopicSuggestions} 
+              disabled={loadingSuggestions}
+              className="h-10"
+            >
+              {loadingSuggestions ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-2" />
+              )}
+              Suggest
+            </Button>
+            <Button size="default" onClick={() => setIsCreateOpen(true)} className="h-10">
+              <Plus className="w-4 h-4 mr-2" />
+              New Path
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={generateTopicSuggestions} 
-            disabled={loadingSuggestions}
-          >
-            {loadingSuggestions ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Sparkles className="w-4 h-4 mr-2" />
-            )}
-            <span className="hidden sm:inline">Suggest</span>
-          </Button>
-          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">New Path</span>
-            <span className="sm:hidden">New</span>
-          </Button>
-        </div>
+        {/* Subtle decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
       </div>
 
       {loading ? (
@@ -248,21 +255,23 @@ const LearningPaths = () => {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : paths.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="font-semibold text-lg mb-2">What do you want to ship?</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-              Sprint paths turn your saved content into 3-7 day projects with real deliverables. 
-              Pick a topic you've been saving about.
+        <Card className="border-dashed border-2 bg-muted/20">
+          <CardContent className="py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Zap className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-xl mb-3">What do you want to master?</h3>
+            <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
+              Sprint paths analyze your saved insights and documents to create personalized mini-courses. 
+              Each sprint produces something tangible you can use or share.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3">
-              <Button onClick={generateTopicSuggestions} variant="outline">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Suggest from my content
+              <Button onClick={generateTopicSuggestions} variant="outline" size="lg" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Find patterns in my content
               </Button>
-              <Button onClick={() => setIsCreateOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button onClick={() => setIsCreateOpen(true)} size="lg" className="gap-2">
+                <Plus className="w-4 h-4" />
                 Choose a topic
               </Button>
             </div>
@@ -391,55 +400,53 @@ const LearningPaths = () => {
         </div>
       )}
 
-      {/* Create Dialog */}
+      {/* Create Dialog - Enhanced */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>What do you want to ship?</DialogTitle>
-            <DialogDescription>
-              Pick a topic from your saved content. We'll create a 3-7 day sprint with real deliverables.
+            <DialogTitle className="text-xl">Create a Sprint Path</DialogTitle>
+            <DialogDescription className="text-base">
+              Pick a topic from your saved content. We'll analyze related insights and create a focused learning sprint.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 pt-2">
-            <div className="space-y-2">
-              <Label>Topic</Label>
+          <div className="space-y-5 pt-4">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Topic</Label>
               <Input 
                 placeholder="e.g., Cold outreach, Landing pages, Video editing..." 
                 value={topic} 
                 onChange={(e) => { setTopic(e.target.value); setSourceCheckResult(null); }} 
                 onBlur={checkSources}
+                className="h-11"
               />
             </div>
 
-            {/* AI Suggestions */}
+            {/* AI Suggestions - Enhanced */}
             {suggestedTopics.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Patterns in your content
+                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  Patterns detected in your content
                 </p>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {suggestedTopics.map((s) => (
                     <button 
                       key={s.topic}
-                      className="w-full text-left p-3 rounded-lg border hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                      className="w-full text-left p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 group"
                       onClick={() => { 
                         setTopic(s.topic); 
                         setSuggestedTopics([]); 
                         setSourceCheckResult({ count: s.sourceCount, sufficient: true });
                       }}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          <p className="font-medium text-sm group-hover:text-primary transition-colors">
-                            {s.topic}
-                          </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 space-y-1">
+                          <span className="font-medium group-hover:text-primary transition-colors block">{s.topic}</span>
                           {s.whyForYou && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {s.whyForYou}
-                            </p>
+                            <span className="text-xs text-muted-foreground block leading-relaxed">{s.whyForYou}</span>
                           )}
                         </div>
-                        <Badge variant="secondary" className="shrink-0 text-xs">
+                        <Badge variant="secondary" className="text-xs shrink-0">
                           {s.sourceCount} sources
                         </Badge>
                       </div>
@@ -449,54 +456,44 @@ const LearningPaths = () => {
               </div>
             )}
 
-            {loadingSuggestions && (
-              <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Analyzing your saved content...
+            {loadingSuggestions && suggestedTopics.length === 0 && (
+              <div className="text-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary mb-3" />
+                <p className="text-sm text-muted-foreground">Analyzing your content for patterns...</p>
               </div>
             )}
 
             {checkingSource && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Checking your saved sources...
-              </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Searching your content...
+              </p>
             )}
 
             {sourceCheckResult && (
-              <div className={`p-3 rounded-lg text-sm ${
-                sourceCheckResult.sufficient 
-                  ? "bg-green-500/10 text-green-700 dark:text-green-400" 
-                  : "bg-destructive/10 text-destructive"
-              }`}>
-                {sourceCheckResult.sufficient 
-                  ? `Found ${sourceCheckResult.count} sources about "${topic}". Ready to create your sprint.`
-                  : `Only found ${sourceCheckResult.count} sources about "${topic}". Save at least 5 sources first.`
-                }
+              <div className={`p-3 rounded-xl text-sm ${sourceCheckResult.sufficient ? 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20' : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'}`}>
+                Found <strong>{sourceCheckResult.count}</strong> related sources
+                {sourceCheckResult.sufficient ? ` — ready to create your sprint!` : ' (need at least 5)'}
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleCreate} 
-                disabled={!sourceCheckResult?.sufficient || generating}
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    Create Sprint
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button 
+              className="w-full h-11" 
+              onClick={handleCreate} 
+              disabled={!topic.trim() || !sourceCheckResult?.sufficient || generating}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Creating your personalized path...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Create Sprint Path
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
