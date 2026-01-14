@@ -50,11 +50,11 @@ type FlowStep = "identity" | "values" | "preview" | "auth";
 const Auth = () => {
   const navigate = useNavigate();
   
-  // Check if returning user (has visited before)
-  const hasVisitedBefore = localStorage.getItem("weave_visited") === "true";
+  // Always start with onboarding for fresh experience
+  // Returning users can tap "Already have an account?" to skip
   
-  // Flow state
-  const [flowStep, setFlowStep] = useState<FlowStep>(hasVisitedBefore ? "auth" : "identity");
+  // Flow state - always start with identity for new experience
+  const [flowStep, setFlowStep] = useState<FlowStep>("identity");
   const [identitySeed, setIdentitySeed] = useState("");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   
@@ -115,8 +115,6 @@ const Auth = () => {
   };
 
   const proceedToAuth = () => {
-    // Mark as visited
-    localStorage.setItem("weave_visited", "true");
     setIsLogin(false); // Default to signup after onboarding
     setFlowStep("auth");
   };
@@ -253,20 +251,23 @@ const Auth = () => {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => {
-                      localStorage.setItem("weave_visited", "true");
-                      setFlowStep("auth");
-                    }} 
-                    className="flex-1 text-muted-foreground"
-                  >
-                    Skip
-                  </Button>
                   <Button onClick={() => setFlowStep("values")} className="flex-1 gap-2">
                     Continue
                     <ArrowRight className="h-4 w-4" />
                   </Button>
+                </div>
+
+                <div className="pt-4 text-center border-t border-border mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLogin(true);
+                      setFlowStep("auth");
+                    }}
+                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Already have an account? <span className="font-medium text-primary">Sign in</span>
+                  </button>
                 </div>
               </CardContent>
             </Card>
