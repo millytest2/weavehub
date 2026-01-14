@@ -630,39 +630,58 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         </CardContent>
       </Card>
 
-      {/* Week's Actions List */}
-      {actions.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">What You Did</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {actions.slice(0, 10).map((action) => {
-                const pillarConfig = action.pillar ? PILLAR_CONFIG[action.pillar] : null;
-                const Icon = pillarConfig?.icon || CheckCircle2;
-                
-                return (
-                  <div key={action.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50">
-                    <Icon className={`h-4 w-4 mt-0.5 ${pillarConfig?.color || 'text-muted-foreground'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{action.action_text}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(action.action_date), 'EEE, MMM d')}
-                      </p>
+      {/* Today's Actions List */}
+      {(() => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const todayActions = actions.filter(a => a.action_date === todayStr);
+        
+        if (todayActions.length === 0 && isCurrentWeek) {
+          return (
+            <Card className="border-dashed">
+              <CardContent className="pt-6 pb-6 text-center">
+                <Circle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Nothing logged today yet</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Use voice or type above to log what you did</p>
+              </CardContent>
+            </Card>
+          );
+        }
+        
+        if (todayActions.length === 0) return null;
+        
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                What You Did Today
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {todayActions.length} {todayActions.length === 1 ? 'action' : 'actions'}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {todayActions.map((action) => {
+                  const pillarConfig = action.pillar ? PILLAR_CONFIG[action.pillar] : null;
+                  const Icon = pillarConfig?.icon || CheckCircle2;
+                  
+                  return (
+                    <div key={action.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50">
+                      <Icon className={`h-4 w-4 mt-0.5 ${pillarConfig?.color || 'text-muted-foreground'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">{action.action_text}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(action.completed_at), 'h:mm a')}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-              {actions.length > 10 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  +{actions.length - 10} more actions
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Check-in CTA */}
       {isCurrentWeek && (
