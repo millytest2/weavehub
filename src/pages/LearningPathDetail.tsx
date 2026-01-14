@@ -316,7 +316,7 @@ const LearningPathDetail = () => {
     try {
       const topicName = path.topic_name || path.title;
       const { data, error } = await supabase.functions.invoke("learning-path-generator", {
-        body: { topic: topicName, durationDays: path.duration_days || 30 },
+        body: { topic: topicName, durationDays: Math.min(path.duration_days || 14, 14) },
       });
 
       if (error) {
