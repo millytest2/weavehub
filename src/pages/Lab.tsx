@@ -478,20 +478,21 @@ const Lab = () => {
     
     setIsAnalyzing(true);
     try {
-      // Gather all content for analysis
+      // Gather all content for analysis - use more insights for richer pattern detection
       const allContent = {
-        insights: insights.slice(0, 30).map(i => ({
+        insights: insights.slice(0, 100).map(i => ({
           title: i.title,
-          content: i.content,
-          source: i.source
+          content: i.content?.slice(0, 300), // Truncate content to fit more insights
+          source: i.source,
+          topic: i.topics?.name
         })),
-        observations: observations.slice(0, 20).map(o => ({
+        observations: observations.slice(0, 30).map(o => ({
           type: o.observation_type,
-          content: o.content,
+          content: o.content?.slice(0, 200),
           source: o.source,
           your_data: o.your_data
         })),
-        experiments: experiments.slice(0, 10).map(e => ({
+        experiments: experiments.slice(0, 15).map(e => ({
           title: e.title,
           hypothesis: e.hypothesis,
           type: e.experiment_type
