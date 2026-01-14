@@ -217,8 +217,7 @@ const LearningPaths = () => {
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-background to-accent/5 border border-border/50 p-6 sm:p-8">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
-              <BookOpen className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
               Sprint Paths
             </h1>
             <p className="text-sm text-muted-foreground mt-2 max-w-md">
