@@ -19,12 +19,27 @@ function generateDynamicPrompt(context: {
 }): { prompt: string; subtext?: string } {
   const { identity, values, weeklyFocus, streak, dayOfWeek } = context;
   
+  // Helper to extract a short focus phrase from potentially long text
+  const getShortFocus = (text: string): string => {
+    if (!text) return "";
+    // If it's short enough, use it
+    if (text.length <= 60) return text;
+    // Try to get first sentence
+    const firstSentence = text.split(/[.!?]/)[0].trim();
+    if (firstSentence.length <= 60) return firstSentence;
+    // Otherwise truncate to ~50 chars at word boundary
+    const truncated = firstSentence.substring(0, 50);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return truncated.substring(0, lastSpace > 20 ? lastSpace : 50) + "...";
+  };
+  
   // Monday = fresh start energy
   if (dayOfWeek === 1) {
     if (weeklyFocus) {
+      const shortFocus = getShortFocus(weeklyFocus);
       return { 
-        prompt: `This week: ${weeklyFocus}. What's your first move?`,
-        subtext: "Monday sets the tone."
+        prompt: `This week: ${shortFocus}`,
+        subtext: "What's your first move?"
       };
     }
     return { prompt: "New week. What would the person you're becoming tackle first?" };
@@ -48,11 +63,12 @@ function generateDynamicPrompt(context: {
     return { prompt: "What would feel like a win today?" };
   }
   
-  // Weekly focus = orient around it
+  // Weekly focus = orient around it (truncated)
   if (weeklyFocus) {
+    const shortFocus = getShortFocus(weeklyFocus);
     return { 
-      prompt: `"${weeklyFocus}" — What action proves it today?`,
-      subtext: "Your focus shapes your reality."
+      prompt: `Focus: ${shortFocus}`,
+      subtext: "What action proves it today?"
     };
   }
   
