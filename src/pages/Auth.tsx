@@ -26,22 +26,32 @@ const IDENTITY_STARTERS = [
   "creates more than consumes",
 ];
 
-// Sample "Today's Invitation" based on values
+// Compelling "Today's Invitation" samples based on values
 const SAMPLE_INVITATIONS = [
   {
-    action: "Take 10 minutes to outline ONE thing you've been putting off",
-    insight: "Your saved content shows a pattern: you know what to do, you're just waiting for permission. This is it.",
-    source: "Based on your value of Action"
+    action: "Write down the ONE decision you've been avoiding. Then make it. Right now. In the next 5 minutes.",
+    insight: "You already know the answer. You've known for weeks. The discomfort of deciding is less than the weight of carrying it.",
+    source: "Action"
   },
   {
-    action: "Block 30 minutes today for deep work—no notifications, no tabs",
-    insight: "Focus isn't found, it's created. Start with one protected block.",
-    source: "Based on your value of Focus"
+    action: "Close every tab. Put your phone in another room. Set a 25-minute timer. Do the thing that matters most.",
+    insight: "Distraction isn't the enemy—scattered attention is. One hour of focus creates more than a day of half-presence.",
+    source: "Focus"
   },
   {
-    action: "Send one message to someone you've been meaning to reach out to",
-    insight: "Connection compounds. One message today could change everything.",
-    source: "Based on your value of Connection"
+    action: "Text someone you've been thinking about. Don't overthink it. Just say 'Hey, been thinking about you.'",
+    insight: "The relationships that matter most are often one message away from deepening. Send it before the feeling fades.",
+    source: "Connection"
+  },
+  {
+    action: "Name your fear out loud. Then do 1% of the thing you're afraid of. Just 1%.",
+    insight: "Courage isn't the absence of fear—it's action despite it. The smallest step breaks the spell.",
+    source: "Courage"
+  },
+  {
+    action: "Ship something today. Doesn't matter if it's perfect. Hit publish, send, or share.",
+    insight: "The gap between who you are and who you want to be closes with every rep. Perfect is the enemy of progress.",
+    source: "Creation"
   }
 ];
 
@@ -57,6 +67,7 @@ const Auth = () => {
   const [flowStep, setFlowStep] = useState<FlowStep>("identity");
   const [identitySeed, setIdentitySeed] = useState("");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [customValue, setCustomValue] = useState("");
   
   // Auth state
   const [isLogin, setIsLogin] = useState(true);
@@ -101,16 +112,36 @@ const Auth = () => {
     });
   };
 
+  const addCustomValue = () => {
+    const trimmed = customValue.trim();
+    if (trimmed && !selectedValues.includes(trimmed) && selectedValues.length < 3) {
+      setSelectedValues(prev => [...prev, trimmed]);
+      setCustomValue("");
+    } else if (selectedValues.length >= 3) {
+      // Replace oldest with custom
+      setSelectedValues(prev => [...prev.slice(1), trimmed]);
+      setCustomValue("");
+    }
+  };
+
   const getPersonalizedInvitation = () => {
+    // Match based on selected values
     if (selectedValues.includes("Action") || selectedValues.includes("Discipline")) {
       return SAMPLE_INVITATIONS[0];
     }
     if (selectedValues.includes("Focus") || selectedValues.includes("Depth") || selectedValues.includes("Clarity")) {
       return SAMPLE_INVITATIONS[1];
     }
-    if (selectedValues.includes("Connection") || selectedValues.includes("Authenticity")) {
+    if (selectedValues.includes("Connection") || selectedValues.includes("Authenticity") || selectedValues.includes("Presence")) {
       return SAMPLE_INVITATIONS[2];
     }
+    if (selectedValues.includes("Courage") || selectedValues.includes("Freedom")) {
+      return SAMPLE_INVITATIONS[3];
+    }
+    if (selectedValues.includes("Creation") || selectedValues.includes("Growth") || selectedValues.includes("Impact")) {
+      return SAMPLE_INVITATIONS[4];
+    }
+    // Default to first one
     return SAMPLE_INVITATIONS[0];
   };
 
@@ -223,7 +254,7 @@ const Auth = () => {
                   <User className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle className="text-2xl font-bold">Who are you becoming?</CardTitle>
-                <CardDescription>One sentence. This sharpens everything.</CardDescription>
+                <CardDescription>One sentence sharpens everything.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
@@ -312,6 +343,26 @@ const Auth = () => {
                   })}
                 </div>
 
+                {/* Custom value input */}
+                <div className="flex gap-2">
+                  <Input
+                    value={customValue}
+                    onChange={(e) => setCustomValue(e.target.value)}
+                    placeholder="Or type your own..."
+                    className="flex-1 text-sm"
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomValue())}
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    size="sm"
+                    onClick={addCustomValue}
+                    disabled={!customValue.trim() || selectedValues.length >= 3}
+                  >
+                    Add
+                  </Button>
+                </div>
+
                 <p className="text-sm text-center text-muted-foreground">
                   {selectedValues.length}/3 selected
                 </p>
@@ -366,9 +417,12 @@ const Auth = () => {
                     {getPersonalizedInvitation().insight}
                   </p>
                   
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                    {getPersonalizedInvitation().source}
-                  </span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Based on:</span>
+                    <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                      {getPersonalizedInvitation().source}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

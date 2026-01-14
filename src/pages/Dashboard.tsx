@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowRight, Check, Zap, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { WelcomeWizard } from "@/components/onboarding/WelcomeWizard";
+
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
@@ -25,6 +25,10 @@ const Dashboard = () => {
   
   // Active experiment state
   const [activeExperiment, setActiveExperiment] = useState<any>(null);
+  
+  // Identity state for personalized welcome
+  const [identitySeed, setIdentitySeed] = useState<string | null>(null);
+  const [isFirstTime, setIsFirstTime] = useState(false);
   
   const [morningComplete, setMorningComplete] = useState(false);
   const [eveningComplete, setEveningComplete] = useState(false);
@@ -61,6 +65,17 @@ const Dashboard = () => {
 
     const today = getLocalToday();
 
+    // Fetch identity for personalized welcome
+    const { data: identityRes } = await supabase
+      .from("identity_seeds")
+      .select("content")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    if (identityRes?.content) {
+      setIdentitySeed(identityRes.content);
+    }
+
     const { data: tasksRes } = await supabase
       .from("daily_tasks")
       .select("*")
@@ -84,10 +99,17 @@ const Dashboard = () => {
       setTasksForToday(tasksRes);
       setCurrentSequence(incomplete?.task_sequence || tasksRes.length);
       setTodayTask(incomplete || tasksRes[tasksRes.length - 1]);
+      setIsFirstTime(false);
     } else {
       setTasksForToday([]);
       setTodayTask(null);
       setCurrentSequence(1);
+      // Check if this is their first time (no tasks ever)
+      const { count } = await supabase
+        .from("daily_tasks")
+        .select("id", { count: 'exact', head: true })
+        .eq("user_id", user.id);
+      setIsFirstTime(count === 0);
     }
 
     const { data: expRes } = await supabase
@@ -277,7 +299,6 @@ const Dashboard = () => {
         <>
           <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
           <EveningLetGo onComplete={() => setEveningComplete(true)} />
-          <WelcomeWizard userId={user.id} onComplete={() => {}} />
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
         </>
       )}
@@ -368,13 +389,22 @@ const Dashboard = () => {
               </Button>
             </div>
           ) : (
-            <div className="py-10 text-center">
+            <div className="py-8 text-center space-y-4">
+              {isFirstTime && identitySeed && (
+                <div className="mb-6 p-4 rounded-xl bg-primary/5 border border-primary/10">
+                  <p className="text-xs text-muted-foreground mb-1">You said you're becoming someone who:</p>
+                  <p className="text-sm font-medium text-foreground">{identitySeed}</p>
+                </div>
+              )}
+              <p className="text-muted-foreground text-sm">
+                {isFirstTime ? "Let's get your first invitation" : "Ready for today's focus?"}
+              </p>
               <Button
                 onClick={handleGenerateTask}
                 size="lg"
                 className="px-10 h-12 rounded-xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
               >
-                Start My Day
+                {isFirstTime ? "Get My First Invitation" : "Start My Day"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
