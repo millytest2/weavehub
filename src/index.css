@@ -7,97 +7,125 @@
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* ============================================
+   DESIGN SYSTEM: Minimal + Editorial Elegance
+   ============================================
+   A refined, sophisticated aesthetic that combines
+   clean minimalism with editorial touches.
+   All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 0 0% 10%;
+    /* Core backgrounds - warm off-white */
+    --background: 40 20% 98%;
+    --foreground: 220 20% 12%;
 
+    /* Cards - pure white with subtle warmth */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 220 20% 12%;
 
+    /* Popover matches card */
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 220 20% 12%;
 
-    --primary: 215 70% 50%;
+    /* Primary - deep warm blue */
+    --primary: 220 60% 35%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    /* Secondary - subtle warm gray */
+    --secondary: 40 10% 95%;
+    --secondary-foreground: 220 20% 20%;
 
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 45%;
+    /* Muted - for backgrounds */
+    --muted: 40 10% 93%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 215 70% 50%;
+    /* Accent - matches primary for consistency */
+    --accent: 220 60% 35%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 90%;
-    --input: 0 0% 94%;
-    --ring: 215 70% 50%;
-
-    --radius: 0.625rem;
-    
-    --success: 215 70% 50%;
-    --success-foreground: 0 0% 100%;
-    
-    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 215 70% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 215 70% 50%;
-  }
-
-  .dark {
-    --background: 0 0% 8%;
-    --foreground: 0 0% 95%;
-
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 95%;
-
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 95%;
-
-    --primary: 215 70% 50%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 95%;
-
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 55%;
-
-    --accent: 215 70% 50%;
-    --accent-foreground: 0 0% 100%;
-
+    /* Destructive - warm red */
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 215 70% 50%;
-    
-    --success: 215 70% 50%;
+    /* Success - warm green */
+    --success: 160 55% 35%;
     --success-foreground: 0 0% 100%;
+
+    /* Borders - subtle and refined */
+    --border: 40 10% 88%;
+    --input: 40 10% 90%;
+    --ring: 220 60% 35%;
+
+    /* Radius - slightly softer */
+    --radius: 0.75rem;
     
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 215 70% 50%;
+    /* Smooth transitions */
+    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 12%;
+    --sidebar-primary: 220 60% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 215 70% 50%;
+    --sidebar-accent: 40 10% 95%;
+    --sidebar-accent-foreground: 220 20% 12%;
+    --sidebar-border: 40 10% 88%;
+    --sidebar-ring: 220 60% 35%;
+  }
+
+  .dark {
+    /* Dark backgrounds - rich charcoal */
+    --background: 220 15% 8%;
+    --foreground: 40 10% 95%;
+
+    /* Cards - slightly elevated */
+    --card: 220 15% 11%;
+    --card-foreground: 40 10% 95%;
+
+    /* Popover */
+    --popover: 220 15% 11%;
+    --popover-foreground: 40 10% 95%;
+
+    /* Primary - brighter for dark mode */
+    --primary: 220 60% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 40 10% 90%;
+
+    /* Muted */
+    --muted: 220 15% 14%;
+    --muted-foreground: 220 10% 55%;
+
+    /* Accent */
+    --accent: 220 60% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 60% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 160 50% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders */
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 220 60% 55%;
+
+    /* Sidebar */
+    --sidebar-background: 220 15% 8%;
+    --sidebar-foreground: 40 10% 95%;
+    --sidebar-primary: 220 60% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 40 10% 95%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 220 60% 55%;
   }
 }
 
@@ -107,22 +135,99 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Display font for headers */
+  /* Editorial display font for headers */
   h1, h2, h3, .font-display {
     font-family: 'Instrument Serif', Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Refined body text */
+  p, span, div {
+    letter-spacing: -0.01em;
   }
 }
 
 /* Utility classes for enhanced interactions */
 @layer utilities {
+  /* Elegant card hover */
   .card-hover {
     @apply transition-all duration-300 ease-out;
   }
   
   .card-hover:hover {
     @apply shadow-lg -translate-y-0.5;
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl;
+  }
+
+  /* Invitation card - consistent across all devices */
+  .invitation-card {
+    @apply relative overflow-hidden rounded-2xl border border-border/50 bg-card p-6 shadow-soft;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .invitation-card:hover {
+    @apply border-border shadow-elevated;
+  }
+
+  /* Progress indicator */
+  .progress-dot {
+    @apply w-2.5 h-2.5 rounded-full transition-all duration-300;
+  }
+
+  .progress-dot.active {
+    @apply bg-primary scale-110;
+  }
+
+  .progress-dot.complete {
+    @apply bg-primary;
+  }
+
+  .progress-dot.pending {
+    @apply bg-muted-foreground/20;
+  }
+
+  /* Editorial link style */
+  .link-editorial {
+    @apply relative inline-block;
+  }
+
+  .link-editorial::after {
+    content: '';
+    @apply absolute left-0 bottom-0 w-full h-px bg-current;
+    @apply origin-right scale-x-0 transition-transform duration-300;
+  }
+
+  .link-editorial:hover::after {
+    @apply origin-left scale-x-100;
+  }
+}
+
+/* Custom scrollbar for webkit browsers */
+@layer utilities {
+  .scrollbar-minimal::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-minimal::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-minimal::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  .scrollbar-minimal::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
   }
 }
