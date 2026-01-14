@@ -225,15 +225,18 @@ const Dashboard = () => {
         pillar: todayTask?.priority_for_today
       });
 
-      if (currentSequence < 3) {
+      const completedNow = updatedTasks.filter(t => t.completed).length;
+      
+      if (completedNow < 3) {
         toast.success("Done. Generating next...");
         setTodayTask(null);
+        setCurrentSequence(completedNow + 1);
         setTimeout(() => handleGenerateTask(), 500);
       } else if (currentSequence === 4) {
-        toast.success("Bonus complete. Great work.");
+        toast.success("Bonus complete.");
         setTodayTask(null);
       } else {
-        toast.success("All 3 done. Great work.");
+        toast.success("All 3 done.");
         setTodayTask(null);
       }
     } catch (error: any) {
@@ -325,8 +328,8 @@ const Dashboard = () => {
                 <Check className="h-7 w-7 text-success" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-xl font-display font-semibold">All 3 done</h3>
-                <p className="text-sm text-muted-foreground">Great work today.</p>
+                <h3 className="text-xl font-display font-semibold">Complete</h3>
+                <p className="text-sm text-muted-foreground">Three aligned actions. Well done.</p>
               </div>
               <Button
                 variant="outline"
@@ -344,8 +347,8 @@ const Dashboard = () => {
                 <Check className="h-7 w-7 text-success" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-xl font-display font-semibold">All done</h3>
-                <p className="text-sm text-muted-foreground">Great work today.</p>
+                <h3 className="text-xl font-display font-semibold">Complete</h3>
+                <p className="text-sm text-muted-foreground">You showed up. That matters.</p>
               </div>
             </div>
           ) : todayTask ? (
@@ -429,10 +432,10 @@ const Dashboard = () => {
               const currentHour = now.getHours();
               
               const getTimeOfDay = (hour: number) => {
-                if (hour >= 5 && hour < 12) return { label: 'Morning', icon: '🌅' };
-                if (hour >= 12 && hour < 17) return { label: 'Afternoon', icon: '☀️' };
-                if (hour >= 17 && hour < 21) return { label: 'Evening', icon: '🌆' };
-                return { label: 'Night', icon: '🌙' };
+                if (hour >= 5 && hour < 12) return 'Morning';
+                if (hour >= 12 && hour < 17) return 'Afternoon';
+                if (hour >= 17 && hour < 21) return 'Evening';
+                return 'Night';
               };
               const timeOfDay = getTimeOfDay(currentHour);
               
@@ -454,9 +457,7 @@ const Dashboard = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground/70 truncate max-w-[60%]">{activeExperiment.title}</p>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      {timeOfDay.icon} {timeOfDay.label}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{timeOfDay}</span>
                   </div>
                   <p className="text-base font-medium leading-relaxed">
                     {todayStep}
