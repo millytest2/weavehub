@@ -247,20 +247,22 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="px-4 pb-8">
-          <DrawerHeader className="text-left px-0">
-            <DrawerTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              Apply This
-            </DrawerTitle>
-            <DrawerDescription>
-              {pendingActions.length > 0 
-                ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} queued from your saved content`
-                : "No pending actions"
-              }
-            </DrawerDescription>
-          </DrawerHeader>
-          {content}
+        <DrawerContent className="px-4 pb-8 overflow-hidden max-w-full">
+          <div className="w-full overflow-hidden">
+            <DrawerHeader className="text-left px-0">
+              <DrawerTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                Apply This
+              </DrawerTitle>
+              <DrawerDescription className="break-words">
+                {pendingActions.length > 0 
+                  ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} queued`
+                  : "No pending actions"
+                }
+              </DrawerDescription>
+            </DrawerHeader>
+            {content}
+          </div>
         </DrawerContent>
       </Drawer>
     );
