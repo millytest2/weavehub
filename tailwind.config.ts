@@ -54,6 +54,7 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          warm: "hsl(var(--accent-warm))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
@@ -66,6 +67,10 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        thread: {
+          DEFAULT: "hsl(var(--thread))",
+          glow: "hsl(var(--thread-glow))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
