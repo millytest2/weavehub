@@ -598,6 +598,93 @@ Each insight should be:
   return [];
 }
 
+// Generate a specific micro-action from content to queue for application
+async function generatePendingAction(
+  content: string, 
+  title: string, 
+  identityContext?: { identity_seed?: string; core_values?: string; weekly_focus?: string }
+): Promise<{ action: string; context: string } | null> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY || content.length < 50) return null;
+  
+  try {
+    const identityPrompt = identityContext?.identity_seed 
+      ? `User's identity: ${identityContext.identity_seed.substring(0, 300)}
+${identityContext.weekly_focus ? `Current focus: ${identityContext.weekly_focus}` : ''}`
+      : '';
+    
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: `You are a learning coach. Given content someone saved, generate ONE specific micro-action they should take within 48 hours to APPLY this knowledge.
+
+${identityPrompt}
+
+Rules:
+- Action must be completable in 15-30 minutes
+- Must be concrete and specific (not "reflect on" or "think about")
+- Should produce a tangible output or change
+- Connect to their identity/goals if possible
+
+Examples of GOOD actions:
+- "Write 3 Instagram captions using the hook formula from this video"
+- "Test the 2-minute rule on your next 5 small tasks today"
+- "Send one message using the vulnerability technique described"
+
+Examples of BAD actions:
+- "Think about how this applies to your life" (too vague)
+- "Read more about this topic" (that's consumption, not application)
+- "Remember this for later" (no tangible output)`
+          },
+          {
+            role: "user",
+            content: `Content title: ${title}\n\nContent:\n${content.substring(0, 4000)}\n\nGenerate ONE specific action to apply this within 48 hours.`
+          }
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "create_action",
+              description: "Create a specific micro-action",
+              parameters: {
+                type: "object",
+                properties: {
+                  action: { type: "string", description: "The specific action to take (imperative, 10-20 words)" },
+                  context: { type: "string", description: "Why this action matters and what it will produce (1-2 sentences)" }
+                },
+                required: ["action", "context"],
+                additionalProperties: false
+              }
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "create_action" } }
+      }),
+    });
+
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall) {
+      return JSON.parse(toolCall.function.arguments);
+    }
+  } catch (e) {
+    console.error("Pending action generation error:", e);
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -734,6 +821,40 @@ serve(async (req) => {
     
     console.log("Created document and", insightsCreated, "insights");
     
+    // Generate pending action for "Zero Information Waste" system
+    let pendingActionCreated = false;
+    if (content && content.length > 50) {
+      const pendingAction = await generatePendingAction(content, title, identityData ? {
+        identity_seed: identityData.content,
+        core_values: identityData.core_values,
+        weekly_focus: identityData.weekly_focus,
+      } : undefined);
+      
+      if (pendingAction) {
+        const { error: actionError } = await supabase
+          .from("pending_actions")
+          .insert({
+            user_id: user.id,
+            source_type: 'document',
+            source_id: docData.id,
+            source_title: title,
+            action_text: pendingAction.action,
+            action_context: pendingAction.context,
+          });
+        
+        if (!actionError) {
+          pendingActionCreated = true;
+          console.log("Created pending action:", pendingAction.action.substring(0, 50));
+          
+          // Increment content_saved_count for learning debt tracking
+          await supabase
+            .from("identity_seeds")
+            .update({ content_saved_count: (identityData as any)?.content_saved_count + 1 || 1 })
+            .eq("user_id", user.id);
+        }
+      }
+    }
+    
     // Check if we only got metadata (minimal content) for social platforms
     const needsManualContent = 
       (detected.type === 'instagram' || detected.type === 'twitter') && 
@@ -746,12 +867,15 @@ serve(async (req) => {
         title,
         documentId: docData.id,
         insightsCreated,
+        pendingActionCreated,
         needsManualContent,
         message: needsManualContent 
           ? "Saved metadata. Paste caption/thread for full extraction."
-          : insightsCreated > 0 
-            ? `Saved + ${insightsCreated} insight${insightsCreated > 1 ? 's' : ''} extracted`
-            : "Saved"
+          : pendingActionCreated
+            ? `Saved + action queued`
+            : insightsCreated > 0 
+              ? `Saved + ${insightsCreated} insight${insightsCreated > 1 ? 's' : ''} extracted`
+              : "Saved"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
