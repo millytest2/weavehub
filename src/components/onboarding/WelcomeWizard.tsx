@@ -2,94 +2,38 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Brain, Zap, Target, ArrowRight, ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
+import { Sparkles, ArrowRight, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface WelcomeWizardProps {
   userId: string;
   onComplete: () => void;
 }
 
-// Value-first flow: show immediate action BEFORE asking for identity
-const STEPS = [
-  {
-    icon: Brain,
-    title: "Too Many Inputs",
-    description: "Not enough outputs.",
-    content: "You save videos, articles, ideas. They pile up. The gap between what you know and what you do keeps growing. Weave closes that gap.",
-    type: "hook" as const,
-  },
-  {
-    icon: Zap,
-    title: "Here's Your First Move",
-    description: "No setup required. Just one action.",
-    content: "",
-    type: "demo" as const,
-  },
-  {
-    icon: Target,
-    title: "Want Better Recommendations?",
-    description: "Tell Weave who you're becoming",
-    content: "The more Weave knows about where you're headed, the sharper the actions become. This is optional but powerful.",
-    type: "identity" as const,
-    prompts: [
-      "I am becoming someone who...",
-      "I'm working toward being...",
-      "The person I'm building is...",
-    ],
-    placeholder: `Be specific. Not "successful" but "someone who ships weekly." Not "healthy" but "someone who moves before screens."`,
-    examples: [
-      "I am becoming someone who builds in public instead of planning in private.",
-      "I'm working toward being a creator who publishes weekly, not a consumer who saves for later.",
-      "The person I'm building is disciplined but not rigid. Action-biased but not reckless.",
-    ],
-  },
-  {
-    icon: Sparkles,
-    title: "You're In",
-    description: "One action at a time. That's it.",
-    content: "When you're bored, lost, or overthinking - come back here. Weave will always have your next move ready.",
-    type: "final" as const,
-  },
-];
+// Core values users can pick from
+const CORE_VALUES = [
+  "Growth", "Presence", "Focus", "Creation", "Connection",
+  "Depth", "Action", "Freedom", "Clarity", "Courage",
+  "Discipline", "Play", "Authenticity", "Impact"
+] as const;
 
-// Universal starter actions that work for anyone
-const UNIVERSAL_ACTIONS = [
-  {
-    action: "Write down the one thing you've been avoiding. Then do the smallest possible version of it right now.",
-    why: "Avoidance creates mental weight. The smallest step breaks the loop.",
-    time: "10-15 min",
-  },
-  {
-    action: "Stand up, take 10 deep breaths, then write down what's actually on your mind without filtering.",
-    why: "Clarity comes from getting thoughts out of your head and onto paper.",
-    time: "5-10 min",
-  },
-  {
-    action: "Message one person you've been meaning to reach out to. Keep it simple: 'Hey, thinking of you.'",
-    why: "Connection breaks isolation. Small gestures compound.",
-    time: "2-5 min",
-  },
-  {
-    action: "Close all tabs. Open one blank document. Write the single most important thing you need to do today.",
-    why: "Overwhelm comes from too many options. Focus on one.",
-    time: "5-10 min",
-  },
-  {
-    action: "Go outside for 5 minutes. No phone. Just notice what you see, hear, and feel.",
-    why: "Presence resets the nervous system. Fresh air changes perspective.",
-    time: "5-10 min",
-  },
+// Quick identity starters
+const IDENTITY_STARTERS = [
+  "ships weekly, not someday",
+  "moves before screens",
+  "builds in public",
+  "chooses depth over distraction",
+  "creates more than consumes",
 ];
 
 export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
   const [open, setOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [step, setStep] = useState(1); // 1: identity, 2: values, 3: done
   const [identitySeed, setIdentitySeed] = useState("");
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [demoAction, setDemoAction] = useState<{ action: string; why: string; time: string } | null>(null);
-  const [showExample, setShowExample] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -101,78 +45,51 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const currentUserId = user.id;
-    const [identityRes, tasksRes, topicsRes, experimentsRes] = await Promise.all([
-      supabase.from("identity_seeds").select("id").eq("user_id", currentUserId).maybeSingle(),
-      supabase.from("daily_tasks").select("id").eq("user_id", currentUserId).limit(1).maybeSingle(),
-      supabase.from("topics").select("id").eq("user_id", currentUserId).limit(1).maybeSingle(),
-      supabase.from("experiments").select("id").eq("user_id", currentUserId).limit(1).maybeSingle(),
-    ]);
+    const { data: identityData } = await supabase
+      .from("identity_seeds")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    const hasAnyData = identityRes.data || tasksRes.data || topicsRes.data || experimentsRes.data;
-    if (!hasAnyData) {
+    if (!identityData) {
       setOpen(true);
     }
   };
 
-  // Show immediate value with universal action
-  const showDemoAction = () => {
-    const randomAction = UNIVERSAL_ACTIONS[Math.floor(Math.random() * UNIVERSAL_ACTIONS.length)];
-    setDemoAction(randomAction);
+  const toggleValue = (value: string) => {
+    setSelectedValues(prev => {
+      if (prev.includes(value)) {
+        return prev.filter(v => v !== value);
+      }
+      if (prev.length >= 3) {
+        return [...prev.slice(1), value]; // Replace oldest
+      }
+      return [...prev, value];
+    });
   };
 
-  const saveIdentitySeed = async () => {
-    if (!identitySeed.trim()) return true; // Allow skipping
-    
+  const handleComplete = async () => {
     setSaving(true);
     try {
+      // Save identity seed with core values
       const { error } = await supabase.from("identity_seeds").insert({
         user_id: userId,
-        content: identitySeed.trim(),
+        content: identitySeed.trim() || "Someone who takes action daily.",
+        core_values: selectedValues.join(", ") || null,
       });
       
       if (error) throw error;
-      return true;
+      
+      localStorage.setItem(`welcome_seen_${userId}`, "true");
+      setOpen(false);
+      onComplete();
+      toast.success("Welcome to Weave");
     } catch (error: any) {
+      console.error("Save error:", error);
       toast.error("Failed to save");
-      return false;
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleNext = async () => {
-    const step = STEPS[currentStep];
-    
-    // Moving to demo step - show action immediately
-    if (step.type === "hook") {
-      setCurrentStep(currentStep + 1);
-      showDemoAction();
-      return;
-    }
-    
-    if (step.type === "identity" && identitySeed.trim()) {
-      const success = await saveIdentitySeed();
-      if (!success) return;
-    }
-
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      handleComplete();
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleComplete = () => {
-    localStorage.setItem(`welcome_seen_${userId}`, "true");
-    setOpen(false);
-    onComplete();
   };
 
   const handleSkip = () => {
@@ -181,160 +98,174 @@ export const WelcomeWizard = ({ userId, onComplete }: WelcomeWizardProps) => {
     onComplete();
   };
 
-  const step = STEPS[currentStep];
-  const Icon = step.icon;
-  const isLastStep = currentStep === STEPS.length - 1;
-
   const canProceed = () => {
-    if (step.type === "demo") {
-      return demoAction !== null;
-    }
-    // Identity is optional - can always proceed
+    if (step === 1) return true; // Identity is optional
+    if (step === 2) return selectedValues.length > 0;
     return true;
-  };
-
-  const getIdentityFeedback = () => {
-    const trimmed = identitySeed.trim();
-    if (trimmed.length === 0) return null;
-    if (trimmed.length < 20) return { text: "Keep going...", color: "text-muted-foreground" };
-    if (trimmed.length < 40) return { text: "Good start. Add more detail.", color: "text-muted-foreground" };
-    return { text: "This will sharpen your recommendations.", color: "text-primary" };
   };
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
-      <DialogContent className="max-w-lg">
-        <DialogTitle className="sr-only">{step.title}</DialogTitle>
-        <DialogDescription className="sr-only">{step.description}</DialogDescription>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+        <DialogTitle className="sr-only">Welcome to Weave</DialogTitle>
+        <DialogDescription className="sr-only">Set up your identity</DialogDescription>
         
-        <div className="flex flex-col items-center text-center space-y-6 py-4">
-          {/* Icon */}
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <Icon className="h-7 w-7 text-primary" />
-          </div>
+        {/* Progress bar */}
+        <div className="h-1 bg-muted">
+          <motion.div 
+            className="h-full bg-primary"
+            initial={{ width: "0%" }}
+            animate={{ width: `${(step / 3) * 100}%` }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
 
-          {/* Content */}
-          <div className="space-y-3">
-            <h2 className="text-2xl font-bold">{step.title}</h2>
-            <p className="text-sm font-medium text-primary">{step.description}</p>
-            {step.content && (
-              <p className="text-sm leading-relaxed text-muted-foreground px-2">
-                {step.content}
-              </p>
-            )}
-          </div>
-
-          {/* Demo Action - Show value FIRST */}
-          {step.type === "demo" && demoAction && (
-            <div className="w-full space-y-4 text-left">
-              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                <p className="font-medium text-foreground leading-relaxed">{demoAction.action}</p>
-                <p className="text-xs text-muted-foreground mt-2">{demoAction.time}</p>
-              </div>
-              <p className="text-sm text-muted-foreground italic">
-                "{demoAction.why}"
-              </p>
-              <p className="text-xs text-primary">
-                This is what Weave does. One clear action when you need it.
-              </p>
-            </div>
-          )}
-
-          {/* Identity Input - AFTER showing value */}
-          {step.type === "identity" && (
-            <div className="w-full space-y-4 text-left">
-              {/* Quick prompts */}
-              <div className="flex flex-wrap gap-2">
-                {step.prompts?.map((prompt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setIdentitySeed(prompt + " ")}
-                    className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-              
-              <Textarea
-                value={identitySeed}
-                onChange={(e) => setIdentitySeed(e.target.value)}
-                placeholder={step.placeholder}
-                className="min-h-[100px] text-sm"
-              />
-              
-              {/* Feedback */}
-              {getIdentityFeedback() && (
-                <p className={`text-xs flex items-center gap-1 ${getIdentityFeedback()?.color}`}>
-                  {identitySeed.length >= 40 && <Check className="h-3 w-3" />}
-                  {getIdentityFeedback()?.text}
-                </p>
-              )}
-              
-              {/* Example toggle */}
-              <button
-                onClick={() => setShowExample(!showExample)}
-                className="text-xs text-primary hover:underline"
+        <div className="p-6">
+          <AnimatePresence mode="wait">
+            {/* Step 1: Identity */}
+            {step === 1 && (
+              <motion.div
+                key="identity"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
               >
-                {showExample ? "Hide examples" : "See examples"}
-              </button>
-              
-              {showExample && (
-                <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
-                  {step.examples?.map((ex, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setIdentitySeed(ex)}
-                      className="block w-full text-left text-xs text-muted-foreground hover:text-foreground transition-colors p-2 rounded hover:bg-background"
-                    >
-                      "{ex}"
-                    </button>
-                  ))}
+                <div className="text-center space-y-2">
+                  <h2 className="text-xl font-bold">Who are you becoming?</h2>
+                  <p className="text-sm text-muted-foreground">One sentence. This sharpens everything.</p>
                 </div>
-              )}
-              
-              <p className="text-xs text-muted-foreground text-center">
-                You can skip this and add it later.
-              </p>
-            </div>
-          )}
 
-          {/* Progress dots */}
-          <div className="flex items-center gap-2">
-            {STEPS.map((_, index) => (
-              <div
-                key={index}
-                className={`h-2 rounded-full transition-all ${
-                  index === currentStep 
-                    ? "bg-primary w-6" 
-                    : index < currentStep 
-                      ? "bg-primary/50 w-2" 
-                      : "bg-muted w-2"
-                }`}
-              />
-            ))}
-          </div>
+                <div className="space-y-3">
+                  <Textarea
+                    value={identitySeed}
+                    onChange={(e) => setIdentitySeed(e.target.value)}
+                    placeholder="I'm becoming someone who..."
+                    className="min-h-[80px] text-base resize-none"
+                    style={{ fontSize: '16px' }}
+                  />
+                  
+                  {/* Quick starters */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Quick start:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {IDENTITY_STARTERS.map((starter) => (
+                        <button
+                          key={starter}
+                          onClick={() => setIdentitySeed(`I'm becoming someone who ${starter}`)}
+                          className="text-xs px-2.5 py-1 rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors"
+                        >
+                          {starter}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 2: Values */}
+            {step === 2 && (
+              <motion.div
+                key="values"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <div className="text-center space-y-2">
+                  <h2 className="text-xl font-bold">Pick 3 values</h2>
+                  <p className="text-sm text-muted-foreground">What guides your decisions?</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {CORE_VALUES.map((value) => {
+                    const isSelected = selectedValues.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => toggleValue(value)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground scale-105'
+                            : 'bg-muted hover:bg-muted/80 text-foreground'
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3 inline mr-1" />}
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-xs text-center text-muted-foreground">
+                  {selectedValues.length}/3 selected
+                </p>
+              </motion.div>
+            )}
+
+            {/* Step 3: Done */}
+            {step === 3 && (
+              <motion.div
+                key="done"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-4 text-center py-4"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Sparkles className="h-8 w-8 text-primary" />
+                </div>
+                
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold">You're in</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Paste anything. Weave turns it into your next move.
+                  </p>
+                </div>
+
+                {identitySeed && (
+                  <div className="p-3 rounded-lg bg-muted/50 text-left">
+                    <p className="text-xs text-muted-foreground mb-1">Your identity:</p>
+                    <p className="text-sm font-medium">{identitySeed}</p>
+                  </div>
+                )}
+
+                {selectedValues.length > 0 && (
+                  <div className="flex gap-2 justify-center">
+                    {selectedValues.map(v => (
+                      <span key={v} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Actions */}
-          <div className="flex items-center justify-between w-full gap-3">
-            {currentStep > 0 ? (
-              <Button variant="ghost" onClick={handleBack} className="gap-2" disabled={saving}>
-                <ArrowLeft className="h-4 w-4" />
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
+            {step > 1 ? (
+              <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={saving}>
                 Back
               </Button>
             ) : (
-              <Button variant="ghost" onClick={handleSkip}>
+              <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">
                 Skip
               </Button>
             )}
-            <Button 
-              onClick={handleNext} 
-              className="gap-2" 
-              disabled={!canProceed() || saving}
-            >
-              {saving ? "Saving..." : isLastStep ? "Start" : step.type === "identity" && !identitySeed.trim() ? "Skip for Now" : "Continue"}
-              {!isLastStep && !saving && <ArrowRight className="h-4 w-4" />}
-            </Button>
+            
+            {step < 3 ? (
+              <Button onClick={() => setStep(step + 1)} className="gap-2" disabled={!canProceed()}>
+                {step === 1 && !identitySeed.trim() ? "Skip" : "Continue"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button onClick={handleComplete} disabled={saving} className="gap-2">
+                {saving ? "Saving..." : "Start Weaving"}
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

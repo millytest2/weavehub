@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, BookCheck } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, BookCheck, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,13 +19,12 @@ import { ApplyThisDialog } from "./ApplyThisDialog";
 type CaptureType = "paste" | "insight" | null;
 type RealignMode = "push" | "flow" | null;
 
-// Weave-aligned states: about patterns and identity, not emotions
 const FEELING_OFF_STATES = [
-  { id: "scattered", label: "Scattered", desc: "Need to refocus on one thread" },
-  { id: "drifting", label: "Drifting", desc: "Lost sight of my direction" },
-  { id: "stuck", label: "Stuck", desc: "Can't start, need a first rep" },
-  { id: "disconnected", label: "Disconnected", desc: "Far from who I'm becoming" },
-  { id: "overloaded", label: "Overloaded", desc: "Too many inputs, need to filter" },
+  { id: "scattered", label: "Scattered", desc: "Need to refocus" },
+  { id: "drifting", label: "Drifting", desc: "Lost direction" },
+  { id: "stuck", label: "Stuck", desc: "Can't start" },
+  { id: "disconnected", label: "Disconnected", desc: "Far from self" },
+  { id: "overloaded", label: "Overloaded", desc: "Too many inputs" },
 ] as const;
 
 type EmotionalState = typeof FEELING_OFF_STATES[number]["id"] | null;
@@ -43,7 +42,7 @@ interface ReturnToSelfData {
 export const QuickCapture = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [captureType, setCaptureType] = useState<CaptureType>(null);
+  const [captureType, setCaptureType] = useState<CaptureType>("paste"); // Default to paste
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,8 +61,8 @@ export const QuickCapture = () => {
   const [realignData, setRealignData] = useState<RealignData | null>(null);
   const [isLoadingRealign, setIsLoadingRealign] = useState(false);
   const [showApplyThis, setShowApplyThis] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
   
-  // Voice capture hook
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
     onTranscript: (text) => {
       setContent(prev => prev ? `${prev}\n${text}` : text);
@@ -71,18 +70,20 @@ export const QuickCapture = () => {
     },
   });
 
-  const handleOpen = () => setIsOpen(true);
+  const handleOpen = () => {
+    setIsOpen(true);
+    setCaptureType("paste"); // Always open to paste
+    setShowMoreActions(false);
+  };
   
   const handleClose = () => {
     setIsOpen(false);
-    setCaptureType(null);
+    setCaptureType("paste");
     setContent("");
     setTitle("");
     setShowEmotionalPicker(false);
     setShowRealignPicker(false);
-  };
-  const handleQuickCapture = async (type: CaptureType) => {
-    setCaptureType(type);
+    setShowMoreActions(false);
   };
 
   const processWithBrain = async (input: string): Promise<string> => {
@@ -210,14 +211,6 @@ export const QuickCapture = () => {
     }
   };
 
-  const handleReturnToSelfClick = () => {
-    setShowEmotionalPicker(true);
-  };
-
-  const handleRealignClick = () => {
-    setShowRealignPicker(true);
-  };
-
   const handleRealign = async (mode: RealignMode) => {
     if (!mode) return;
     setShowRealignPicker(false);
@@ -247,56 +240,81 @@ export const QuickCapture = () => {
     }
   };
 
+  // Secondary action buttons
+  const SecondaryActions = () => (
+    <div className="flex items-center justify-center gap-1 pt-2 border-t border-border/50">
+      <button
+        onClick={() => { setShowRealignPicker(true); setShowMoreActions(false); }}
+        className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-primary/5 transition-all group"
+        title="Realign"
+      >
+        <Target className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        <span className="text-[10px] text-muted-foreground group-hover:text-primary">Realign</span>
+      </button>
+      <button
+        onClick={() => { setShowEmotionalPicker(true); setShowMoreActions(false); }}
+        className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-primary/5 transition-all group"
+        title="Feeling Off"
+      >
+        <Compass className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        <span className="text-[10px] text-muted-foreground group-hover:text-primary">Ground</span>
+      </button>
+      <button
+        onClick={() => { setCaptureType("insight"); setShowMoreActions(false); }}
+        className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-primary/5 transition-all group"
+        title="Insight"
+      >
+        <Lightbulb className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        <span className="text-[10px] text-muted-foreground group-hover:text-primary">Insight</span>
+      </button>
+      <button
+        onClick={() => { setIsOpen(false); setShowApplyThis(true); }}
+        className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-primary/5 transition-all group"
+        title="Apply"
+      >
+        <BookCheck className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        <span className="text-[10px] text-muted-foreground group-hover:text-primary">Apply</span>
+      </button>
+    </div>
+  );
+
   return (
     <>
-      {/* Floating Action Button - Now "Weave" with micro-interactions */}
+      {/* Floating Action Button */}
       <motion.button
         onClick={handleOpen}
         className="fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center"
         aria-label="Weave"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ 
-          scale: 1.1, 
-          boxShadow: "0 20px 40px -10px hsl(var(--primary) / 0.4)"
-        }}
+        whileHover={{ scale: 1.1, boxShadow: "0 20px 40px -10px hsl(var(--primary) / 0.4)" }}
         whileTap={{ scale: 0.95 }}
-        transition={{ 
-          type: "spring", 
-          stiffness: 400, 
-          damping: 17,
-          opacity: { duration: 0.2 }
-        }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
       >
-        <motion.div
-          animate={isOpen ? { rotate: 45 } : { rotate: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        >
-          <Sparkles className="h-5 w-5" />
-        </motion.div>
+        <Sparkles className="h-5 w-5" />
       </motion.button>
 
-      {/* Unified Weave Menu */}
+      {/* Main Dialog - Paste First */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-sm mx-auto rounded-xl p-4">
           <DialogHeader className="pb-1">
             <DialogTitle className="text-base">
-              {captureType ? (
-                <button onClick={() => setCaptureType(null)} className="text-muted-foreground hover:text-foreground text-sm">
-                  ← Back
-                </button>
-              ) : showRealignPicker || showEmotionalPicker ? (
+              {showRealignPicker || showEmotionalPicker ? (
                 <button 
                   onClick={() => { setShowRealignPicker(false); setShowEmotionalPicker(false); }} 
                   className="text-muted-foreground hover:text-foreground text-sm"
                 >
                   ← Back
                 </button>
+              ) : captureType === "insight" ? (
+                <button onClick={() => setCaptureType("paste")} className="text-muted-foreground hover:text-foreground text-sm">
+                  ← Back to Paste
+                </button>
               ) : (
-                "Weave"
+                "Paste anything"
               )}
             </DialogTitle>
-            <DialogDescription className="sr-only">Quick actions</DialogDescription>
+            <DialogDescription className="sr-only">Quick capture</DialogDescription>
           </DialogHeader>
 
           {showRealignPicker ? (
@@ -304,26 +322,26 @@ export const QuickCapture = () => {
               <p className="text-xs text-muted-foreground text-center mb-2">Choose your mode</p>
               <button
                 onClick={() => handleRealign("push")}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:border-orange-500/40 hover:shadow-md transition-all duration-200 text-left group"
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:border-orange-500/40 transition-all text-left group"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
                   <Zap className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
                   <span className="text-sm font-semibold block">Push</span>
-                  <span className="text-xs text-muted-foreground">Show me the gap between where I am and where I'm going</span>
+                  <span className="text-xs text-muted-foreground">Show me the gap</span>
                 </div>
               </button>
               <button
                 onClick={() => handleRealign("flow")}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gradient-to-r from-blue-500/10 to-cyan-500/10 hover:border-blue-500/40 hover:shadow-md transition-all duration-200 text-left group"
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gradient-to-r from-blue-500/10 to-cyan-500/10 hover:border-blue-500/40 transition-all text-left group"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0">
                   <Waves className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
                   <span className="text-sm font-semibold block">Flow</span>
-                  <span className="text-xs text-muted-foreground">Ground me in what matters today</span>
+                  <span className="text-xs text-muted-foreground">Ground me in what matters</span>
                 </div>
               </button>
             </div>
@@ -335,72 +353,23 @@ export const QuickCapture = () => {
                   <button
                     key={state.id}
                     onClick={() => handleReturnToSelfWithState(state.id)}
-                    className="flex flex-col items-start p-3 rounded-xl border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 text-left group"
+                    className="flex flex-col items-start p-3 rounded-xl border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
                   >
-                    <span className="text-sm font-medium group-hover:text-primary transition-colors">{state.label}</span>
-                    <span className="text-xs text-muted-foreground mt-0.5">{state.desc}</span>
+                    <span className="text-sm font-medium">{state.label}</span>
+                    <span className="text-xs text-muted-foreground">{state.desc}</span>
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => handleReturnToSelfWithState(null)}
-                className="w-full p-3 rounded-xl bg-muted/50 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
+                className="w-full p-3 rounded-xl bg-muted/50 text-sm text-muted-foreground hover:text-foreground transition-all"
               >
                 Just ground me
               </button>
             </div>
-          ) : !captureType ? (
-            <div className="space-y-2 py-2">
-              {/* Primary row: Realign + Return to Self */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleRealignClick}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all"
-                >
-                  <Target className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Realign</span>
-                </button>
-                <button
-                  onClick={handleReturnToSelfClick}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <Compass className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Feeling Off</span>
-                </button>
-              </div>
-              
-              {/* Capture row: Paste + Insight (with voice inside) */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleQuickCapture("paste")}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Paste</span>
-                </button>
-                <button
-                  onClick={() => handleQuickCapture("insight")}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-                >
-                  <Lightbulb className="h-5 w-5 text-primary" />
-                  <span className="text-xs font-medium">Insight</span>
-                </button>
-              </div>
-
-              {/* Apply This */}
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  setShowApplyThis(true);
-                }}
-                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all"
-              >
-                <BookCheck className="h-5 w-5 text-primary" />
-                <span className="text-xs font-medium">Apply What You Learned</span>
-              </button>
-            </div>
           ) : (
-            <div className="space-y-3 py-3">
+            <div className="space-y-3 py-2">
+              {/* Insight mode: show title input */}
               {captureType === "insight" && (
                 <Input
                   placeholder="Title (optional)"
@@ -411,61 +380,56 @@ export const QuickCapture = () => {
                 />
               )}
               
+              {/* Main input - always visible */}
               <div className="relative">
                 <Textarea
                   placeholder={
                     captureType === "paste"
-                      ? "Paste any URL (YouTube, article, tweet, Instagram...)"
+                      ? "YouTube link, article URL, tweet, or any thought..."
                       : "What did you learn or realize?"
                   }
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[100px] sm:min-h-[120px] text-base pr-12"
+                  className="min-h-[100px] text-base pr-12"
                   style={{ fontSize: '16px' }}
                   autoFocus
                 />
                 
-                {/* Voice input button */}
-                {captureType === "insight" && (
-                  <button
-                    type="button"
-                    onClick={toggleRecording}
-                    disabled={isTranscribing}
-                    className={`absolute right-2 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                      isRecording 
-                        ? 'bg-destructive text-destructive-foreground animate-pulse' 
-                        : isTranscribing
-                        ? 'bg-muted text-muted-foreground'
-                        : 'bg-primary/10 text-primary hover:bg-primary/20'
-                    }`}
-                    aria-label={isRecording ? "Stop recording" : "Start voice input"}
-                  >
-                    {isTranscribing ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : isRecording ? (
-                      <MicOff className="h-5 w-5" />
-                    ) : (
-                      <Mic className="h-5 w-5" />
-                    )}
-                  </button>
-                )}
+                {/* Voice button inside textarea */}
+                <button
+                  type="button"
+                  onClick={toggleRecording}
+                  disabled={isTranscribing}
+                  className={`absolute right-2 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    isRecording 
+                      ? 'bg-destructive text-destructive-foreground animate-pulse' 
+                      : isTranscribing
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                  aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="h-5 w-5" />
+                  ) : (
+                    <Mic className="h-5 w-5" />
+                  )}
+                </button>
               </div>
               
               {isRecording && (
-                <p className="text-xs text-destructive animate-pulse">
-                  Recording... tap mic to stop
-                </p>
+                <p className="text-xs text-destructive animate-pulse">Recording... tap mic to stop</p>
               )}
               
               {isTranscribing && (
-                <p className="text-xs text-muted-foreground animate-pulse">
-                  Transcribing...
-                </p>
+                <p className="text-xs text-muted-foreground animate-pulse">Transcribing...</p>
               )}
               
               {isProcessing && (
                 <p className="text-xs text-muted-foreground animate-pulse">
-                  {captureType === "paste" ? "Detecting content and extracting..." : "Processing with AI..."}
+                  {captureType === "paste" ? "Detecting content and extracting..." : "Processing..."}
                 </p>
               )}
               
@@ -474,11 +438,33 @@ export const QuickCapture = () => {
                 disabled={!content.trim() || isSubmitting || isRecording || isTranscribing}
                 className="w-full h-10"
               >
-                {isSubmitting 
-                  ? "Processing..." 
-                  : (captureType === "paste" ? "Save & Extract" : "Capture")
-                }
+                {isSubmitting ? "Processing..." : captureType === "paste" ? "Save & Extract" : "Capture Insight"}
               </Button>
+
+              {/* Secondary actions - collapsed by default */}
+              <AnimatePresence>
+                {showMoreActions && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <SecondaryActions />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* More actions toggle */}
+              <button
+                onClick={() => setShowMoreActions(!showMoreActions)}
+                className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                <motion.div animate={{ rotate: showMoreActions ? 180 : 0 }}>
+                  <ChevronUp className="h-3 w-3" />
+                </motion.div>
+                {showMoreActions ? "Less" : "More actions"}
+              </button>
             </div>
           )}
         </DialogContent>
@@ -488,9 +474,7 @@ export const QuickCapture = () => {
         open={showCareerPrompt}
         onOpenChange={(open) => {
           setShowCareerPrompt(open);
-          if (!open && !pendingSubmit) {
-            setPendingSubmit(false);
-          }
+          if (!open && !pendingSubmit) setPendingSubmit(false);
         }}
         onContinue={handleCareerPromptContinue}
       />
