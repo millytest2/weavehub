@@ -578,27 +578,35 @@ const Lab = () => {
           <Badge variant="outline" className="text-xs">Private</Badge>
         </div>
 
-        <Tabs defaultValue="experiments" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="experiments" className="gap-2 text-xs sm:text-sm">
+        <Tabs defaultValue="experiments" className="lab-tabs space-y-6">
+          <TabsList className="grid w-full grid-cols-4 h-12 p-1 bg-muted/50 rounded-xl">
+            <TabsTrigger 
+              value="experiments" 
+              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+            >
               <FlaskConical className="h-4 w-4" />
               <span className="hidden sm:inline">Experiments</span>
-              <span className="sm:hidden">Exp</span>
             </TabsTrigger>
-            <TabsTrigger value="observations" className="gap-2 text-xs sm:text-sm">
+            <TabsTrigger 
+              value="observations" 
+              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+            >
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Observations</span>
-              <span className="sm:hidden">Obs</span>
             </TabsTrigger>
-            <TabsTrigger value="integration" className="gap-2 text-xs sm:text-sm">
+            <TabsTrigger 
+              value="integration" 
+              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+            >
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Weekly</span>
-              <span className="sm:hidden">Week</span>
             </TabsTrigger>
-            <TabsTrigger value="patterns" className="gap-2 text-xs sm:text-sm">
+            <TabsTrigger 
+              value="patterns" 
+              className="gap-2 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm"
+            >
               <Network className="h-4 w-4" />
               <span className="hidden sm:inline">Patterns</span>
-              <span className="sm:hidden">Pat</span>
             </TabsTrigger>
           </TabsList>
 
