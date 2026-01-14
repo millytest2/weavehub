@@ -272,7 +272,7 @@ const Dashboard = () => {
   const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-8 animate-fade-in">
+    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-8 animate-fade-in overflow-x-hidden w-full">
       {user && (
         <>
           <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
