@@ -80,13 +80,81 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [logInput, setLogInput] = useState("");
   const [selectedPillar, setSelectedPillar] = useState<string | null>(null);
   const [isLogging, setIsLogging] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [parsedItems, setParsedItems] = useState<{ text: string; pillar: string | null }[]>([]);
+  const [showParsedPreview, setShowParsedPreview] = useState(false);
+  
+  // Parse voice transcript into structured items
+  const parseVoiceTranscript = async (transcript: string) => {
+    setIsParsing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-voice-log', {
+        body: { transcript }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.completed?.length > 0 || data?.planned?.length > 0) {
+        setParsedItems(data.completed || []);
+        setShowParsedPreview(true);
+        toast.success(`Found ${data.completed?.length || 0} completed items`);
+      } else {
+        // Fallback to raw transcript
+        setLogInput(transcript);
+        toast.info("Couldn't parse - using raw text");
+      }
+    } catch (error) {
+      console.error("Error parsing voice:", error);
+      setLogInput(transcript);
+      toast.error("Parse failed - using raw text");
+    } finally {
+      setIsParsing(false);
+    }
+  };
   
   // Voice capture for quick log
   const { isRecording, isTranscribing, isSupported: voiceSupported, toggleRecording } = useVoiceCapture({
     onTranscript: (text) => {
-      setLogInput(prev => prev ? `${prev} ${text}` : text);
+      // Send to AI for parsing
+      parseVoiceTranscript(text);
     }
   });
+  
+  // Log all parsed items at once
+  const handleLogParsedItems = async () => {
+    if (!user || parsedItems.length === 0) return;
+    
+    setIsLogging(true);
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const inserts = parsedItems.map(item => ({
+        user_id: user.id,
+        action_text: item.text,
+        action_date: today,
+        pillar: item.pillar,
+        completed_at: new Date().toISOString(),
+      }));
+      
+      const { error } = await supabase.from("action_history").insert(inserts);
+      if (error) throw error;
+      
+      toast.success(`Logged ${parsedItems.length} items!`);
+      setParsedItems([]);
+      setShowParsedPreview(false);
+      setLogInput("");
+      fetchWeekData();
+    } catch (error) {
+      console.error("Error logging items:", error);
+      toast.error("Failed to log items");
+    } finally {
+      setIsLogging(false);
+    }
+  };
+  
+  // Remove a parsed item before logging
+  const removeParsedItem = (index: number) => {
+    setParsedItems(prev => prev.filter((_, i) => i !== index));
+  };
 
   const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
@@ -274,64 +342,139 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             <div className="flex items-center gap-2 mb-3">
               <Plus className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Log what you did</span>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder={isRecording ? "Listening..." : "e.g. 30 min workout, wrote blog post..."}
-                value={logInput}
-                onChange={(e) => setLogInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !isLogging && logInput.trim() && handleQuickLog()}
-                className="flex-1"
-                disabled={isRecording}
-              />
               {voiceSupported && (
-                <Button 
-                  size="icon" 
-                  variant={isRecording ? "destructive" : "outline"}
-                  onClick={toggleRecording}
-                  disabled={isTranscribing}
-                  title={isRecording ? "Stop recording" : "Voice input"}
-                >
-                  {isTranscribing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isRecording ? (
-                    <MicOff className="h-4 w-4" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
-                </Button>
+                <Badge variant="secondary" className="text-[10px] ml-auto">
+                  <Mic className="h-2.5 w-2.5 mr-1" />
+                  Voice supported
+                </Badge>
               )}
-              <Button 
-                size="icon" 
-                onClick={handleQuickLog} 
-                disabled={isLogging || !logInput.trim() || isRecording}
-              >
-                {isLogging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              </Button>
             </div>
-            {/* Pillar quick-select */}
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
-                const Icon = config.icon;
-                const isSelected = selectedPillar === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedPillar(isSelected ? null : key)}
-                    className={`
-                      flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all
-                      ${isSelected 
-                        ? `${config.bgColor} text-white` 
-                        : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
-                      }
-                    `}
+            
+            {/* Parsed items preview */}
+            {showParsedPreview && parsedItems.length > 0 && (
+              <div className="mb-3 p-3 rounded-lg bg-background border space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Parsed from voice ({parsedItems.length} items)
+                  </span>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-6 text-xs"
+                    onClick={() => {
+                      setParsedItems([]);
+                      setShowParsedPreview(false);
+                    }}
                   >
-                    <Icon className="h-3 w-3" />
-                    {config.label}
-                  </button>
-                );
-              })}
-            </div>
+                    Clear
+                  </Button>
+                </div>
+                <div className="space-y-1.5">
+                  {parsedItems.map((item, index) => {
+                    const pillarConfig = item.pillar ? PILLAR_CONFIG[item.pillar] : null;
+                    const Icon = pillarConfig?.icon;
+                    return (
+                      <div 
+                        key={index} 
+                        className="flex items-center gap-2 p-2 rounded bg-muted/50 group"
+                      >
+                        {Icon && <Icon className={`h-3.5 w-3.5 ${pillarConfig?.color}`} />}
+                        <span className="text-sm flex-1">{item.text}</span>
+                        <button
+                          onClick={() => removeParsedItem(index)}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button 
+                  size="sm" 
+                  className="w-full mt-2"
+                  onClick={handleLogParsedItems}
+                  disabled={isLogging}
+                >
+                  {isLogging ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                  )}
+                  Log all {parsedItems.length} items
+                </Button>
+              </div>
+            )}
+            
+            {/* Parsing indicator */}
+            {isParsing && (
+              <div className="mb-3 p-3 rounded-lg bg-background border flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Parsing your voice log...</span>
+              </div>
+            )}
+            
+            {!showParsedPreview && (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={isRecording ? "Listening... speak naturally about your day" : "e.g. 30 min workout, wrote blog post..."}
+                    value={logInput}
+                    onChange={(e) => setLogInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !isLogging && logInput.trim() && handleQuickLog()}
+                    className="flex-1"
+                    disabled={isRecording || isParsing}
+                  />
+                  {voiceSupported && (
+                    <Button 
+                      size="icon" 
+                      variant={isRecording ? "destructive" : "outline"}
+                      onClick={toggleRecording}
+                      disabled={isTranscribing || isParsing}
+                      title={isRecording ? "Stop recording" : "Voice input - speak naturally"}
+                    >
+                      {isTranscribing || isParsing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isRecording ? (
+                        <MicOff className="h-4 w-4" />
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                  <Button 
+                    size="icon" 
+                    onClick={handleQuickLog} 
+                    disabled={isLogging || !logInput.trim() || isRecording || isParsing}
+                  >
+                    {isLogging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {/* Pillar quick-select */}
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
+                    const Icon = config.icon;
+                    const isSelected = selectedPillar === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedPillar(isSelected ? null : key)}
+                        className={`
+                          flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all
+                          ${isSelected 
+                            ? `${config.bgColor} text-white` 
+                            : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
+                          }
+                        `}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {config.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
