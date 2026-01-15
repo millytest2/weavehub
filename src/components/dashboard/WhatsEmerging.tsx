@@ -252,7 +252,7 @@ export const WhatsEmerging = ({ userId }: WhatsEmergingProps) => {
             {/* Visual weave for users with data, sparkle for new users */}
             <div className="flex-shrink-0 w-[60px] h-[60px]">
               {hasData ? (
-                <WeaveVisualization score={50} size="sm" animated={false} showLabel={false} />
+                <WeaveVisualization score={50} size="sm" animated={true} showLabel={false} />
               ) : (
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-primary" />

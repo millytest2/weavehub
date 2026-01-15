@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Link2, TrendingUp, Repeat, Brain, Target, Lightbulb, Beaker, AlertTriangle, Calendar, Zap, Wand2, X, ArrowRight, RefreshCw, ChevronDown } from "lucide-react";
+import { Link2, TrendingUp, Repeat, Brain, Target, Lightbulb, Beaker, AlertTriangle, Calendar, Zap, Wand2, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WeaveVisualization } from "@/components/ui/weave-visualization";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -473,26 +472,21 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
                 <p className="text-xs text-muted-foreground mb-2">{pattern.description}</p>
                 
                 {/* Show actual nodes */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 overflow-hidden">
                   {pattern.nodes.slice(0, 4).map((node, nodeIdx) => (
                     <div 
                       key={node.id}
-                      className="flex items-center gap-2 text-xs"
+                      className="flex items-center gap-2 text-xs min-w-0"
                     >
-                      <span className={
+                      <span className={`shrink-0 ${
                         node.type === "insight" ? "text-amber-500" :
                         node.type === "action" ? "text-emerald-500" :
                         node.type === "experiment" ? "text-blue-500" :
                         "text-muted-foreground"
-                      }>
+                      }`}>
                         {getNodeIcon(node.type)}
                       </span>
-                      <span className="text-foreground/80 truncate flex-1">{node.title}</span>
-                      <span className="text-muted-foreground/60 text-[10px] uppercase">
-                        {node.type === "insight" ? "learned" : 
-                         node.type === "action" ? "did" : 
-                         node.type === "experiment" ? "testing" : ""}
-                      </span>
+                      <span className="text-foreground/80 truncate min-w-0 flex-1">{node.title}</span>
                     </div>
                   ))}
                 </div>
@@ -508,77 +502,6 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
         </DialogContent>
       </Dialog>
 
-      {/* Active Patterns - Collapsible */}
-      <Collapsible open={showPatterns} onOpenChange={setShowPatterns}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full group">
-          <Repeat className="h-3.5 w-3.5 text-primary" />
-          <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-            Active Patterns ({patterns.length})
-          </p>
-          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${showPatterns ? '' : '-rotate-90'}`} />
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent>
-          <div className="space-y-3 mt-3">
-            {patterns.map((pattern, idx) => (
-              <motion.div
-                key={`${pattern.theme}-${idx}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.08 }}
-                className={`p-3 rounded-lg border space-y-2 ${
-                  pattern.patternType === "imbalance" 
-                    ? "bg-destructive/5 border-destructive/20" 
-                    : "bg-muted/20 border-border/30"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={pattern.patternType === "imbalance" ? "text-destructive" : "text-primary"}>
-                      {getPatternIcon(pattern.patternType)}
-                    </span>
-                    <p className="text-sm font-medium text-foreground">{pattern.theme}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className={`h-1.5 rounded-full w-12 ${
-                      pattern.patternType === "imbalance" ? "bg-destructive/20" : "bg-primary/30"
-                    }`}>
-                      <motion.div 
-                        className={`h-full rounded-full ${
-                          pattern.patternType === "imbalance" ? "bg-destructive" : "bg-primary"
-                        }`}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pattern.strength}%` }}
-                        transition={{ duration: 0.5, delay: idx * 0.08 }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">{pattern.description}</p>
-                
-                {/* Connected nodes visualization */}
-                <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                  {pattern.nodes.map((node) => (
-                    <div
-                      key={node.id}
-                      className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border shrink-0 max-w-full ${
-                        node.type === "warning" 
-                          ? "bg-destructive/10 border-destructive/30 text-destructive" 
-                          : "bg-background/60 border-border/40 text-muted-foreground"
-                      }`}
-                    >
-                      <span className="shrink-0">{getNodeIcon(node.type)}</span>
-                      <span className="truncate">
-                        {node.title.slice(0, 18)}{node.title.length > 18 ? "…" : ""}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
 
       {/* Dynamic Insight based on patterns */}
       <div className="p-3 rounded-lg border border-dashed border-primary/20 bg-primary/5">
