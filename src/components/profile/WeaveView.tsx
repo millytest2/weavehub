@@ -1,6 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Link2, Sparkles, TrendingUp, Repeat, Brain, Target, Lightbulb, Beaker, AlertTriangle, Calendar, Zap } from "lucide-react";
+import { Link2, Sparkles, TrendingUp, Repeat, Brain, Target, Lightbulb, Beaker, AlertTriangle, Calendar, Zap, Wand2, X, ArrowRight, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { parseFunctionInvokeError } from "@/lib/edgeFunctionError";
 
 interface WeaveNode {
   id: string;
@@ -46,7 +51,53 @@ interface WeaveViewProps {
 
 const ALL_PILLARS = ["Business", "Body", "Mind", "Relationships", "Content", "Play"];
 
+interface WeaveSynthesis {
+  synthesis: string;
+  coreThemes: string[];
+  emergingDirection: string;
+  hiddenConnections: string[];
+  whatYourMindIsSaying: string;
+  stats?: {
+    insightsCount: number;
+    documentsCount: number;
+    experimentsCount: number;
+    actionsCount: number;
+    observationsCount: number;
+    topicsCount: number;
+  };
+}
+
 export function WeaveView({ insights, actions, experiments, identitySeed }: WeaveViewProps) {
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [showSynthesis, setShowSynthesis] = useState(false);
+  const [synthesis, setSynthesis] = useState<WeaveSynthesis | null>(null);
+
+  const handleSynthesizeMind = async () => {
+    setIsSynthesizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('weave-synthesis', {});
+      
+      if (error) {
+        const parsed = parseFunctionInvokeError(error);
+        toast.error(parsed.message || "Failed to synthesize");
+        return;
+      }
+      
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      
+      setSynthesis(data);
+      setShowSynthesis(true);
+    } catch (err) {
+      console.error("Synthesis error:", err);
+      toast.error("Failed to synthesize. Try again.");
+    } finally {
+      setIsSynthesizing(false);
+    }
+  };
+
   // Extract identity keywords for pattern matching
   const identityKeywords = useMemo(() => {
     if (!identitySeed) return [];
@@ -495,6 +546,100 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
           </p>
         </div>
       </div>
+
+      {/* Synthesize My Mind Button */}
+      <Button
+        onClick={handleSynthesizeMind}
+        disabled={isSynthesizing}
+        variant="outline"
+        className="w-full gap-2 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30 hover:border-purple-500/50 text-foreground"
+      >
+        {isSynthesizing ? (
+          <>
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Weaving your mind...
+          </>
+        ) : (
+          <>
+            <Wand2 className="h-4 w-4" />
+            Synthesize My Mind
+          </>
+        )}
+      </Button>
+
+      {/* Synthesis Dialog */}
+      <Dialog open={showSynthesis} onOpenChange={setShowSynthesis}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              Your Mind, Woven
+            </DialogTitle>
+          </DialogHeader>
+          
+          {synthesis && (
+            <div className="space-y-5 pt-2">
+              {/* Stats */}
+              {synthesis.stats && (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="px-2 py-1 rounded-full bg-muted/50">{synthesis.stats.insightsCount} insights</span>
+                  <span className="px-2 py-1 rounded-full bg-muted/50">{synthesis.stats.documentsCount} docs</span>
+                  <span className="px-2 py-1 rounded-full bg-muted/50">{synthesis.stats.experimentsCount} experiments</span>
+                  <span className="px-2 py-1 rounded-full bg-muted/50">{synthesis.stats.actionsCount} actions</span>
+                </div>
+              )}
+
+              {/* What Your Mind Is Saying */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">If your mind could speak</p>
+                <p className="text-lg font-medium text-foreground italic">"{synthesis.whatYourMindIsSaying}"</p>
+              </div>
+
+              {/* Core Themes */}
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Core Themes</p>
+                <div className="flex flex-wrap gap-2">
+                  {synthesis.coreThemes.map((theme, idx) => (
+                    <span key={idx} className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                      {theme}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Emerging Direction */}
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+                <ArrowRight className="h-4 w-4 text-success mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Direction</p>
+                  <p className="text-sm text-foreground">{synthesis.emergingDirection}</p>
+                </div>
+              </div>
+
+              {/* Synthesis */}
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">The Weave</p>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{synthesis.synthesis}</p>
+              </div>
+
+              {/* Hidden Connections */}
+              {synthesis.hiddenConnections.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Hidden Connections</p>
+                  <div className="space-y-2">
+                    {synthesis.hiddenConnections.map((connection, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-sm">
+                        <Link2 className="h-3.5 w-3.5 text-primary mt-1 shrink-0" />
+                        <span className="text-muted-foreground">{connection}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
