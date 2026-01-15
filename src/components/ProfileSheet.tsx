@@ -4,12 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Moon, Sun } from "lucide-react";
+import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Moon, Sun, ChevronRight } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ProgressGameView } from "./dashboard/ProgressGameView";
+
 import { WeaveView } from "./profile/WeaveView";
 import { useTheme } from "next-themes";
 
@@ -285,23 +285,38 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
             <TabsTrigger value="mind" className="text-xs sm:text-sm">Your Mind</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="progress" className="flex-1 overflow-y-auto px-5 pb-4 space-y-6 mt-0">
+          <TabsContent value="progress" className="flex-1 overflow-y-auto px-5 pb-4 space-y-5 mt-0">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : (
             <>
-              {/* Gamification View */}
-              <ProgressGameView
-                completedToday={weeklyActions.filter(a => a.action_date === new Date().toISOString().split('T')[0]).length}
-                totalToday={3}
-                weeklyStats={weeklyStats}
-                streak={streak}
-                experimentsActive={activeExperiments.length}
-                pathsActive={pathsActive}
-                insightsThisWeek={insightsThisWeek}
-              />
+              {/* Simple Momentum Summary */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">This Week</span>
+                  {streak > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                      {streak} day streak
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold text-foreground">{weeklyActions.length}</div>
+                    <div className="text-[10px] text-muted-foreground">Actions</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold text-foreground">{activeExperiments.length}</div>
+                    <div className="text-[10px] text-muted-foreground">Experiments</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold text-foreground">{insightsThisWeek}</div>
+                    <div className="text-[10px] text-muted-foreground">Insights</div>
+                  </div>
+                </div>
+              </div>
 
               {/* Learning Debt / Apply Score */}
               {(learningDebt.saved > 0 || pendingActionsCount > 0) && (
