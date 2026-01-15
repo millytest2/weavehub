@@ -72,7 +72,6 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [showSynthesis, setShowSynthesis] = useState(false);
   const [synthesis, setSynthesis] = useState<WeaveSynthesis | null>(null);
-  const [showPatterns, setShowPatterns] = useState(false);
   const [showConnectionsDialog, setShowConnectionsDialog] = useState(false);
 
   const handleSynthesizeMind = async () => {
@@ -446,34 +445,34 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
 
       {/* Connections Dialog */}
       <Dialog open={showConnectionsDialog} onOpenChange={setShowConnectionsDialog}>
-        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md max-h-[80vh] overflow-y-auto mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Link2 className="h-4 w-4 text-primary" />
               What's Connected
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="space-y-3 pt-2">
             {patterns.slice(0, 5).map((pattern, idx) => (
               <div 
                 key={idx}
-                className={`p-3 rounded-lg border ${
+                className={`p-3 rounded-lg border overflow-hidden ${
                   pattern.patternType === "imbalance" 
                     ? "bg-destructive/5 border-destructive/20" 
                     : "bg-muted/30 border-border/40"
                 }`}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={pattern.patternType === "imbalance" ? "text-destructive" : "text-primary"}>
+                <div className="flex items-start gap-2 mb-1.5">
+                  <span className={`shrink-0 mt-0.5 ${pattern.patternType === "imbalance" ? "text-destructive" : "text-primary"}`}>
                     {getPatternIcon(pattern.patternType)}
                   </span>
-                  <p className="text-sm font-medium">{pattern.theme}</p>
+                  <p className="text-sm font-medium leading-tight">{pattern.theme}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">{pattern.description}</p>
+                <p className="text-xs text-muted-foreground mb-2 pl-5">{pattern.description}</p>
                 
                 {/* Show actual nodes */}
-                <div className="space-y-1.5 overflow-hidden">
-                  {pattern.nodes.slice(0, 4).map((node, nodeIdx) => (
+                <div className="space-y-1 pl-5">
+                  {pattern.nodes.slice(0, 3).map((node) => (
                     <div 
                       key={node.id}
                       className="flex items-center gap-2 text-xs min-w-0"
@@ -486,7 +485,7 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
                       }`}>
                         {getNodeIcon(node.type)}
                       </span>
-                      <span className="text-foreground/80 truncate min-w-0 flex-1">{node.title}</span>
+                      <span className="text-foreground/80 truncate">{node.title}</span>
                     </div>
                   ))}
                 </div>
