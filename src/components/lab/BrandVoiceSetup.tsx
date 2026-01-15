@@ -222,10 +222,7 @@ export const BrandVoiceSetup = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-purple-500" />
-            Brand Voice Setup
-          </DialogTitle>
+          <DialogTitle>Brand Voice Setup</DialogTitle>
           <DialogDescription>
             Configure your brand identity so content is generated in YOUR voice
           </DialogDescription>
