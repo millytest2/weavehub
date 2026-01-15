@@ -16,7 +16,8 @@ import {
   Megaphone, 
   Heart,
   X,
-  Plus
+  Plus,
+  Download
 } from "lucide-react";
 
 interface ContentPillar {
@@ -53,23 +54,68 @@ interface BrandVoiceSetupProps {
 }
 
 const defaultTemplate: BrandVoiceTemplate = {
-  brand_identity: "",
+  brand_identity: `Miles Tipton, 29, Los Angeles/Carpinteria
+
+You're the capable overthinker who spent $3K on 3 career coaches, took 7 personality tests, consumed 100+ hours of advice, and got MORE paralyzed, not less. Then you discovered: experiments > advice. Now you're documenting the proof by living it—building UPath to $100K revenue while gaining 20 pounds, growing to 10K followers, and integrating all life domains instead of choosing between them. You're 6 months ahead in the messy middle, not teaching from the exit. You're the founder-scientist using yourself as the test subject.
+
+Your Expensive Education (What Makes You Credible):
+- 3 career coaches failed you (personality assessments, strengths finders, values clarification)
+- 7 personality tests increased paralysis (ENFP, Maximizer, Ideation, Strategic, Learner)
+- 100+ hours advice consumption made it worse
+- $3K+ spent learning what DOESN'T work
+- Discovery: 30-day experiments generate more clarity than 100 hours of assessment`,
   content_pillars: [
-    { name: "", description: "" },
-    { name: "", description: "" },
-    { name: "", description: "" },
-    { name: "", description: "" },
+    { 
+      name: "Building UPath in Public", 
+      description: "Dogfooding the job search agent on myself while building it. Daily build updates, customer insights, strategic decisions, transparent metrics, co-founder dynamics. Shows messy middle, not polished success." 
+    },
+    { 
+      name: "Identity Expansion Data", 
+      description: "150→170 lbs journey + anxiety protocols with real numbers. Documenting nervous system resistance at each threshold. Body regulation techniques. All tracked with quantified data." 
+    },
+    { 
+      name: "Anti-MBA Philosophy", 
+      description: "Challenging conventional wisdom with data from my $3K expensive education. Career advice tested, assessment industry critique, productivity myths debunked. Experiments > advice." 
+    },
+    { 
+      name: "The Human Component", 
+      description: "Networking, adventures, hobbies, doing things outside comfort zone. Kevin's Rule adventures, drums/chess/golf, real struggle days. Shows I'm human, not a productivity robot." 
+    },
   ],
   platform_voices: {
-    tiktok: { tone: "Conversational, energetic", style: "Hook-driven, visual storytelling", examples: "" },
-    youtube: { tone: "Educational, authoritative", style: "Long-form, value-packed", examples: "" },
-    substack: { tone: "Personal, intellectual", style: "Essay-style, story-driven", examples: "" },
-    twitter: { tone: "Punchy, contrarian", style: "Data-backed, thread-ready", examples: "" },
+    tiktok: { 
+      tone: "Authentic, not polished. Energy > production quality", 
+      style: "Talking head 60 sec, screen recordings, B-roll + text overlays", 
+      examples: "Hook (text on screen first 3 sec) → Problem/contrarian take → Your data → Result → CTA" 
+    },
+    youtube: { 
+      tone: "Educational, showing work", 
+      style: "Monthly deep dives, protocol breakdowns, quarterly integration mega-essays", 
+      examples: "Full methodology disclosed, data visualization, researcher frame" 
+    },
+    substack: { 
+      tone: "In-depth, thoughtful, complete methodology disclosed", 
+      style: "2000-3000 word essays, replicable frameworks, data visualization", 
+      examples: "The 21-Day Anxiety Protocol, The Assessment Trap, Week X updates proving Anti-MBA thesis" 
+    },
+    twitter: { 
+      tone: "Raw, honest, data-driven. No emojis unless necessary", 
+      style: "Short sentences, clear thoughts. 'I' not 'you'. Numbers > feelings", 
+      examples: "Vulnerability without victimhood. Senior year Miles energy (confident, curious, not hiding)" 
+    },
   },
-  personality_blend: "",
-  values: [],
-  avoid_list: [],
-  vision_summary: "",
+  personality_blend: "Ryan Gosling (calm power), Timothée Chalamet (vulnerable cool), Kevin Hart (humor), Jay-Z (wisdom), Leonardo da Vinci (curiosity), Muhammad Ali (belief), Robin Williams (empathy), Drake (emotional range), Michael Jordan (fire), Bob Marley (peace), Elon Musk (scale), Mark Cuban (execution)",
+  values: ["Fun", "Curious", "Present", "Growth", "Goofy", "Authentic", "Confident", "Focused", "Disciplined", "Adventurous"],
+  avoid_list: ["game-changer", "unlock", "leverage", "mindset shift", "generic motivation quotes", "self-help guru positioning", "teaching from theory", "advice not validated through experiments"],
+  vision_summary: `Build UPath to $100K revenue while becoming undeniably yourself
+
+6 Key Goals:
+1. Business: $0 → $50K MRR ($100K+ total revenue)
+2. Body: 150 → 170 lbs maintained (identity expansion proof)
+3. Audience: 537 → 10K Twitter, 0 → 5K TikTok, 38 → 2K YouTube
+4. Income: Bartending → Sales Engineering ($150K) → Full-time UPath by Q4
+5. System: Weave as daily OS
+6. Identity: Performing/shrinking → Undeniably yourself in any room`,
 };
 
 export const BrandVoiceSetup = ({
@@ -205,6 +251,41 @@ export const BrandVoiceSetup = ({
     setTemplate({ ...template, avoid_list: template.avoid_list.filter((_, i) => i !== index) });
   };
 
+  const importFromIdentitySeed = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('identity_seeds')
+        .select('content, core_values, year_note')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast.error("No Identity Seed found. Create one first!");
+        return;
+      }
+
+      // Parse core values if they exist
+      const values = data.core_values 
+        ? data.core_values.split(',').map((v: string) => v.trim()).filter(Boolean)
+        : template.values;
+
+      setTemplate({
+        ...template,
+        brand_identity: data.content || template.brand_identity,
+        vision_summary: data.year_note || template.vision_summary,
+        values: values.length > 0 ? values : template.values,
+      });
+
+      toast.success("Imported from Identity Seed!");
+    } catch (error: any) {
+      toast.error("Failed to import: " + error.message);
+    }
+  };
+
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -250,6 +331,17 @@ export const BrandVoiceSetup = ({
 
           <div className="flex-1 overflow-y-auto mt-4 min-h-0 space-y-4">
             <TabsContent value="identity" className="mt-0 space-y-4">
+              <div className="flex justify-end">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={importFromIdentitySeed}
+                  className="gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Import from Identity Seed
+                </Button>
+              </div>
               <div>
                 <Label>Who You Are (Identity Anchor)</Label>
                 <Textarea
