@@ -29,7 +29,9 @@ import {
   Mic,
   MicOff,
   Target,
-  Settings
+  Settings,
+  Wand2,
+  AlertTriangle
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
 import { toast } from "sonner";
@@ -100,8 +102,11 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   // Pillar targets state
   const [pillarTargets, setPillarTargets] = useState<Record<string, PillarTarget>>({});
   const [showTargetsDialog, setShowTargetsDialog] = useState(false);
-  const [editingTargets, setEditingTargets] = useState<Record<string, { target: number; priority: number }>>({});
+  const [editingTargets, setEditingTargets] = useState<Record<string, { target: number; priority: number; reasoning?: string }>>({});
   const [savingTargets, setSavingTargets] = useState(false);
+  const [generatingTargets, setGeneratingTargets] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiAlert, setAiAlert] = useState<string | null>(null);
   
   // Quick log state
   const [logInput, setLogInput] = useState("");
@@ -286,7 +291,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
 
   // Initialize editing targets from current targets
   const openTargetsDialog = () => {
-    const editing: Record<string, { target: number; priority: number }> = {};
+    const editing: Record<string, { target: number; priority: number; reasoning?: string }> = {};
     Object.keys(PILLAR_CONFIG).forEach(pillar => {
       const existing = pillarTargets[pillar];
       if (existing) {
@@ -296,7 +301,51 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       }
     });
     setEditingTargets(editing);
+    setAiSummary(null);
+    setAiAlert(null);
     setShowTargetsDialog(true);
+  };
+
+  // Generate smart targets using AI based on identity
+  const generateSmartTargets = async () => {
+    setGeneratingTargets(true);
+    setAiSummary(null);
+    setAiAlert(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-pillar-targets');
+      
+      if (error) throw error;
+      
+      if (data.error) {
+        if (data.message) {
+          toast.error(data.message);
+        } else {
+          toast.error(data.error);
+        }
+        return;
+      }
+      
+      if (data.targets) {
+        const newTargets: Record<string, { target: number; priority: number; reasoning?: string }> = {};
+        Object.entries(data.targets).forEach(([pillar, values]: [string, any]) => {
+          newTargets[pillar] = {
+            target: values.weekly_target || 3,
+            priority: values.priority || 2,
+            reasoning: values.reasoning,
+          };
+        });
+        setEditingTargets(newTargets);
+        setAiSummary(data.summary || null);
+        setAiAlert(data.alert || null);
+        toast.success("Smart targets generated from your identity!");
+      }
+    } catch (error) {
+      console.error("Error generating smart targets:", error);
+      toast.error("Failed to generate smart targets");
+    } finally {
+      setGeneratingTargets(false);
+    }
   };
 
   // Save pillar targets
@@ -916,63 +965,104 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
 
       {/* Pillar Targets Dialog */}
       <Dialog open={showTargetsDialog} onOpenChange={setShowTargetsDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
               Weekly Pillar Targets
             </DialogTitle>
             <DialogDescription>
-              Set your minimum weekly actions for each pillar. Higher priority pillars get more focus.
+              Set your minimum weekly actions for each pillar. Use AI to generate targets from your identity.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-2">
+          {/* AI Generate Button */}
+          <Button 
+            variant="outline" 
+            className="w-full border-dashed"
+            onClick={generateSmartTargets}
+            disabled={generatingTargets}
+          >
+            {generatingTargets ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Analyzing your identity...
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-4 w-4 mr-2" />
+                Generate Smart Targets from My 2026 Direction
+              </>
+            )}
+          </Button>
+          
+          {/* AI Summary */}
+          {aiSummary && (
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <p className="text-sm text-foreground">{aiSummary}</p>
+            </div>
+          )}
+          
+          {/* AI Alert */}
+          {aiAlert && (
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-amber-700 dark:text-amber-400">{aiAlert}</p>
+            </div>
+          )}
+          
+          <div className="space-y-3 py-2">
             {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
               const Icon = config.icon;
               const values = editingTargets[key] || { target: 3, priority: 2 };
               
               return (
-                <div key={key} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor}/20`}>
-                    <Icon className={`h-4 w-4 ${config.color}`} />
-                  </div>
-                  <div className="flex-1">
-                    <span className="text-sm font-medium">{config.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] text-muted-foreground mb-0.5">Target</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={values.target}
-                        onChange={(e) => setEditingTargets(prev => ({
-                          ...prev,
-                          [key]: { ...prev[key], target: parseInt(e.target.value) || 0 }
-                        }))}
-                        className="w-14 h-8 text-center text-sm"
-                      />
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor}/20`}>
+                      <Icon className={`h-4 w-4 ${config.color}`} />
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] text-muted-foreground mb-0.5">Priority</span>
-                      <select
-                        value={values.priority}
-                        onChange={(e) => setEditingTargets(prev => ({
-                          ...prev,
-                          [key]: { ...prev[key], priority: parseInt(e.target.value) }
-                        }))}
-                        className="w-14 h-8 text-sm rounded-md border bg-background px-1"
-                      >
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
-                        <option value={4}>4</option>
-                        <option value={5}>5</option>
-                      </select>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium">{config.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-muted-foreground mb-0.5">Target</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={20}
+                          value={values.target}
+                          onChange={(e) => setEditingTargets(prev => ({
+                            ...prev,
+                            [key]: { ...prev[key], target: parseInt(e.target.value) || 0 }
+                          }))}
+                          className="w-14 h-8 text-center text-sm"
+                        />
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-muted-foreground mb-0.5">Priority</span>
+                        <select
+                          value={values.priority}
+                          onChange={(e) => setEditingTargets(prev => ({
+                            ...prev,
+                            [key]: { ...prev[key], priority: parseInt(e.target.value) }
+                          }))}
+                          className="w-14 h-8 text-sm rounded-md border bg-background px-1"
+                        >
+                          <option value={1}>1</option>
+                          <option value={2}>2</option>
+                          <option value={3}>3</option>
+                          <option value={4}>4</option>
+                          <option value={5}>5</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
+                  {/* Show AI reasoning if available */}
+                  {values.reasoning && (
+                    <p className="text-xs text-muted-foreground pl-11 italic">{values.reasoning}</p>
+                  )}
                 </div>
               );
             })}
