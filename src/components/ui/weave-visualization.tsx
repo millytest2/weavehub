@@ -13,13 +13,17 @@ interface WeaveVisualizationProps {
   connections?: WeaveConnection[];
   onClick?: () => void;
   interactive?: boolean;
+  animated?: boolean;
+  showLabel?: boolean;
 }
 
 export const WeaveVisualization = ({ 
   score, 
   size = "md", 
   onClick,
-  interactive = false
+  interactive = false,
+  animated = true,
+  showLabel = true,
 }: WeaveVisualizationProps) => {
   const dimensions = {
     sm: { width: 60, height: 60 },
@@ -114,8 +118,9 @@ export const WeaveVisualization = ({
           className="block"
           style={{ overflow: 'hidden' }}
         >
-          {/* Background glow for higher scores */}
-          {score >= 50 && (
+        {/* Background glow for higher scores */}
+        {score >= 50 && (
+          animated ? (
             <motion.circle
               cx={centerX}
               cy={centerY}
@@ -125,10 +130,19 @@ export const WeaveVisualization = ({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8 }}
             />
-          )}
+          ) : (
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={width * 0.35}
+              fill="hsl(var(--primary) / 0.1)"
+            />
+          )
+        )}
 
-          {/* Threads */}
-          {threads.map((thread, i) => (
+        {/* Threads */}
+        {threads.map((thread, i) =>
+          animated ? (
             <motion.path
               key={i}
               d={thread.path}
@@ -143,9 +157,21 @@ export const WeaveVisualization = ({
                 opacity: { duration: 0.4, delay: thread.delay },
               }}
             />
-          ))}
+          ) : (
+            <path
+              key={i}
+              d={thread.path}
+              fill="none"
+              stroke="hsl(var(--primary))"
+              strokeWidth={size === "sm" ? 1.5 : 2}
+              strokeLinecap="round"
+              opacity={thread.opacity}
+            />
+          )
+        )}
 
-          {/* Central node */}
+        {/* Central node */}
+        {animated ? (
           <motion.circle
             cx={centerX}
             cy={centerY}
@@ -155,48 +181,66 @@ export const WeaveVisualization = ({
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.2 }}
           />
-
-          {/* Outer nodes for higher scores */}
-          {score >= 30 && (
-            <>
-              {[...Array(Math.min(6, Math.floor(score / 15)))].map((_, i) => {
-                const angle = (i / 6) * Math.PI * 2;
-                const radius = (width / 2) * 0.65;
-                const x = centerX + Math.cos(angle) * radius;
-                const y = centerY + Math.sin(angle) * radius;
-                return (
-                  <motion.circle
-                    key={`node-${i}`}
-                    cx={x}
-                    cy={y}
-                    r={size === "sm" ? 2 : 3}
-                    fill="hsl(var(--primary) / 0.6)"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.4 + i * 0.08 }}
-                  />
-                );
-              })}
-            </>
-          )}
-        </svg>
-        
-        {/* Tap hint for interactive */}
-        {interactive && (
-          <motion.div 
-            className="absolute inset-0 rounded-full border-2 border-primary/30"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.5, 0] }}
-            transition={{ duration: 2, repeat: 2, delay: 1 }}
+        ) : (
+          <circle
+            cx={centerX}
+            cy={centerY}
+            r={size === "sm" ? 4 : size === "md" ? 6 : 8}
+            fill="hsl(var(--primary))"
           />
         )}
-      </button>
 
-      {/* Phrase with tap hint */}
+        {/* Outer nodes for higher scores */}
+        {score >= 30 && (
+          <>
+            {[...Array(Math.min(6, Math.floor(score / 15)))].map((_, i) => {
+              const angle = (i / 6) * Math.PI * 2;
+              const radius = (width / 2) * 0.65;
+              const x = centerX + Math.cos(angle) * radius;
+              const y = centerY + Math.sin(angle) * radius;
+              return animated ? (
+                <motion.circle
+                  key={`node-${i}`}
+                  cx={x}
+                  cy={y}
+                  r={size === "sm" ? 2 : 3}
+                  fill="hsl(var(--primary) / 0.6)"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.4 + i * 0.08 }}
+                />
+              ) : (
+                <circle
+                  key={`node-${i}`}
+                  cx={x}
+                  cy={y}
+                  r={size === "sm" ? 2 : 3}
+                  fill="hsl(var(--primary) / 0.6)"
+                />
+              );
+            })}
+          </>
+        )}
+      </svg>
+
+      {/* Tap hint for interactive */}
+      {interactive && (
+        <motion.div 
+          className="absolute inset-0 rounded-full border-2 border-primary/30"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.5, 0] }}
+          transition={{ duration: 2, repeat: 2, delay: 1 }}
+        />
+      )}
+    </button>
+
+    {/* Phrase with tap hint */}
+    {showLabel && (
       <p className="text-xs text-muted-foreground font-medium">
         {phrase}
         {interactive && <span className="text-primary/60 ml-1">· tap</span>}
       </p>
-    </div>
-  );
+    )}
+  </div>
+);
 };
