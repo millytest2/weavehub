@@ -74,6 +74,7 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
   const [showSynthesis, setShowSynthesis] = useState(false);
   const [synthesis, setSynthesis] = useState<WeaveSynthesis | null>(null);
   const [showPatterns, setShowPatterns] = useState(false);
+  const [showConnectionsDialog, setShowConnectionsDialog] = useState(false);
 
   const handleSynthesizeMind = async () => {
     setIsSynthesizing(true);
@@ -421,7 +422,7 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
 
   return (
     <div className="space-y-5">
-      {/* Weave Visualization */}
+      {/* Weave Visualization - Interactive */}
       <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 border border-primary/10 p-4">
         <div className="flex items-center justify-between">
           <div className="flex-1">
@@ -435,9 +436,77 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
               {weaveScore >= 80 && "Deeply woven. You're living your identity."}
             </p>
           </div>
-          <WeaveVisualization score={weaveScore} size="md" />
+          <WeaveVisualization 
+            score={weaveScore} 
+            size="md" 
+            interactive={patterns.length > 0}
+            onClick={() => patterns.length > 0 && setShowConnectionsDialog(true)}
+          />
         </div>
       </div>
+
+      {/* Connections Dialog */}
+      <Dialog open={showConnectionsDialog} onOpenChange={setShowConnectionsDialog}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-primary" />
+              What's Connected
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {patterns.slice(0, 5).map((pattern, idx) => (
+              <div 
+                key={idx}
+                className={`p-3 rounded-lg border ${
+                  pattern.patternType === "imbalance" 
+                    ? "bg-destructive/5 border-destructive/20" 
+                    : "bg-muted/30 border-border/40"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={pattern.patternType === "imbalance" ? "text-destructive" : "text-primary"}>
+                    {getPatternIcon(pattern.patternType)}
+                  </span>
+                  <p className="text-sm font-medium">{pattern.theme}</p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">{pattern.description}</p>
+                
+                {/* Show actual nodes */}
+                <div className="space-y-1.5">
+                  {pattern.nodes.slice(0, 4).map((node, nodeIdx) => (
+                    <div 
+                      key={node.id}
+                      className="flex items-center gap-2 text-xs"
+                    >
+                      <span className={
+                        node.type === "insight" ? "text-amber-500" :
+                        node.type === "action" ? "text-emerald-500" :
+                        node.type === "experiment" ? "text-blue-500" :
+                        "text-muted-foreground"
+                      }>
+                        {getNodeIcon(node.type)}
+                      </span>
+                      <span className="text-foreground/80 truncate flex-1">{node.title}</span>
+                      <span className="text-muted-foreground/60 text-[10px] uppercase">
+                        {node.type === "insight" ? "learned" : 
+                         node.type === "action" ? "did" : 
+                         node.type === "experiment" ? "testing" : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            
+            {patterns.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No connections found yet. Keep building!
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Active Patterns - Collapsible */}
       <Collapsible open={showPatterns} onOpenChange={setShowPatterns}>
