@@ -354,7 +354,58 @@ Return ONLY valid JSON with 3-5 connections.`;
     if (mode === "multi_platform_post" && body.connection) {
       const conn = body.connection;
       
-      const systemPrompt = `You are a polymath content strategist who adapts cross-domain insights for different platforms.
+      // Fetch user's brand voice template
+      const { data: voiceTemplate } = await supabase
+        .from('platform_voice_templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      // Build brand context from template
+      let brandContext = "";
+      if (voiceTemplate) {
+        const pillars = (voiceTemplate.content_pillars as any[]) || [];
+        const platformVoices = voiceTemplate.platform_voices as any || {};
+        const values = voiceTemplate.values || [];
+        const avoidList = voiceTemplate.avoid_list || [];
+        
+        brandContext = `
+BRAND IDENTITY:
+${voiceTemplate.brand_identity || 'Not specified'}
+
+VISION:
+${voiceTemplate.vision_summary || 'Not specified'}
+
+PERSONALITY BLEND:
+${voiceTemplate.personality_blend || 'Not specified'}
+
+CONTENT PILLARS (all content should fit one of these):
+${pillars.map((p: any, i: number) => `${i + 1}. ${p.name}: ${p.description}`).join('\n')}
+
+VALUES TO EMBODY:
+${values.join(', ') || 'Authentic, data-driven'}
+
+NEVER USE THESE WORDS/PHRASES:
+${avoidList.join(', ') || 'game-changer, unlock, leverage, mindset shift'}
+
+PLATFORM-SPECIFIC VOICE:
+- TikTok: Tone: ${platformVoices.tiktok?.tone || 'Conversational, energetic'} | Style: ${platformVoices.tiktok?.style || 'Hook-driven, visual storytelling'}
+- YouTube: Tone: ${platformVoices.youtube?.tone || 'Educational, authoritative'} | Style: ${platformVoices.youtube?.style || 'Long-form, value-packed'}
+- Substack: Tone: ${platformVoices.substack?.tone || 'Personal, intellectual'} | Style: ${platformVoices.substack?.style || 'Essay-style, story-driven'}
+- X/Twitter: Tone: ${platformVoices.twitter?.tone || 'Punchy, contrarian'} | Style: ${platformVoices.twitter?.style || 'Data-backed, thread-ready'}
+`;
+      }
+      
+      const systemPrompt = `You are a polymath content strategist adapting cross-domain insights for different platforms.
+${brandContext ? brandContext : `
+Default brand voice:
+- No fluff, no filler words
+- Real data beats generic advice
+- Personal experience > theory
+- Contrarian when honest
+- Never use: "game-changer", "unlock", "leverage", "mindset shift"
+- Write like explaining to a smart friend
+`}
 
 You understand each platform's unique style:
 - TikTok: 15-60 second hook-driven, visual storytelling, conversational, pattern interrupts
@@ -362,13 +413,7 @@ You understand each platform's unique style:
 - Substack: Newsletter essay style, personal + intellectual depth, story-driven
 - X/Twitter: Punchy threads or standalone insights, contrarian takes, data-backed
 
-Your brand voice:
-- No fluff, no filler words
-- Real data beats generic advice
-- Personal experience > theory
-- Contrarian when honest
-- Never use: "game-changer", "unlock", "leverage", "mindset shift"
-- Write like explaining to a smart friend
+CRITICAL: Apply the brand identity, values, and platform-specific voice above to ALL content you generate.
 
 You MUST return valid JSON with this exact structure:
 {
@@ -403,6 +448,7 @@ INSIGHT: ${conn.insight}
 SOURCES: ${conn.sources?.join(', ') || 'Various observations'}
 
 Generate platform-specific content that shows how ${conn.domains?.[0] || 'one domain'} insights apply to ${conn.domains?.[1] || 'another domain'}.
+${brandContext ? 'IMPORTANT: Match the brand voice and identity configured above.' : ''}
 
 Return ONLY valid JSON.`;
 

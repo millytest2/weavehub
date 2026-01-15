@@ -776,6 +776,48 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_voice_templates: {
+        Row: {
+          avoid_list: string[] | null
+          brand_identity: string | null
+          content_pillars: Json | null
+          created_at: string
+          id: string
+          personality_blend: string | null
+          platform_voices: Json | null
+          updated_at: string
+          user_id: string
+          values: string[] | null
+          vision_summary: string | null
+        }
+        Insert: {
+          avoid_list?: string[] | null
+          brand_identity?: string | null
+          content_pillars?: Json | null
+          created_at?: string
+          id?: string
+          personality_blend?: string | null
+          platform_voices?: Json | null
+          updated_at?: string
+          user_id: string
+          values?: string[] | null
+          vision_summary?: string | null
+        }
+        Update: {
+          avoid_list?: string[] | null
+          brand_identity?: string | null
+          content_pillars?: Json | null
+          created_at?: string
+          id?: string
+          personality_blend?: string | null
+          platform_voices?: Json | null
+          updated_at?: string
+          user_id?: string
+          values?: string[] | null
+          vision_summary?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

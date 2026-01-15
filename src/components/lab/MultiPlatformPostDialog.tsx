@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,8 +12,10 @@ import {
   Check, 
   Sparkles, 
   Network,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from "lucide-react";
+import { BrandVoiceSetup } from "./BrandVoiceSetup";
 
 // Platform icons as simple components
 const TikTokIcon = () => (
@@ -84,6 +86,28 @@ export const MultiPlatformPostDialog = ({
   const [platformContent, setPlatformContent] = useState<PlatformContent | null>(null);
   const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("tiktok");
+  const [showBrandSetup, setShowBrandSetup] = useState(false);
+  const [hasVoiceTemplate, setHasVoiceTemplate] = useState<boolean | null>(null);
+
+  // Check if user has a voice template
+  useEffect(() => {
+    const checkTemplate = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('platform_voice_templates')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setHasVoiceTemplate(!!data);
+    };
+    
+    if (open) {
+      checkTemplate();
+    }
+  }, [open]);
 
   const handleGenerate = async () => {
     if (!connection) return;
@@ -149,20 +173,42 @@ export const MultiPlatformPostDialog = ({
   ];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Network className="h-5 w-5 text-purple-500" />
-            Multi-Platform Content Router
-          </DialogTitle>
-          <DialogDescription>
-            Transform this cross-domain connection into platform-specific content
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <BrandVoiceSetup
+        open={showBrandSetup}
+        onOpenChange={setShowBrandSetup}
+        onSaved={() => setHasVoiceTemplate(true)}
+      />
+      
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Network className="h-5 w-5 text-purple-500" />
+                Multi-Platform Content Router
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowBrandSetup(true)}
+                className="h-8 w-8"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
+            <DialogDescription>
+              Transform this cross-domain connection into platform-specific content
+              {hasVoiceTemplate === false && (
+                <span className="block mt-1 text-amber-500">
+                  ⚡ Set up your brand voice for personalized content
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* Connection context */}
-        {connection && (
+          {/* Connection context */}
+          {connection && (
           <Card className="bg-muted/50 flex-shrink-0">
             <CardContent className="py-4">
               <div className="flex items-center gap-2 mb-2">
@@ -259,7 +305,8 @@ export const MultiPlatformPostDialog = ({
             </Tabs>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
