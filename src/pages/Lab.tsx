@@ -599,14 +599,11 @@ const Lab = () => {
     );
   }
 
-  if (!isAdmin) return null;
-
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-bold">Lab</h1>
-          <Badge variant="outline" className="text-xs">Private</Badge>
         </div>
 
         <Tabs defaultValue="experiments" className="space-y-6">
