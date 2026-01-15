@@ -10,6 +10,7 @@ import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRe
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
+import { WhatsEmerging } from "@/components/dashboard/WhatsEmerging";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -306,6 +307,9 @@ const Dashboard = () => {
       )}
 
       <div className="flex-1 space-y-6">
+        {/* What's Emerging - shows once per ~12 hours */}
+        {user && <WhatsEmerging userId={user.id} />}
+        
         {/* Today's Invitation Card - Device Agnostic */}
         <div className="invitation-card">
           {/* Header */}
