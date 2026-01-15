@@ -80,8 +80,17 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative" style={{ width, height }}>
-        <svg width={width} height={height} className="overflow-visible">
+      <div 
+        className="relative flex-shrink-0" 
+        style={{ width, height, contain: 'layout size' }}
+      >
+        <svg 
+          width={width} 
+          height={height} 
+          viewBox={`0 0 ${width} ${height}`}
+          className="block"
+          style={{ overflow: 'hidden' }}
+        >
           {/* Background glow for higher scores */}
           {score >= 50 && (
             <motion.circle
@@ -89,9 +98,9 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
               cy={centerY}
               r={width * 0.35}
               fill="hsl(var(--primary) / 0.1)"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8 }}
             />
           )}
 
@@ -107,8 +116,8 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ pathLength: 1, opacity: thread.opacity }}
               transition={{
-                pathLength: { duration: 1.2, delay: thread.delay, ease: "easeOut" },
-                opacity: { duration: 0.5, delay: thread.delay },
+                pathLength: { duration: 1, delay: thread.delay, ease: "easeOut" },
+                opacity: { duration: 0.4, delay: thread.delay },
               }}
             />
           ))}
@@ -119,9 +128,9 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
             cy={centerY}
             r={size === "sm" ? 4 : size === "md" ? 6 : 8}
             fill="hsl(var(--primary))"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
           />
 
           {/* Outer nodes for higher scores */}
@@ -129,7 +138,7 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
             <>
               {[...Array(Math.min(6, Math.floor(score / 15)))].map((_, i) => {
                 const angle = (i / 6) * Math.PI * 2;
-                const radius = (width / 2) * 0.7;
+                const radius = (width / 2) * 0.65;
                 const x = centerX + Math.cos(angle) * radius;
                 const y = centerY + Math.sin(angle) * radius;
                 return (
@@ -139,9 +148,9 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
                     cy={y}
                     r={size === "sm" ? 2 : 3}
                     fill="hsl(var(--primary) / 0.6)"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3, delay: 0.4 + i * 0.08 }}
                   />
                 );
               })}
