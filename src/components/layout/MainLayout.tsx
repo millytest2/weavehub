@@ -14,7 +14,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const navigation = [
-    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Home", href: "/", icon: Home },
     { name: "Daily", href: "/daily", icon: ListTodo },
     { name: "Identity", href: "/identity", icon: Compass },
     { name: "Insights", href: "/insights", icon: Lightbulb },
