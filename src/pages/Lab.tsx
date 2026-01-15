@@ -228,7 +228,7 @@ const Lab = () => {
           .select("*, topics(id, name)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(200)
+          .limit(500)
       ]);
 
       if (expResult.data) setExperiments(expResult.data as any);
@@ -489,7 +489,7 @@ const Lab = () => {
           .select("*, topics(id, name)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(200),
+          .limit(500),
         supabase
           .from("observations")
           .select("*")
