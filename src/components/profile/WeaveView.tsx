@@ -557,19 +557,19 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
                 <p className="text-xs text-muted-foreground">{pattern.description}</p>
                 
                 {/* Connected nodes visualization */}
-                <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <div className="flex items-center gap-1.5 pt-1 flex-wrap">
                   {pattern.nodes.map((node) => (
                     <div
                       key={node.id}
-                      className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border ${
+                      className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border shrink-0 max-w-full ${
                         node.type === "warning" 
                           ? "bg-destructive/10 border-destructive/30 text-destructive" 
                           : "bg-background/60 border-border/40 text-muted-foreground"
                       }`}
                     >
-                      {getNodeIcon(node.type)}
-                      <span className="truncate max-w-[100px]">
-                        {node.title.slice(0, 20)}{node.title.length > 20 ? "…" : ""}
+                      <span className="shrink-0">{getNodeIcon(node.type)}</span>
+                      <span className="truncate">
+                        {node.title.slice(0, 18)}{node.title.length > 18 ? "…" : ""}
                       </span>
                     </div>
                   ))}
