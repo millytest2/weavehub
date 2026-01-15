@@ -482,21 +482,52 @@ const Lab = () => {
     
     setIsAnalyzing(true);
     try {
+      // Fetch fresh data before analyzing to ensure we have the latest insights
+      const [insightsResult, obsResult, expResult] = await Promise.all([
+        supabase
+          .from("insights")
+          .select("*, topics(id, name)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(200),
+        supabase
+          .from("observations")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabase
+          .from("experiments")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      ]);
+
+      // Update state with fresh data
+      const freshInsights = insightsResult.data || [];
+      const freshObservations = obsResult.data || [];
+      const freshExperiments = expResult.data || [];
+      
+      if (insightsResult.data) setInsights(freshInsights);
+      if (obsResult.data) setObservations(freshObservations as any);
+      if (expResult.data) setExperiments(freshExperiments as any);
+
       // Gather all content for analysis - use more insights for richer pattern detection
       const allContent = {
-        insights: insights.slice(0, 100).map(i => ({
+        insights: freshInsights.slice(0, 100).map((i: any) => ({
           title: i.title,
           content: i.content?.slice(0, 300), // Truncate content to fit more insights
           source: i.source,
           topic: i.topics?.name
         })),
-        observations: observations.slice(0, 30).map(o => ({
+        observations: freshObservations.slice(0, 30).map((o: any) => ({
           type: o.observation_type,
           content: o.content?.slice(0, 200),
           source: o.source,
           your_data: o.your_data
         })),
-        experiments: experiments.slice(0, 15).map(e => ({
+        experiments: freshExperiments.slice(0, 15).map((e: any) => ({
           title: e.title,
           hypothesis: e.hypothesis,
           type: e.experiment_type
