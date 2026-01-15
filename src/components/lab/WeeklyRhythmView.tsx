@@ -683,6 +683,22 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             </div>
           )}
 
+          {/* Show weekly context when viewing today */}
+          {effectivePillarScope === 'day' && weekAnalysis.totalActions > 0 && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/30">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Week progress: {weekAnalysis.activeDays}/7 days active</span>
+                <span>{weekAnalysis.activePillars}/6 pillars touched</span>
+              </div>
+              <div className="h-1 bg-muted rounded-full overflow-hidden mt-2">
+                <div 
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                  style={{ width: `${weekAnalysis.completionRate}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {pillarAnalysis.dominantPillar && pillarAnalysis.activePillars < 4 && pillarAnalysis.totalActions > 0 && (
             <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
               <p className="text-sm text-amber-700 dark:text-amber-400">
