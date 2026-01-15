@@ -1100,6 +1100,39 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_pillar_targets: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          pillar: string
+          priority: number
+          updated_at: string
+          user_id: string
+          weekly_target: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pillar: string
+          priority?: number
+          updated_at?: string
+          user_id: string
+          weekly_target?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pillar?: string
+          priority?: number
+          updated_at?: string
+          user_id?: string
+          weekly_target?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -56,6 +56,14 @@ interface WeeklyIntegration {
   play_score: number | null;
 }
 
+interface PillarTarget {
+  id: string;
+  pillar: string;
+  weekly_target: number;
+  priority: number;
+  notes: string | null;
+}
+
 const PILLAR_CONFIG: Record<string, { label: string; icon: any; color: string; bgColor: string }> = {
   business: { label: 'Business', icon: Briefcase, color: 'text-blue-500', bgColor: 'bg-blue-500' },
   body: { label: 'Body', icon: Activity, color: 'text-green-500', bgColor: 'bg-green-500' },
@@ -63,6 +71,15 @@ const PILLAR_CONFIG: Record<string, { label: string; icon: any; color: string; b
   relationship: { label: 'Relationship', icon: Heart, color: 'text-pink-500', bgColor: 'bg-pink-500' },
   mind: { label: 'Mind', icon: Brain, color: 'text-orange-500', bgColor: 'bg-orange-500' },
   play: { label: 'Play', icon: Gamepad2, color: 'text-cyan-500', bgColor: 'bg-cyan-500' },
+};
+
+const DEFAULT_PILLAR_TARGETS: Record<string, { target: number; priority: number }> = {
+  business: { target: 5, priority: 5 },
+  body: { target: 5, priority: 4 },
+  content: { target: 3, priority: 3 },
+  relationship: { target: 3, priority: 3 },
+  mind: { target: 3, priority: 2 },
+  play: { target: 2, priority: 1 },
 };
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -79,6 +96,12 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [prevWeekData, setPrevWeekData] = useState<WeeklyIntegration | null>(null);
   const [loading, setLoading] = useState(true);
   const [pillarScope, setPillarScope] = useState<'day' | 'week'>('day');
+  
+  // Pillar targets state
+  const [pillarTargets, setPillarTargets] = useState<Record<string, PillarTarget>>({});
+  const [showTargetsDialog, setShowTargetsDialog] = useState(false);
+  const [editingTargets, setEditingTargets] = useState<Record<string, { target: number; priority: number }>>({});
+  const [savingTargets, setSavingTargets] = useState(false);
   
   // Quick log state
   const [logInput, setLogInput] = useState("");
@@ -216,7 +239,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       const prevWeekNum = currentWeekNumber === 1 ? 52 : currentWeekNumber - 1;
       const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
-      const [actionsResult, weeklyResult, prevWeekResult] = await Promise.all([
+      const [actionsResult, weeklyResult, prevWeekResult, targetsResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("*")
@@ -237,16 +260,73 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           .eq("user_id", user.id)
           .eq("week_number", prevWeekNum)
           .eq("year", prevYear)
-          .maybeSingle()
+          .maybeSingle(),
+        supabase
+          .from("weekly_pillar_targets")
+          .select("*")
+          .eq("user_id", user.id)
       ]);
 
       setActions(actionsResult.data || []);
       setWeeklyData(weeklyResult.data);
       setPrevWeekData(prevWeekResult.data);
+      
+      // Process pillar targets
+      const targetsMap: Record<string, PillarTarget> = {};
+      (targetsResult.data || []).forEach((t: any) => {
+        targetsMap[t.pillar] = t;
+      });
+      setPillarTargets(targetsMap);
     } catch (error) {
       console.error("Error fetching week data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Initialize editing targets from current targets
+  const openTargetsDialog = () => {
+    const editing: Record<string, { target: number; priority: number }> = {};
+    Object.keys(PILLAR_CONFIG).forEach(pillar => {
+      const existing = pillarTargets[pillar];
+      if (existing) {
+        editing[pillar] = { target: existing.weekly_target, priority: existing.priority };
+      } else {
+        editing[pillar] = DEFAULT_PILLAR_TARGETS[pillar] || { target: 3, priority: 2 };
+      }
+    });
+    setEditingTargets(editing);
+    setShowTargetsDialog(true);
+  };
+
+  // Save pillar targets
+  const saveTargets = async () => {
+    if (!user) return;
+    setSavingTargets(true);
+    
+    try {
+      // Upsert all targets
+      const upserts = Object.entries(editingTargets).map(([pillar, values]) => ({
+        user_id: user.id,
+        pillar,
+        weekly_target: values.target,
+        priority: values.priority,
+      }));
+      
+      // Delete existing and insert new (simpler than upsert with composite key)
+      await supabase.from("weekly_pillar_targets").delete().eq("user_id", user.id);
+      const { error } = await supabase.from("weekly_pillar_targets").insert(upserts);
+      
+      if (error) throw error;
+      
+      toast.success("Pillar targets saved!");
+      setShowTargetsDialog(false);
+      fetchWeekData();
+    } catch (error) {
+      console.error("Error saving targets:", error);
+      toast.error("Failed to save targets");
+    } finally {
+      setSavingTargets(false);
     }
   };
 
@@ -628,9 +708,20 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <CardTitle className="text-base">Pillar Balance</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                Pillar Balance
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6"
+                  onClick={openTargetsDialog}
+                  title="Set weekly targets"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+              </CardTitle>
               <CardDescription>
-                {effectivePillarScope === 'day' ? 'Where your energy went today' : 'Where your energy went this week'}
+                {effectivePillarScope === 'day' ? 'Where your energy went today' : 'Progress toward weekly targets'}
               </CardDescription>
             </div>
 
@@ -662,21 +753,33 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           <div className="space-y-3">
             {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
               const count = pillarAnalysis.byPillar[key] || 0;
-              const maxCount = Math.max(...Object.values(pillarAnalysis.byPillar), 1);
-              const percentage = Math.round((count / maxCount) * 100);
+              const target = pillarTargets[key]?.weekly_target || DEFAULT_PILLAR_TARGETS[key]?.target || 3;
+              const targetProgress = effectivePillarScope === 'week' ? Math.min(Math.round((count / target) * 100), 100) : null;
               const Icon = config.icon;
               const comparison = effectivePillarScope === 'week' ? weekComparison?.[key] : null;
+              const isOnTrack = count >= target;
+              const priority = pillarTargets[key]?.priority || DEFAULT_PILLAR_TARGETS[key]?.priority || 2;
 
               return (
                 <div key={key} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center relative ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
                     <Icon className={`h-4 w-4 ${count > 0 ? config.color : 'text-muted-foreground'}`} />
+                    {effectivePillarScope === 'week' && priority >= 4 && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" title="High priority" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium">{config.label}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">{count} actions</span>
+                        {effectivePillarScope === 'week' ? (
+                          <span className={`text-sm ${isOnTrack ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
+                            {count}/{target}
+                            {isOnTrack && <CheckCircle2 className="inline h-3 w-3 ml-1" />}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{count} actions</span>
+                        )}
                         {comparison && (
                           <span className={`flex items-center text-xs ${
                             comparison.trend === 'up' ? 'text-green-500' :
@@ -689,10 +792,21 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
                         )}
                       </div>
                     </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden relative">
+                      {effectivePillarScope === 'week' && (
+                        <div 
+                          className="absolute top-0 bottom-0 w-0.5 bg-foreground/30 z-10"
+                          style={{ left: '100%' }}
+                          title={`Target: ${target}`}
+                        />
+                      )}
                       <div
-                        className={`h-full transition-all duration-500 ${count > 0 ? config.bgColor : 'bg-muted'}`}
-                        style={{ width: count > 0 ? `${percentage}%` : '0%' }}
+                        className={`h-full transition-all duration-500 ${
+                          effectivePillarScope === 'week' && isOnTrack 
+                            ? 'bg-green-500' 
+                            : count > 0 ? config.bgColor : 'bg-muted'
+                        }`}
+                        style={{ width: effectivePillarScope === 'week' ? `${targetProgress}%` : (count > 0 ? `${Math.round((count / Math.max(...Object.values(pillarAnalysis.byPillar), 1)) * 100)}%` : '0%') }}
                       />
                     </div>
                   </div>
@@ -799,6 +913,86 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           Log This Week's Metrics
         </Button>
       )}
+
+      {/* Pillar Targets Dialog */}
+      <Dialog open={showTargetsDialog} onOpenChange={setShowTargetsDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Weekly Pillar Targets
+            </DialogTitle>
+            <DialogDescription>
+              Set your minimum weekly actions for each pillar. Higher priority pillars get more focus.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
+              const Icon = config.icon;
+              const values = editingTargets[key] || { target: 3, priority: 2 };
+              
+              return (
+                <div key={key} className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor}/20`}>
+                    <Icon className={`h-4 w-4 ${config.color}`} />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium">{config.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-muted-foreground mb-0.5">Target</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={values.target}
+                        onChange={(e) => setEditingTargets(prev => ({
+                          ...prev,
+                          [key]: { ...prev[key], target: parseInt(e.target.value) || 0 }
+                        }))}
+                        className="w-14 h-8 text-center text-sm"
+                      />
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-muted-foreground mb-0.5">Priority</span>
+                      <select
+                        value={values.priority}
+                        onChange={(e) => setEditingTargets(prev => ({
+                          ...prev,
+                          [key]: { ...prev[key], priority: parseInt(e.target.value) }
+                        }))}
+                        className="w-14 h-8 text-sm rounded-md border bg-background px-1"
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                        <option value={4}>4</option>
+                        <option value={5}>5</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowTargetsDialog(false)}>
+              Cancel
+            </Button>
+            <Button className="flex-1" onClick={saveTargets} disabled={savingTargets}>
+              {savingTargets ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Save Targets
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
