@@ -27,11 +27,14 @@ import {
   Loader2,
   Send,
   Mic,
-  MicOff
+  MicOff,
+  Target,
+  Settings
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
 import { toast } from "sonner";
-import { useVoiceCapture } from "@/hooks/useVoiceCapture";
+import { useVoiceCaptureWhisper } from "@/hooks/useVoiceCaptureWhisper";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface ActionHistory {
   id: string;
@@ -113,8 +116,14 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     }
   };
   
-  // Voice capture for quick log
-  const { isRecording, isTranscribing, isSupported: voiceSupported, toggleRecording } = useVoiceCapture({
+  // Voice capture for quick log - using Whisper for better accuracy
+  const { 
+    isRecording, 
+    isTranscribing, 
+    formattedDuration,
+    toggleRecording 
+  } = useVoiceCaptureWhisper({
+    maxDuration: 120, // 2 minutes max
     onTranscript: (text) => {
       // Send to AI for parsing
       parseVoiceTranscript(text);
@@ -391,10 +400,10 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             <div className="flex items-center gap-2 mb-3">
               <Plus className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Log what you did</span>
-              {voiceSupported && (
-                <Badge variant="secondary" className="text-[10px] ml-auto">
+              {isRecording && (
+                <Badge variant="destructive" className="text-[10px] ml-auto animate-pulse">
                   <Mic className="h-2.5 w-2.5 mr-1" />
-                  Voice supported
+                  {formattedDuration}
                 </Badge>
               )}
             </div>
@@ -474,23 +483,21 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
                     className="flex-1"
                     disabled={isRecording || isParsing}
                   />
-                  {voiceSupported && (
-                    <Button 
-                      size="icon" 
-                      variant={isRecording ? "destructive" : "outline"}
-                      onClick={toggleRecording}
-                      disabled={isTranscribing || isParsing}
-                      title={isRecording ? "Stop recording" : "Voice input - speak naturally"}
-                    >
-                      {isTranscribing || isParsing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isRecording ? (
-                        <MicOff className="h-4 w-4" />
-                      ) : (
-                        <Mic className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
+                  <Button 
+                    size="icon" 
+                    variant={isRecording ? "destructive" : "outline"}
+                    onClick={toggleRecording}
+                    disabled={isTranscribing || isParsing}
+                    title={isRecording ? `Stop recording (${formattedDuration})` : "Voice input - speak naturally (up to 2 min)"}
+                  >
+                    {isTranscribing || isParsing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isRecording ? (
+                      <MicOff className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
+                  </Button>
                   <Button 
                     size="icon" 
                     onClick={handleQuickLog} 
