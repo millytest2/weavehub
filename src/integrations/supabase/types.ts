@@ -359,6 +359,45 @@ export type Database = {
         }
         Relationships: []
       }
+      grounding_log: {
+        Row: {
+          created_at: string
+          emotional_state: string | null
+          gentle_rep: string | null
+          id: string
+          matched_source_id: string | null
+          matched_source_title: string | null
+          matched_source_type: string | null
+          reminder: string | null
+          resonated: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emotional_state?: string | null
+          gentle_rep?: string | null
+          id?: string
+          matched_source_id?: string | null
+          matched_source_title?: string | null
+          matched_source_type?: string | null
+          reminder?: string | null
+          resonated?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emotional_state?: string | null
+          gentle_rep?: string | null
+          id?: string
+          matched_source_id?: string | null
+          matched_source_title?: string | null
+          matched_source_type?: string | null
+          reminder?: string | null
+          resonated?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       identity_seeds: {
         Row: {
           content: string

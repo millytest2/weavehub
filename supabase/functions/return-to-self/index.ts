@@ -10,9 +10,16 @@ interface ReturnToSelfOutput {
   identity: string;
   values: string;
   currentReality: string;
-  relevantInsight: { title: string; content: string } | null;
+  fromYourMind: { 
+    type: 'insight' | 'document'; 
+    id: string;
+    title: string; 
+    content: string;
+    matchedState: boolean;
+  } | null;
   gentleRep: string;
   reminder: string;
+  logId: string | null; // For tracking resonance
 }
 
 serve(async (req) => {
@@ -101,13 +108,14 @@ serve(async (req) => {
     const recentActions = actionsResult.data || [];
 
     // Combine insights and documents into a unified "your mind" pool
-    const yourMind: Array<{ type: 'insight' | 'document'; title: string; content: string; relevance_score: number; matchScore?: number }> = [
-      ...insights.map(i => ({ type: 'insight' as const, title: i.title, content: i.content, relevance_score: i.relevance_score || 0 })),
-      ...documents.filter(d => d.summary).map(d => ({ type: 'document' as const, title: d.title, content: d.summary!, relevance_score: d.relevance_score || 0 }))
+    const yourMind: Array<{ type: 'insight' | 'document'; id: string; title: string; content: string; relevance_score: number; matchScore?: number }> = [
+      ...insights.map(i => ({ type: 'insight' as const, id: i.id, title: i.title, content: i.content, relevance_score: i.relevance_score || 0 })),
+      ...documents.filter(d => d.summary).map(d => ({ type: 'document' as const, id: d.id, title: d.title, content: d.summary!, relevance_score: d.relevance_score || 0 }))
     ];
 
     // If state provided, score items by keyword matches
-    let matchedItem = null;
+    let matchedItem: typeof yourMind[0] & { matchScore: number } | null = null;
+    let wasStateMatched = false;
     if (emotionalState && stateKeywords[emotionalState] && yourMind.length > 0) {
       const keywords = stateKeywords[emotionalState];
       
@@ -127,13 +135,14 @@ serve(async (req) => {
       // Pick best match if it has any keyword matches
       if (scoredItems[0]?.matchScore > 0) {
         matchedItem = scoredItems[0];
+        wasStateMatched = true;
         console.log(`Found matching ${matchedItem.type}:`, matchedItem.title, "score:", matchedItem.matchScore);
       }
     }
 
     // Use matched item or fall back to random relevant one from either insights or docs
     const randomItem = matchedItem || (yourMind.length > 0 
-      ? yourMind.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))[Math.floor(Math.random() * Math.min(5, yourMind.length))]
+      ? { ...yourMind.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))[Math.floor(Math.random() * Math.min(5, yourMind.length))], matchScore: 0 }
       : null);
 
     const identity = identitySeed?.content || "You are becoming someone who takes aligned action.";
@@ -248,9 +257,16 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
         identity: identity.substring(0, 200),
         values,
         currentReality: currentReality.substring(0, 200),
-        relevantInsight: randomItem ? { title: randomItem.title, content: randomItem.content.substring(0, 200) } : null,
+        fromYourMind: randomItem ? { 
+          type: randomItem.type,
+          id: randomItem.id,
+          title: randomItem.title, 
+          content: randomItem.content.substring(0, 200),
+          matchedState: wasStateMatched
+        } : null,
         gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
-        reminder: "You are becoming who you said you'd become."
+        reminder: "You are becoming who you said you'd become.",
+        logId: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -271,15 +287,44 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
       console.error("Parse error:", e);
     }
 
+    // Log this grounding session
+    let logId: string | null = null;
+    try {
+      const { data: logData } = await supabase
+        .from("grounding_log")
+        .insert({
+          user_id: user.id,
+          emotional_state: emotionalState,
+          matched_source_type: randomItem?.type || null,
+          matched_source_id: randomItem?.id || null,
+          matched_source_title: randomItem?.title || null,
+          gentle_rep: gentleRep,
+          reminder: reminder
+        })
+        .select("id")
+        .single();
+      
+      logId = logData?.id || null;
+    } catch (logError) {
+      console.error("Failed to log grounding session:", logError);
+    }
+
     const output: ReturnToSelfOutput = {
       identity: identity.substring(0, 300),
       values,
       currentReality: currentReality.substring(0, 300),
-      relevantInsight: randomItem 
-        ? { title: randomItem.title, content: randomItem.content.substring(0, 200) } 
+      fromYourMind: randomItem 
+        ? { 
+            type: randomItem.type,
+            id: randomItem.id,
+            title: randomItem.title, 
+            content: randomItem.content.substring(0, 200),
+            matchedState: wasStateMatched
+          } 
         : null,
       gentleRep,
-      reminder
+      reminder,
+      logId
     };
 
     return new Response(JSON.stringify(output), {
@@ -294,9 +339,10 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
       identity: "You are becoming someone aligned with your values.",
       values: "Growth, Presence, Creation",
       currentReality: "You are here. That is enough.",
-      relevantInsight: null,
+      fromYourMind: null,
       gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
-      reminder: "You are becoming who you said you'd become."
+      reminder: "You are becoming who you said you'd become.",
+      logId: null
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
