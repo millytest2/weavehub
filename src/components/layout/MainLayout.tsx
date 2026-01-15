@@ -23,9 +23,9 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Paths", href: "/learning-paths", icon: Brain },
   ];
 
-  // Mobile bottom nav: Dashboard, Identity, Experiments only
+  // Mobile bottom nav: 4 core tabs
   const mobileBottomNav = [
-    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Home", href: "/", icon: Home },
     { name: "Identity", href: "/identity", icon: Compass },
     { name: "Experiments", href: "/experiments", icon: FlaskConical },
   ];
@@ -122,7 +122,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </div>
 
-      {/* Mobile Bottom Nav - Sleek */}
+      {/* Mobile Bottom Nav - 4 tabs */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 glass safe-area-bottom">
         <nav className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
           {mobileBottomNav.map((item) => (
@@ -130,13 +130,21 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
               key={item.name}
               to={item.href}
               end={item.href === "/"}
-              className="flex flex-col items-center gap-1 py-2 px-4 text-muted-foreground transition-all rounded-xl"
+              className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
               activeClassName="text-primary"
             >
               <item.icon className="h-5 w-5" />
               <span className="text-[10px] font-medium">{item.name}</span>
             </NavLink>
           ))}
+          {/* Profile tab */}
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
+          >
+            <User className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Profile</span>
+          </button>
         </nav>
       </div>
 
