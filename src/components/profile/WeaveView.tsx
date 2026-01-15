@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Link2, Sparkles, TrendingUp, Repeat, Brain, Target, Lightbulb, Beaker, AlertTriangle, Calendar, Zap, Wand2, X, ArrowRight, RefreshCw, ChevronDown } from "lucide-react";
+import { Link2, TrendingUp, Repeat, Brain, Target, Lightbulb, Beaker, AlertTriangle, Calendar, Zap, Wand2, X, ArrowRight, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { WeaveVisualization } from "@/components/ui/weave-visualization";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseFunctionInvokeError } from "@/lib/edgeFunctionError";
@@ -420,53 +421,22 @@ export function WeaveView({ insights, actions, experiments, identitySeed }: Weav
 
   return (
     <div className="space-y-5">
-      {/* Weave Score */}
+      {/* Weave Visualization */}
       <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 border border-primary/10 p-4">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">
-              Weave Strength
+          <div className="flex-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-2">
+              Your Weave
             </p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-foreground">{weaveScore}</span>
-              <span className="text-sm text-muted-foreground">/100</span>
-            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed">
+              {weaveScore < 30 && "Keep capturing thoughts and taking action. Connections will emerge."}
+              {weaveScore >= 30 && weaveScore < 60 && "Patterns are forming between what you learn and do."}
+              {weaveScore >= 60 && weaveScore < 80 && "Strong threads connecting your insights to your actions."}
+              {weaveScore >= 80 && "Deeply woven. You're living your identity."}
+            </p>
           </div>
-          <div className="relative w-14 h-14">
-            <svg className="w-full h-full -rotate-90">
-              <circle
-                cx="28"
-                cy="28"
-                r="24"
-                fill="none"
-                stroke="hsl(var(--muted))"
-                strokeWidth="4"
-              />
-              <motion.circle
-                cx="28"
-                cy="28"
-                r="24"
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeDasharray={`${weaveScore * 1.5} 150`}
-                initial={{ strokeDasharray: "0 150" }}
-                animate={{ strokeDasharray: `${weaveScore * 1.5} 150` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-          </div>
+          <WeaveVisualization score={weaveScore} size="md" />
         </div>
-        <p className="text-[11px] text-muted-foreground mt-3">
-          {weaveScore < 30 && "Keep capturing and acting. Connections will emerge."}
-          {weaveScore >= 30 && weaveScore < 60 && "Patterns are forming. Your themes are becoming clear."}
-          {weaveScore >= 60 && weaveScore < 80 && "Strong alignment between what you learn and do."}
-          {weaveScore >= 80 && "Exceptional integration. You're living your identity."}
-        </p>
       </div>
 
       {/* Active Patterns - Collapsible */}
