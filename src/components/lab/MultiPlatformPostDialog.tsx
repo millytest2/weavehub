@@ -201,7 +201,7 @@ export const MultiPlatformPostDialog = ({
               Transform this cross-domain connection into platform-specific content
               {hasVoiceTemplate === false && (
                 <span className="block mt-1 text-amber-500">
-                  ⚡ Set up your brand voice for personalized content
+                  Set up your brand voice for personalized content
                 </span>
               )}
             </DialogDescription>

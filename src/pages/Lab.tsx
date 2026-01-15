@@ -1012,7 +1012,7 @@ const Lab = () => {
                             className="flex-1"
                           >
                             <Sparkles className="h-3 w-3 mr-1" />
-                            Quick Post
+                            Synthesize Insight
                           </Button>
                           <Button 
                             size="sm" 
@@ -1023,7 +1023,7 @@ const Lab = () => {
                             className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                           >
                             <Layers className="h-3 w-3 mr-1" />
-                            Multi-Platform
+                            Deep Weave
                           </Button>
                         </div>
                       </CardContent>
