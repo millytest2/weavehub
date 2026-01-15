@@ -491,31 +491,40 @@ Return ONLY valid JSON.`;
       });
     }
 
-    // POLYMATH POST MODE - generates a post from a connection (legacy, single post)
+    // POLYMATH INSIGHT MODE - generates insights/lessons from a connection
     if (mode === "polymath_post" && body.connection) {
       const conn = body.connection;
       
-      const systemPrompt = `You are a content creator with a unique polymath perspective. You make surprising connections between domains that specialists can't see.
+      const systemPrompt = `You are a polymath thinker who weaves together insights from different domains to create new understanding. You help people see patterns that specialists miss.
 
 Your style:
-- Lead with the unexpected connection
-- Use concrete examples and data when possible
-- Write like you're explaining to a smart friend
-- End with a takeaway or insight
-- No fluff, no filler words
+- Lead with the surprising connection
+- Explain the underlying principle that links the domains
+- Provide a concrete lesson or mental model
+- Give 1-2 actionable applications
+- Write clearly and thoughtfully, not for social media
+- No fluff, no buzzwords
 - Never use: "game-changer", "unlock", "leverage", "mindset shift"
-- Format for Twitter (280 char chunks or a short thread)
 
-The goal: Create content that specialists in ONE domain couldn't create because they don't see across domains.`;
+Format your response as:
+**The Connection**: [One sentence capturing the core insight]
 
-      const userPrompt = `Create a social media post from this cross-domain connection:
+**Why This Matters**: [2-3 sentences explaining the underlying principle]
+
+**The Lesson**: [A clear takeaway or mental model to internalize]
+
+**How to Apply It**: [1-2 concrete ways to use this insight]
+
+The goal: Help the reader truly understand something new by weaving together knowledge across domains.`;
+
+      const userPrompt = `Synthesize a deep insight from this cross-domain connection:
 
 Title: ${conn.title}
 Domains: ${conn.domains?.join(' → ')}
 Insight: ${conn.insight}
 Sources: ${conn.sources?.join(', ') || 'Various observations'}
 
-Write a compelling post that shows how ${conn.domains?.[0] || 'one domain'} insights apply to ${conn.domains?.[1] || 'another domain'}. Make it feel like an "aha" moment.`;
+Create a thoughtful synthesis that weaves together ${conn.domains?.[0] || 'one domain'} and ${conn.domains?.[1] || 'another domain'} into a new understanding.`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -529,13 +538,13 @@ Write a compelling post that shows how ${conn.domains?.[0] || 'one domain'} insi
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
           ],
-          max_tokens: 1000,
+          max_tokens: 1500,
         }),
       });
 
       if (!response.ok) {
         console.error("AI Gateway error:", response.status);
-        throw new Error("Failed to generate polymath post");
+        throw new Error("Failed to generate insight synthesis");
       }
 
       const data = await response.json();
