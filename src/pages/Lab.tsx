@@ -47,8 +47,10 @@ import {
   Network,
   Atom,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  Layers
 } from "lucide-react";
+import { MultiPlatformPostDialog } from "@/components/lab/MultiPlatformPostDialog";
 
 interface Experiment {
   id: string;
@@ -180,6 +182,7 @@ const Lab = () => {
   const [selectedConnection, setSelectedConnection] = useState<any | null>(null);
   const [connectionPost, setConnectionPost] = useState("");
   const [showConnectionPost, setShowConnectionPost] = useState(false);
+  const [showMultiPlatformPost, setShowMultiPlatformPost] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
@@ -967,8 +970,7 @@ const Lab = () => {
                   {patternConnections.map((connection, i) => (
                     <Card 
                       key={i} 
-                      className="cursor-pointer hover:border-purple-500/50 transition-colors"
-                      onClick={() => handleGenerateConnectionPost(connection)}
+                      className="hover:border-purple-500/50 transition-colors"
                     >
                       <CardHeader className="pb-2">
                         <div className="flex items-center gap-2 mb-2">
@@ -1002,10 +1004,27 @@ const Lab = () => {
                             ))}
                           </div>
                         )}
-                        <div className="mt-3 flex items-center text-xs text-purple-500">
-                          <Sparkles className="h-3 w-3 mr-1" />
-                          Click to generate post
-                          <ArrowRight className="h-3 w-3 ml-1" />
+                        <div className="mt-4 flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleGenerateConnectionPost(connection)}
+                            className="flex-1"
+                          >
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            Quick Post
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              setSelectedConnection(connection);
+                              setShowMultiPlatformPost(true);
+                            }}
+                            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                          >
+                            <Layers className="h-3 w-3 mr-1" />
+                            Multi-Platform
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -1467,6 +1486,13 @@ const Lab = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* MULTI-PLATFORM POST DIALOG */}
+        <MultiPlatformPostDialog
+          open={showMultiPlatformPost}
+          onOpenChange={setShowMultiPlatformPost}
+          connection={selectedConnection}
+        />
       </div>
     </MainLayout>
   );

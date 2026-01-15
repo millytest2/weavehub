@@ -350,7 +350,102 @@ Return ONLY valid JSON with 3-5 connections.`;
       });
     }
 
-    // POLYMATH POST MODE - generates a post from a connection
+    // MULTI-PLATFORM POST MODE - generates content for TikTok, YouTube, Substack, Twitter
+    if (mode === "multi_platform_post" && body.connection) {
+      const conn = body.connection;
+      
+      const systemPrompt = `You are a polymath content strategist who adapts cross-domain insights for different platforms.
+
+You understand each platform's unique style:
+- TikTok: 15-60 second hook-driven, visual storytelling, conversational, pattern interrupts
+- YouTube: Educational long-form, thumbnail-worthy title, value-packed, SEO-friendly
+- Substack: Newsletter essay style, personal + intellectual depth, story-driven
+- X/Twitter: Punchy threads or standalone insights, contrarian takes, data-backed
+
+Your brand voice:
+- No fluff, no filler words
+- Real data beats generic advice
+- Personal experience > theory
+- Contrarian when honest
+- Never use: "game-changer", "unlock", "leverage", "mindset shift"
+- Write like explaining to a smart friend
+
+You MUST return valid JSON with this exact structure:
+{
+  "platforms": {
+    "tiktok": {
+      "hook": "Opening line that stops the scroll (5-10 words)",
+      "format_notes": "Visual/format suggestions for the video",
+      "script_outline": "Full script outline with key talking points"
+    },
+    "youtube": {
+      "title": "SEO-optimized title under 60 chars",
+      "description": "First 2 lines of description (most important for SEO)",
+      "key_points": ["Point 1", "Point 2", "Point 3", "Point 4", "Point 5"]
+    },
+    "substack": {
+      "headline": "Newsletter headline that drives opens",
+      "intro": "First paragraph hook (2-3 sentences)",
+      "sections_outline": ["Section 1 topic", "Section 2 topic", "Section 3 topic"]
+    },
+    "twitter": {
+      "single_tweet": "Standalone tweet under 280 chars",
+      "thread_outline": ["Tweet 1 (hook)", "Tweet 2", "Tweet 3", "Tweet 4", "Tweet 5 (CTA)"]
+    }
+  }
+}`;
+
+      const userPrompt = `Create multi-platform content from this cross-domain connection:
+
+CONNECTION TITLE: ${conn.title}
+DOMAINS: ${conn.domains?.join(' → ')}
+INSIGHT: ${conn.insight}
+SOURCES: ${conn.sources?.join(', ') || 'Various observations'}
+
+Generate platform-specific content that shows how ${conn.domains?.[0] || 'one domain'} insights apply to ${conn.domains?.[1] || 'another domain'}.
+
+Return ONLY valid JSON.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 2500,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to generate multi-platform content");
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '{}';
+      
+      // Parse the JSON response
+      let parsed;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { platforms: null };
+      } catch (e) {
+        console.error("Failed to parse multi-platform JSON:", e);
+        parsed = { platforms: null };
+      }
+
+      return new Response(JSON.stringify(parsed), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // POLYMATH POST MODE - generates a post from a connection (legacy, single post)
     if (mode === "polymath_post" && body.connection) {
       const conn = body.connection;
       
