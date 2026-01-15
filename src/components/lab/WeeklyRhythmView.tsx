@@ -262,7 +262,17 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     });
 
     actions.forEach(action => {
-      const pillar = action.pillar || 'other';
+      // Normalize pillar names to match config keys
+      const rawPillar = (action.pillar || 'other').toLowerCase();
+      // Map common variations to standard pillars
+      const pillarMap: Record<string, string> = {
+        'connection': 'relationship',
+        'skill': 'mind',
+        'learning': 'mind',
+        'presence': 'mind',
+        'stability': 'business',
+      };
+      const pillar = pillarMap[rawPillar] || rawPillar;
       byPillar[pillar] = (byPillar[pillar] || 0) + 1;
     });
 
@@ -295,7 +305,16 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     const byPillar: Record<string, number> = {};
 
     todayActions.forEach(action => {
-      const pillar = action.pillar || 'other';
+      // Normalize pillar names to match config keys
+      const rawPillar = (action.pillar || 'other').toLowerCase();
+      const pillarMap: Record<string, string> = {
+        'connection': 'relationship',
+        'skill': 'mind',
+        'learning': 'mind',
+        'presence': 'mind',
+        'stability': 'business',
+      };
+      const pillar = pillarMap[rawPillar] || rawPillar;
       byPillar[pillar] = (byPillar[pillar] || 0) + 1;
     });
 
