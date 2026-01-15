@@ -406,61 +406,6 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                 </div>
               )}
 
-              {/* Weekly Actions by Day - Collapsible */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">This Week</span>
-                </div>
-                
-                {weeklyActions.length === 0 ? (
-                  <div className="py-6 text-center">
-                    <Circle className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">No actions completed yet</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {sortedDays.map((date) => {
-                      const actions = actionsByDay[date];
-                      const isToday = date === new Date().toISOString().split('T')[0];
-                      const displayDate = isToday ? "Today" : format(new Date(date), "EEE, MMM d");
-                      const isExpanded = expandedDays.has(date);
-                      
-                      return (
-                        <Collapsible key={date} open={isExpanded} onOpenChange={() => toggleDay(date)}>
-                          <CollapsibleTrigger className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className={`h-4 w-4 ${isToday ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-foreground'}`}>
-                                {displayDate}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">{actions.length}</span>
-                              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="space-y-1 pl-9 pr-3 pb-2">
-                              {actions.map((action) => (
-                                <div key={action.id} className="py-1.5">
-                                  <p className="text-sm text-muted-foreground leading-snug">
-                                    {action.action_text}
-                                  </p>
-                                  {action.pillar && (
-                                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">
-                                      {action.pillar}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </>
           )}
           </TabsContent>
