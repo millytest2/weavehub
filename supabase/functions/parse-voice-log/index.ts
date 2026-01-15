@@ -26,6 +26,7 @@ serve(async (req) => {
     }
 
     // Use AI to parse the messy voice transcript into structured actions
+    // Enhanced prompting for better extraction
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -37,44 +38,54 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a voice log parser. The user speaks stream-of-consciousness about their day - what they did and plan to do.
+            content: `You are an expert voice log parser that extracts EVERY action from natural speech. Users speak stream-of-consciousness about their day, and you must catch EVERYTHING they mention - even brief mentions.
 
-Your job: Extract COMPLETED actions and PLANNED actions as a clean, bulleted list with AUTOMATIC pillar categorization.
+CRITICAL RULES:
+1. Extract EVERY action mentioned, even if briefly stated
+2. Separate compound actions (e.g., "workout then shower" = 2 separate actions)
+3. Duration hints should be preserved (e.g., "30 min workout" not just "workout")
+4. Fix obvious transcription errors contextually
+5. ALWAYS assign a pillar to EVERY action
 
-PILLARS (you MUST assign one to EVERY action):
-- business: work, coding, apps, projects, job applications, meetings, freelance, career, money-making, emails, professional development
-- body: exercise, workout, gym, running, walking, yoga, stretching, sports, physical health, sleep, nutrition, meal prep
-- content: writing, blogging, social media posts, videos, podcasts, creating content, filming, editing, publishing
-- relationship: calls with family/friends, dates, hanging out, quality time, messages to loved ones, networking, social events
-- mind: reading, meditation, journaling, therapy, learning, courses, reflection, mental health, studying
-- play: games, hobbies, fun activities, relaxation, entertainment, creative projects for fun, travel, leisure
+PILLARS (assign ONE per action):
+• business: work, coding, apps, projects, job applications, meetings, freelance, career, money-making, emails, professional development, applications, interviews
+• body: exercise, workout, gym, running, walking, yoga, stretching, sports, physical health, sleep, shower, meal prep, eating healthy, hygiene, getting ready
+• content: writing, blogging, social media posts, videos, podcasts, creating content, filming, editing, publishing, tweets, threads
+• relationship: calls with family/friends, dates, hanging out, quality time, messages to loved ones, networking, social events, texting, dinner with someone
+• mind: reading, meditation, journaling, therapy, learning, courses, reflection, mental health, studying, research, podcasts (educational)
+• play: games, hobbies, fun activities, relaxation, entertainment, creative projects for fun, travel, leisure, watching shows
 
-Rules:
-1. Fix obvious transcription errors (e.g., "weed" should be "Weave" if context suggests app work)
-2. Keep each item concise (5-10 words max)
-3. For completed items, prefix with COMPLETED:
-4. For planned items, prefix with PLANNED:
-5. ALWAYS include a pillar in {braces} for EVERY item - make your best guess based on context
-6. DO NOT use any emojis
+OUTPUT FORMAT (be thorough - list EVERY distinct action):
+COMPLETED: [specific action with duration/detail if mentioned] {pillar}
+PLANNED: [specific planned action] {pillar}
 
-Output format (just the list, no intro text):
-COMPLETED: [action] {pillar}
-PLANNED: [planned action] {pillar}
+EXAMPLES:
+Input: "I'm gonna hit a 30-minute workout since I haven't worked out in a while, then I'm gonna clean up, take a shower, head down and then I'll get ready for tonight"
+Output:
+PLANNED: 30-minute workout {body}
+PLANNED: Clean up {body}
+PLANNED: Take a shower {body}
+PLANNED: Get ready for tonight {body}
 
-Example input: "So far today I worked on the app for an hour, went to the gym, gonna apply to some jobs, need to call mom about car repair"
-Example output:
-COMPLETED: Worked on app for 1 hour {business}
-COMPLETED: Went to the gym {body}
-PLANNED: Apply to jobs {business}
-PLANNED: Call mom about car repair {relationship}`
+Input: "Today I did some coding on the app, sent mom a text, went for a quick run"
+Output:
+COMPLETED: Coding on the app {business}
+COMPLETED: Texted mom {relationship}
+COMPLETED: Quick run {body}
+
+IMPORTANT: 
+- Do NOT skip any mentioned activities
+- If something sounds like it could be an action, include it
+- Be generous in extraction - it's better to have too many items than too few
+- Keep descriptions concise but include key details (time, duration, who, what)`
           },
           {
             role: 'user',
-            content: transcript
+            content: `Parse this voice log THOROUGHLY. Extract EVERY action mentioned:\n\n"${transcript}"`
           }
         ],
-        max_tokens: 500,
-        temperature: 0.3,
+        max_tokens: 1000,
+        temperature: 0.2,
       }),
     });
 
