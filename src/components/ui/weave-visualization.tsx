@@ -1,12 +1,26 @@
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 
+export interface WeaveConnection {
+  type: "insight" | "action" | "experiment";
+  title: string;
+  linkedTo?: string;
+}
+
 interface WeaveVisualizationProps {
   score: number; // 0-100
   size?: "sm" | "md" | "lg";
+  connections?: WeaveConnection[];
+  onClick?: () => void;
+  interactive?: boolean;
 }
 
-export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationProps) => {
+export const WeaveVisualization = ({ 
+  score, 
+  size = "md", 
+  onClick,
+  interactive = false
+}: WeaveVisualizationProps) => {
   const dimensions = {
     sm: { width: 60, height: 60 },
     md: { width: 100, height: 100 },
@@ -17,30 +31,31 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
   const centerX = width / 2;
   const centerY = height / 2;
 
-  // Generate thread paths based on score
+  // Generate thread paths based on score - use seeded random for stability
   const threads = useMemo(() => {
-    // Number of threads scales with score (min 2, max 12)
     const numThreads = Math.max(2, Math.min(12, Math.floor(score / 8)));
     const threadPaths: Array<{ path: string; delay: number; opacity: number }> = [];
 
+    // Use deterministic positions based on index
     for (let i = 0; i < numThreads; i++) {
       const angle1 = (i / numThreads) * Math.PI * 2;
       const angle2 = ((i + 2) / numThreads) * Math.PI * 2;
       const radius = (width / 2) * 0.7;
 
-      // Create curved paths between points
       const x1 = centerX + Math.cos(angle1) * radius;
       const y1 = centerY + Math.sin(angle1) * radius;
       const x2 = centerX + Math.cos(angle2) * radius;
       const y2 = centerY + Math.sin(angle2) * radius;
 
-      // Control points for bezier curve (through center-ish)
-      const cx = centerX + (Math.random() - 0.5) * radius * 0.5;
-      const cy = centerY + (Math.random() - 0.5) * radius * 0.5;
+      // Deterministic control points based on index
+      const offsetX = ((i % 3) - 1) * radius * 0.25;
+      const offsetY = ((i % 2) - 0.5) * radius * 0.3;
+      const cx = centerX + offsetX;
+      const cy = centerY + offsetY;
 
       threadPaths.push({
         path: `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`,
-        delay: i * 0.1,
+        delay: i * 0.08,
         opacity: 0.3 + (score / 100) * 0.5,
       });
     }
@@ -49,9 +64,9 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
     if (score >= 40) {
       const crossCount = Math.floor((score - 40) / 15);
       for (let i = 0; i < crossCount; i++) {
-        const angle1 = Math.random() * Math.PI * 2;
-        const angle2 = angle1 + Math.PI * (0.5 + Math.random() * 0.5);
-        const radius = (width / 2) * (0.3 + Math.random() * 0.4);
+        const angle1 = (i * 1.3) % (Math.PI * 2);
+        const angle2 = angle1 + Math.PI * 0.7;
+        const radius = (width / 2) * (0.35 + (i % 3) * 0.1);
 
         const x1 = centerX + Math.cos(angle1) * radius;
         const y1 = centerY + Math.sin(angle1) * radius;
@@ -60,14 +75,14 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
 
         threadPaths.push({
           path: `M ${x1} ${y1} Q ${centerX} ${centerY} ${x2} ${y2}`,
-          delay: numThreads * 0.1 + i * 0.15,
+          delay: numThreads * 0.08 + i * 0.1,
           opacity: 0.2 + (score / 100) * 0.3,
         });
       }
     }
 
     return threadPaths;
-  }, [score, width, height, centerX, centerY]);
+  }, [score, width, centerX, centerY]);
 
   // Phrase based on score
   const phrase = useMemo(() => {
@@ -80,9 +95,17 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div 
-        className="relative flex-shrink-0" 
+      <button 
+        type="button"
+        onClick={onClick}
+        disabled={!interactive}
+        className={`relative flex-shrink-0 rounded-full transition-all ${
+          interactive 
+            ? "cursor-pointer hover:scale-105 active:scale-95 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+            : "cursor-default"
+        }`}
         style={{ width, height, contain: 'layout size' }}
+        aria-label={interactive ? "Tap to see connections" : undefined}
       >
         <svg 
           width={width} 
@@ -157,10 +180,23 @@ export const WeaveVisualization = ({ score, size = "md" }: WeaveVisualizationPro
             </>
           )}
         </svg>
-      </div>
+        
+        {/* Tap hint for interactive */}
+        {interactive && (
+          <motion.div 
+            className="absolute inset-0 rounded-full border-2 border-primary/30"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.5, 0] }}
+            transition={{ duration: 2, repeat: 2, delay: 1 }}
+          />
+        )}
+      </button>
 
-      {/* Phrase instead of number */}
-      <p className="text-xs text-muted-foreground font-medium">{phrase}</p>
+      {/* Phrase with tap hint */}
+      <p className="text-xs text-muted-foreground font-medium">
+        {phrase}
+        {interactive && <span className="text-primary/60 ml-1">· tap</span>}
+      </p>
     </div>
   );
 };
