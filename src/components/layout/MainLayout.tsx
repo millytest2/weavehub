@@ -137,13 +137,13 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
               <span className="text-[10px] font-medium">{item.name}</span>
             </NavLink>
           ))}
-          {/* Profile tab */}
+          {/* Menu tab - opens full nav */}
           <button
-            onClick={() => setProfileOpen(true)}
+            onClick={() => setMenuOpen(true)}
             className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
           >
-            <User className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Profile</span>
+            <Menu className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Menu</span>
           </button>
         </nav>
       </div>
