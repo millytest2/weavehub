@@ -31,12 +31,17 @@ import {
   Target,
   Settings,
   Wand2,
-  AlertTriangle
+  AlertTriangle,
+  Mountain,
+  Compass,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear, startOfMonth, endOfMonth, differenceInWeeks, differenceInDays } from "date-fns";
 import { toast } from "sonner";
-import { useVoiceCaptureWhisper } from "@/hooks/useVoiceCaptureWhisper";
+import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ActionHistory {
   id: string;
@@ -116,6 +121,12 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [parsedItems, setParsedItems] = useState<{ text: string; pillar: string | null }[]>([]);
   const [showParsedPreview, setShowParsedPreview] = useState(false);
   
+  // Monthly/Misogi state
+  const [identitySeed, setIdentitySeed] = useState<{ content: string; core_values: string; year_note: string } | null>(null);
+  const [monthlyInsightsExpanded, setMonthlyInsightsExpanded] = useState(false);
+  const [generatingMonthlyInsight, setGeneratingMonthlyInsight] = useState(false);
+  const [monthlyInsight, setMonthlyInsight] = useState<string | null>(null);
+  
   // Parse voice transcript into structured items
   const parseVoiceTranscript = async (transcript: string) => {
     setIsParsing(true);
@@ -144,13 +155,15 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     }
   };
   
-  // Voice capture for quick log - using Whisper for better accuracy
+  // Voice capture for quick log - using Web Speech API (browser-based, no API needed)
   const { 
     isRecording, 
     isTranscribing, 
     formattedDuration,
-    toggleRecording 
-  } = useVoiceCaptureWhisper({
+    interimTranscript,
+    toggleRecording,
+    isSupported: voiceSupported
+  } = useVoiceCaptureWebSpeech({
     maxDuration: 120, // 2 minutes max
     onTranscript: (text) => {
       // Send to AI for parsing
@@ -244,7 +257,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       const prevWeekNum = currentWeekNumber === 1 ? 52 : currentWeekNumber - 1;
       const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
-      const [actionsResult, weeklyResult, prevWeekResult, targetsResult] = await Promise.all([
+      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, identityResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("*")
@@ -269,12 +282,18 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         supabase
           .from("weekly_pillar_targets")
           .select("*")
+          .eq("user_id", user.id),
+        supabase
+          .from("identity_seeds")
+          .select("content, core_values, year_note")
           .eq("user_id", user.id)
+          .maybeSingle()
       ]);
 
       setActions(actionsResult.data || []);
       setWeeklyData(weeklyResult.data);
       setPrevWeekData(prevWeekResult.data);
+      setIdentitySeed(identityResult.data);
       
       // Process pillar targets
       const targetsMap: Record<string, PillarTarget> = {};
@@ -286,6 +305,58 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       console.error("Error fetching week data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Generate monthly insight based on identity and current progress
+  const generateMonthlyInsight = async () => {
+    if (!identitySeed) {
+      toast.error("No identity seed found. Set up your 2026 Direction first.");
+      return;
+    }
+    
+    setGeneratingMonthlyInsight(true);
+    try {
+      const now = new Date();
+      const monthStart = startOfMonth(now);
+      const monthEnd = endOfMonth(now);
+      const weeksIntoMonth = differenceInWeeks(now, monthStart) + 1;
+      const weeksLeft = differenceInWeeks(monthEnd, now);
+      const daysIntoYear = differenceInDays(now, new Date(now.getFullYear(), 0, 1)) + 1;
+      const daysLeftInYear = differenceInDays(new Date(now.getFullYear(), 11, 31), now);
+      
+      const { data, error } = await supabase.functions.invoke('synthesizer', {
+        body: {
+          type: 'monthly_reverse_engineer',
+          context: {
+            identity: identitySeed.content,
+            coreValues: identitySeed.core_values,
+            yearDirection: identitySeed.year_note,
+            currentMonth: format(now, 'MMMM yyyy'),
+            weeksIntoMonth,
+            weeksLeftInMonth: weeksLeft,
+            daysIntoYear,
+            daysLeftInYear,
+            currentWeekNumber,
+            weeklyActions: weekAnalysis.totalActions,
+            pillarDistribution: weekAnalysis.byPillar,
+            activeDays: weekAnalysis.activeDays,
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.insight) {
+        setMonthlyInsight(data.insight);
+      } else if (data?.content) {
+        setMonthlyInsight(data.content);
+      }
+    } catch (error) {
+      console.error("Error generating monthly insight:", error);
+      toast.error("Failed to generate monthly insight");
+    } finally {
+      setGeneratingMonthlyInsight(false);
     }
   };
 
@@ -603,6 +674,13 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             
             {!showParsedPreview && (
               <>
+                {/* Show interim transcript while recording */}
+                {isRecording && interimTranscript && (
+                  <div className="mb-2 p-2 rounded-lg bg-muted/50 border border-primary/20">
+                    <p className="text-sm text-muted-foreground italic">{interimTranscript}</p>
+                  </div>
+                )}
+                
                 <div className="flex gap-2">
                   <Input
                     placeholder={isRecording ? "Listening... speak naturally about your day" : "e.g. 30 min workout, wrote blog post..."}
@@ -616,8 +694,8 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
                     size="icon" 
                     variant={isRecording ? "destructive" : "outline"}
                     onClick={toggleRecording}
-                    disabled={isTranscribing || isParsing}
-                    title={isRecording ? `Stop recording (${formattedDuration})` : "Voice input - speak naturally (up to 2 min)"}
+                    disabled={isTranscribing || isParsing || !voiceSupported}
+                    title={!voiceSupported ? "Voice not supported in this browser" : isRecording ? `Stop recording (${formattedDuration})` : "Voice input - speak naturally (up to 2 min)"}
                   >
                     {isTranscribing || isParsing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -954,6 +1032,109 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           </Card>
         );
       })()}
+
+      {/* Monthly Misogi Reverse-Engineering */}
+      {isCurrentWeek && identitySeed?.year_note && (
+        <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-amber-500/5">
+          <Collapsible open={monthlyInsightsExpanded} onOpenChange={setMonthlyInsightsExpanded}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 flex items-center justify-center">
+                      <Mountain className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        2026 Misogi Compass
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {format(new Date(), 'MMMM')} · Week {currentWeekNumber} of 52 · {differenceInDays(new Date(2026, 11, 31), new Date())} days left
+                      </CardDescription>
+                    </div>
+                  </div>
+                  {monthlyInsightsExpanded ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                {/* Year Direction Preview */}
+                <div className="p-3 rounded-lg bg-muted/30 mb-4">
+                  <div className="flex items-start gap-2">
+                    <Compass className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-1">Your 2026 Direction</p>
+                      <p className="text-sm text-muted-foreground line-clamp-3">{identitySeed.year_note}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Progress Indicators */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center p-2 rounded-lg bg-muted/20">
+                    <p className="text-lg font-bold text-foreground">{currentWeekNumber}</p>
+                    <p className="text-[10px] text-muted-foreground">Weeks In</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-muted/20">
+                    <p className="text-lg font-bold text-foreground">{weekAnalysis.totalActions}</p>
+                    <p className="text-[10px] text-muted-foreground">This Week</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-muted/20">
+                    <p className="text-lg font-bold text-foreground">{Math.round((currentWeekNumber / 52) * 100)}%</p>
+                    <p className="text-[10px] text-muted-foreground">Year Progress</p>
+                  </div>
+                </div>
+                
+                {/* AI Monthly Insight */}
+                {monthlyInsight ? (
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-sm text-foreground whitespace-pre-line">{monthlyInsight}</p>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-2 h-7 text-xs"
+                      onClick={generateMonthlyInsight}
+                      disabled={generatingMonthlyInsight}
+                    >
+                      {generatingMonthlyInsight ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Wand2 className="h-3 w-3 mr-1" />
+                      )}
+                      Refresh insight
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-dashed border-orange-500/30 hover:border-orange-500/50"
+                    onClick={generateMonthlyInsight}
+                    disabled={generatingMonthlyInsight}
+                  >
+                    {generatingMonthlyInsight ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Reverse-engineering from your Misogi...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        What should I focus on this month?
+                      </>
+                    )}
+                  </Button>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      )}
 
       {/* Check-in CTA */}
       {isCurrentWeek && (

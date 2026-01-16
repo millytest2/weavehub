@@ -708,6 +708,90 @@ Return JSON with:
       });
     }
 
+    // MONTHLY REVERSE ENGINEER MODE - reverse engineers from 2026 Misogi
+    if (body.type === "monthly_reverse_engineer" && body.context) {
+      const ctx = body.context;
+      
+      const systemPrompt = `You are a strategic coach helping someone reverse-engineer their annual vision into monthly and weekly focus. You think in terms of "what needs to be true this month for the year to work."
+
+Your approach:
+- Start from the end goal (2026 Direction/Misogi) and work backwards
+- Consider what month they're in and how much runway is left
+- Look at their current weekly activity patterns to spot momentum or gaps
+- Be specific and actionable, not generic motivational
+- Acknowledge the journey - some weeks are harder than others
+- Emphasize adaptability - the plan should flex, not break
+
+Style:
+- Direct but supportive
+- Reference their specific goals/values when possible
+- Give 1-2 key focuses for THIS MONTH
+- Suggest one concrete adjustment based on their pillar distribution
+- Maximum 150 words total`;
+
+      const userPrompt = `Reverse-engineer from my 2026 Direction to what I should focus on this month:
+
+MY 2026 DIRECTION:
+${ctx.yearDirection || 'Not specified'}
+
+MY IDENTITY:
+${ctx.identity?.slice(0, 500) || 'Not specified'}
+
+MY CORE VALUES:
+${ctx.coreValues || 'Not specified'}
+
+CURRENT POSITION:
+- Month: ${ctx.currentMonth}
+- Week ${ctx.currentWeekNumber} of 52
+- ${ctx.daysIntoYear} days into 2026, ${ctx.daysLeftInYear} days left
+- ${ctx.weeksIntoMonth} weeks into this month, ${ctx.weeksLeftInMonth} weeks left
+
+THIS WEEK'S ACTIVITY:
+- ${ctx.weeklyActions} actions logged
+- ${ctx.activeDays}/7 days active
+- Pillar distribution: ${Object.entries(ctx.pillarDistribution || {}).map(([k, v]) => `${k}: ${v}`).join(', ') || 'No data'}
+
+What should I focus on this month to stay on track for my 2026 vision? Be specific to my situation.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 500,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { 
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: "Payment required" }), { 
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+        throw new Error("Failed to generate monthly insight");
+      }
+
+      const data = await response.json();
+      const insight = data.choices?.[0]?.message?.content || '';
+
+      return new Response(JSON.stringify({ insight }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     // ORIGINAL DIRECTION CHECK MODE (default)
     const userContext = await fetchUserContext(supabase, user.id);
     const context = formatWeightedContextForAgent(userContext, "decision-mirror");
