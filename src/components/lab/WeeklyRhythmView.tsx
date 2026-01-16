@@ -217,6 +217,14 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const handleQuickLog = async () => {
     if (!user || !logInput.trim()) return;
     
+    // If no pillar selected, auto-parse the text to break it into multiple items with pillars
+    if (!selectedPillar) {
+      await parseVoiceTranscript(logInput.trim());
+      setLogInput("");
+      return;
+    }
+    
+    // If pillar is selected, log as single item
     setIsLogging(true);
     try {
       const { error } = await supabase.from("action_history").insert({
