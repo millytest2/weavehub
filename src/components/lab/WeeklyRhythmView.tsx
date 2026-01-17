@@ -110,8 +110,10 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [editingTargets, setEditingTargets] = useState<Record<string, { target: number; priority: number; reasoning?: string }>>({});
   const [savingTargets, setSavingTargets] = useState(false);
   const [generatingTargets, setGeneratingTargets] = useState(false);
+  const [autoAdjusting, setAutoAdjusting] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiAlert, setAiAlert] = useState<string | null>(null);
+  const [adjustmentStats, setAdjustmentStats] = useState<{ pillar: string; target: number; completed: number; completionRate: number }[] | null>(null);
   
   // Quick log state
   const [logInput, setLogInput] = useState("");
@@ -424,6 +426,49 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       toast.error("Failed to generate smart targets");
     } finally {
       setGeneratingTargets(false);
+    }
+  };
+
+  // Auto-adjust targets based on completion rate
+  const autoAdjustTargets = async () => {
+    setAutoAdjusting(true);
+    setAdjustmentStats(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-adjust-targets');
+      
+      if (error) throw error;
+      
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      
+      // Update editing targets with new values
+      if (data.adjustments?.length > 0) {
+        const newTargets = { ...editingTargets };
+        data.adjustments.forEach((adj: { pillar: string; newTarget: number; reason: string }) => {
+          if (newTargets[adj.pillar]) {
+            newTargets[adj.pillar].target = adj.newTarget;
+            newTargets[adj.pillar].reasoning = adj.reason;
+          }
+        });
+        setEditingTargets(newTargets);
+        toast.success(`Adjusted ${data.adjustments.length} pillar target(s)`);
+      } else {
+        toast.info("Your targets are well-calibrated!");
+      }
+      
+      setAdjustmentStats(data.pillarStats || null);
+      setAiSummary(data.summary || null);
+      
+      // Refresh data
+      fetchWeekData();
+    } catch (error) {
+      console.error("Error auto-adjusting targets:", error);
+      toast.error("Failed to auto-adjust targets");
+    } finally {
+      setAutoAdjusting(false);
     }
   };
 
@@ -1165,25 +1210,69 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             </DialogDescription>
           </DialogHeader>
           
-          {/* AI Generate Button */}
-          <Button 
-            variant="outline" 
-            className="w-full border-dashed"
-            onClick={generateSmartTargets}
-            disabled={generatingTargets}
-          >
-            {generatingTargets ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Analyzing your identity...
-              </>
-            ) : (
-              <>
-                <Wand2 className="h-4 w-4 mr-2" />
-                Generate Smart Targets from My 2026 Direction
-              </>
-            )}
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="flex-1 border-dashed"
+              onClick={generateSmartTargets}
+              disabled={generatingTargets || autoAdjusting}
+            >
+              {generatingTargets ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span className="hidden sm:inline">Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">From Identity</span>
+                  <span className="sm:hidden">Identity</span>
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex-1 border-dashed"
+              onClick={autoAdjustTargets}
+              disabled={autoAdjusting || generatingTargets}
+            >
+              {autoAdjusting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span className="hidden sm:inline">Adjusting...</span>
+                </>
+              ) : (
+                <>
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Auto-Adjust</span>
+                  <span className="sm:hidden">Adjust</span>
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {/* Completion Stats */}
+          {adjustmentStats && adjustmentStats.length > 0 && (
+            <div className="p-3 rounded-lg bg-muted/50 border border-border/50 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Completion Rates (2 weeks)</p>
+              <div className="grid grid-cols-2 gap-2">
+                {adjustmentStats.map(stat => {
+                  const config = PILLAR_CONFIG[stat.pillar];
+                  if (!config) return null;
+                  return (
+                    <div key={stat.pillar} className="flex items-center gap-2 text-sm">
+                      <div className={`w-2 h-2 rounded-full ${config.bgColor}`} />
+                      <span className="flex-1 truncate">{config.label}</span>
+                      <span className={`font-medium ${stat.completionRate >= 80 ? 'text-green-500' : stat.completionRate >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
+                        {stat.completionRate}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           
           {/* AI Summary */}
           {aiSummary && (
