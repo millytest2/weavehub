@@ -412,59 +412,67 @@ const Experiments = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Detail View Dialog */}
+      {/* Detail View Dialog - Enhanced */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-start justify-between">
-              <DialogTitle className="text-2xl">{selectedExperiment?.title}</DialogTitle>
-              <Badge variant="outline" className={getStatusColor(selectedExperiment?.status || "planning")}>
+            <div className="flex items-start justify-between gap-4">
+              <DialogTitle className="text-xl">{selectedExperiment?.title}</DialogTitle>
+              <Badge variant="outline" className={`${getStatusColor(selectedExperiment?.status || "planning")} shrink-0`}>
                 {selectedExperiment?.status}
               </Badge>
             </div>
           </DialogHeader>
-          <div className="space-y-6">
+          <div className="space-y-5">
+            {/* Identity Shift - Most Important */}
+            {selectedExperiment?.identity_shift_target && (
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <h3 className="text-xs font-medium text-primary uppercase tracking-wide mb-2">Who You'll Become</h3>
+                <p className="text-base font-medium text-foreground">{selectedExperiment.identity_shift_target}</p>
+              </div>
+            )}
+
+            {/* Duration Badge */}
+            {selectedExperiment?.duration && (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  {selectedExperiment.duration}
+                </Badge>
+              </div>
+            )}
+
+            {/* Description */}
             {selectedExperiment?.description && (
               <div>
-                <h3 className="text-sm font-medium mb-2">Description</h3>
+                <h3 className="text-sm font-medium mb-2 text-foreground">What You'll Do</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{selectedExperiment.description}</p>
               </div>
             )}
 
-            {selectedExperiment?.identity_shift_target && (
-              <div>
-                <h3 className="text-sm font-medium mb-2">Identity Shift Target</h3>
-                <p className="text-sm text-muted-foreground">{selectedExperiment.identity_shift_target}</p>
-              </div>
-            )}
-
+            {/* Steps - Visual Roadmap */}
             {selectedExperiment?.steps && (
-              <div>
-                <h3 className="text-sm font-medium mb-2">Steps</h3>
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-foreground">The Roadmap</h3>
                 <div className="space-y-2">
                   {selectedExperiment.steps
                     .split("\n")
                     .filter((step: string) => step.trim())
                     .map((step: string, idx: number) => (
-                      <div key={idx} className="flex gap-2">
-                        <span className="text-sm text-muted-foreground">{idx + 1}.</span>
-                        <span className="text-sm text-muted-foreground">{step}</span>
+                      <div key={idx} className="flex gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium">
+                          {idx + 1}
+                        </div>
+                        <p className="text-sm text-foreground leading-relaxed">{step}</p>
                       </div>
                     ))}
                 </div>
               </div>
             )}
 
-            {selectedExperiment?.duration && (
-              <div>
-                <h3 className="text-sm font-medium mb-2">Duration</h3>
-                <p className="text-sm text-muted-foreground">{selectedExperiment.duration}</p>
-              </div>
-            )}
-
+            {/* Results if completed */}
             {selectedExperiment?.results && (
-              <div>
-                <h3 className="text-sm font-medium mb-2">Results</h3>
+              <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
+                <h3 className="text-xs font-medium text-accent uppercase tracking-wide mb-2">Results</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{selectedExperiment.results}</p>
               </div>
             )}
@@ -472,7 +480,7 @@ const Experiments = () => {
             {/* Status Controls */}
             <div className="border-t pt-4">
               <h3 className="text-sm font-medium mb-3">Actions</h3>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {selectedExperiment?.status !== "in_progress" && (
                   <Button
                     size="sm"
