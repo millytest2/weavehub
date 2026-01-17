@@ -1099,10 +1099,10 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
                     </div>
                     <div>
                       <CardTitle className="text-base flex items-center gap-2">
-                        2026 Misogi Compass
+                        2026 Compass
                       </CardTitle>
                       <CardDescription className="text-xs">
-                        {format(new Date(), 'MMMM')} · Week {currentWeekNumber} of 52 · {differenceInDays(new Date(2026, 11, 31), new Date())} days left
+                        {format(new Date(), 'MMMM')} · Week {currentWeekNumber} · {differenceInDays(new Date(2026, 11, 31), new Date())} days left
                       </CardDescription>
                     </div>
                   </div>
@@ -1116,31 +1116,62 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             </CollapsibleTrigger>
             
             <CollapsibleContent>
-              <CardContent className="pt-0">
-                {/* Year Direction Preview */}
-                <div className="p-3 rounded-lg bg-muted/30 mb-4">
+              <CardContent className="pt-0 space-y-4">
+                {/* Misogi (Outcome) */}
+                <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
                   <div className="flex items-start gap-2">
-                    <Compass className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                    <Mountain className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-1">Your 2026 Direction</p>
+                      <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-1">The Misogi (Outcomes)</p>
                       <p className="text-sm text-muted-foreground line-clamp-3">{identitySeed.year_note}</p>
                     </div>
                   </div>
                 </div>
                 
-                {/* Progress Indicators */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                {/* Identity (Who you're becoming) - only show if different from year_note */}
+                {identitySeed.content && identitySeed.content !== identitySeed.year_note && (
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-start gap-2">
+                      <Compass className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-primary mb-1">Who You're Becoming</p>
+                        <p className="text-sm text-muted-foreground line-clamp-3">{identitySeed.content}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Progress Indicators - Activity-based */}
+                <div className="grid grid-cols-3 gap-3">
                   <div className="text-center p-2 rounded-lg bg-muted/20">
                     <p className="text-lg font-bold text-foreground">{currentWeekNumber}</p>
-                    <p className="text-[10px] text-muted-foreground">Weeks In</p>
+                    <p className="text-[10px] text-muted-foreground">Week</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-muted/20">
                     <p className="text-lg font-bold text-foreground">{weekAnalysis.totalActions}</p>
                     <p className="text-[10px] text-muted-foreground">This Week</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-muted/20">
-                    <p className="text-lg font-bold text-foreground">{Math.round((currentWeekNumber / 52) * 100)}%</p>
-                    <p className="text-[10px] text-muted-foreground">Year Progress</p>
+                    {/* Calculate momentum score based on pillar balance + streak + completion */}
+                    {(() => {
+                      const pillarsActive = weekAnalysis.activePillars || 0;
+                      const daysActive = weekAnalysis.activeDays || 0;
+                      const totalActions = weekAnalysis.totalActions || 0;
+                      // Momentum: balance of pillars (0-6) + active days (0-7) + volume bonus
+                      const momentumScore = Math.min(100, Math.round(
+                        (pillarsActive / 6 * 30) + // pillar balance: 30%
+                        (daysActive / 7 * 40) + // consistency: 40%
+                        (Math.min(totalActions, 15) / 15 * 30) // volume: 30%
+                      ));
+                      return (
+                        <>
+                          <p className={`text-lg font-bold ${momentumScore >= 70 ? 'text-green-500' : momentumScore >= 40 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                            {momentumScore}%
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Momentum</p>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
                 

@@ -708,33 +708,42 @@ Return JSON with:
       });
     }
 
-    // MONTHLY REVERSE ENGINEER MODE - reverse engineers from 2026 Misogi
+    // MONTHLY REVERSE ENGINEER MODE - reverse engineers from 2026 Misogi + Identity
     if (body.type === "monthly_reverse_engineer" && body.context) {
       const ctx = body.context;
       
-      const systemPrompt = `You are a strategic coach helping someone reverse-engineer their annual vision into monthly and weekly focus. You think in terms of "what needs to be true this month for the year to work."
+      const systemPrompt = `You are a strategic coach helping someone reverse-engineer their annual vision into monthly and weekly focus. You work with TWO key inputs:
+
+1. MISOGI (The Challenge): Their 2026 Direction - the audacious outcome they're pursuing
+2. IDENTITY (Who They're Becoming): The person they need to become to achieve it
+
+These are different but connected:
+- Misogi = the destination (outcomes, metrics, achievements)
+- Identity = the transformation (who they are, how they show up, what they embody)
 
 Your approach:
-- Start from the end goal (2026 Direction/Misogi) and work backwards
-- Consider what month they're in and how much runway is left
-- Look at their current weekly activity patterns to spot momentum or gaps
+- PRIMARY focus is the Misogi (what needs to happen this month for the year to work)
+- SECONDARY filter is Identity (how should they show up while pursuing it)
+- Don't conflate them - keep outcomes and identity transformation distinct
+- Work backwards from year-end to this month to this week
+- Look at their pillar activity to see where momentum exists vs gaps
 - Be specific and actionable, not generic motivational
-- Acknowledge the journey - some weeks are harder than others
-- Emphasize adaptability - the plan should flex, not break
+- Acknowledge real constraints and challenges
+- Emphasize adaptability - plans should flex based on reality
 
-Style:
-- Direct but supportive
-- Reference their specific goals/values when possible
-- Give 1-2 key focuses for THIS MONTH
-- Suggest one concrete adjustment based on their pillar distribution
-- Maximum 150 words total`;
+Output structure (stick to this):
+**This Month's Misogi Focus:** [1 sentence on what outcome to prioritize]
+**Identity Checkpoint:** [1 sentence on who they need to BE this month]
+**Based on Your Patterns:** [1 observation from their pillar distribution + suggestion]
+
+Maximum 120 words total. Be direct.`;
 
       const userPrompt = `Reverse-engineer from my 2026 Direction to what I should focus on this month:
 
-MY 2026 DIRECTION:
+MY 2026 MISOGI / DIRECTION:
 ${ctx.yearDirection || 'Not specified'}
 
-MY IDENTITY:
+WHO I'M BECOMING (Identity):
 ${ctx.identity?.slice(0, 500) || 'Not specified'}
 
 MY CORE VALUES:
@@ -743,7 +752,7 @@ ${ctx.coreValues || 'Not specified'}
 CURRENT POSITION:
 - Month: ${ctx.currentMonth}
 - Week ${ctx.currentWeekNumber} of 52
-- ${ctx.daysIntoYear} days into 2026, ${ctx.daysLeftInYear} days left
+- ${ctx.daysIntoYear} days into the year, ${ctx.daysLeftInYear} days left
 - ${ctx.weeksIntoMonth} weeks into this month, ${ctx.weeksLeftInMonth} weeks left
 
 THIS WEEK'S ACTIVITY:
@@ -751,7 +760,7 @@ THIS WEEK'S ACTIVITY:
 - ${ctx.activeDays}/7 days active
 - Pillar distribution: ${Object.entries(ctx.pillarDistribution || {}).map(([k, v]) => `${k}: ${v}`).join(', ') || 'No data'}
 
-What should I focus on this month to stay on track for my 2026 vision? Be specific to my situation.`;
+Keep Misogi and Identity distinct but connected. What's my focus?`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -760,7 +769,7 @@ What should I focus on this month to stay on track for my 2026 vision? Be specif
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-3-flash-preview",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
