@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Zap, Sparkles, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium } from "lucide-react";
 import { toast } from "sonner";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
@@ -34,6 +34,12 @@ const Dashboard = () => {
   
   const [morningComplete, setMorningComplete] = useState(false);
   const [eveningComplete, setEveningComplete] = useState(false);
+  
+  // Context chips for better suggestions
+  const [showContextChips, setShowContextChips] = useState(false);
+  const [selectedEnergy, setSelectedEnergy] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [isSkipping, setIsSkipping] = useState(false);
 
   const getLocalToday = () => {
     const now = new Date();
@@ -155,10 +161,11 @@ const Dashboard = () => {
     };
   }, [user, fetchData, tasksForToday]);
 
-  const handleGenerateTask = async () => {
+  const handleGenerateTask = async (contextOverride?: { energy?: string; time?: string }) => {
     if (!user || isGenerating) return;
     
     setIsGenerating(true);
+    setShowContextChips(false);
     const today = getLocalToday();
     
     try {
@@ -180,8 +187,19 @@ const Dashboard = () => {
       const nextSequence = maxSeq + 1;
       
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
+      // Build context string from selected chips
+      const energyContext = contextOverride?.energy || selectedEnergy;
+      const timeContext = contextOverride?.time || selectedTime;
+      let contextString = '';
+      if (energyContext) contextString += `Energy: ${energyContext}. `;
+      if (timeContext) contextString += `Available time: ${timeContext}. `;
+      
       const { data, error } = await supabase.functions.invoke("navigator", {
-        body: { timezone }
+        body: { 
+          timezone,
+          context: contextString || undefined
+        }
       });
       if (error) throw error;
       
@@ -287,10 +305,52 @@ const Dashboard = () => {
     }
   };
 
+  const handleSkipTask = async () => {
+    if (!todayTask || !user || isSkipping) return;
+    
+    setIsSkipping(true);
+    try {
+      // Track skip for learning
+      const now = new Date();
+      await supabase.from('user_activity_patterns').insert({
+        user_id: user.id,
+        hour_of_day: now.getHours(),
+        day_of_week: now.getDay(),
+        activity_type: 'skip',
+        pillar: todayTask?.pillar
+      });
+      
+      // Delete current task
+      await supabase.from("daily_tasks").delete().eq("id", todayTask.id);
+      
+      // Generate a new one
+      setTodayTask(null);
+      toast.info("Finding something better...");
+      await handleGenerateTask();
+    } catch (error: any) {
+      console.error("Skip error:", error);
+      toast.error("Failed to skip");
+    } finally {
+      setIsSkipping(false);
+    }
+  };
+
   const completedCount = tasksForToday.filter(t => t.completed).length;
   const threeComplete = completedCount >= 3;
   const allDone = completedCount >= 4 || (threeComplete && !tasksForToday.some(t => t.task_sequence === 4));
   const showBonusOption = threeComplete && completedCount === 3 && !tasksForToday.some(t => t.task_sequence === 4);
+  
+  const energyOptions = [
+    { value: "high", label: "High energy", icon: Battery },
+    { value: "medium", label: "Medium", icon: BatteryMedium },
+    { value: "low", label: "Low energy", icon: BatteryLow },
+  ];
+  
+  const timeOptions = [
+    { value: "5-10 min", label: "Quick (5-10 min)" },
+    { value: "20-30 min", label: "Focused (20-30 min)" },
+    { value: "60+ min", label: "Deep work (60+ min)" },
+  ];
 
   // Memoized dot count to prevent flickering
   const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
@@ -349,7 +409,7 @@ const Dashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleGenerateTask}
+                onClick={() => handleGenerateTask({})}
                 className="mt-3 rounded-xl"
               >
                 <Zap className="h-4 w-4 mr-2" />
@@ -368,11 +428,27 @@ const Dashboard = () => {
             </div>
           ) : todayTask ? (
             <div className="space-y-5">
-              {todayTask.pillar && (
-                <span className="inline-block px-3 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
-                  {todayTask.pillar}
-                </span>
-              )}
+              <div className="flex items-center justify-between">
+                {todayTask.pillar && (
+                  <span className="inline-block px-3 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
+                    {todayTask.pillar}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSkipTask}
+                  disabled={isSkipping}
+                  className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
+                >
+                  {isSkipping ? (
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                  )}
+                  Not now
+                </Button>
+              </div>
               <div className="space-y-3">
                 <h3 className="text-xl font-display font-semibold leading-snug">
                   {todayTask.one_thing}
@@ -395,24 +471,92 @@ const Dashboard = () => {
               </Button>
             </div>
           ) : (
-            <div className="py-8 text-center space-y-4">
+            <div className="py-6 space-y-4">
               {isFirstTime && identitySeed && (
-                <div className="mb-6 p-4 rounded-xl bg-primary/5 border border-primary/10">
+                <div className="mb-4 p-4 rounded-xl bg-primary/5 border border-primary/10 text-center">
                   <p className="text-xs text-muted-foreground mb-1">You said you're becoming someone who:</p>
                   <p className="text-sm font-medium text-foreground">{identitySeed}</p>
                 </div>
               )}
-              <p className="text-muted-foreground text-sm">
-                {isFirstTime ? "Let's get your first invitation" : "Ready for today's focus?"}
-              </p>
-              <Button
-                onClick={handleGenerateTask}
-                size="lg"
-                className="px-10 h-12 rounded-xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
-              >
-                {isFirstTime ? "Get My First Invitation" : "Start My Day"}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              
+              {showContextChips ? (
+                <div className="space-y-4 animate-fade-in">
+                  <p className="text-sm text-muted-foreground text-center">How are you feeling?</p>
+                  
+                  {/* Energy chips */}
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {energyOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedEnergy(selectedEnergy === opt.value ? null : opt.value)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          selectedEnergy === opt.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        <opt.icon className="h-3 w-3" />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Time chips */}
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {timeOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedTime(selectedTime === opt.value ? null : opt.value)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          selectedTime === opt.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        }`}
+                      >
+                        <Clock className="h-3 w-3" />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="flex gap-2 justify-center pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowContextChips(false);
+                        setSelectedEnergy(null);
+                        setSelectedTime(null);
+                      }}
+                      className="rounded-xl"
+                    >
+                      Skip
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleGenerateTask({})}
+                      className="rounded-xl"
+                    >
+                      Get Invitation
+                      <ArrowRight className="ml-1 h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center space-y-4">
+                  <p className="text-muted-foreground text-sm">
+                    {isFirstTime ? "Let's get your first invitation" : "Ready for today's focus?"}
+                  </p>
+                  <Button
+                    onClick={() => setShowContextChips(true)}
+                    size="lg"
+                    className="px-10 h-12 rounded-xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
+                  >
+                    {isFirstTime ? "Get My First Invitation" : "Start My Day"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
