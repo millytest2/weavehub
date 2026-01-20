@@ -41,13 +41,16 @@ const SPIRAL_STATES = [
 type EmotionalState = typeof FEELING_OFF_STATES[number]["id"] | typeof SPIRAL_STATES[number]["id"] | null;
 
 interface ReturnToSelfData {
-  identity: string;
-  values: string;
-  currentReality: string;
-  relevantInsight: { title: string; content: string } | null;
-  gentleRep: string;
-  reminder: string;
-  emotionalState?: string;
+  bodyFirst: string;
+  yourWords: string;
+  yourWordsSource: string;
+  whatIsHappening: string;
+  whoYouAre: string;
+  oneMove: string;
+  truthYouKnow: string;
+  isSpiral: boolean;
+  emotionalState: string | null;
+  logId: string | null;
 }
 
 export const QuickCapture = () => {
@@ -232,12 +235,16 @@ export const QuickCapture = () => {
     } catch (error) {
       console.error("Return to self error:", error);
       setReturnToSelfData({
-        identity: "You are becoming someone aligned with your values.",
-        values: "Growth, Presence, Creation",
-        currentReality: "You are here. That is enough.",
-        relevantInsight: null,
-        gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
-        reminder: "You are becoming who you said you'd become."
+        bodyFirst: "Three breaths. Slow.",
+        yourWords: "",
+        yourWordsSource: "",
+        whatIsHappening: "You're off-center. That's all.",
+        whoYouAre: "",
+        oneMove: "Move your body for 5 minutes.",
+        truthYouKnow: "You already know what to do.",
+        isSpiral: false,
+        emotionalState: null,
+        logId: null
       });
     } finally {
       setIsLoadingReturnToSelf(false);
