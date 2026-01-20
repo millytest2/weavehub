@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Compass, Heart, MapPin, Lightbulb, Sparkles, Check, BookOpen, FileText } from "lucide-react";
+import { Compass, Heart, MapPin, Lightbulb, Sparkles, Check, BookOpen, FileText, Zap, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -21,6 +21,13 @@ interface ReturnToSelfData {
   fromYourMind?: FromYourMind | null;
   // Legacy support
   relevantInsight?: { title: string; content: string } | null;
+  // Spiral mode
+  isSpiral?: boolean;
+  physicalInterrupt?: string;
+  patternName?: string;
+  identityContrast?: string;
+  counterAction?: string;
+  // Normal mode
   gentleRep: string;
   reminder: string;
   emotionalState?: string;
@@ -91,71 +98,107 @@ export const ReturnToSelfDialog = ({ open, onOpenChange, data, isLoading }: Retu
           </div>
         ) : data ? (
           <div className="space-y-5 pt-2">
-            {/* FROM YOUR MIND - Now featured prominently at the top */}
-            {mindContent && (
-              <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 border border-primary/20">
-                <div className="flex items-center gap-2 text-xs text-primary uppercase tracking-wide font-medium">
-                  {mindContent.type === 'insight' ? (
-                    <Lightbulb className="h-3.5 w-3.5" />
-                  ) : (
-                    <FileText className="h-3.5 w-3.5" />
-                  )}
-                  From Your Mind
-                  {mindContent.matchedState && (
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary normal-case">
-                      matched to how you're feeling
-                    </span>
-                  )}
+            {/* SPIRAL MODE - Direct intervention */}
+            {data.isSpiral ? (
+              <>
+                {/* Physical Interrupt - FIRST */}
+                <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+                  <div className="flex items-center gap-2 text-xs text-destructive uppercase tracking-wide font-bold mb-2">
+                    <Zap className="h-3.5 w-3.5" />
+                    Do This Now
+                  </div>
+                  <p className="text-base font-semibold">{data.physicalInterrupt}</p>
                 </div>
-                <p className="text-sm font-medium text-foreground">{mindContent.title}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">{mindContent.content}</p>
-              </div>
+
+                {/* Pattern Name */}
+                {data.patternName && (
+                  <div className="space-y-2 p-4 rounded-lg bg-muted/50 border border-border/50">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      What's Happening
+                    </div>
+                    <p className="text-sm leading-relaxed">{data.patternName}</p>
+                  </div>
+                )}
+
+                {/* Identity Contrast */}
+                {data.identityContrast && (
+                  <div className="space-y-2 p-4 rounded-xl bg-primary/10 border border-primary/30">
+                    <div className="flex items-center gap-2 text-xs text-primary uppercase tracking-wide font-medium">
+                      <Compass className="h-3.5 w-3.5" />
+                      Who You Are
+                    </div>
+                    <p className="text-sm font-medium leading-relaxed">{data.identityContrast}</p>
+                  </div>
+                )}
+
+                {/* Counter Action */}
+                {data.counterAction && (
+                  <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/10">
+                    <div className="flex items-center gap-2 text-xs text-primary uppercase tracking-wide">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      One Move
+                    </div>
+                    <p className="text-sm font-medium leading-relaxed">{data.counterAction}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* NORMAL MODE - Gentle grounding */}
+                {/* FROM YOUR MIND */}
+                {mindContent && (
+                  <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-2 text-xs text-primary uppercase tracking-wide font-medium">
+                      {mindContent.type === 'insight' ? (
+                        <Lightbulb className="h-3.5 w-3.5" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5" />
+                      )}
+                      From Your Mind
+                    </div>
+                    <p className="text-sm font-medium text-foreground">{mindContent.title}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{mindContent.content}</p>
+                  </div>
+                )}
+
+                <Separator className="my-4" />
+
+                {/* Identity */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
+                    <Compass className="h-3.5 w-3.5" />
+                    Who You Are Becoming
+                  </div>
+                  <p className="text-sm leading-relaxed">{data.identity}</p>
+                </div>
+
+                {/* Values */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
+                    <Heart className="h-3.5 w-3.5" />
+                    Your Values
+                  </div>
+                  <p className="text-sm text-foreground/80">{data.values}</p>
+                </div>
+
+                <Separator className="my-4" />
+
+                {/* Gentle Rep */}
+                <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/10">
+                  <div className="flex items-center gap-2 text-xs text-primary uppercase tracking-wide">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    One Gentle Rep
+                  </div>
+                  <p className="text-sm font-medium leading-relaxed">{data.gentleRep}</p>
+                </div>
+
+                {/* Reminder */}
+                <div className="text-center pt-2">
+                  <p className="text-sm italic text-muted-foreground">{data.reminder}</p>
+                </div>
+              </>
             )}
-
-            <Separator className="my-4" />
-
-            {/* Identity */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
-                <Compass className="h-3.5 w-3.5" />
-                Who You Are Becoming
-              </div>
-              <p className="text-sm leading-relaxed">{data.identity}</p>
-            </div>
-
-            {/* Values */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
-                <Heart className="h-3.5 w-3.5" />
-                Your Values
-              </div>
-              <p className="text-sm text-foreground/80">{data.values}</p>
-            </div>
-
-            {/* Current Reality */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide">
-                <MapPin className="h-3.5 w-3.5" />
-                Where You Are Now
-              </div>
-              <p className="text-sm text-foreground/80">{data.currentReality}</p>
-            </div>
-
-            <Separator className="my-4" />
-
-            {/* Gentle Rep */}
-            <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/10">
-              <div className="flex items-center gap-2 text-xs text-primary uppercase tracking-wide">
-                <Sparkles className="h-3.5 w-3.5" />
-                One Gentle Rep
-              </div>
-              <p className="text-sm font-medium leading-relaxed">{data.gentleRep}</p>
-            </div>
-
-            {/* Reminder */}
-            <div className="text-center pt-2">
-              <p className="text-sm italic text-muted-foreground">{data.reminder}</p>
-            </div>
 
             {/* Resonance Tracking */}
             {data.logId && resonated === null && (

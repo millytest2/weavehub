@@ -21,14 +21,24 @@ type CaptureType = "paste" | "insight" | null;
 type RealignMode = "push" | "flow" | null;
 
 const FEELING_OFF_STATES = [
-  { id: "scattered", label: "Scattered", desc: "Need to refocus" },
-  { id: "drifting", label: "Drifting", desc: "Lost direction" },
-  { id: "stuck", label: "Stuck", desc: "Can't start" },
-  { id: "disconnected", label: "Disconnected", desc: "Far from self" },
-  { id: "overloaded", label: "Overloaded", desc: "Too many inputs" },
+  { id: "scattered", label: "Scattered", desc: "Need to refocus", spiral: false },
+  { id: "drifting", label: "Drifting", desc: "Lost direction", spiral: false },
+  { id: "stuck", label: "Stuck", desc: "Can't start", spiral: false },
+  { id: "disconnected", label: "Disconnected", desc: "Far from self", spiral: false },
+  { id: "overloaded", label: "Overloaded", desc: "Too many inputs", spiral: false },
 ] as const;
 
-type EmotionalState = typeof FEELING_OFF_STATES[number]["id"] | null;
+// Spiral states - for when you're IN IT emotionally
+const SPIRAL_STATES = [
+  { id: "anxious", label: "Anxious", desc: "Chest tight, racing thoughts" },
+  { id: "comparing", label: "Comparing", desc: "Everyone else is ahead" },
+  { id: "people-pleasing", label: "People Pleasing", desc: "Losing myself to others" },
+  { id: "shrinking", label: "Shrinking", desc: "Playing small, scared" },
+  { id: "spending", label: "Spending to Fill", desc: "Buying to feel something" },
+  { id: "waiting", label: "Waiting", desc: "Not hustling, waiting for it" },
+] as const;
+
+type EmotionalState = typeof FEELING_OFF_STATES[number]["id"] | typeof SPIRAL_STATES[number]["id"] | null;
 
 interface ReturnToSelfData {
   identity: string;
@@ -369,20 +379,41 @@ export const QuickCapture = () => {
               </button>
             </div>
           ) : showEmotionalPicker ? (
-            <div className="space-y-3 py-3">
-              <p className="text-xs text-muted-foreground text-center mb-2">What's pulling you off center?</p>
-              <div className="grid grid-cols-2 gap-2">
-                {FEELING_OFF_STATES.map((state) => (
-                  <button
-                    key={state.id}
-                    onClick={() => handleReturnToSelfWithState(state.id)}
-                    className="flex flex-col items-start p-3 rounded-xl border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
-                  >
-                    <span className="text-sm font-medium">{state.label}</span>
-                    <span className="text-xs text-muted-foreground">{state.desc}</span>
-                  </button>
-                ))}
+            <div className="space-y-4 py-3">
+              {/* Spiral States - for when you're IN IT */}
+              <div>
+                <p className="text-xs text-destructive/80 font-medium mb-2">I'm spiraling</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {SPIRAL_STATES.map((state) => (
+                    <button
+                      key={state.id}
+                      onClick={() => handleReturnToSelfWithState(state.id)}
+                      className="flex flex-col items-start p-3 rounded-xl border border-destructive/30 bg-destructive/5 hover:border-destructive/50 hover:bg-destructive/10 transition-all text-left"
+                    >
+                      <span className="text-sm font-medium">{state.label}</span>
+                      <span className="text-xs text-muted-foreground">{state.desc}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Off-center States - lighter */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Just off-center</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {FEELING_OFF_STATES.map((state) => (
+                    <button
+                      key={state.id}
+                      onClick={() => handleReturnToSelfWithState(state.id)}
+                      className="flex flex-col items-start p-3 rounded-xl border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
+                    >
+                      <span className="text-sm font-medium">{state.label}</span>
+                      <span className="text-xs text-muted-foreground">{state.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button
                 onClick={() => handleReturnToSelfWithState(null)}
                 className="w-full p-3 rounded-xl bg-muted/50 text-sm text-muted-foreground hover:text-foreground transition-all"
