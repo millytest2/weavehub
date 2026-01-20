@@ -17,9 +17,16 @@ interface ReturnToSelfOutput {
     content: string;
     matchedState: boolean;
   } | null;
+  // For spiral states - more direct output
+  isSpiral: boolean;
+  physicalInterrupt?: string;
+  patternName?: string;
+  identityContrast?: string;
+  counterAction?: string;
+  // For normal states
   gentleRep: string;
   reminder: string;
-  logId: string | null; // For tracking resonance
+  logId: string | null;
 }
 
 serve(async (req) => {
@@ -73,7 +80,18 @@ serve(async (req) => {
       stuck: ["action", "move", "start", "first step", "momentum", "begin", "rep", "ship"],
       disconnected: ["identity", "values", "who", "becoming", "self", "core", "essence", "remember"],
       overloaded: ["filter", "simplify", "less", "essential", "noise", "signal", "curate", "protect"],
+      // Spiral states - match to more direct content
+      anxious: ["calm", "present", "ground", "breathe", "stable", "center", "fear", "control"],
+      comparing: ["enough", "unique", "path", "lane", "authentic", "validation", "external"],
+      "people-pleasing": ["boundary", "self", "own", "authentic", "need", "deserve", "voice", "worth"],
+      shrinking: ["expand", "bold", "courage", "step", "risk", "try", "show up", "visible"],
+      spending: ["enough", "fill", "void", "present", "feel", "sit with", "need"],
+      waiting: ["action", "start", "move", "create", "hustle", "initiative", "first step"],
     };
+
+    // Spiral states get a different, more direct response
+    const SPIRAL_STATES = ["anxious", "comparing", "people-pleasing", "shrinking", "spending", "waiting"];
+    const isSpiral = emotionalState ? SPIRAL_STATES.includes(emotionalState) : false;
 
     // Fetch identity seed, insights, documents, and recent actions
     const [identitySeedResult, insightsResult, documentsResult, actionsResult] = await Promise.all([
@@ -178,15 +196,81 @@ serve(async (req) => {
 
     // State context for AI (Weave-aligned: patterns and identity, not therapy)
     const stateContext = emotionalState ? {
+      // Off-center states
       scattered: "Too many threads. Help them pick ONE to pull on right now.",
       drifting: "Lost sight of direction. Reflect their identity/vision back to them clearly.",
       stuck: "Can't start. Give them one tiny first rep - action over planning.",
       disconnected: "Far from who they're becoming. Mirror their identity seed back.",
       overloaded: "Too much input. Help them filter to what actually matters for their path.",
+      // Spiral states - more direct
+      anxious: "Nervous system activated. Physical interrupt first, then identity anchor.",
+      comparing: "Looking sideways instead of forward. Name the pattern, return to their lane.",
+      "people-pleasing": "Losing self to meet others' expectations. Reclaim their own needs.",
+      shrinking: "Playing small out of fear. Remind them of their actual identity.",
+      spending: "Trying to buy their way to feeling. Ground them in what they already have.",
+      waiting: "Passive when they need to be active. Activate one move.",
     }[emotionalState] : "";
 
-    // Generate a gentle identity-aligned rep
-    const systemPrompt = `You surface what the user already knows. The user is off-center${emotionalState ? ` (specifically: ${emotionalState})` : ''}. 
+    // Spiral-specific direct naming of the pattern
+    const spiralPatterns: Record<string, string> = {
+      anxious: "Your nervous system is scanning for threats. It's doing its job. But you don't have to believe everything it says.",
+      comparing: "You're looking at their highlight reel and comparing it to your behind-the-scenes. Different lanes, different timelines.",
+      "people-pleasing": "You're outsourcing your worth to other people's opinions. They don't get to decide who you are.",
+      shrinking: "You're making yourself smaller to feel safer. But safety isn't found in invisibility.",
+      spending: "You're trying to buy your way to a feeling you can create for free. The void doesn't close with purchases.",
+      waiting: "You're waiting for permission, for conditions, for something to happen first. But you're the one who moves.",
+    };
+
+    // Different prompts for spiral vs off-center states
+    let systemPrompt: string;
+    let toolDefinition: any;
+
+    if (isSpiral && emotionalState) {
+      // SPIRAL STATE - more direct, pattern-breaking
+      systemPrompt = `You are a pattern-interrupt system. The user is in a spiral (${emotionalState}).
+Your job: Name it directly, give a physical interrupt, show identity contrast, provide one counter-action.
+NO therapy language. NO soft framing. Direct, concrete, grounded.
+
+THE PATTERN: ${spiralPatterns[emotionalState] || ""}
+${stateContext ? `CONTEXT: ${stateContext}` : ''}
+
+USER'S ACTUAL IDENTITY: ${identity}
+USER VALUES: ${values}
+${yearNote ? `WHAT THEY'RE BUILDING: ${yearNote}` : ''}
+${randomItem ? `FROM THEIR OWN MIND: "${randomItem.title}" - ${randomItem.content.substring(0, 200)}` : ""}
+
+Return these fields:
+- physicalInterrupt: ONE physical thing to do right now (5-30 seconds). Cold water on face. 10 jumping jacks. Walk to the window. Something that shifts the body.
+- identityContrast: One sentence showing who they ARE (from their identity) vs this pattern. Direct naming. "You're [identity] - not someone who [pattern behavior]."
+- counterAction: ONE action (2-5 min) that's the opposite of the spiral pattern. Based on their actual identity/goals.
+
+Rules:
+- Physical first, always
+- Name patterns directly, don't dance around
+- No "I know this is hard" / "give yourself grace" - that's therapy language
+- Pull from their actual identity, not generic advice
+- Be specific to their stated values and direction`;
+
+      toolDefinition = {
+        type: "function",
+        function: {
+          name: "break_spiral",
+          description: "Return a spiral-breaking intervention",
+          parameters: {
+            type: "object",
+            properties: {
+              physicalInterrupt: { type: "string", description: "One immediate physical action (5-30 seconds)" },
+              identityContrast: { type: "string", description: "Who they are vs this pattern" },
+              counterAction: { type: "string", description: "One 2-5 min identity-aligned action" }
+            },
+            required: ["physicalInterrupt", "identityContrast", "counterAction"],
+            additionalProperties: false
+          }
+        }
+      };
+    } else {
+      // OFF-CENTER STATE - gentler grounding
+      systemPrompt = `You surface what the user already knows. The user is off-center${emotionalState ? ` (specifically: ${emotionalState})` : ''}. 
 Based on their saved identity and values, bring them back to themselves with one concrete micro-action.
 
 CORE PHILOSOPHY:
@@ -218,6 +302,24 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
 - Keep it concrete and immediate
 - Frame as PERMISSION to live what they're already becoming, not another thing to manage`;
 
+      toolDefinition = {
+        type: "function",
+        function: {
+          name: "return_grounding",
+          description: "Return a grounding response",
+          parameters: {
+            type: "object",
+            properties: {
+              gentleRep: { type: "string", description: "A gentle 2-5 minute identity-aligned action" },
+              reminder: { type: "string", description: "One sentence reminder of what they're doing with their life" }
+            },
+            required: ["gentleRep", "reminder"],
+            additionalProperties: false
+          }
+        }
+      };
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -228,32 +330,17 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: "Generate the grounding response." }
+          { role: "user", content: isSpiral ? "Break the spiral." : "Generate the grounding response." }
         ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "return_grounding",
-            description: "Return a grounding response",
-            parameters: {
-              type: "object",
-              properties: {
-                gentleRep: { type: "string", description: "A gentle 2-5 minute identity-aligned action" },
-                reminder: { type: "string", description: "One sentence reminder of what they're doing with their life" }
-              },
-              required: ["gentleRep", "reminder"],
-              additionalProperties: false
-            }
-          }
-        }],
-        tool_choice: { type: "function", function: { name: "return_grounding" } }
+        tools: [toolDefinition],
+        tool_choice: { type: "function", function: { name: isSpiral ? "break_spiral" : "return_grounding" } }
       }),
     });
 
     if (!response.ok) {
       console.error("AI error:", response.status);
       // Fallback response
-      return new Response(JSON.stringify({
+      const fallback: ReturnToSelfOutput = {
         identity: identity.substring(0, 200),
         values,
         currentReality: currentReality.substring(0, 200),
@@ -264,27 +351,53 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
           content: randomItem.content.substring(0, 200),
           matchedState: wasStateMatched
         } : null,
-        gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
-        reminder: "You are becoming who you said you'd become.",
+        isSpiral,
+        physicalInterrupt: isSpiral ? "Cold water on your face. 10 seconds." : undefined,
+        patternName: isSpiral && emotionalState ? spiralPatterns[emotionalState] : undefined,
+        identityContrast: isSpiral ? `You're ${identity.substring(0, 50)}... - not this moment.` : undefined,
+        counterAction: isSpiral ? "Stand up and take 5 slow breaths." : undefined,
+        gentleRep: isSpiral ? "" : "Take three slow breaths. Feel your feet on the ground. You are here.",
+        reminder: isSpiral ? "" : "You are becoming who you said you'd become.",
         logId: null
-      }), {
+      };
+      return new Response(JSON.stringify(fallback), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
     const data = await response.json();
-    let gentleRep = "Take three slow breaths. Feel your feet on the ground.";
-    let reminder = "You are becoming who you said you'd become.";
+    
+    // Different parsing for spiral vs normal
+    let gentleRep = "";
+    let reminder = "";
+    let physicalInterrupt = "";
+    let identityContrast = "";
+    let counterAction = "";
 
     try {
       const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
       if (toolCall?.function?.arguments) {
         const parsed = JSON.parse(toolCall.function.arguments);
-        gentleRep = parsed.gentleRep || gentleRep;
-        reminder = parsed.reminder || reminder;
+        if (isSpiral) {
+          physicalInterrupt = parsed.physicalInterrupt || "Cold water on your face. Now.";
+          identityContrast = parsed.identityContrast || `You're becoming ${identity.substring(0, 50)} - not this moment.`;
+          counterAction = parsed.counterAction || "Stand up and take 5 slow breaths.";
+        } else {
+          gentleRep = parsed.gentleRep || "Take three slow breaths. Feel your feet on the ground.";
+          reminder = parsed.reminder || "You are becoming who you said you'd become.";
+        }
       }
     } catch (e) {
       console.error("Parse error:", e);
+      // Fallbacks
+      if (isSpiral) {
+        physicalInterrupt = "Cold water on your face. Now.";
+        identityContrast = `You're becoming ${identity.substring(0, 50)} - not this moment.`;
+        counterAction = "Stand up and take 5 slow breaths.";
+      } else {
+        gentleRep = "Take three slow breaths. Feel your feet on the ground.";
+        reminder = "You are becoming who you said you'd become.";
+      }
     }
 
     // Log this grounding session
@@ -298,8 +411,8 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
           matched_source_type: randomItem?.type || null,
           matched_source_id: randomItem?.id || null,
           matched_source_title: randomItem?.title || null,
-          gentle_rep: gentleRep,
-          reminder: reminder
+          gentle_rep: isSpiral ? counterAction : gentleRep,
+          reminder: isSpiral ? identityContrast : reminder
         })
         .select("id")
         .single();
@@ -322,8 +435,13 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
             matchedState: wasStateMatched
           } 
         : null,
-      gentleRep,
-      reminder,
+      isSpiral,
+      physicalInterrupt: isSpiral ? physicalInterrupt : undefined,
+      patternName: isSpiral && emotionalState ? spiralPatterns[emotionalState] : undefined,
+      identityContrast: isSpiral ? identityContrast : undefined,
+      counterAction: isSpiral ? counterAction : undefined,
+      gentleRep: isSpiral ? "" : gentleRep,
+      reminder: isSpiral ? "" : reminder,
       logId
     };
 
@@ -340,6 +458,7 @@ ${randomItem ? '- Reference what they already captured back to them' : ''}
       values: "Growth, Presence, Creation",
       currentReality: "You are here. That is enough.",
       fromYourMind: null,
+      isSpiral: false,
       gentleRep: "Take three slow breaths. Feel your feet on the ground. You are here.",
       reminder: "You are becoming who you said you'd become.",
       logId: null
