@@ -995,8 +995,7 @@ Make it about THEIR specific life. No generic productivity experiments.` }
 
     if (!response.ok) {
       console.error("AI Gateway error:", response.status);
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Always return fallback - never fail the user
       const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
       return await insertAndReturnExperiments(fallback, sprintConfig);
     }
