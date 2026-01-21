@@ -662,9 +662,11 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
     }
   } catch (error) {
     console.error("Navigator error:", error);
+    // Return a fallback suggestion instead of an error - system must always provide a next step
+    const fallbackPillar = ALL_PILLARS[Math.floor(Math.random() * ALL_PILLARS.length)];
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify(getFallbackSuggestion(fallbackPillar)),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

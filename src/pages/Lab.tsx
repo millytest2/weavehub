@@ -48,9 +48,11 @@ import {
   Atom,
   ArrowRight,
   RefreshCw,
-  Layers
+  Layers,
+  PenLine
 } from "lucide-react";
 import { MultiPlatformPostDialog } from "@/components/lab/MultiPlatformPostDialog";
+import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
 
 interface Experiment {
   id: string;
@@ -607,7 +609,7 @@ const Lab = () => {
         </div>
 
         <Tabs defaultValue="experiments" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-11 p-1 bg-card border border-border rounded-xl shadow-sm">
+          <TabsList className="grid w-full grid-cols-5 h-11 p-1 bg-card border border-border rounded-xl shadow-sm">
             <TabsTrigger 
               value="experiments" 
               className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
@@ -621,6 +623,13 @@ const Lab = () => {
             >
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Observations</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="freewrite" 
+              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
+            >
+              <PenLine className="h-4 w-4" />
+              <span className="hidden sm:inline">Write</span>
             </TabsTrigger>
             <TabsTrigger 
               value="integration" 
@@ -848,6 +857,11 @@ const Lab = () => {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* FREEWRITE TAB */}
+          <TabsContent value="freewrite" className="space-y-4">
+            <FreeWriteSpace />
           </TabsContent>
 
           {/* WEEKLY INTEGRATION TAB */}
