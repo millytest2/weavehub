@@ -381,6 +381,7 @@ async function fetchTweetContent(url: string): Promise<{ title: string; content:
 }
 
 // Match content to best topic using AI - IDENTITY-WEIGHTED matching
+// Falls back to keyword matching if AI unavailable
 async function matchToTopic(
   content: string, 
   title: string, 
@@ -391,14 +392,12 @@ async function matchToTopic(
   
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
-    // Fallback: keyword-based matching if no API key
     return keywordMatchTopic(content + " " + title, topics);
   }
   
   try {
     const topicList = topics.map((t, i) => `${i + 1}. ${t.name}${t.description ? ` - ${t.description}` : ''}`).join('\n');
     
-    // Include identity context for better matching
     const identityPrompt = identityContext ? `
 USER'S TRANSFORMATION CONTEXT (critical for matching):
 ${identityContext.identity_seed ? `IDENTITY: ${identityContext.identity_seed.substring(0, 400)}` : ''}
@@ -418,64 +417,47 @@ Match content to topics that SERVE THEIR CURRENT TRANSFORMATION. Ask:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           {
             role: "system",
-            content: `You MUST classify content into ONE of these user-defined topics. This is for a personal knowledge system - pick the topic that will make this content most FINDABLE and USEFUL when they need it.
+            content: `You MUST classify content into ONE of these user-defined topics.
 ${identityPrompt}
 USER'S TOPICS:
 ${topicList}
 
-MATCHING PRIORITY (in order):
-1. WEEKLY FOCUS MATCH - Does this directly support what they're focused on this week?
-2. ACTIVE WORK MATCH - Does this content relate to something they're actively building/doing?
-3. VALUES MATCH - Does this connect to their stated values or identity direction?
-4. CONTENT MATCH - Which topic best describes the content itself?
-
-CLUSTERING PRINCIPLE: Topics should cluster content that the user will want to access TOGETHER. Think about future retrieval.
-
-Return ONLY the topic number (1, 2, 3, etc.). Never refuse. If truly unclear, pick the most general applicable topic.`
+Return ONLY the topic number (1, 2, 3, etc.). If unclear, pick the most general.`
           },
           {
             role: "user",
-            content: `Classify this content:\n\nTitle: ${title}\n\nContent:\n${content.substring(0, 3000)}`
+            content: `Classify: "${title}" - ${content.substring(0, 1500)}`
           }
         ],
       }),
     });
 
     if (!response.ok) {
-      console.log("AI topic match failed, using keyword fallback");
+      console.log("AI topic match unavailable, using keyword fallback");
       return keywordMatchTopic(content + " " + title, topics);
     }
     
     const data = await response.json();
     const responseText = data.choices[0].message.content.trim();
     
-    // Extract number from response
     const numberMatch = responseText.match(/\d+/);
     if (numberMatch) {
       const index = parseInt(numberMatch[0]) - 1;
       if (index >= 0 && index < topics.length) {
-        console.log(`Topic matched: "${topics[index].name}" for "${title.substring(0, 50)}"`);
+        console.log(`Topic matched: "${topics[index].name}"`);
         return topics[index].id;
       }
     }
     
-    // If AI returned topic name instead of number, try to match it
     const matched = topics.find(t => 
-      responseText.toLowerCase().includes(t.name.toLowerCase()) ||
-      t.name.toLowerCase().includes(responseText.toLowerCase())
+      responseText.toLowerCase().includes(t.name.toLowerCase())
     );
+    if (matched) return matched.id;
     
-    if (matched) {
-      console.log(`Topic matched by name: "${matched.name}" for "${title.substring(0, 50)}"`);
-      return matched.id;
-    }
-    
-    // Final fallback: keyword matching
-    console.log("AI response unclear, using keyword fallback");
     return keywordMatchTopic(content + " " + title, topics);
   } catch (e) {
     console.error("Topic matching error:", e);
@@ -544,26 +526,27 @@ function keywordMatchTopic(
   return topics[0].id;
 }
 
-// Generate insights from content
+// Generate insights from content - with fallback when AI unavailable
 async function generateInsights(content: string, title: string, source: string): Promise<{ title: string; content: string }[]> {
   if (content.length < 50) return [];
   
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return [];
   
-  try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `Extract 1-3 actionable insights from this content.
+  // Try AI-powered insight generation first
+  if (LOVABLE_API_KEY) {
+    try {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            {
+              role: "system",
+              content: `Extract 1-3 actionable insights from this content.
 
 Return ONLY a valid JSON array, no other text. Format:
 [{"title": "short title", "content": "detailed insight"}]
@@ -572,33 +555,111 @@ Each insight should be:
 - Immediately actionable
 - Specific with concrete takeaways
 - Relevant to personal growth, productivity, or skill-building`
-          },
-          {
-            role: "user",
-            content: `Source: ${source}\nTitle: ${title}\n\nContent:\n${content.substring(0, 12000)}`
-          }
-        ],
-      }),
-    });
+            },
+            {
+              role: "user",
+              content: `Source: ${source}\nTitle: ${title}\n\nContent:\n${content.substring(0, 8000)}`
+            }
+          ],
+        }),
+      });
 
-    if (!response.ok) return [];
-    
-    const data = await response.json();
-    let responseContent = data.choices[0].message.content;
-    responseContent = responseContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
-    const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      if (response.ok) {
+        const data = await response.json();
+        let responseContent = data.choices[0].message.content;
+        responseContent = responseContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const insights = JSON.parse(jsonMatch[0]);
+          console.log("AI generated", insights.length, "insights");
+          return insights;
+        }
+      } else {
+        console.log("AI unavailable (status:", response.status, "), using fallback extraction");
+      }
+    } catch (e) {
+      console.error("AI processing error:", e);
     }
-  } catch (e) {
-    console.error("AI processing error:", e);
   }
   
-  return [];
+  // FALLBACK: Extract insights using heuristics when AI is unavailable
+  console.log("Using fallback insight extraction");
+  return extractInsightsFallback(content, title);
+}
+
+// Fallback insight extraction using heuristics (no AI needed)
+function extractInsightsFallback(content: string, title: string): { title: string; content: string }[] {
+  const insights: { title: string; content: string }[] = [];
+  
+  // Split content into sentences
+  const sentences = content
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 20 && s.length < 300);
+  
+  // Keywords that indicate actionable/important sentences
+  const actionKeywords = [
+    'you should', 'you need', 'try to', 'make sure', 'the key is', 'important to',
+    'don\'t forget', 'remember to', 'focus on', 'the trick is', 'the secret',
+    'step 1', 'first', 'start by', 'begin with', 'always', 'never',
+    'must', 'have to', 'essential', 'crucial', 'critical', 'tip:',
+    'lesson:', 'takeaway', 'insight:', 'rule:', 'principle',
+    'the most important', 'key point', 'main idea', 'in summary',
+    'here\'s how', 'here is how', 'this means', 'in other words'
+  ];
+  
+  // Score sentences by actionability
+  const scoredSentences = sentences.map(sentence => {
+    const lower = sentence.toLowerCase();
+    let score = 0;
+    
+    for (const keyword of actionKeywords) {
+      if (lower.includes(keyword)) score += 3;
+    }
+    
+    // Boost sentences with specific formats
+    if (/^\d+[.):]/g.test(sentence)) score += 2; // Numbered lists
+    if (sentence.includes(':')) score += 1; // Definitions/explanations
+    if (lower.startsWith('the ')) score += 1; // Declarative statements
+    
+    // Penalize questions
+    if (sentence.includes('?')) score -= 2;
+    
+    return { sentence, score };
+  });
+  
+  // Sort by score and take top 3
+  const topSentences = scoredSentences
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  
+  // If we found actionable sentences, create insights from them
+  if (topSentences.length > 0) {
+    for (const { sentence } of topSentences) {
+      // Generate a short title from the sentence
+      const words = sentence.split(' ').slice(0, 5).join(' ');
+      insights.push({
+        title: words.length > 40 ? words.substring(0, 40) + '...' : words,
+        content: sentence
+      });
+    }
+  } else {
+    // No actionable sentences found - create a basic summary insight
+    const preview = content.substring(0, 300).trim();
+    insights.push({
+      title: title.substring(0, 50) || "Saved content",
+      content: `Key points from "${title}": ${preview}${content.length > 300 ? '...' : ''}`
+    });
+  }
+  
+  console.log("Fallback extracted", insights.length, "insights");
+  return insights;
 }
 
 // Generate a specific micro-action from content to queue for application
+// Returns null if AI unavailable (graceful degradation - actions are optional)
 async function generatePendingAction(
   content: string, 
   title: string, 
@@ -608,11 +669,6 @@ async function generatePendingAction(
   if (!LOVABLE_API_KEY || content.length < 50) return null;
   
   try {
-    const identityPrompt = identityContext?.identity_seed 
-      ? `User's identity: ${identityContext.identity_seed.substring(0, 300)}
-${identityContext.weekly_focus ? `Current focus: ${identityContext.weekly_focus}` : ''}`
-      : '';
-    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -620,63 +676,40 @@ ${identityContext.weekly_focus ? `Current focus: ${identityContext.weekly_focus}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           {
             role: "system",
-            content: `You are a learning coach. Given content someone saved, generate ONE specific micro-action they should take within 48 hours to APPLY this knowledge.
-
-${identityPrompt}
-
-Rules:
-- Action must be completable in 15-30 minutes
-- Must be concrete and specific (not "reflect on" or "think about")
-- Should produce a tangible output or change
-- Connect to their identity/goals if possible
-
-Examples of GOOD actions:
-- "Write 3 Instagram captions using the hook formula from this video"
-- "Test the 2-minute rule on your next 5 small tasks today"
-- "Send one message using the vulnerability technique described"
-
-Examples of BAD actions:
-- "Think about how this applies to your life" (too vague)
-- "Read more about this topic" (that's consumption, not application)
-- "Remember this for later" (no tangible output)`
+            content: `Generate ONE specific micro-action (15-30 min) to apply this content. Return JSON: {"action": "...", "context": "..."}`
           },
           {
             role: "user",
-            content: `Content title: ${title}\n\nContent:\n${content.substring(0, 4000)}\n\nGenerate ONE specific action to apply this within 48 hours.`
+            content: `Title: ${title}\nContent: ${content.substring(0, 2000)}`
           }
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "create_action",
-              description: "Create a specific micro-action",
-              parameters: {
-                type: "object",
-                properties: {
-                  action: { type: "string", description: "The specific action to take (imperative, 10-20 words)" },
-                  context: { type: "string", description: "Why this action matters and what it will produce (1-2 sentences)" }
-                },
-                required: ["action", "context"],
-                additionalProperties: false
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "create_action" } }
       }),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.log("Pending action AI unavailable, skipping (non-critical)");
+      return null;
+    }
     
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall) {
-      return JSON.parse(toolCall.function.arguments);
+    const text = data.choices?.[0]?.message?.content || '';
+    const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+    
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.action && parsed.context) {
+        return parsed;
+      }
+    } catch {
+      // If JSON parsing fails, extract action from text
+      const actionMatch = text.match(/action[:\s]+"([^"]+)"/i);
+      if (actionMatch) {
+        return { action: actionMatch[1], context: "Apply what you learned" };
+      }
     }
   } catch (e) {
     console.error("Pending action generation error:", e);
