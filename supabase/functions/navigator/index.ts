@@ -628,8 +628,7 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 
       if (!response.ok) {
         console.error("AI error:", response.status);
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        // Always return a fallback - never fail the user
         return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
