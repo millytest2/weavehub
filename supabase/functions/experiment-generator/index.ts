@@ -86,7 +86,11 @@ function validateExperiments(data: any): ExperimentOutput[] {
 }
 
 // NEW FORMAT: [Duration] [Constraint] → [Deliverable]
-function getFallbackExperiment(pillar: string, sprint: SprintConfig): ExperimentOutput[] {
+function getFallbackExperiment(pillar: string, sprint: SprintConfig, context?: any): ExperimentOutput[] {
+  // If we have context, try to personalize the fallback
+  const projects = context?.active_projects?.slice(0, 2) || [];
+  const hurdles = context?.current_hurdles?.slice(0, 2) || [];
+  const figures = context?.aspirational_figures?.slice(0, 1) || [];
   const sprintFallbacks: { [key: string]: { [key: string]: ExperimentOutput } } = {
     blitz_48h: {
       "Stability": {
@@ -660,18 +664,60 @@ ${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
     if (identitySeedText.includes('clarity')) identityThemes.push('Clarity in life and work');
     if (identitySeedText.includes('spiritual') || identitySeedText.includes('creator/god')) identityThemes.push('Spiritual connection');
     
-    // Extract from current reality/weekly focus
-    const weeklyFocus = userContext.weekly_focus?.toLowerCase() || '';
-    const yearNote = userContext.year_note?.toLowerCase() || '';
-    
-    // Build explicit context summary
-    const explicitThemes = identityThemes.length > 0 
-      ? `\n\nTHIS USER'S EXPLICIT THEMES (use these!):\n${identityThemes.map(t => `• ${t}`).join('\n')}`
-      : '';
-    
     // Get recent topics as areas of interest
     const topicNames = userContext.topics?.map((t: any) => t.name).join(', ') || '';
     const topicsSection = topicNames ? `\nUSER'S LEARNING AREAS: ${topicNames}` : '';
+    
+    // NEW: Extract hurdles, figures, projects for DEEP personalization
+    const currentHurdles = userContext.current_hurdles || [];
+    const aspirationalFigures = userContext.aspirational_figures || [];
+    const activeProjects = userContext.active_projects || [];
+    const storyArc = userContext.story_arc || '';
+    const recurringThemes = userContext.recurring_themes || [];
+    
+    // Build explicit context summary with MUCH MORE DETAIL
+    const hurdlesSection = currentHurdles.length > 0 
+      ? `\n\n🔴 THIS USER'S SPECIFIC HURDLES (design experiment to DIRECTLY address one):\n${currentHurdles.map((h: string) => `• "${h}"`).join('\n')}`
+      : '';
+    
+    const figuresSection = aspirationalFigures.length > 0
+      ? `\n\n⭐ FIGURES THEY ADMIRE (channel this energy):\n${aspirationalFigures.map((f: string) => `• ${f}`).join('\n')}`
+      : '';
+    
+    const projectsSection = activeProjects.length > 0
+      ? `\n\n🚀 THEIR ACTIVE PROJECTS (tie experiment to one of these):\n${activeProjects.map((p: string) => `• ${p}`).join('\n')}`
+      : '';
+    
+    const storySection = storyArc
+      ? `\n\n📖 THEIR TRANSFORMATION STORY:\n${storyArc}`
+      : '';
+    
+    const themesSection = recurringThemes.length > 0
+      ? `\n\n🔄 RECURRING THEMES IN THEIR DATA:\n${recurringThemes.slice(0, 5).join(', ')}`
+      : '';
+    
+    const explicitThemes = [
+      ...identityThemes.map(t => `• ${t}`)
+    ].join('\n');
+    
+    const personalizedContext = `
+═══════════════════════════════════════════════════════════════
+DEEPLY PERSONAL DATA - USE ALL OF THIS:
+═══════════════════════════════════════════════════════════════
+${explicitThemes ? `\nIDENTITY THEMES:\n${explicitThemes}` : ''}
+${topicsSection}
+${hurdlesSection}
+${figuresSection}
+${projectsSection}
+${storySection}
+${themesSection}
+
+PERSONALIZATION CHECK - Your experiment MUST:
+1. Name ONE of their specific hurdles: ${currentHurdles[0] || 'none detected'}
+2. Reference or channel ONE of their figures: ${aspirationalFigures[0] || 'none detected'}  
+3. Tie to ONE of their projects: ${activeProjects[0] || 'their main focus'}
+4. Feel like a chapter in their story: ${storyArc || 'their transformation'}
+═══════════════════════════════════════════════════════════════`;
 
     // NEW SYSTEM PROMPT - DEEPLY PERSONAL, ACTION-ORIENTED, NO THERAPY-SPEAK
     const systemPrompt = `You design DEEPLY PERSONAL, ACTION-BASED experiments. Not generic challenges. Not therapy homework. EXPERIMENTS THAT HIT HARD because they directly address THIS PERSON's specific story, hurdles, and aspirations.
@@ -679,8 +725,7 @@ ${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
 ${dateContext}
 
 ${context}
-${explicitThemes}
-${topicsSection}
+${personalizedContext}
 
 PILLAR: ${forcedPillar}
 ${sprintInstructions}
@@ -995,8 +1040,8 @@ Make it about THEIR specific life. No generic productivity experiments.` }
 
     if (!response.ok) {
       console.error("AI Gateway error:", response.status);
-      // Always return fallback - never fail the user
-      const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+      // Always return fallback - never fail the user (pass context for personalization)
+      const fallback = getFallbackExperiment(forcedPillar, sprintConfig, userContext);
       return await insertAndReturnExperiments(fallback, sprintConfig);
     }
 
@@ -1005,7 +1050,7 @@ Make it about THEIR specific life. No generic productivity experiments.` }
     
     if (!toolCall) {
       console.log("No tool call returned, using fallback");
-      const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+      const fallback = getFallbackExperiment(forcedPillar, sprintConfig, userContext);
       return await insertAndReturnExperiments(fallback, sprintConfig);
     }
 
@@ -1029,12 +1074,12 @@ Make it about THEIR specific life. No generic productivity experiments.` }
       
       if (isDuplicate) {
         console.log("Generated experiment too similar to past, using fallback");
-        const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+        const fallback = getFallbackExperiment(forcedPillar, sprintConfig, userContext);
         return await insertAndReturnExperiments(fallback, sprintConfig);
       }
     } catch (parseError) {
       console.error("Parse/validation error:", parseError);
-      const fallback = getFallbackExperiment(forcedPillar, sprintConfig);
+      const fallback = getFallbackExperiment(forcedPillar, sprintConfig, userContext);
       return await insertAndReturnExperiments(fallback, sprintConfig);
     }
 

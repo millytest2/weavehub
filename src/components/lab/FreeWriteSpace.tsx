@@ -26,6 +26,20 @@ interface FreeWrite {
   updated_at?: string;
 }
 
+// Provocative questions pulled from identity/experiments
+const PROVOCATIVE_QUESTIONS = [
+  "What are you afraid to say out loud?",
+  "What would you do if you knew you couldn't fail?",
+  "What's the hardest truth you're avoiding right now?",
+  "If you had to delete everything and start over, what would you rebuild first?",
+  "What does the version of you one year from now wish you'd start today?",
+  "What keeps showing up that you keep ignoring?",
+  "What would make today actually matter?",
+  "What are you pretending not to know?",
+  "Where are you playing small?",
+  "What would you regret NOT doing?",
+];
+
 export const FreeWriteSpace = () => {
   const { user } = useAuth();
   const [writes, setWrites] = useState<FreeWrite[]>([]);
@@ -34,8 +48,49 @@ export const FreeWriteSpace = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [provocativeQuestion, setProvocativeQuestion] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Generate a question when starting fresh
+  const getProvocativeQuestion = useCallback(async () => {
+    if (!user) return PROVOCATIVE_QUESTIONS[Math.floor(Math.random() * PROVOCATIVE_QUESTIONS.length)];
+    
+    // Try to pull from recent experiments/identity for personalized question
+    const { data: identity } = await supabase
+      .from("identity_seeds")
+      .select("content, weekly_focus")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    const { data: recentExperiment } = await supabase
+      .from("experiments")
+      .select("title, identity_shift_target")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    // Build personalized questions based on context
+    const personalQuestions: string[] = [];
+    
+    if (identity?.weekly_focus) {
+      personalQuestions.push(`What's actually blocking you from "${identity.weekly_focus}"?`);
+      personalQuestions.push(`If "${identity.weekly_focus}" worked perfectly, what would change?`);
+    }
+    
+    if (recentExperiment?.identity_shift_target) {
+      personalQuestions.push(`What would someone who "${recentExperiment.identity_shift_target}" do right now?`);
+    }
+    
+    if (recentExperiment?.title) {
+      personalQuestions.push(`What's the real reason you started "${recentExperiment.title}"?`);
+    }
+    
+    // Mix personal with default questions
+    const allQuestions = [...personalQuestions, ...PROVOCATIVE_QUESTIONS];
+    return allQuestions[Math.floor(Math.random() * allQuestions.length)];
+  }, [user]);
 
   const fetchWrites = useCallback(async () => {
     if (!user) return;
@@ -88,6 +143,10 @@ export const FreeWriteSpace = () => {
     if (!user) return;
     setIsCreating(true);
     
+    // Get a provocative question to start with
+    const question = await getProvocativeQuestion();
+    setProvocativeQuestion(question);
+    
     const { data, error } = await supabase
       .from("observations")
       .insert({
@@ -117,6 +176,7 @@ export const FreeWriteSpace = () => {
     setActiveWrite(write);
     setContent(write.content);
     setLastSaved(null);
+    setProvocativeQuestion(null); // Don't show question for existing writes
     
     setTimeout(() => {
       textareaRef.current?.focus();
@@ -192,13 +252,28 @@ export const FreeWriteSpace = () => {
         </div>
         
         {/* Writing area - full screen, distraction free */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Provocative question - only show on new writes with no content */}
+          {provocativeQuestion && content.length === 0 && (
+            <div className="px-6 md:px-12 lg:px-[15%] pt-6">
+              <p className="text-muted-foreground/60 italic text-lg" style={{ fontFamily: 'Georgia, serif' }}>
+                {provocativeQuestion}
+              </p>
+            </div>
+          )}
+          
           <textarea
             ref={textareaRef}
             value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
+            onChange={(e) => {
+              handleContentChange(e.target.value);
+              // Clear question once they start typing
+              if (provocativeQuestion && e.target.value.length > 0) {
+                setProvocativeQuestion(null);
+              }
+            }}
             placeholder="Just write..."
-            className="w-full h-full p-6 md:p-12 lg:px-[15%] text-lg leading-relaxed bg-transparent resize-none focus:outline-none placeholder:text-muted-foreground/30"
+            className="w-full flex-1 p-6 md:p-12 lg:px-[15%] text-lg leading-relaxed bg-transparent resize-none focus:outline-none placeholder:text-muted-foreground/30"
             style={{ 
               fontFamily: 'Georgia, serif',
               letterSpacing: '0.01em'
