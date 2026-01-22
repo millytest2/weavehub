@@ -26,18 +26,16 @@ interface FreeWrite {
   updated_at?: string;
 }
 
-// Provocative questions pulled from identity/experiments
-const PROVOCATIVE_QUESTIONS = [
-  "What are you afraid to say out loud?",
-  "What would you do if you knew you couldn't fail?",
-  "What's the hardest truth you're avoiding right now?",
-  "If you had to delete everything and start over, what would you rebuild first?",
-  "What does the version of you one year from now wish you'd start today?",
-  "What keeps showing up that you keep ignoring?",
-  "What would make today actually matter?",
-  "What are you pretending not to know?",
+// Short, punchy default provocations
+const DEFAULT_PROVOCATIONS = [
+  "What are you avoiding?",
+  "What would scare you to do today?",
+  "What do you already know?",
   "Where are you playing small?",
-  "What would you regret NOT doing?",
+  "What would you regret not doing?",
+  "What keeps showing up?",
+  "What's the real issue?",
+  "What would they do?",
 ];
 
 export const FreeWriteSpace = () => {
@@ -52,44 +50,86 @@ export const FreeWriteSpace = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Generate a question when starting fresh
+  // Generate a SHORT, personalized question from latest user data
   const getProvocativeQuestion = useCallback(async () => {
-    if (!user) return PROVOCATIVE_QUESTIONS[Math.floor(Math.random() * PROVOCATIVE_QUESTIONS.length)];
+    if (!user) return DEFAULT_PROVOCATIONS[Math.floor(Math.random() * DEFAULT_PROVOCATIONS.length)];
     
-    // Try to pull from recent experiments/identity for personalized question
+    const personalQuestions: string[] = [];
+    
+    // 1. Check recent emotional patterns (grounding_log)
+    const { data: recentEmotions } = await supabase
+      .from("grounding_log")
+      .select("emotional_state")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    
+    if (recentEmotions?.length) {
+      const topEmotion = recentEmotions[0].emotional_state;
+      if (topEmotion) {
+        personalQuestions.push(`Why ${topEmotion}?`);
+        personalQuestions.push(`What's under the ${topEmotion}?`);
+      }
+    }
+    
+    // 2. Pull from identity_seeds (values, year_note, phase)
     const { data: identity } = await supabase
       .from("identity_seeds")
-      .select("content, weekly_focus")
+      .select("core_values, year_note, current_phase, weekly_focus")
       .eq("user_id", user.id)
       .maybeSingle();
     
-    const { data: recentExperiment } = await supabase
-      .from("experiments")
-      .select("title, identity_shift_target")
+    if (identity?.core_values && Array.isArray(identity.core_values) && identity.core_values.length > 0) {
+      const value = identity.core_values[Math.floor(Math.random() * identity.core_values.length)];
+      personalQuestions.push(`Did you honor "${value}" today?`);
+    }
+    
+    if (identity?.year_note) {
+      // Extract first key phrase (short)
+      const firstPhrase = identity.year_note.split(/[.!?\n]/)[0]?.trim().slice(0, 30);
+      if (firstPhrase) {
+        personalQuestions.push(`Is "${firstPhrase}..." still true?`);
+      }
+    }
+    
+    if (identity?.weekly_focus) {
+      personalQuestions.push(`What's blocking "${identity.weekly_focus.slice(0, 25)}"?`);
+    }
+    
+    // 3. Check active goals
+    const { data: goals } = await supabase
+      .from("user_goals")
+      .select("goal_name")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     
-    // Build personalized questions based on context
-    const personalQuestions: string[] = [];
-    
-    if (identity?.weekly_focus) {
-      personalQuestions.push(`What's actually blocking you from "${identity.weekly_focus}"?`);
-      personalQuestions.push(`If "${identity.weekly_focus}" worked perfectly, what would change?`);
+    if (goals?.goal_name) {
+      personalQuestions.push(`What would move "${goals.goal_name.slice(0, 20)}" forward?`);
     }
     
-    if (recentExperiment?.identity_shift_target) {
-      personalQuestions.push(`What would someone who "${recentExperiment.identity_shift_target}" do right now?`);
+    // 4. Check latest experiment
+    const { data: experiment } = await supabase
+      .from("experiments")
+      .select("identity_shift_target")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (experiment?.identity_shift_target) {
+      const shift = experiment.identity_shift_target.slice(0, 25);
+      personalQuestions.push(`Are you being "${shift}"?`);
     }
     
-    if (recentExperiment?.title) {
-      personalQuestions.push(`What's the real reason you started "${recentExperiment.title}"?`);
+    // Prioritize personal questions, fallback to defaults
+    if (personalQuestions.length > 0) {
+      return personalQuestions[Math.floor(Math.random() * personalQuestions.length)];
     }
     
-    // Mix personal with default questions
-    const allQuestions = [...personalQuestions, ...PROVOCATIVE_QUESTIONS];
-    return allQuestions[Math.floor(Math.random() * allQuestions.length)];
+    return DEFAULT_PROVOCATIONS[Math.floor(Math.random() * DEFAULT_PROVOCATIONS.length)];
   }, [user]);
 
   const fetchWrites = useCallback(async () => {
