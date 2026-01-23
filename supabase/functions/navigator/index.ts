@@ -35,58 +35,67 @@ function validateNavigatorOutput(data: any): NavigatorOutput {
   };
 }
 
-function getFallbackSuggestion(pillar: string): NavigatorOutput {
-  const fallbacks: { [key: string]: NavigatorOutput } = {
-    "Skill": {
-      priority_for_today: "Skill",
-      do_this_now: "Spend 30 minutes building something visible.",
-      why_it_matters: "Small progress compounds. Ship something small.",
-      time_required: "30 minutes"
-    },
-    "Content": {
-      priority_for_today: "Content",
-      do_this_now: "Write and share one authentic insight.",
-      why_it_matters: "Building in public attracts opportunity.",
-      time_required: "20 minutes"
-    },
-    "Health": {
-      priority_for_today: "Health",
-      do_this_now: "Move your body for 20 minutes.",
-      why_it_matters: "Physical energy creates mental clarity.",
-      time_required: "20 minutes"
-    },
-    "Presence": {
-      priority_for_today: "Presence",
-      do_this_now: "5 minutes of nervous system regulation.",
-      why_it_matters: "Calm creates clarity.",
-      time_required: "10 minutes"
-    },
-    "Stability": {
-      priority_for_today: "Stability",
-      do_this_now: "Take one action toward income.",
-      why_it_matters: "Stability creates freedom.",
-      time_required: "30 minutes"
-    },
-    "Admin": {
-      priority_for_today: "Admin",
-      do_this_now: "Clear one thing from your backlog.",
-      why_it_matters: "Friction drains energy.",
-      time_required: "15 minutes"
-    },
-    "Connection": {
-      priority_for_today: "Connection",
-      do_this_now: "Reach out to one person.",
-      why_it_matters: "Connection compounds.",
-      time_required: "10 minutes"
-    },
-    "Learning": {
-      priority_for_today: "Learning",
-      do_this_now: "25 minutes of focused learning.",
-      why_it_matters: "Learn to apply, not to know.",
-      time_required: "25 minutes"
-    }
+// Enhanced fallback that can incorporate user data
+interface UserDataForFallback {
+  weeklyFocus?: string;
+  yearNote?: string;
+  activeProject?: string;
+  recentHurdle?: string;
+  coreValues?: string;
+}
+
+function getEnhancedFallback(pillar: string, userData?: UserDataForFallback): NavigatorOutput {
+  const baseFallbacks: { [key: string]: { action: string; why: string; time: string } } = {
+    "Skill": { action: "Build something visible for 30 minutes", why: "Small progress compounds. Ship something small.", time: "30 minutes" },
+    "Content": { action: "Write and share one authentic insight", why: "Building in public attracts opportunity.", time: "20 minutes" },
+    "Health": { action: "Move your body for 20 minutes", why: "Physical energy creates mental clarity.", time: "20 minutes" },
+    "Presence": { action: "5 minutes of nervous system regulation", why: "Calm creates clarity.", time: "10 minutes" },
+    "Stability": { action: "Take one action toward income", why: "Stability creates freedom.", time: "30 minutes" },
+    "Admin": { action: "Clear one thing from your backlog", why: "Friction drains energy.", time: "15 minutes" },
+    "Connection": { action: "Reach out to one person you've been meaning to contact", why: "Connection compounds.", time: "10 minutes" },
+    "Learning": { action: "25 minutes of focused learning", why: "Learn to apply, not to know.", time: "25 minutes" }
   };
-  return fallbacks[pillar] || fallbacks["Skill"];
+
+  const base = baseFallbacks[pillar] || baseFallbacks["Skill"];
+  
+  // Personalize if we have user data
+  let action = base.action;
+  let why = base.why;
+  
+  if (userData) {
+    // Inject specific projects/focus into actions
+    if (pillar === "Skill" && userData.activeProject) {
+      action = `Work on ${userData.activeProject.slice(0, 40)} for 30 minutes`;
+    } else if (pillar === "Content" && userData.weeklyFocus) {
+      action = `Write about ${userData.weeklyFocus.slice(0, 30)}`;
+    } else if (pillar === "Stability" && userData.yearNote) {
+      // Extract income-related context
+      const incomeMatch = userData.yearNote.match(/(\$[\d,]+|income|revenue|business)/i);
+      if (incomeMatch) {
+        action = "One concrete step toward your income goal";
+      }
+    }
+    
+    // Make "why" reference their values if available
+    if (userData.coreValues) {
+      const firstValue = userData.coreValues.split(',')[0]?.trim().slice(0, 20);
+      if (firstValue) {
+        why = `Aligns with your value of ${firstValue}. ${base.why}`;
+      }
+    }
+  }
+
+  return {
+    priority_for_today: pillar,
+    do_this_now: action,
+    why_it_matters: why,
+    time_required: base.time
+  };
+}
+
+// Simple fallback for when we have no user data
+function getFallbackSuggestion(pillar: string): NavigatorOutput {
+  return getEnhancedFallback(pillar);
 }
 
 function choosePillar(recentPillars: string[]): string {
@@ -462,7 +471,7 @@ Surface what resonates from their own captured wisdom.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-flash-lite",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Give me 3 different action options to choose from." }
@@ -503,12 +512,19 @@ Surface what resonates from their own captured wisdom.`;
 
       if (!response.ok) {
         console.error("AI error:", response.status);
-        // Return 3 fallback options
+        // Return 3 enhanced fallback options with user data
+        const userData: UserDataForFallback = {
+          weeklyFocus: identityData?.content?.match(/focus[:\s]+([^.\n]+)/i)?.[1],
+          yearNote: identityData?.content?.match(/goal[:\s]+([^.\n]+)/i)?.[1] || identityData?.content?.substring(0, 100),
+          activeProject: userContextData.active_projects?.[0],
+          recentHurdle: userContextData.current_hurdles?.[0],
+          coreValues: identityData?.core_values
+        };
         return new Response(JSON.stringify({
           options: [
-            getFallbackSuggestion(pillar1),
-            getFallbackSuggestion(pillar2),
-            getFallbackSuggestion(pillar3)
+            getEnhancedFallback(pillar1, userData),
+            getEnhancedFallback(pillar2, userData),
+            getEnhancedFallback(pillar3, userData)
           ]
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -598,7 +614,7 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-flash-lite",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Give me ONE specific "${suggestedPillar}" action.` }
@@ -628,8 +644,15 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 
       if (!response.ok) {
         console.error("AI error:", response.status);
-        // Always return a fallback - never fail the user
-        return new Response(JSON.stringify(getFallbackSuggestion(suggestedPillar)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        // Return enhanced fallback with user data
+        const userData: UserDataForFallback = {
+          weeklyFocus: identityData?.content?.match(/focus[:\s]+([^.\n]+)/i)?.[1],
+          yearNote: identityData?.content?.match(/goal[:\s]+([^.\n]+)/i)?.[1],
+          activeProject: userContextData.active_projects?.[0],
+          recentHurdle: userContextData.current_hurdles?.[0],
+          coreValues: identityData?.core_values
+        };
+        return new Response(JSON.stringify(getEnhancedFallback(suggestedPillar, userData)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const data = await response.json();

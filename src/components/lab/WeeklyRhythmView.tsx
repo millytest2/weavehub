@@ -867,18 +867,28 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             })}
           </div>
 
-          {/* Weekly Completion */}
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+          {/* Weekly Completion + Goal Connection */}
+          <div className="flex flex-col sm:flex-row items-stretch gap-3 p-3 rounded-lg bg-muted/30">
             <div className="flex-1">
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-xs sm:text-sm mb-1">
                 <span className="text-muted-foreground">Week completion</span>
-                <span className="font-medium">{weekAnalysis.activeDays}/7 days active</span>
+                <span className="font-medium">{weekAnalysis.activeDays}/7 days</span>
               </div>
-              <Progress value={weekAnalysis.completionRate} className="h-2" />
+              <Progress value={weekAnalysis.completionRate} className="h-1.5 sm:h-2" />
             </div>
-            <div className="text-2xl font-bold text-primary">
-              {weekAnalysis.completionRate}%
+            <div className="flex items-center justify-center gap-3 sm:gap-0 sm:flex-col sm:border-l sm:pl-3">
+              <div className="text-xl sm:text-2xl font-bold text-primary">
+                {weekAnalysis.completionRate}%
+              </div>
+              <div className="text-[10px] text-muted-foreground text-center hidden sm:block">
+                of 2026
+              </div>
             </div>
+          </div>
+          
+          {/* Goal Connection Hint */}
+          <div className="text-[10px] text-muted-foreground text-center px-2 py-1 bg-muted/20 rounded">
+            <span className="font-medium">How it connects:</span> Daily logs → Week's Weave → Pillar Balance → 2026 Compass
           </div>
         </CardContent>
       </Card>
@@ -930,7 +940,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
               const count = pillarAnalysis.byPillar[key] || 0;
               const target = pillarTargets[key]?.weekly_target || DEFAULT_PILLAR_TARGETS[key]?.target || 3;
@@ -941,45 +951,37 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
               const priority = pillarTargets[key]?.priority || DEFAULT_PILLAR_TARGETS[key]?.priority || 2;
 
               return (
-                <div key={key} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center relative ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
-                    <Icon className={`h-4 w-4 ${count > 0 ? config.color : 'text-muted-foreground'}`} />
+                <div key={key} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center relative flex-shrink-0 ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
+                    <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${count > 0 ? config.color : 'text-muted-foreground'}`} />
                     {effectivePillarScope === 'week' && priority >= 4 && (
-                      <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" title="High priority" />
+                      <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-orange-500" title="High priority" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{config.label}</span>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs sm:text-sm font-medium truncate">{config.label}</span>
+                      <div className="flex items-center gap-1">
                         {effectivePillarScope === 'week' ? (
-                          <span className={`text-sm ${isOnTrack ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
+                          <span className={`text-xs ${isOnTrack ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
                             {count}/{target}
-                            {isOnTrack && <CheckCircle2 className="inline h-3 w-3 ml-1" />}
+                            {isOnTrack && <CheckCircle2 className="inline h-2.5 w-2.5 ml-0.5" />}
                           </span>
                         ) : (
-                          <span className="text-sm text-muted-foreground">{count} actions</span>
+                          <span className="text-xs text-muted-foreground">{count}</span>
                         )}
                         {comparison && (
-                          <span className={`flex items-center text-xs ${
+                          <span className={`flex items-center text-[10px] ${
                             comparison.trend === 'up' ? 'text-green-500' :
                             comparison.trend === 'down' ? 'text-red-500' : 'text-muted-foreground'
                           }`}>
-                            {comparison.trend === 'up' && <TrendingUp className="h-3 w-3" />}
-                            {comparison.trend === 'down' && <TrendingDown className="h-3 w-3" />}
-                            {comparison.trend === 'same' && <Minus className="h-3 w-3" />}
+                            {comparison.trend === 'up' && <TrendingUp className="h-2.5 w-2.5" />}
+                            {comparison.trend === 'down' && <TrendingDown className="h-2.5 w-2.5" />}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden relative">
-                      {effectivePillarScope === 'week' && (
-                        <div 
-                          className="absolute top-0 bottom-0 w-0.5 bg-foreground/30 z-10"
-                          style={{ left: '100%' }}
-                          title={`Target: ${target}`}
-                        />
-                      )}
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all duration-500 ${
                           effectivePillarScope === 'week' && isOnTrack 
