@@ -257,6 +257,42 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     }
   }, [user, viewDate]);
 
+  // Auto-adjust targets weekly on Sunday/Monday (check once per session)
+  useEffect(() => {
+    if (!user || !isCurrentWeek) return;
+    
+    const checkWeeklyAutoAdjust = async () => {
+      const dayOfWeek = new Date().getDay(); // 0 = Sunday, 1 = Monday
+      if (dayOfWeek !== 0 && dayOfWeek !== 1) return; // Only on Sun/Mon
+      
+      const lastAutoAdjustKey = `lastAutoAdjust_${user.id}`;
+      const lastAdjust = localStorage.getItem(lastAutoAdjustKey);
+      const now = new Date();
+      const weekId = `${getYear(now)}-${getWeek(now, { weekStartsOn: 1 })}`;
+      
+      if (lastAdjust === weekId) return; // Already adjusted this week
+      
+      console.log("Running weekly auto-adjust check...");
+      try {
+        const { data, error } = await supabase.functions.invoke('auto-adjust-targets');
+        if (error) throw error;
+        
+        if (data.adjustments?.length > 0) {
+          toast.info(`Targets auto-adjusted: ${data.summary}`, { duration: 5000 });
+          fetchWeekData(); // Refresh to show new targets
+        }
+        
+        localStorage.setItem(lastAutoAdjustKey, weekId);
+      } catch (error) {
+        console.error("Auto-adjust check failed:", error);
+      }
+    };
+    
+    // Run after a short delay to not block initial load
+    const timer = setTimeout(checkWeeklyAutoAdjust, 2000);
+    return () => clearTimeout(timer);
+  }, [user, isCurrentWeek]);
+
   const fetchWeekData = async () => {
     if (!user) return;
     setLoading(true);
@@ -886,9 +922,15 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             </div>
           </div>
           
-          {/* Goal Connection Hint */}
-          <div className="text-[10px] text-muted-foreground text-center px-2 py-1 bg-muted/20 rounded">
-            <span className="font-medium">How it connects:</span> Daily logs → Week's Weave → Pillar Balance → 2026 Compass
+          {/* Goal Connection - Visual Flow */}
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground px-2 py-1.5 bg-muted/20 rounded">
+            <span className="px-1.5 py-0.5 bg-background rounded text-foreground/80">Daily Log</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+            <span className="px-1.5 py-0.5 bg-primary/10 rounded text-primary font-medium">This Week</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+            <span className="px-1.5 py-0.5 bg-background rounded text-foreground/80">Monthly</span>
+            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+            <span className="px-1.5 py-0.5 bg-orange-500/10 rounded text-orange-600 dark:text-orange-400">2026 Compass</span>
           </div>
         </CardContent>
       </Card>
@@ -940,7 +982,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+          <div className="space-y-2">
             {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
               const count = pillarAnalysis.byPillar[key] || 0;
               const target = pillarTargets[key]?.weekly_target || DEFAULT_PILLAR_TARGETS[key]?.target || 3;
@@ -951,37 +993,37 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
               const priority = pillarTargets[key]?.priority || DEFAULT_PILLAR_TARGETS[key]?.priority || 2;
 
               return (
-                <div key={key} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center relative flex-shrink-0 ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
-                    <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${count > 0 ? config.color : 'text-muted-foreground'}`} />
+                <div key={key} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center relative flex-shrink-0 ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
+                    <Icon className={`h-4 w-4 ${count > 0 ? config.color : 'text-muted-foreground'}`} />
                     {effectivePillarScope === 'week' && priority >= 4 && (
                       <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-orange-500" title="High priority" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs sm:text-sm font-medium truncate">{config.label}</span>
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{config.label}</span>
+                      <div className="flex items-center gap-2">
                         {effectivePillarScope === 'week' ? (
                           <span className={`text-xs ${isOnTrack ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
                             {count}/{target}
-                            {isOnTrack && <CheckCircle2 className="inline h-2.5 w-2.5 ml-0.5" />}
+                            {isOnTrack && <CheckCircle2 className="inline h-3 w-3 ml-0.5" />}
                           </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">{count}</span>
                         )}
                         {comparison && (
-                          <span className={`flex items-center text-[10px] ${
+                          <span className={`flex items-center text-xs ${
                             comparison.trend === 'up' ? 'text-green-500' :
                             comparison.trend === 'down' ? 'text-red-500' : 'text-muted-foreground'
                           }`}>
-                            {comparison.trend === 'up' && <TrendingUp className="h-2.5 w-2.5" />}
-                            {comparison.trend === 'down' && <TrendingDown className="h-2.5 w-2.5" />}
+                            {comparison.trend === 'up' && <TrendingUp className="h-3 w-3" />}
+                            {comparison.trend === 'down' && <TrendingDown className="h-3 w-3" />}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all duration-500 ${
                           effectivePillarScope === 'week' && isOnTrack 
