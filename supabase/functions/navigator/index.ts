@@ -464,6 +464,18 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 
 Surface what resonates from their own captured wisdom.`;
 
+      // Model strategy: Try cheap model first, fall back to best if needed, then local fallback
+      // 1. Primary: gemini-2.5-flash-lite (cheapest, fast)
+      // 2. If low credits: enhanced local fallback (uses user data, no AI cost)
+      
+      const userData: UserDataForFallback = {
+        weeklyFocus: identityData?.content?.match(/focus[:\s]+([^.\n]+)/i)?.[1],
+        yearNote: identityData?.content?.match(/goal[:\s]+([^.\n]+)/i)?.[1] || identityData?.content?.substring(0, 100),
+        activeProject: userContextData.active_projects?.[0],
+        recentHurdle: userContextData.current_hurdles?.[0],
+        coreValues: identityData?.core_values
+      };
+      
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -471,7 +483,7 @@ Surface what resonates from their own captured wisdom.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "google/gemini-2.5-flash-lite", // Cheapest model - always try first
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Give me 3 different action options to choose from." }
@@ -510,22 +522,21 @@ Surface what resonates from their own captured wisdom.`;
         }),
       });
 
+      // FALLBACK STRATEGY:
+      // 402 = Payment Required (out of credits) -> use local enhanced fallback
+      // 429 = Rate Limit -> use local enhanced fallback  
+      // Other errors -> try local enhanced fallback
       if (!response.ok) {
-        console.error("AI error:", response.status);
-        // Return 3 enhanced fallback options with user data
-        const userData: UserDataForFallback = {
-          weeklyFocus: identityData?.content?.match(/focus[:\s]+([^.\n]+)/i)?.[1],
-          yearNote: identityData?.content?.match(/goal[:\s]+([^.\n]+)/i)?.[1] || identityData?.content?.substring(0, 100),
-          activeProject: userContextData.active_projects?.[0],
-          recentHurdle: userContextData.current_hurdles?.[0],
-          coreValues: identityData?.core_values
-        };
+        console.log(`AI error ${response.status} - using enhanced local fallback`);
+        // Return personalized fallback using user's actual data (no AI cost)
         return new Response(JSON.stringify({
           options: [
             getEnhancedFallback(pillar1, userData),
             getEnhancedFallback(pillar2, userData),
             getEnhancedFallback(pillar3, userData)
-          ]
+          ],
+          fallback: true, // Signal to frontend this is a fallback
+          reason: response.status === 402 ? 'credits_low' : response.status === 429 ? 'rate_limited' : 'ai_error'
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -607,6 +618,15 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
 - NEVER suggest: work tasks, deep focus, building, shipping, anything requiring energy` : ''}`;
 
 
+      // Model strategy for single action: cheap model first, then local fallback
+      const userData: UserDataForFallback = {
+        weeklyFocus: identityData?.content?.match(/focus[:\s]+([^.\n]+)/i)?.[1],
+        yearNote: identityData?.content?.match(/goal[:\s]+([^.\n]+)/i)?.[1],
+        activeProject: userContextData.active_projects?.[0],
+        recentHurdle: userContextData.current_hurdles?.[0],
+        coreValues: identityData?.core_values
+      };
+      
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -614,7 +634,7 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "google/gemini-2.5-flash-lite", // Cheapest model - always try first
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Give me ONE specific "${suggestedPillar}" action.` }
@@ -642,17 +662,15 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
         }),
       });
 
+      // FALLBACK: If AI fails (402/429/other), use local enhanced fallback
       if (!response.ok) {
-        console.error("AI error:", response.status);
-        // Return enhanced fallback with user data
-        const userData: UserDataForFallback = {
-          weeklyFocus: identityData?.content?.match(/focus[:\s]+([^.\n]+)/i)?.[1],
-          yearNote: identityData?.content?.match(/goal[:\s]+([^.\n]+)/i)?.[1],
-          activeProject: userContextData.active_projects?.[0],
-          recentHurdle: userContextData.current_hurdles?.[0],
-          coreValues: identityData?.core_values
-        };
-        return new Response(JSON.stringify(getEnhancedFallback(suggestedPillar, userData)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        console.log(`AI error ${response.status} - using enhanced local fallback for single action`);
+        const fallbackResult = getEnhancedFallback(suggestedPillar, userData);
+        return new Response(JSON.stringify({
+          ...fallbackResult,
+          fallback: true,
+          reason: response.status === 402 ? 'credits_low' : response.status === 429 ? 'rate_limited' : 'ai_error'
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const data = await response.json();
