@@ -20,6 +20,7 @@ import LearningPathDetail from "./pages/LearningPathDetail";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Lab from "./pages/Lab";
+import Explore from "./pages/Explore";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
@@ -149,6 +150,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Lab />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/explore"
+              element={
+                <ProtectedRoute>
+                  <Explore />
                 </ProtectedRoute>
               }
             />
