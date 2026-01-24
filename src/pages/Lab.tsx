@@ -21,6 +21,7 @@ import { WeeklyMetricsCheckin } from "@/components/lab/WeeklyMetricsCheckin";
 import { WeeklyExportGenerator } from "@/components/lab/WeeklyExportGenerator";
 import { WeeklyProgressCard } from "@/components/lab/WeeklyProgressCard";
 import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
+import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { 
   FlaskConical, 
   Plus, 
@@ -866,6 +867,9 @@ const Lab = () => {
 
           {/* WEEKLY INTEGRATION TAB */}
           <TabsContent value="integration" className="space-y-4">
+            {/* Journey Flow - Daily → Weekly → Monthly → 2026 */}
+            <JourneyFlow />
+            
             {/* New Week-by-Week Rhythm View */}
             <WeeklyRhythmView onCheckin={() => setShowWeeklyCheckin(true)} />
             
