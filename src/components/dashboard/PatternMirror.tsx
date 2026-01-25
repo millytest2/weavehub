@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Eye, X } from "lucide-react";
 
 interface PatternData {
@@ -179,30 +177,18 @@ export function PatternMirror() {
   }
 
   return (
-    <Card className="border-muted bg-muted/30">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Pattern Noticed
-            </p>
-            <p className="text-sm text-foreground leading-relaxed">
-              {displayMessage}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            onClick={handleDismiss}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="relative flex items-start gap-3 px-3 py-2.5 rounded-lg bg-muted/20 border border-border/40">
+      <Eye className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+      <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+        {displayMessage}
+      </p>
+      <button
+        onClick={handleDismiss}
+        className="text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
+        aria-label="Dismiss"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
   );
 }
