@@ -159,17 +159,19 @@ const Explore = () => {
     try {
       // Call the retrieval engine to surface relevant content
       const { data, error } = await supabase.functions.invoke("retrieval-engine", {
-        body: { action: "surface", query: query.trim() }
+        body: { action: "surface", query: query.trim(), limit: 15 }
       });
 
       if (error) throw error;
 
-      if (data?.items) {
+      if (data?.items && data.items.length > 0) {
         setSearchResults(data.items);
-      }
-
-      if (data?.synthesis) {
-        setAiAnswer(data.synthesis);
+        if (data?.synthesis) {
+          setAiAnswer(data.synthesis);
+        }
+      } else {
+        // Fallback immediately if no items
+        throw new Error("No AI results");
       }
 
     } catch (error) {

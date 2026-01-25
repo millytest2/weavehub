@@ -342,8 +342,8 @@ async function surfaceRelevant(
   const insights = insightsResult.data || [];
   const documents = documentsResult.data || [];
 
-  // Use AI to find most relevant items
-  const relevant = await aiSurfaceRelevant(
+  // Use AI to find most relevant items and generate synthesis
+  const { items: relevant, synthesis } = await aiSurfaceRelevant(
     query,
     insights,
     documents,
@@ -355,7 +355,8 @@ async function surfaceRelevant(
 
   return new Response(JSON.stringify({ 
     success: true, 
-    results: relevant,
+    items: relevant,  // Changed from 'results' to 'items' to match frontend
+    synthesis,        // Add AI synthesis
     query
   }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -562,46 +563,55 @@ Group by semantic meaning, not surface keywords. Each item can be in max 1 clust
   }
 }
 
-// AI Surface Relevant
+// AI Surface Relevant - returns items AND a synthesis
 async function aiSurfaceRelevant(
   query: string,
   insights: any[],
   documents: any[],
   limit: number,
   apiKey: string
-): Promise<any[]> {
+): Promise<{ items: any[]; synthesis: string | null }> {
   const allItems = [
     ...insights.map(i => ({
       id: i.id,
       type: 'insight',
       title: i.title,
       preview: i.content?.substring(0, 200) || '',
-      score: i.relevance_score
+      score: i.relevance_score,
+      created_at: i.created_at
     })),
     ...documents.map(d => ({
       id: d.id,
       type: 'document',
       title: d.title,
       preview: d.summary || d.extracted_content?.substring(0, 200) || '',
-      score: d.relevance_score
+      score: d.relevance_score,
+      created_at: d.created_at
     }))
   ];
+
+  if (allItems.length === 0) {
+    return { items: [], synthesis: null };
+  }
 
   const itemList = allItems.slice(0, 40).map((item, i) => 
     `[${i}] ${item.type} "${item.title}": ${item.preview}`
   ).join('\n\n');
 
-  const prompt = `Find the ${limit} most relevant items for this query. Return JSON only.
+  const prompt = `Find the ${limit} most relevant items for this query and synthesize what you find.
 
 QUERY: ${query}
 
 ITEMS:
 ${itemList}
 
-Return JSON array of indices in relevance order:
-{ "relevant_indices": [5, 12, 3, ...], "reasoning": "brief explanation" }
+Return JSON:
+{
+  "relevant_indices": [5, 12, 3, ...],
+  "synthesis": "A 1-2 sentence direct answer based on the user's own captured knowledge. Reference specific titles when relevant. Be concrete, not generic."
+}
 
-Consider semantic meaning, not just keyword matching.`;
+Consider semantic meaning, not just keyword matching. The synthesis should sound like you're surfacing what they already know.`;
 
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -613,7 +623,7 @@ Consider semantic meaning, not just keyword matching.`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
         messages: [
-          { role: "system", content: "You are a semantic search engine. Return only valid JSON." },
+          { role: "system", content: "You are a personal knowledge retrieval engine. Return only valid JSON. Your synthesis should reflect the user's own captured wisdom back to them." },
           { role: "user", content: prompt }
         ],
       }),
@@ -621,7 +631,7 @@ Consider semantic meaning, not just keyword matching.`;
 
     if (!response.ok) {
       console.error("Surface AI error:", response.status);
-      return allItems.slice(0, limit);
+      return { items: allItems.slice(0, limit), synthesis: null };
     }
 
     const data = await response.json();
@@ -629,13 +639,18 @@ Consider semantic meaning, not just keyword matching.`;
     const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
     const result = JSON.parse(cleaned);
 
-    return (result.relevant_indices || [])
+    const items = (result.relevant_indices || [])
       .slice(0, limit)
       .map((i: number) => allItems[i])
       .filter(Boolean);
+
+    return { 
+      items: items.length > 0 ? items : allItems.slice(0, limit),
+      synthesis: result.synthesis || null 
+    };
   } catch (error) {
     console.error("Surface error:", error);
-    return allItems.slice(0, limit);
+    return { items: allItems.slice(0, limit), synthesis: null };
   }
 }
 
