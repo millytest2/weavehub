@@ -66,6 +66,7 @@ const MULTI_PATTERN_OBSERVATIONS = [
 export function PatternMirror() {
   const { user } = useAuth();
   const [patterns, setPatterns] = useState<PatternData[]>([]);
+  const [displayMessage, setDisplayMessage] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +86,7 @@ export function PatternMirror() {
 
       const { data: logs } = await supabase
         .from("grounding_log")
-        .select("emotional_state, created_at")
+        .select("emotional_state, created_at, resonated")
         .eq("user_id", user.id)
         .gte("created_at", twoWeeksAgo.toISOString())
         .order("created_at", { ascending: false });
@@ -114,7 +115,9 @@ export function PatternMirror() {
         if (data.count >= 2) {
           const observations = PATTERN_OBSERVATIONS[state];
           if (observations) {
-            const observation = observations[Math.floor(Math.random() * observations.length)]
+            // Use a stable selection based on count + state name hash
+            const stableIndex = (state.length + data.count) % observations.length;
+            const observation = observations[stableIndex]
               .replace("{count}", data.count.toString());
             
             detectedPatterns.push({
@@ -130,7 +133,18 @@ export function PatternMirror() {
       // Sort by count descending
       detectedPatterns.sort((a, b) => b.count - a.count);
       
-      setPatterns(detectedPatterns.slice(0, 3)); // Max 3 patterns
+      const topPatterns = detectedPatterns.slice(0, 3);
+      setPatterns(topPatterns);
+
+      // Generate stable display message
+      if (topPatterns.length === 1) {
+        setDisplayMessage(topPatterns[0].observation);
+      } else if (topPatterns.length > 1) {
+        const patternNames = topPatterns.map(p => p.pattern.replace("-", " ")).join(", ");
+        const stableIndex = topPatterns.length % MULTI_PATTERN_OBSERVATIONS.length;
+        const template = MULTI_PATTERN_OBSERVATIONS[stableIndex];
+        setDisplayMessage(template.replace("{patterns}", patternNames));
+      }
     } catch (error) {
       console.error("Error detecting patterns:", error);
     } finally {
@@ -160,20 +174,8 @@ export function PatternMirror() {
     setDismissed(true);
   };
 
-  if (loading || dismissed || patterns.length === 0) {
+  if (loading || dismissed || patterns.length === 0 || !displayMessage) {
     return null;
-  }
-
-  // Generate the display message
-  let displayMessage: string;
-  
-  if (patterns.length === 1) {
-    displayMessage = patterns[0].observation;
-  } else {
-    // Multiple patterns
-    const patternNames = patterns.map(p => p.pattern.replace("-", " ")).join(", ");
-    const template = MULTI_PATTERN_OBSERVATIONS[Math.floor(Math.random() * MULTI_PATTERN_OBSERVATIONS.length)];
-    displayMessage = template.replace("{patterns}", patternNames);
   }
 
   return (
