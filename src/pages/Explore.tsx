@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +15,8 @@ import {
   FileText, 
   FlaskConical, 
   Loader2,
-  MessageSquare,
   Sparkles,
-  Network,
-  X
+  Network
 } from "lucide-react";
 
 interface ContentItem {
@@ -278,107 +275,96 @@ const Explore = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-6 max-w-6xl mx-auto">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Explore Your Mind</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Search, browse, and discover connections in your insights, documents, and experiments
-          </p>
+      <div className="space-y-4 max-w-4xl mx-auto">
+        {/* Header - more compact */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Explore</h1>
+            <p className="text-xs text-muted-foreground">
+              Search and discover patterns in your knowledge
+            </p>
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <Card className="border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Ask a question about your knowledge... e.g., 'what did I learn about focus?'"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-10"
-                />
-              </div>
-              <Button onClick={handleSearch} disabled={searching || !query.trim()}>
-                {searching ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              <Sparkles className="h-3 w-3 inline mr-1" />
-              Ask questions like "what patterns have I noticed?" or "find insights about productivity"
-            </p>
-          </CardContent>
-        </Card>
+        {/* Search Bar - cleaner */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Ask about your knowledge..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-10 h-10"
+            />
+          </div>
+          <Button onClick={handleSearch} disabled={searching || !query.trim()} size="default">
+            {searching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-1.5" />
+                Ask
+              </>
+            )}
+          </Button>
+        </div>
 
-        {/* View Toggle */}
+        {/* View Toggle - simplified */}
         <Tabs value={view} onValueChange={(v) => setView(v as "clusters" | "search")} className="w-full">
-          <TabsList className="grid w-full max-w-xs grid-cols-2">
-            <TabsTrigger value="clusters" className="text-xs">
-              <Network className="h-3.5 w-3.5 mr-1.5" />
-              Clusters
+          <TabsList className="h-8">
+            <TabsTrigger value="clusters" className="text-xs h-7 px-3">
+              <Network className="h-3 w-3 mr-1" />
+              Topics
             </TabsTrigger>
-            <TabsTrigger value="search" className="text-xs">
-              <Search className="h-3.5 w-3.5 mr-1.5" />
-              Search
+            <TabsTrigger value="search" className="text-xs h-7 px-3">
+              <Search className="h-3 w-3 mr-1" />
+              Results
             </TabsTrigger>
           </TabsList>
 
           {/* Clusters View */}
-          <TabsContent value="clusters" className="mt-4">
+          <TabsContent value="clusters" className="mt-3">
             {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : clusters.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No content yet. Start capturing insights!</p>
-                </CardContent>
-              </Card>
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No content yet. Start capturing insights!</p>
+              </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {clusters.map((cluster) => (
                   <div key={cluster.theme}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="secondary" className="text-xs">
-                        {cluster.theme}
-                      </Badge>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-medium">{cluster.theme}</span>
                       <span className="text-xs text-muted-foreground">
-                        {cluster.items.length} items
+                        ({cluster.items.length})
                       </span>
                     </div>
-                    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {cluster.items.slice(0, 6).map((item) => (
-                        <Card
+                    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
+                      {cluster.items.slice(0, 4).map((item) => (
+                        <div
                           key={`${item.type}-${item.id}`}
-                          className="cursor-pointer hover:border-primary/50 transition-colors"
+                          className="flex items-start gap-2.5 p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors border border-transparent hover:border-border/50"
                           onClick={() => handleItemClick(item)}
                         >
-                          <CardContent className="p-3">
-                            <div className="flex items-start gap-2">
-                              <div className={`h-7 w-7 rounded-md flex items-center justify-center shrink-0 ${getTypeColor(item.type)}`}>
-                                {getItemIcon(item.type)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-sm truncate">{item.title}</h3>
-                                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                  {item.preview}
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                          <div className={`h-6 w-6 rounded flex items-center justify-center shrink-0 ${getTypeColor(item.type)}`}>
+                            {getItemIcon(item.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-medium truncate">{item.title}</h3>
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                              {item.preview}
+                            </p>
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    {cluster.items.length > 6 && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        +{cluster.items.length - 6} more
+                    {cluster.items.length > 4 && (
+                      <p className="text-xs text-muted-foreground mt-1.5 ml-1">
+                        +{cluster.items.length - 4} more
                       </p>
                     )}
                   </div>
@@ -388,64 +374,52 @@ const Explore = () => {
           </TabsContent>
 
           {/* Search Results View */}
-          <TabsContent value="search" className="mt-4">
+          <TabsContent value="search" className="mt-3">
             {aiAnswer && (
-              <Card className="mb-4 border-primary/20 bg-primary/5">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        From your knowledge
-                      </p>
-                      <p className="text-sm leading-relaxed">{aiAnswer}</p>
-                    </div>
+              <div className="mb-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-start gap-2.5">
+                  <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-primary mb-1">From your knowledge</p>
+                    <p className="text-sm leading-relaxed">{aiAnswer}</p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {searching ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : searchResults.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">
-                    {query ? "No results found. Try a different search." : "Enter a question to search your knowledge."}
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">
+                  {query ? "No results found." : "Enter a question to search."}
+                </p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {searchResults.map((item) => (
-                  <Card
+                  <div
                     key={`${item.type}-${item.id}`}
-                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors"
                     onClick={() => handleItemClick(item)}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${getTypeColor(item.type)}`}>
-                          {getItemIcon(item.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-sm">{item.title}</h3>
-                            <Badge variant="outline" className="text-[10px]">
-                              {item.type}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                            {item.preview}
-                          </p>
-                        </div>
+                    <div className={`h-7 w-7 rounded flex items-center justify-center shrink-0 ${getTypeColor(item.type)}`}>
+                      {getItemIcon(item.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium">{item.title}</h3>
+                        <Badge variant="outline" className="text-[10px] h-4">
+                          {item.type}
+                        </Badge>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                        {item.preview}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

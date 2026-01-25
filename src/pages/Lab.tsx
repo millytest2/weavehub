@@ -867,11 +867,11 @@ const Lab = () => {
 
           {/* WEEKLY INTEGRATION TAB */}
           <TabsContent value="integration" className="space-y-4">
-            {/* Journey Flow - Daily → Weekly → Monthly → 2026 */}
-            <JourneyFlow />
-            
-            {/* New Week-by-Week Rhythm View */}
+            {/* Week-by-Week Rhythm View */}
             <WeeklyRhythmView onCheckin={() => setShowWeeklyCheckin(true)} />
+            
+            {/* Journey Flow - Daily → Weekly → Monthly → 2026 (moved to bottom) */}
+            <JourneyFlow />
             
             {/* Goals Progress (Collapsible) */}
             <details className="group">
