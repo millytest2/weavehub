@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, RefreshCw } from "lucide-react";
+import { Sparkles, X, RefreshCw, Link2, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WeaveVisualization } from "@/components/ui/weave-visualization";
 
 interface EmergingContent {
-  type: "connection" | "pattern" | "reflection" | "prompt";
+  type: "connection" | "pattern" | "thread";
   title: string;
   content: string;
-  source?: string;
+  connectedItems?: { title: string; type: string }[];
   timestamp: number;
 }
 
@@ -16,58 +16,35 @@ interface WhatsEmergingProps {
   userId: string;
 }
 
-const CACHE_KEY = "weave_emerging";
-const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
-
-// Prompts for new users or when no patterns found - philosophical, not onboarding-y
-const NEW_USER_PROMPTS = [
-  {
-    title: "What keeps returning to your mind?",
-    content: "The thoughts that won't leave you alone often point to what matters most."
-  },
-  {
-    title: "What would you do if you trusted yourself?",
-    content: "Most hesitation isn't about not knowing—it's about not trusting what you already know."
-  },
-  {
-    title: "What's the thread running through everything?",
-    content: "Your interests, frustrations, and ideas often share a hidden pattern."
-  },
-  {
-    title: "What are you becoming?",
-    content: "Not who you should be. Who you're already in the process of becoming."
-  },
-  {
-    title: "What would you capture if you knew it mattered?",
-    content: "The fleeting thought you almost dismissed might be the one that connects everything."
-  },
-];
+const CACHE_KEY = "weave_emerging_v2";
+const CACHE_DURATION = 8 * 60 * 60 * 1000; // 8 hours
 
 export const WhatsEmerging = ({ userId }: WhatsEmergingProps) => {
   const [emerging, setEmerging] = useState<EmergingContent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasData, setHasData] = useState(false);
+
+  // Create stable cache key based on userId
+  const cacheKey = useMemo(() => `${CACHE_KEY}_${userId}`, [userId]);
 
   useEffect(() => {
     loadEmerging();
-  }, [userId]);
+  }, [userId, cacheKey]);
 
   const loadEmerging = async () => {
     // Check cache first
-    const cached = localStorage.getItem(CACHE_KEY);
+    const cached = localStorage.getItem(cacheKey);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (Date.now() - parsed.timestamp < CACHE_DURATION) {
           setEmerging(parsed);
-          setHasData(parsed.type !== "prompt");
           setIsVisible(true);
           setIsLoading(false);
           return;
         }
       } catch (e) {
-        localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(cacheKey);
       }
     }
 
@@ -79,141 +56,172 @@ export const WhatsEmerging = ({ userId }: WhatsEmergingProps) => {
     setIsLoading(true);
     
     try {
-      // Fetch user's data in parallel
-      const [insightsRes, actionsRes, experimentsRes, identityRes] = await Promise.all([
+      // Fetch user's data in parallel - focusing on finding real connections
+      const [insightsRes, actionsRes, experimentsRes, identityRes, topicsRes] = await Promise.all([
         supabase
           .from("insights")
-          .select("id, title, content, source, created_at")
+          .select("id, title, content, source, topic_id, created_at")
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
-          .limit(20),
+          .limit(30),
         supabase
           .from("action_history")
           .select("action_text, pillar, why_it_mattered, action_date")
           .eq("user_id", userId)
           .order("action_date", { ascending: false })
-          .limit(15),
+          .limit(20),
         supabase
           .from("experiments")
-          .select("title, hypothesis, status")
+          .select("title, hypothesis, status, identity_shift_target")
           .eq("user_id", userId)
-          .limit(5),
+          .limit(8),
         supabase
           .from("identity_seeds")
-          .select("content, core_values")
+          .select("content, core_values, year_note, weekly_focus")
           .eq("user_id", userId)
-          .maybeSingle()
+          .maybeSingle(),
+        supabase
+          .from("topics")
+          .select("id, name")
+          .eq("user_id", userId)
       ]);
 
       const insights = insightsRes.data || [];
       const actions = actionsRes.data || [];
       const experiments = experimentsRes.data || [];
       const identity = identityRes.data;
+      const topicsMap = new Map(topicsRes.data?.map(t => [t.id, t.name]) || []);
 
       const totalContent = insights.length + actions.length + experiments.length;
-      setHasData(totalContent > 0);
 
-      let content: EmergingContent;
-
-      if (totalContent === 0) {
-        // New user - show a thought-provoking prompt
-        const prompt = NEW_USER_PROMPTS[Math.floor(Math.random() * NEW_USER_PROMPTS.length)];
-        content = {
-          type: "prompt",
-          title: prompt.title,
-          content: prompt.content,
-          timestamp: Date.now()
-        };
-      } else if (insights.length >= 2) {
-        // Find a connection between recent insights
-        const recentInsight = insights[0];
-        const relatedInsight = insights.find((ins, i) => {
-          if (i === 0) return false;
-          // Look for word overlap
-          const words1 = recentInsight.title.toLowerCase().split(/\s+/);
-          const words2 = ins.title.toLowerCase().split(/\s+/);
-          const overlap = words1.filter(w => w.length > 4 && words2.includes(w));
-          return overlap.length > 0;
-        });
-
-        if (relatedInsight) {
-          content = {
-            type: "connection",
-            title: "A thread is forming",
-            content: `"${recentInsight.title}" connects to "${relatedInsight.title}"`,
-            source: recentInsight.source || undefined,
-            timestamp: Date.now()
-          };
-        } else {
-          // Show a recent insight as a reflection
-          content = {
-            type: "reflection",
-            title: "From your mind",
-            content: recentInsight.title,
-            source: recentInsight.source || undefined,
-            timestamp: Date.now()
-          };
-        }
-      } else if (actions.length >= 3) {
-        // Find pattern in actions
-        const pillarCounts: Record<string, number> = {};
-        actions.forEach(a => {
-          if (a.pillar) {
-            pillarCounts[a.pillar] = (pillarCounts[a.pillar] || 0) + 1;
-          }
-        });
-        const dominantPillar = Object.entries(pillarCounts).sort((a, b) => b[1] - a[1])[0];
-        
-        if (dominantPillar && dominantPillar[1] >= 2) {
-          content = {
-            type: "pattern",
-            title: `${dominantPillar[0]} momentum`,
-            content: `You've taken ${dominantPillar[1]} actions here recently. Something's building.`,
-            timestamp: Date.now()
-          };
-        } else {
-          const recentAction = actions[0];
-          content = {
-            type: "reflection",
-            title: "You showed up",
-            content: recentAction.action_text || "Recent action completed",
-            timestamp: Date.now()
-          };
-        }
-      } else if (identity) {
-        // Reflect identity back
-        content = {
-          type: "reflection",
-          title: "Who you're becoming",
-          content: identity.content.substring(0, 150) + (identity.content.length > 150 ? "..." : ""),
-          timestamp: Date.now()
-        };
-      } else {
-        // Fallback to prompt
-        const prompt = NEW_USER_PROMPTS[Math.floor(Math.random() * NEW_USER_PROMPTS.length)];
-        content = {
-          type: "prompt",
-          title: prompt.title,
-          content: prompt.content,
-          timestamp: Date.now()
-        };
+      if (totalContent < 3) {
+        setIsLoading(false);
+        return; // Not enough data for meaningful emergence
       }
 
-      // Cache it
-      localStorage.setItem(CACHE_KEY, JSON.stringify(content));
-      setEmerging(content);
-      setIsVisible(true);
+      let content: EmergingContent | null = null;
+
+      // Strategy 1: Find topic-based connections between insights
+      const topicGroups = new Map<string, typeof insights>();
+      for (const insight of insights) {
+        if (insight.topic_id) {
+          const topicName = topicsMap.get(insight.topic_id);
+          if (topicName) {
+            if (!topicGroups.has(topicName)) {
+              topicGroups.set(topicName, []);
+            }
+            topicGroups.get(topicName)!.push(insight);
+          }
+        }
+      }
+
+      // Find a topic with 3+ insights - that's a thread forming
+      for (const [topic, topicInsights] of topicGroups) {
+        if (topicInsights.length >= 3) {
+          content = {
+            type: "thread",
+            title: `${topic} thread forming`,
+            content: `${topicInsights.length} ideas weaving together around ${topic.toLowerCase()}`,
+            connectedItems: topicInsights.slice(0, 3).map(i => ({ 
+              title: i.title.length > 40 ? i.title.substring(0, 40) + "..." : i.title, 
+              type: "insight" 
+            })),
+            timestamp: Date.now()
+          };
+          break;
+        }
+      }
+
+      // Strategy 2: Find keyword connections between recent insights
+      if (!content && insights.length >= 4) {
+        const recentFour = insights.slice(0, 4);
+        const wordFrequency = new Map<string, { count: number; sources: string[] }>();
+        
+        for (const insight of recentFour) {
+          const text = `${insight.title} ${insight.content || ""}`.toLowerCase();
+          const words = text.split(/\s+/).filter(w => w.length > 5);
+          const uniqueWords = [...new Set(words)];
+          
+          for (const word of uniqueWords) {
+            if (!wordFrequency.has(word)) {
+              wordFrequency.set(word, { count: 0, sources: [] });
+            }
+            const entry = wordFrequency.get(word)!;
+            entry.count++;
+            if (!entry.sources.includes(insight.title)) {
+              entry.sources.push(insight.title);
+            }
+          }
+        }
+
+        // Find words appearing in 2+ insights
+        for (const [word, data] of wordFrequency) {
+          if (data.count >= 2 && data.sources.length >= 2) {
+            content = {
+              type: "connection",
+              title: `"${word}" appearing across your captures`,
+              content: `This thread connects ${data.sources.length} recent insights`,
+              connectedItems: data.sources.slice(0, 2).map(s => ({ 
+                title: s.length > 35 ? s.substring(0, 35) + "..." : s, 
+                type: "insight" 
+              })),
+              timestamp: Date.now()
+            };
+            break;
+          }
+        }
+      }
+
+      // Strategy 3: Connect experiment to actions
+      if (!content && experiments.length > 0 && actions.length >= 3) {
+        const activeExp = experiments.find(e => e.status === "active");
+        if (activeExp) {
+          const relatedActions = actions.filter(a => 
+            a.action_text?.toLowerCase().includes(activeExp.title.toLowerCase().split(" ")[0])
+          );
+          if (relatedActions.length >= 1) {
+            content = {
+              type: "pattern",
+              title: "Experiment in motion",
+              content: `"${activeExp.title}" + ${relatedActions.length} aligned action${relatedActions.length > 1 ? 's' : ''}`,
+              connectedItems: [
+                { title: activeExp.title, type: "experiment" },
+                ...relatedActions.slice(0, 2).map(a => ({ 
+                  title: a.action_text?.substring(0, 30) || "Action", 
+                  type: "action" 
+                }))
+              ],
+              timestamp: Date.now()
+            };
+          }
+        }
+      }
+
+      // Strategy 4: Identity + Actions alignment
+      if (!content && identity && actions.length >= 3) {
+        const identityWords = (identity.content || "").toLowerCase().split(/\s+/).filter(w => w.length > 5);
+        const actionMatches = actions.filter(a => {
+          const actionText = (a.action_text || "").toLowerCase();
+          return identityWords.some(w => actionText.includes(w));
+        });
+        
+        if (actionMatches.length >= 2) {
+          content = {
+            type: "pattern",
+            title: "Actions aligning with identity",
+            content: `${actionMatches.length} recent actions reflect who you're becoming`,
+            timestamp: Date.now()
+          };
+        }
+      }
+
+      if (content) {
+        localStorage.setItem(cacheKey, JSON.stringify(content));
+        setEmerging(content);
+        setIsVisible(true);
+      }
     } catch (error) {
       console.error("Error generating emerging content:", error);
-      // Show a prompt as fallback
-      const prompt = NEW_USER_PROMPTS[0];
-      setEmerging({
-        type: "prompt",
-        title: prompt.title,
-        content: prompt.content,
-        timestamp: Date.now()
-      });
-      setIsVisible(true);
     } finally {
       setIsLoading(false);
     }
@@ -224,74 +232,80 @@ export const WhatsEmerging = ({ userId }: WhatsEmergingProps) => {
   };
 
   const handleRefresh = () => {
-    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(cacheKey);
     generateEmerging();
   };
 
-  if (!isVisible || isLoading) return null;
+  if (!isVisible || isLoading || !emerging) return null;
 
   return (
     <AnimatePresence>
-      {emerging && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-          className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 via-accent/5 to-background border border-primary/10 p-4 mb-4"
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3 }}
+        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 via-accent/5 to-background border border-primary/10 p-4 mb-4"
+      >
+        {/* Dismiss button */}
+        <button
+          onClick={handleDismiss}
+          className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-all"
         >
-          {/* Dismiss button */}
-          <button
-            onClick={handleDismiss}
-            className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-all"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <X className="h-3.5 w-3.5" />
+        </button>
 
-          <div className="flex items-start gap-4">
-            {/* Visual weave for users with data, sparkle for new users */}
-            <div className="flex-shrink-0 w-[60px] h-[60px]">
-              {hasData ? (
-                <WeaveVisualization score={50} size="sm" animated={true} showLabel={false} />
-              ) : (
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0 pr-6">
-              <p className="text-[10px] uppercase tracking-wider text-primary font-medium mb-1">
-                {emerging.type === "connection" && "What's weaving"}
-                {emerging.type === "pattern" && "Pattern emerging"}
-                {emerging.type === "reflection" && "Mirror"}
-                {emerging.type === "prompt" && "Reflection"}
-              </p>
-              <p className="text-sm font-medium text-foreground leading-snug mb-1">
-                {emerging.title}
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {emerging.content}
-              </p>
-              {emerging.source && (
-                <p className="text-[10px] text-muted-foreground/60 mt-2">
-                  via {emerging.source}
-                </p>
-              )}
-            </div>
+        <div className="flex items-start gap-4">
+          {/* Visual weave */}
+          <div className="flex-shrink-0 w-[60px] h-[60px]">
+            <WeaveVisualization score={50} size="sm" animated={true} showLabel={false} />
           </div>
 
-          {/* Subtle refresh option */}
-          <button
-            onClick={handleRefresh}
-            className="absolute bottom-3 right-3 p-1.5 rounded-lg text-muted-foreground/30 hover:text-muted-foreground/60 transition-all"
-            title="Refresh"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </button>
-        </motion.div>
-      )}
+          {/* Content */}
+          <div className="flex-1 min-w-0 pr-6">
+            <div className="flex items-center gap-1.5 mb-1">
+              {emerging.type === "connection" && <Link2 className="h-3 w-3 text-primary" />}
+              {emerging.type === "thread" && <ArrowRight className="h-3 w-3 text-primary" />}
+              {emerging.type === "pattern" && <Sparkles className="h-3 w-3 text-primary" />}
+              <p className="text-[10px] uppercase tracking-wider text-primary font-medium">
+                {emerging.type === "connection" && "Connection found"}
+                {emerging.type === "pattern" && "Pattern emerging"}
+                {emerging.type === "thread" && "Thread forming"}
+              </p>
+            </div>
+            
+            <p className="text-sm font-medium text-foreground leading-snug mb-1">
+              {emerging.title}
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {emerging.content}
+            </p>
+            
+            {/* Connected items preview */}
+            {emerging.connectedItems && emerging.connectedItems.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {emerging.connectedItems.map((item, i) => (
+                  <span 
+                    key={i}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[10px] text-muted-foreground"
+                  >
+                    {item.title}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Subtle refresh option */}
+        <button
+          onClick={handleRefresh}
+          className="absolute bottom-3 right-3 p-1.5 rounded-lg text-muted-foreground/30 hover:text-muted-foreground/60 transition-all"
+          title="Refresh"
+        >
+          <RefreshCw className="h-3 w-3" />
+        </button>
+      </motion.div>
     </AnimatePresence>
   );
 };
