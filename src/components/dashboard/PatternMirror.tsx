@@ -1,72 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, X } from "lucide-react";
+import { TrendingUp, X, Check } from "lucide-react";
 
 interface PatternData {
   pattern: string;
   count: number;
   lastSeen: string;
-  observation: string;
+  resonatedCount: number;
+  totalLogs: number;
 }
-
-// Direct, non-therapy observations - just reflecting what the data shows
-const PATTERN_OBSERVATIONS: Record<string, string[]> = {
-  anxious: [
-    "You've logged anxiety {count} times in the past two weeks.",
-    "Anxiety has been showing up. Not good or bad—just noticing.",
-    "The data shows anxiety recurring. That's the pattern right now.",
-  ],
-  comparing: [
-    "You've been in comparison mode {count} times recently.",
-    "Looking sideways has been a theme lately.",
-    "Comparison keeps appearing in your logs.",
-  ],
-  "people-pleasing": [
-    "People-pleasing has come up {count} times.",
-    "You've been losing yourself to others' expectations.",
-    "The pattern: accommodating at your own cost.",
-  ],
-  shrinking: [
-    "Playing small has been logged {count} times.",
-    "You keep noticing yourself shrinking.",
-    "The data shows a pattern of making yourself smaller.",
-  ],
-  spending: [
-    "Spending to fill a void has appeared {count} times.",
-    "You've been reaching for purchases lately.",
-    "Buying to feel something—that's been the pattern.",
-  ],
-  waiting: [
-    "Waiting mode has shown up {count} times.",
-    "You've been noticing yourself in 'wait' mode.",
-    "The pattern: expecting conditions instead of creating them.",
-  ],
-  scattered: [
-    "Scattered has been logged {count} times recently.",
-    "Too many directions at once—that's what the data shows.",
-  ],
-  stuck: [
-    "Stuck has appeared {count} times in your logs.",
-    "Overthinking the start—that's been the theme.",
-  ],
-  overloaded: [
-    "Overload has shown up {count} times.",
-    "Too much input, not enough output—that's the pattern.",
-  ],
-};
-
-// Multi-pattern observations
-const MULTI_PATTERN_OBSERVATIONS = [
-  "You've been cycling through a few states: {patterns}. Just noticing.",
-  "The data shows movement between {patterns}. No judgment.",
-  "Patterns this period: {patterns}.",
-];
 
 export function PatternMirror() {
   const { user } = useAuth();
   const [patterns, setPatterns] = useState<PatternData[]>([]);
-  const [displayMessage, setDisplayMessage] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -96,15 +43,18 @@ export function PatternMirror() {
         return;
       }
 
-      // Count occurrences of each emotional state
-      const stateCounts: Record<string, { count: number; lastSeen: string }> = {};
+      // Count occurrences and resonance of each emotional state
+      const stateCounts: Record<string, { count: number; lastSeen: string; resonatedCount: number }> = {};
       
       for (const log of logs) {
         if (log.emotional_state) {
           if (!stateCounts[log.emotional_state]) {
-            stateCounts[log.emotional_state] = { count: 0, lastSeen: log.created_at };
+            stateCounts[log.emotional_state] = { count: 0, lastSeen: log.created_at, resonatedCount: 0 };
           }
           stateCounts[log.emotional_state].count++;
+          if (log.resonated) {
+            stateCounts[log.emotional_state].resonatedCount++;
+          }
         }
       }
 
@@ -113,38 +63,19 @@ export function PatternMirror() {
       
       for (const [state, data] of Object.entries(stateCounts)) {
         if (data.count >= 2) {
-          const observations = PATTERN_OBSERVATIONS[state];
-          if (observations) {
-            // Use a stable selection based on count + state name hash
-            const stableIndex = (state.length + data.count) % observations.length;
-            const observation = observations[stableIndex]
-              .replace("{count}", data.count.toString());
-            
-            detectedPatterns.push({
-              pattern: state,
-              count: data.count,
-              lastSeen: data.lastSeen,
-              observation,
-            });
-          }
+          detectedPatterns.push({
+            pattern: state,
+            count: data.count,
+            lastSeen: data.lastSeen,
+            resonatedCount: data.resonatedCount,
+            totalLogs: logs.length,
+          });
         }
       }
 
       // Sort by count descending
       detectedPatterns.sort((a, b) => b.count - a.count);
-      
-      const topPatterns = detectedPatterns.slice(0, 3);
-      setPatterns(topPatterns);
-
-      // Generate stable display message
-      if (topPatterns.length === 1) {
-        setDisplayMessage(topPatterns[0].observation);
-      } else if (topPatterns.length > 1) {
-        const patternNames = topPatterns.map(p => p.pattern.replace("-", " ")).join(", ");
-        const stableIndex = topPatterns.length % MULTI_PATTERN_OBSERVATIONS.length;
-        const template = MULTI_PATTERN_OBSERVATIONS[stableIndex];
-        setDisplayMessage(template.replace("{patterns}", patternNames));
-      }
+      setPatterns(detectedPatterns.slice(0, 3));
     } catch (error) {
       console.error("Error detecting patterns:", error);
     } finally {
@@ -152,41 +83,76 @@ export function PatternMirror() {
     }
   };
 
-  // Check if already dismissed today
-  useEffect(() => {
-    if (user) {
-      const dismissKey = `pattern_mirror_dismissed_${user.id}`;
-      const lastDismissed = localStorage.getItem(dismissKey);
-      const today = new Date().toISOString().split('T')[0];
-      
-      if (lastDismissed === today) {
-        setDismissed(true);
-      }
-    }
+  // Check if already dismissed today - use stable hash
+  const dismissKey = useMemo(() => {
+    if (!user) return null;
+    const today = new Date().toISOString().split('T')[0];
+    return `pattern_mirror_${user.id}_${today}`;
   }, [user]);
 
+  useEffect(() => {
+    if (dismissKey) {
+      const wasDismissed = localStorage.getItem(dismissKey) === 'true';
+      setDismissed(wasDismissed);
+    }
+  }, [dismissKey]);
+
   const handleDismiss = () => {
-    if (user) {
-      const dismissKey = `pattern_mirror_dismissed_${user.id}`;
-      const today = new Date().toISOString().split('T')[0];
-      localStorage.setItem(dismissKey, today);
+    if (dismissKey) {
+      localStorage.setItem(dismissKey, 'true');
     }
     setDismissed(true);
   };
 
-  if (loading || dismissed || patterns.length === 0 || !displayMessage) {
+  // Format pattern name for display
+  const formatPattern = (pattern: string) => {
+    return pattern.replace(/-/g, ' ');
+  };
+
+  // Calculate what percentage of logs resulted in resonance
+  const getResonanceRate = (pattern: PatternData) => {
+    if (pattern.count === 0) return 0;
+    return Math.round((pattern.resonatedCount / pattern.count) * 100);
+  };
+
+  if (loading || dismissed || patterns.length === 0) {
     return null;
   }
 
+  const topPattern = patterns[0];
+
   return (
-    <div className="relative flex items-start gap-3 px-3 py-2.5 rounded-lg bg-muted/20 border border-border/40">
-      <Eye className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-      <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-        {displayMessage}
-      </p>
+    <div className="relative flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/30 border border-border/30">
+      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+        <TrendingUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          {/* Main pattern indicator */}
+          <span className="text-muted-foreground">
+            <span className="font-medium text-foreground capitalize">{formatPattern(topPattern.pattern)}</span>
+            {" "}logged {topPattern.count}× in 2 weeks
+          </span>
+          
+          {/* Resonance indicator if any */}
+          {topPattern.resonatedCount > 0 && (
+            <span className="flex items-center gap-1 text-muted-foreground/70">
+              <Check className="h-3 w-3" />
+              {getResonanceRate(topPattern)}% helped
+            </span>
+          )}
+          
+          {/* Other patterns hint */}
+          {patterns.length > 1 && (
+            <span className="text-muted-foreground/60">
+              +{patterns.slice(1).map(p => formatPattern(p.pattern)).join(", ")}
+            </span>
+          )}
+        </div>
+      </div>
+      
       <button
         onClick={handleDismiss}
-        className="text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
+        className="text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0"
         aria-label="Dismiss"
       >
         <X className="h-3 w-3" />
