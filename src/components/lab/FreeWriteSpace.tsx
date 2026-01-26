@@ -3,19 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
   FileText, 
   Plus, 
-  Save, 
   Trash2, 
-  X,
   Clock,
-  ChevronLeft,
-  ArrowLeft
+  ArrowLeft,
+  Sparkles,
+  Copy,
+  Check,
+  X
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface FreeWrite {
   id: string;
@@ -47,6 +48,10 @@ export const FreeWriteSpace = () => {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [provocativeQuestion, setProvocativeQuestion] = useState<string | null>(null);
+  const [showContentDialog, setShowContentDialog] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState("");
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -258,6 +263,41 @@ export const FreeWriteSpace = () => {
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
+  const handleGenerateContent = async () => {
+    if (!content.trim() || getWordCount(content) < 20) {
+      toast.error("Write at least 20 words first");
+      return;
+    }
+    
+    setIsGeneratingContent(true);
+    setShowContentDialog(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("synthesizer", {
+        body: {
+          mode: "freewrite_to_content",
+          freewrite: content,
+        }
+      });
+
+      if (error) throw error;
+      
+      setGeneratedContent(data.post || "Could not generate content");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate content");
+      setGeneratedContent("");
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
+  const handleCopyContent = () => {
+    navigator.clipboard.writeText(generatedContent);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success("Copied!");
+  };
+
   // Full-screen writing mode
   if (activeWrite) {
     return (
@@ -288,6 +328,20 @@ export const FreeWriteSpace = () => {
               </span>
             )}
             <span>{getWordCount(content)} words</span>
+            
+            {/* Turn into content button - only show if enough content */}
+            {getWordCount(content) >= 20 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGenerateContent}
+                disabled={isGeneratingContent}
+                className="ml-2 text-primary hover:text-primary"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Turn into content
+              </Button>
+            )}
           </div>
         </div>
         
@@ -320,6 +374,62 @@ export const FreeWriteSpace = () => {
             }}
           />
         </div>
+
+        {/* Content Generation Dialog */}
+        <Dialog open={showContentDialog} onOpenChange={setShowContentDialog}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Your Content
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {isGeneratingContent ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : generatedContent ? (
+                <>
+                  <div className="p-4 bg-muted/30 rounded-lg text-sm whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+                    {generatedContent}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleCopyContent} 
+                      className="flex-1"
+                      variant={copied ? "secondary" : "default"}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowContentDialog(false)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Close
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">
+                  Something went wrong. Try again.
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

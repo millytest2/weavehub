@@ -11,7 +11,6 @@ import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt"
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { WhatsEmerging } from "@/components/dashboard/WhatsEmerging";
-import { PatternMirror } from "@/components/dashboard/PatternMirror";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -368,9 +367,6 @@ const Dashboard = () => {
       )}
 
       <div className="flex-1 space-y-6">
-        {/* Pattern Mirror - reflects emotional loops without being prescriptive */}
-        {user && <PatternMirror />}
-        
         {/* What's Emerging - shows once per ~12 hours */}
         {user && <WhatsEmerging userId={user.id} />}
         

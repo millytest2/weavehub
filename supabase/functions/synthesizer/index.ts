@@ -264,6 +264,91 @@ Write a thread-style post (can be multiple tweets) summarizing what I tested, wh
       });
     }
 
+    // FREEWRITE TO CONTENT MODE - turns raw brain dumps into shareable content
+    if (mode === "freewrite_to_content" && body.freewrite) {
+      // Fetch user's identity seed and brand voice for context
+      const [identityResult, voiceResult] = await Promise.all([
+        supabase.from('identity_seeds').select('content, core_values, year_note, weekly_focus').eq('user_id', user.id).maybeSingle(),
+        supabase.from('platform_voice_templates').select('brand_identity, values, avoid_list').eq('user_id', user.id).maybeSingle()
+      ]);
+
+      const identity = identityResult.data;
+      const voice = voiceResult.data;
+
+      let brandContext = "";
+      if (voice) {
+        brandContext = `
+BRAND VOICE:
+${voice.brand_identity || ''}
+Values: ${(voice.values || []).join(', ')}
+Never use: ${(voice.avoid_list || []).join(', ')}
+`;
+      }
+
+      let identityContext = "";
+      if (identity) {
+        identityContext = `
+USER CONTEXT:
+Identity: ${identity.content?.slice(0, 300) || ''}
+Values: ${identity.core_values || ''}
+Focus: ${identity.weekly_focus || ''}
+`;
+      }
+
+      const systemPrompt = `You are a content alchemist who turns raw, unfiltered thinking into shareable content.
+
+Your job is to find the gold in the freewrite - the core insight, realization, or truth - and craft it into a compelling post.
+
+${brandContext}
+${identityContext}
+
+Style rules:
+- Extract the ONE core insight or realization
+- Write like the person thinks, not like a content creator
+- No fluff, no filler
+- Real and raw > polished and generic
+- If there's a story or specific example, use it
+- Keep their authentic voice
+- Never use: "game-changer", "unlock", "leverage", "mindset shift", "journey"
+- Under 280 characters if possible, or a short thread if the idea needs more room`;
+
+      const userPrompt = `Turn this raw freewrite into shareable content:
+
+---
+${body.freewrite.slice(0, 3000)}
+---
+
+Find the core insight and create a punchy, authentic post. If there are multiple insights, pick the strongest one.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("AI Gateway error:", response.status);
+        throw new Error("Failed to generate content from freewrite");
+      }
+
+      const data = await response.json();
+      const post = data.choices?.[0]?.message?.content || '';
+
+      return new Response(JSON.stringify({ post }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     // PATTERN ANALYZER MODE - finds cross-domain connections
     if (mode === "pattern_analyzer" && body.content) {
       const { insights, observations, experiments } = body.content;
