@@ -483,7 +483,7 @@ Surface what resonates from their own captured wisdom.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite", // Cheapest model - always try first
+          model: "google/gemini-2.5-flash", // Higher quality for better invitations
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Give me 3 different action options to choose from." }
@@ -634,7 +634,7 @@ ${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite", // Cheapest model - always try first
+          model: "google/gemini-2.5-flash", // Higher quality for better invitations
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Give me ONE specific "${suggestedPillar}" action.` }

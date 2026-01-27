@@ -49,13 +49,20 @@ serve(async (req) => {
       .select("*")
       .eq("user_id", user.id);
 
+    // Get identity seed for 2026 direction alignment
+    const { data: identityData } = await supabase
+      .from("identity_seeds")
+      .select("year_note, content, core_values, weekly_focus")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
     // Get last 2 weeks of action history
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
     
     const { data: recentActions } = await supabase
       .from("action_history")
-      .select("pillar, action_date")
+      .select("pillar, action_date, action_text, why_it_mattered")
       .eq("user_id", user.id)
       .gte("action_date", twoWeeksAgo.toISOString().split('T')[0]);
 
@@ -168,20 +175,56 @@ serve(async (req) => {
       }
     }
 
-    // Generate summary
+    // Analyze what dominated this week and how it connects to 2026 Misogi
+    const pillarActionCounts: Record<string, number> = {};
+    (recentActions || []).forEach(a => {
+      const p = (a.pillar || 'general').toLowerCase();
+      const normalizedPillar = pillarMap[p] || p;
+      pillarActionCounts[normalizedPillar] = (pillarActionCounts[normalizedPillar] || 0) + 1;
+    });
+    
+    const dominantPillar = Object.entries(pillarActionCounts)
+      .sort(([,a], [,b]) => b - a)[0];
+    
+    // Check alignment with 2026 direction
+    const yearNote = identityData?.year_note?.toLowerCase() || '';
+    const misogiKeywords: Record<string, string[]> = {
+      'business': ['income', 'revenue', 'money', '$', 'job', 'career', 'business'],
+      'content': ['post', 'content', 'video', 'audience', 'creator', 'brand'],
+      'body': ['weight', 'gym', 'health', 'fitness', 'run', 'body'],
+      'mind': ['learn', 'skill', 'study', 'growth', 'develop'],
+      'relationship': ['connect', 'community', 'relationship', 'social'],
+    };
+    
+    const misogiAligned = Object.entries(misogiKeywords)
+      .filter(([_, keywords]) => keywords.some(kw => yearNote.includes(kw)))
+      .map(([pillar]) => pillar);
+
+    // Generate smarter summary
     let summary = "";
     if (adjustments.length === 0) {
-      summary = "Your targets are well-calibrated for your current pace. Keep going!";
+      if (dominantPillar) {
+        const [pillar, count] = dominantPillar;
+        const aligned = misogiAligned.includes(pillar);
+        summary = aligned 
+          ? `Dominated ${pillar} (${count} actions) - directly moving your 2026 Misogi. Targets calibrated.`
+          : `Dominated ${pillar} this week. Consider: does this serve your 2026 direction?`;
+      } else {
+        summary = "Your targets are well-calibrated for your current pace. Keep going!";
+      }
     } else {
       const increases = adjustments.filter(a => a.newTarget > a.oldTarget);
       const decreases = adjustments.filter(a => a.newTarget < a.oldTarget);
       
       if (increases.length > 0 && decreases.length === 0) {
-        summary = `You're crushing it! Raised the bar on ${increases.map(a => a.pillar).join(", ")}.`;
+        const aligned = increases.some(a => misogiAligned.includes(a.pillar.toLowerCase()));
+        summary = aligned
+          ? `Crushing it on ${increases.map(a => a.pillar).join(", ")} - raising the bar. This connects to your 2026 vision.`
+          : `You're crushing ${increases.map(a => a.pillar).join(", ")}! Raised the bar.`;
       } else if (decreases.length > 0 && increases.length === 0) {
         summary = `Adjusted ${decreases.map(a => a.pillar).join(", ")} for sustainable momentum.`;
       } else {
-        summary = `Rebalanced your targets based on actual completion patterns.`;
+        summary = `Rebalanced: ${increases.map(a => `↑${a.pillar}`).join(", ")}, ${decreases.map(a => `↓${a.pillar}`).join(", ")}`;
       }
     }
 
