@@ -146,20 +146,27 @@ const Dashboard = () => {
       }
     }, 60000);
 
+    // Use unique channel name per user to avoid cross-device conflicts
+    const channelName = `dashboard-tasks-${user.id}`;
     const taskChannel = supabase
-      .channel("dashboard-tasks")
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_tasks", filter: `user_id=eq.${user.id}` },
-        () => fetchData(),
+        (payload) => {
+          console.log("Realtime update received:", payload);
+          fetchData();
+        },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+      });
 
     return () => {
       clearInterval(midnightCheck);
       supabase.removeChannel(taskChannel);
     };
-  }, [user, fetchData, tasksForToday]);
+  }, [user, fetchData]); // Removed tasksForToday to prevent reconnection loops
 
   const handleGenerateTask = async (contextOverride?: { energy?: string; time?: string }) => {
     if (!user || isGenerating) return;
