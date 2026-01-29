@@ -11,7 +11,6 @@ import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt"
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { WhatsEmerging } from "@/components/dashboard/WhatsEmerging";
-import { DailyWisdom } from "@/components/dashboard/DailyWisdom";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -375,9 +374,6 @@ const Dashboard = () => {
       )}
 
       <div className="flex-1 space-y-6">
-        {/* Daily Wisdom - surfaces captured insights with spaced repetition */}
-        {user && <DailyWisdom userId={user.id} />}
-        
         {/* What's Emerging - shows once per ~12 hours */}
         {user && <WhatsEmerging userId={user.id} />}
         

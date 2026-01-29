@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 
 import { WeaveView } from "./profile/WeaveView";
+import { DailyWisdom } from "./dashboard/DailyWisdom";
 import { useTheme } from "next-themes";
 
 interface ActionHistoryItem {
@@ -410,35 +411,41 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           )}
           </TabsContent>
 
-          <TabsContent value="mind" className="flex-1 overflow-y-auto px-5 pb-4 mt-0">
+          <TabsContent value="mind" className="flex-1 overflow-y-auto px-5 pb-4 mt-0 space-y-5">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               </div>
             ) : (
-              <WeaveView
-                insights={insightClusters.flatMap(c => c.insights.map(i => ({
-                  id: i.id,
-                  title: i.title,
-                  content: i.content,
-                  topic_id: i.topic_id,
-                  created_at: i.created_at,
-                  topics: i.topics ? { name: i.topics.name, color: i.topics.color } : null
-                })))}
-                actions={weeklyActions.map(a => ({
-                  id: a.id,
-                  action_text: a.action_text,
-                  pillar: a.pillar,
-                  action_date: a.action_date
-                }))}
-                experiments={activeExperiments.map(e => ({
-                  id: e.id,
-                  title: e.title,
-                  status: e.status,
-                  identity_shift_target: e.identity_shift_target
-                }))}
-                identitySeed={identitySeed}
-              />
+              <>
+                {/* Your Mind Said - Daily Wisdom with spaced repetition */}
+                <DailyWisdom userId={user?.id || ""} />
+                
+                {/* Thread Weaving - Patterns and connections */}
+                <WeaveView
+                  insights={insightClusters.flatMap(c => c.insights.map(i => ({
+                    id: i.id,
+                    title: i.title,
+                    content: i.content,
+                    topic_id: i.topic_id,
+                    created_at: i.created_at,
+                    topics: i.topics ? { name: i.topics.name, color: i.topics.color } : null
+                  })))}
+                  actions={weeklyActions.map(a => ({
+                    id: a.id,
+                    action_text: a.action_text,
+                    pillar: a.pillar,
+                    action_date: a.action_date
+                  }))}
+                  experiments={activeExperiments.map(e => ({
+                    id: e.id,
+                    title: e.title,
+                    status: e.status,
+                    identity_shift_target: e.identity_shift_target
+                  }))}
+                  identitySeed={identitySeed}
+                />
+              </>
             )}
           </TabsContent>
         </Tabs>
