@@ -6,11 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
-  ChevronRight, 
-  Calendar, 
-  Target, 
-  Compass, 
-  TrendingUp,
   ChevronDown,
   ChevronUp
 } from "lucide-react";
@@ -207,65 +202,6 @@ export function JourneyFlow() {
 
   return (
     <div className="space-y-4">
-      {/* Flow Visualization - always visible */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-            <span>How it connects</span>
-          </div>
-          
-          {/* Horizontal flow on larger screens, vertical on mobile */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-1">
-            {/* Daily */}
-            <div className="flex-1 p-3 rounded-lg bg-muted/30 border border-border/50">
-              <div className="flex items-center gap-2 mb-1">
-                <Calendar className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium">Daily</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">Actions logged</p>
-            </div>
-            
-            <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block shrink-0" />
-            <ChevronDown className="h-4 w-4 text-muted-foreground sm:hidden mx-auto" />
-            
-            {/* Weekly */}
-            <div className="flex-1 p-3 rounded-lg bg-muted/30 border border-border/50">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium">Weekly</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">Pillar balance</p>
-            </div>
-            
-            <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block shrink-0" />
-            <ChevronDown className="h-4 w-4 text-muted-foreground sm:hidden mx-auto" />
-            
-            {/* Monthly */}
-            <div className="flex-1 p-3 rounded-lg bg-muted/30 border border-border/50">
-              <div className="flex items-center gap-2 mb-1">
-                <Target className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium">Monthly</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">Patterns emerge</p>
-            </div>
-            
-            <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block shrink-0" />
-            <ChevronDown className="h-4 w-4 text-muted-foreground sm:hidden mx-auto" />
-            
-            {/* 2026 */}
-            <div className="flex-1 p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="flex items-center gap-2 mb-1">
-                <Compass className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium text-primary">2026</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                {missionSummary || "Mission aligned"}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Month Breakdown */}
       <div className="space-y-3">
         {monthData.map((month) => {
