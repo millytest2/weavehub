@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Lightbulb, RefreshCw, ChevronRight, Sparkles, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -164,14 +163,14 @@ export function DailyWisdom({ userId }: DailyWisdomProps) {
 
   return (
     <>
-      <Card className="p-4 bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 border-amber-200/50 dark:border-amber-800/30">
-        <div className="flex items-center justify-between mb-3">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-              <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Lightbulb className="h-3.5 w-3.5 text-primary" />
             </div>
             <div>
-              <span className="text-sm font-medium text-foreground">Your Mind Said</span>
+              <span className="text-xs font-medium text-foreground">Your Mind Said</span>
               <p className="text-[10px] text-muted-foreground">Wisdom you captured</p>
             </div>
           </div>
@@ -180,9 +179,9 @@ export function DailyWisdom({ userId }: DailyWisdomProps) {
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+            <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
           </Button>
         </div>
 
@@ -193,7 +192,7 @@ export function DailyWisdom({ userId }: DailyWisdomProps) {
               onClick={() => handleViewWisdom(item)}
               className={cn(
                 "w-full text-left p-3 rounded-lg transition-all",
-                "bg-background/60 hover:bg-background/90",
+                "bg-muted/30 hover:bg-muted/50",
                 "border border-border/40 hover:border-border",
                 markedSeen.has(item.id) && "opacity-70"
               )}
@@ -203,7 +202,7 @@ export function DailyWisdom({ userId }: DailyWisdomProps) {
                   <h4 className="text-sm font-medium line-clamp-1 flex items-center gap-1.5">
                     {item.title}
                     {markedSeen.has(item.id) && (
-                      <Check className="h-3 w-3 text-success shrink-0" />
+                      <Check className="h-3 w-3 text-primary shrink-0" />
                     )}
                   </h4>
                   <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
@@ -226,7 +225,7 @@ export function DailyWisdom({ userId }: DailyWisdomProps) {
             </button>
           ))}
         </div>
-      </Card>
+      </div>
 
       {/* Full Wisdom Dialog */}
       <Dialog open={!!selectedWisdom} onOpenChange={() => setSelectedWisdom(null)}>
