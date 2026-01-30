@@ -10,23 +10,26 @@ interface PillarStats {
   pillar: string;
   target: number;
   completed: number;
+  todayCount: number;
   completionRate: number;
   trend: "up" | "down" | "stable";
+  isPushing: boolean;
 }
 
-// Min/max bounds for targets
-const TARGET_BOUNDS = {
-  min: 1,
-  max: 12,
+// Dynamic bounds
+const TARGET_BOUNDS = { min: 1, max: 12 };
+
+// Responsive thresholds
+const THRESHOLDS = {
+  exceeding: 1.2,   // 120%+ of target
+  crushing: 0.85,   // 85%+ of target
+  onTrack: 0.6,     // 60-85% is healthy  
+  struggling: 0.4,  // Under 40%
+  stalled: 0.25,    // Under 25%
 };
 
-// Thresholds for adjustment
-const THRESHOLDS = {
-  crushing: 0.85, // Raise target if hitting 85%+
-  dominating: 1.0, // Hit or exceeded target
-  struggling: 0.6, // Lower target if under 60%
-  severe: 0.4, // Significant reduction if under 40%
-};
+// Day-level push detection
+const DAILY_PUSH_COUNT = 3; // 3+ actions in one pillar = "pushing"
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -64,24 +67,24 @@ serve(async (req) => {
       .select("*")
       .eq("user_id", user.id);
 
-    // Get identity seed for 2026 direction alignment
+    // Get identity seed for alignment
     const { data: identityData } = await supabase
       .from("identity_seeds")
       .select("year_note, content, core_values, weekly_focus")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    // Get last 3 weeks of action history for better trend analysis
-    const threeWeeksAgo = new Date();
-    threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
+    // Get last 2 weeks of action history (faster response)
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
     
     const { data: recentActions } = await supabase
       .from("action_history")
       .select("pillar, action_date, action_text")
       .eq("user_id", user.id)
-      .gte("action_date", threeWeeksAgo.toISOString().split('T')[0]);
+      .gte("action_date", twoWeeksAgo.toISOString().split('T')[0]);
 
-    // Calculate completion stats per pillar with weekly breakdown
+    // Pillar normalization map
     const pillarMap: Record<string, string> = {
       'connection': 'relationship',
       'skill': 'mind',
@@ -94,26 +97,36 @@ serve(async (req) => {
 
     const pillars = ['business', 'body', 'content', 'relationship', 'mind', 'play'];
     
-    // Weekly completions: [3 weeks ago, 2 weeks ago, last week, this week]
-    const weeklyCompletions: Record<string, number[]> = {};
-    pillars.forEach(p => weeklyCompletions[p] = [0, 0, 0, 0]);
-
+    // Track completions: today, this week (minus today), last week
     const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const today = now.toISOString().split('T')[0];
+    const startOfThisWeek = new Date(now);
+    startOfThisWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+    const startOfLastWeek = new Date(startOfThisWeek);
+    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+    const todayCounts: Record<string, number> = {};
+    const thisWeekCounts: Record<string, number> = {};
+    const lastWeekCounts: Record<string, number> = {};
+    pillars.forEach(p => {
+      todayCounts[p] = 0;
+      thisWeekCounts[p] = 0;
+      lastWeekCounts[p] = 0;
+    });
 
     (recentActions || []).forEach(a => {
       const p = (a.pillar || '').toLowerCase();
       const normalizedPillar = pillarMap[p] || p;
-      if (pillars.includes(normalizedPillar)) {
-        const actionDate = new Date(a.action_date);
-        if (actionDate >= oneWeekAgo) {
-          weeklyCompletions[normalizedPillar][3]++; // This week
-        } else if (actionDate >= twoWeeksAgo) {
-          weeklyCompletions[normalizedPillar][2]++; // Last week
-        } else {
-          weeklyCompletions[normalizedPillar][1]++; // 2 weeks ago
-        }
+      if (!pillars.includes(normalizedPillar)) return;
+      
+      const actionDate = a.action_date;
+      if (actionDate === today) {
+        todayCounts[normalizedPillar]++;
+        thisWeekCounts[normalizedPillar]++;
+      } else if (actionDate >= startOfThisWeek.toISOString().split('T')[0]) {
+        thisWeekCounts[normalizedPillar]++;
+      } else if (actionDate >= startOfLastWeek.toISOString().split('T')[0]) {
+        lastWeekCounts[normalizedPillar]++;
       }
     });
 
@@ -123,68 +136,89 @@ serve(async (req) => {
       targetMap[t.pillar] = t.weekly_target;
     });
 
-    // Calculate adjustments with improved logic
+    // Calculate day of week (1-7, Mon=1)
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+    const daysLeftInWeek = 7 - dayOfWeek + 1;
+    const daysElapsed = dayOfWeek;
+
     const adjustments: { pillar: string; oldTarget: number; newTarget: number; reason: string }[] = [];
     const pillarStats: PillarStats[] = [];
 
     pillars.forEach(pillar => {
       const currentTarget = targetMap[pillar] || 3;
-      const thisWeekCompleted = weeklyCompletions[pillar][3];
-      const lastWeekCompleted = weeklyCompletions[pillar][2];
-      const twoWeeksCompleted = weeklyCompletions[pillar][1];
+      const thisWeekCompleted = thisWeekCounts[pillar];
+      const lastWeekCompleted = lastWeekCounts[pillar];
+      const todayCompleted = todayCounts[pillar];
       
-      // Calculate weighted average (recent weeks matter more)
-      const weightedAvg = (thisWeekCompleted * 3 + lastWeekCompleted * 2 + twoWeeksCompleted * 1) / 6;
-      const completionRate = currentTarget > 0 ? weightedAvg / currentTarget : 0;
+      // Pro-rated completion rate (what % are they at relative to week progress)
+      const expectedByNow = (currentTarget / 7) * daysElapsed;
+      const paceRate = expectedByNow > 0 ? thisWeekCompleted / expectedByNow : 1;
       
-      // Trend analysis
-      const recentTrend = thisWeekCompleted - lastWeekCompleted;
-      const trend: "up" | "down" | "stable" = recentTrend > 1 ? "up" : recentTrend < -1 ? "down" : "stable";
+      // Overall week completion rate
+      const weekCompletionRate = currentTarget > 0 ? thisWeekCompleted / currentTarget : 0;
+      
+      // Trend: compare to last week
+      const lastWeekPace = lastWeekCompleted / 7 * daysElapsed;
+      const trend: "up" | "down" | "stable" = 
+        thisWeekCompleted > lastWeekPace + 1 ? "up" : 
+        thisWeekCompleted < lastWeekPace - 1 ? "down" : "stable";
+
+      // Is user "pushing" today in this pillar?
+      const isPushing = todayCompleted >= DAILY_PUSH_COUNT;
 
       pillarStats.push({
         pillar,
         target: currentTarget,
         completed: thisWeekCompleted,
-        completionRate: Math.round(completionRate * 100),
+        todayCount: todayCompleted,
+        completionRate: Math.round(weekCompletionRate * 100),
         trend,
+        isPushing,
       });
 
       let newTarget = currentTarget;
       let reason = "";
 
-      // DOMINATING: Hitting or exceeding target consistently (2+ weeks at 100%+)
-      if (thisWeekCompleted >= currentTarget && lastWeekCompleted >= currentTarget * 0.85) {
-        newTarget = Math.min(currentTarget + 2, TARGET_BOUNDS.max);
-        reason = `Dominating! ${thisWeekCompleted}/${currentTarget} this week, ${lastWeekCompleted} last week → raising to ${newTarget}`;
-      }
-      // CRUSHING IT: 85%+ completion with upward trend
-      else if (completionRate >= THRESHOLDS.crushing && trend !== "down") {
+      // === RESPONSIVE ADJUSTMENT LOGIC ===
+
+      // 1. PUSHING TODAY: If they hit 3+ in one pillar today and are already at/above target
+      if (isPushing && thisWeekCompleted >= currentTarget) {
         newTarget = Math.min(currentTarget + 1, TARGET_BOUNDS.max);
-        reason = `Crushing it at ${Math.round(completionRate * 100)}% → raising to ${newTarget}`;
+        reason = `Pushing today (${todayCompleted} actions) and already at target → ${newTarget}`;
       }
-      // SEVERE STRUGGLE: Under 40% for multiple weeks
-      else if (completionRate < THRESHOLDS.severe && currentTarget > TARGET_BOUNDS.min) {
+      // 2. ALREADY EXCEEDED: Week target hit with days to spare
+      else if (weekCompletionRate >= 1.0 && daysLeftInWeek >= 2) {
+        newTarget = Math.min(currentTarget + 2, TARGET_BOUNDS.max);
+        reason = `Hit ${thisWeekCompleted}/${currentTarget} with ${daysLeftInWeek} days left → raising to ${newTarget}`;
+      }
+      // 3. ON PACE TO EXCEED: 120%+ pace rate
+      else if (paceRate >= THRESHOLDS.exceeding && thisWeekCompleted >= currentTarget * 0.7) {
+        newTarget = Math.min(currentTarget + 1, TARGET_BOUNDS.max);
+        reason = `Ahead of pace (${Math.round(paceRate * 100)}%) → raising to ${newTarget}`;
+      }
+      // 4. CRUSHING IT: 85%+ completion with upward or stable trend
+      else if (weekCompletionRate >= THRESHOLDS.crushing && trend !== "down" && daysElapsed >= 4) {
+        newTarget = Math.min(currentTarget + 1, TARGET_BOUNDS.max);
+        reason = `${Math.round(weekCompletionRate * 100)}% with ${trend} trend → ${newTarget}`;
+      }
+      // 5. STALLED: Under 25% by mid-week
+      else if (weekCompletionRate < THRESHOLDS.stalled && daysElapsed >= 4 && currentTarget > TARGET_BOUNDS.min) {
         newTarget = Math.max(currentTarget - 2, TARGET_BOUNDS.min);
-        reason = `${Math.round(completionRate * 100)}% completion → reducing to ${newTarget} for momentum`;
+        reason = `Only ${thisWeekCompleted}/${currentTarget} by day ${daysElapsed} → ${newTarget} for momentum`;
       }
-      // STRUGGLING: Under 60% completion consistently
-      else if (completionRate < THRESHOLDS.struggling && currentTarget > TARGET_BOUNDS.min && trend !== "up") {
+      // 6. STRUGGLING: Under 40% and trending down
+      else if (weekCompletionRate < THRESHOLDS.struggling && trend === "down" && currentTarget > TARGET_BOUNDS.min) {
         newTarget = Math.max(currentTarget - 1, TARGET_BOUNDS.min);
-        reason = `${Math.round(completionRate * 100)}% completion → adjusting to ${newTarget}`;
+        reason = `${Math.round(weekCompletionRate * 100)}% & trending down → ${newTarget}`;
       }
-      // PLATEAU at low completion but trending up - encourage the momentum
-      else if (completionRate < THRESHOLDS.struggling && trend === "up" && thisWeekCompleted > lastWeekCompleted + 1) {
-        // Don't adjust - they're improving
+      // 7. LOW BUT CLIMBING: Don't penalize if they're improving
+      else if (weekCompletionRate < THRESHOLDS.onTrack && trend === "up") {
+        // Keep target - they're building momentum
         reason = "";
       }
 
       if (newTarget !== currentTarget && reason) {
-        adjustments.push({
-          pillar,
-          oldTarget: currentTarget,
-          newTarget,
-          reason
-        });
+        adjustments.push({ pillar, oldTarget: currentTarget, newTarget, reason });
       }
     });
 
@@ -213,18 +247,16 @@ serve(async (req) => {
       }
     }
 
-    // Analyze what dominated this week and how it connects to 2026 Misogi
+    // Find dominant pillars for summary
     const pillarActionCounts: Record<string, number> = {};
-    (recentActions || []).filter(a => new Date(a.action_date) >= oneWeekAgo).forEach(a => {
-      const p = (a.pillar || 'general').toLowerCase();
-      const normalizedPillar = pillarMap[p] || p;
-      pillarActionCounts[normalizedPillar] = (pillarActionCounts[normalizedPillar] || 0) + 1;
-    });
+    pillars.forEach(p => pillarActionCounts[p] = thisWeekCounts[p]);
     
     const dominantPillar = Object.entries(pillarActionCounts)
       .sort(([,a], [,b]) => b - a)[0];
     
-    // Check alignment with 2026 direction
+    const pushingPillars = pillarStats.filter(p => p.isPushing).map(p => p.pillar);
+
+    // Extract Misogi-aligned pillars
     const yearNote = identityData?.year_note?.toLowerCase() || '';
     const misogiKeywords: Record<string, string[]> = {
       'business': ['income', 'revenue', 'money', '$', 'job', 'career', 'business', 'work'],
@@ -239,43 +271,28 @@ serve(async (req) => {
       .filter(([_, keywords]) => keywords.some(kw => yearNote.includes(kw)))
       .map(([pillar]) => pillar);
 
-    // Generate smarter summary
+    // Generate summary
     let summary = "";
     if (adjustments.length === 0) {
-      if (dominantPillar) {
-        const [pillar, count] = dominantPillar;
-        const aligned = misogiAligned.includes(pillar);
-        summary = aligned 
-          ? `Dominated ${pillar} (${count} actions) - directly moving your 2026 Misogi. Targets well-calibrated.`
-          : `Strong in ${pillar} (${count} actions). Your targets match your current pace.`;
+      if (pushingPillars.length > 0) {
+        summary = `Pushing hard on ${pushingPillars.join(", ")} today. Targets well-calibrated.`;
+      } else if (dominantPillar && dominantPillar[1] > 0) {
+        summary = `Leading with ${dominantPillar[0]} (${dominantPillar[1]} this week). Targets match your rhythm.`;
       } else {
-        summary = "Targets are well-calibrated for your current rhythm.";
+        summary = "Targets calibrated. Keep moving.";
       }
     } else {
       const increases = adjustments.filter(a => a.newTarget > a.oldTarget);
       const decreases = adjustments.filter(a => a.newTarget < a.oldTarget);
       
-      if (increases.length > 0 && decreases.length === 0) {
-        const aligned = increases.some(a => misogiAligned.includes(a.pillar.toLowerCase()));
-        const pillarNames = increases.map(a => a.pillar).join(", ");
-        const increaseAmounts = increases.map(a => `${a.pillar}: ${a.oldTarget}→${a.newTarget}`).join(", ");
-        summary = aligned
-          ? `You're dominating ${pillarNames}! Raised targets (${increaseAmounts}) - this connects to your 2026 vision.`
-          : `Crushing ${pillarNames}! Raised: ${increaseAmounts}`;
-      } else if (decreases.length > 0 && increases.length === 0) {
-        const decreaseInfo = decreases.map(a => `${a.pillar}: ${a.oldTarget}→${a.newTarget}`).join(", ");
-        summary = `Adjusted for sustainable momentum: ${decreaseInfo}. Small consistent steps beat burnout.`;
-      } else {
-        const upStr = increases.map(a => `↑${a.pillar}`).join(", ");
-        const downStr = decreases.map(a => `↓${a.pillar}`).join(", ");
-        summary = `Rebalanced targets: ${upStr}${upStr && downStr ? ", " : ""}${downStr}`;
+      if (increases.length > 0) {
+        const names = increases.map(a => a.pillar).join(", ");
+        summary = `Raised ${names} targets - you're crushing it.`;
       }
-    }
-
-    // Add dominant pillar insight
-    if (dominantPillar && dominantPillar[1] >= 5) {
-      const [pillar, count] = dominantPillar;
-      summary += ` (${pillar} led with ${count} actions)`;
+      if (decreases.length > 0) {
+        const names = decreases.map(a => a.pillar).join(", ");
+        summary += (summary ? " " : "") + `Lowered ${names} for sustainable momentum.`;
+      }
     }
 
     return new Response(JSON.stringify({
@@ -284,6 +301,8 @@ serve(async (req) => {
       summary,
       totalAdjustments: adjustments.length,
       misogiAligned,
+      dayOfWeek,
+      daysLeftInWeek,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -257,41 +257,41 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     }
   }, [user, viewDate]);
 
-  // Auto-adjust targets weekly on Sunday/Monday (check once per session)
+  // Auto-adjust targets - runs on every visit to check for needed adjustments
+  // More responsive: checks after any action logging, not just Sun/Mon
   useEffect(() => {
     if (!user || !isCurrentWeek) return;
     
-    const checkWeeklyAutoAdjust = async () => {
-      const dayOfWeek = new Date().getDay(); // 0 = Sunday, 1 = Monday
-      if (dayOfWeek !== 0 && dayOfWeek !== 1) return; // Only on Sun/Mon
+    const checkAutoAdjust = async () => {
+      // Only run once per hour max to avoid spam
+      const lastCheckKey = `lastAutoAdjustCheck_${user.id}`;
+      const lastCheck = localStorage.getItem(lastCheckKey);
+      const now = Date.now();
       
-      const lastAutoAdjustKey = `lastAutoAdjust_${user.id}`;
-      const lastAdjust = localStorage.getItem(lastAutoAdjustKey);
-      const now = new Date();
-      const weekId = `${getYear(now)}-${getWeek(now, { weekStartsOn: 1 })}`;
+      if (lastCheck && (now - parseInt(lastCheck)) < 60 * 60 * 1000) {
+        return; // Less than 1 hour since last check
+      }
       
-      if (lastAdjust === weekId) return; // Already adjusted this week
-      
-      console.log("Running weekly auto-adjust check...");
+      console.log("Running auto-adjust check...");
       try {
         const { data, error } = await supabase.functions.invoke('auto-adjust-targets');
         if (error) throw error;
         
         if (data.adjustments?.length > 0) {
-          toast.info(`Targets auto-adjusted: ${data.summary}`, { duration: 5000 });
+          toast.success(`${data.summary}`, { duration: 4000 });
           fetchWeekData(); // Refresh to show new targets
         }
         
-        localStorage.setItem(lastAutoAdjustKey, weekId);
+        localStorage.setItem(lastCheckKey, now.toString());
       } catch (error) {
         console.error("Auto-adjust check failed:", error);
       }
     };
     
-    // Run after a short delay to not block initial load
-    const timer = setTimeout(checkWeeklyAutoAdjust, 2000);
+    // Run after data loads
+    const timer = setTimeout(checkAutoAdjust, 1500);
     return () => clearTimeout(timer);
-  }, [user, isCurrentWeek]);
+  }, [user, isCurrentWeek, actions.length]); // Re-run when actions change
 
   const fetchWeekData = async () => {
     if (!user) return;
