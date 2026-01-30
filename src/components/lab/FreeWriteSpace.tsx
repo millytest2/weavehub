@@ -298,6 +298,27 @@ export const FreeWriteSpace = () => {
     toast.success("Copied!");
   };
 
+  const handleRefineContent = async () => {
+    if (!generatedContent) return;
+    setIsGeneratingContent(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("synthesizer", {
+        body: {
+          mode: "freewrite_to_content",
+          freewrite: `Original thought: ${content}\n\nPrevious draft: ${generatedContent}\n\nMake it more punchy and authentic. Find the real core.`,
+        }
+      });
+
+      if (error) throw error;
+      setGeneratedContent(data.post || generatedContent);
+    } catch (error: any) {
+      toast.error("Couldn't refine");
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
   // Full-screen writing mode
   if (activeWrite) {
     return (
@@ -339,7 +360,7 @@ export const FreeWriteSpace = () => {
                 className="ml-2 text-primary hover:text-primary"
               >
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                Turn into content
+                Find the gold
               </Button>
             )}
           </div>
@@ -381,18 +402,22 @@ export const FreeWriteSpace = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Your Content
+                The gold from your thinking
               </DialogTitle>
             </DialogHeader>
             
             <div className="space-y-4">
               {isGeneratingContent ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
                   <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-muted-foreground">Finding the core insight...</p>
                 </div>
               ) : generatedContent ? (
                 <>
-                  <div className="p-4 bg-muted/30 rounded-lg text-sm whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+                  <p className="text-xs text-muted-foreground">
+                    Extracted from your raw thinking. Edit as needed.
+                  </p>
+                  <div className="p-4 bg-muted/30 rounded-xl text-sm whitespace-pre-wrap max-h-[300px] overflow-y-auto border border-border/50">
                     {generatedContent}
                   </div>
                   <div className="flex gap-2">
@@ -415,10 +440,17 @@ export const FreeWriteSpace = () => {
                     </Button>
                     <Button 
                       variant="outline" 
+                      onClick={handleRefineContent}
+                      disabled={isGeneratingContent}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Refine
+                    </Button>
+                    <Button 
+                      variant="ghost" 
                       onClick={() => setShowContentDialog(false)}
                     >
-                      <X className="h-4 w-4 mr-2" />
-                      Close
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </>

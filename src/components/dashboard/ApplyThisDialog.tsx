@@ -5,16 +5,16 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
-import { Check, X, Clock, Zap } from "lucide-react";
+import { Check, X, ArrowRight, Lightbulb, Quote } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface PendingAction {
   id: string;
   source_title: string;
+  source_type: string;
   action_text: string;
   action_context: string | null;
-  expires_at: string | null;
   created_at: string;
 }
 
@@ -30,6 +30,7 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [identityContext, setIdentityContext] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && user) {
@@ -42,15 +43,31 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
     setIsLoading(true);
     
     try {
-      const { data: actions } = await supabase
-        .from("pending_actions")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: true });
+      const [actionsResult, identityResult] = await Promise.all([
+        supabase
+          .from("pending_actions")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("status", "pending")
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("identity_seeds")
+          .select("content, weekly_focus")
+          .eq("user_id", user.id)
+          .maybeSingle()
+      ]);
       
-      setPendingActions((actions || []) as PendingAction[]);
+      setPendingActions((actionsResult.data || []) as PendingAction[]);
       setCurrentIndex(0);
+
+      // Extract a short identity phrase for context
+      if (identityResult.data?.content) {
+        const content = identityResult.data.content;
+        const match = content.match(/I am (?:becoming )?(?:someone who )?([^.]+)/i);
+        if (match) {
+          setIdentityContext(match[1].trim().toLowerCase());
+        }
+      }
     } catch (error) {
       console.error("Error fetching pending actions:", error);
     } finally {
@@ -102,7 +119,25 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
     }
   };
 
-  const handleSkip = async () => {
+  const handleNotNow = async () => {
+    if (!currentAction || !user) return;
+    
+    try {
+      // Just skip for now, don't mark as skipped permanently
+      if (currentIndex < pendingActions.length - 1) {
+        setCurrentIndex(prev => prev + 1);
+      } else {
+        onOpenChange(false);
+        if (pendingActions.length > 1) {
+          toast.info(`${pendingActions.length - 1} still waiting when you're ready`);
+        }
+      }
+    } catch (error) {
+      console.error("Error skipping action:", error);
+    }
+  };
+
+  const handleDismiss = async () => {
     if (!currentAction || !user) return;
     
     try {
@@ -117,26 +152,22 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
         setPendingActions(prev => prev.filter(a => a.id !== currentAction.id));
         if (pendingActions.length <= 1) {
           onOpenChange(false);
-          toast.info("All caught up!");
         }
       }
     } catch (error) {
-      console.error("Error skipping action:", error);
+      console.error("Error dismissing action:", error);
     }
   };
 
-  const getTimeRemaining = () => {
-    if (!currentAction?.expires_at) return null;
-    const expires = new Date(currentAction.expires_at);
-    const now = new Date();
-    const hoursLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
-    return hoursLeft;
+  const getSourceIcon = (sourceType?: string) => {
+    // Simple fallback
+    return <Lightbulb className="h-3.5 w-3.5" />;
   };
 
   const content = (
     <div className="py-2 sm:py-3 overflow-hidden">
       {isLoading ? (
-        <div className="flex items-center justify-center py-6">
+        <div className="flex items-center justify-center py-8">
           <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       ) : (
@@ -147,42 +178,42 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-3 overflow-hidden"
+              className="space-y-4 overflow-hidden"
             >
-              {/* Source reference */}
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-                  From: {currentAction.source_title}
-                </p>
-                {getTimeRemaining() !== null && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                    <Clock className="h-3 w-3" />
-                    <span>{getTimeRemaining()}h left</span>
-                  </div>
-                )}
+              {/* Source reference - softer */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Quote className="h-3 w-3" />
+                <span className="truncate">From "{currentAction.source_title}"</span>
               </div>
               
-              {/* Action */}
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 overflow-hidden">
-                <p className="text-sm sm:text-base font-medium leading-relaxed break-words">
+              {/* The action itself - prominent */}
+              <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+                <p className="text-base font-medium leading-relaxed break-words">
                   {currentAction.action_text}
                 </p>
               </div>
               
-              {/* Context */}
+              {/* Context - why this matters */}
               {currentAction.action_context && (
-                <p className="text-sm text-muted-foreground leading-relaxed break-words">
+                <p className="text-sm text-muted-foreground leading-relaxed break-words px-1">
                   {currentAction.action_context}
+                </p>
+              )}
+
+              {/* Identity connection - subtle */}
+              {identityContext && (
+                <p className="text-xs text-muted-foreground/70 italic px-1">
+                  This connects to {identityContext}
                 </p>
               )}
               
               {/* Progress indicator */}
               {pendingActions.length > 1 && (
-                <div className="flex items-center justify-center gap-1.5">
+                <div className="flex items-center justify-center gap-1.5 pt-1">
                   {pendingActions.map((_, i) => (
                     <div 
                       key={i}
-                      className={`w-2 h-2 rounded-full transition-colors ${
+                      className={`w-1.5 h-1.5 rounded-full transition-colors ${
                         i === currentIndex ? 'bg-primary' : 'bg-muted'
                       }`}
                     />
@@ -190,37 +221,46 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
                 </div>
               )}
               
-              {/* Actions */}
-              <div className="flex gap-2 pt-1">
+              {/* Actions - cleaner */}
+              <div className="space-y-2 pt-2">
                 <Button
                   onClick={handleComplete}
                   disabled={isCompleting}
-                  className="flex-1 h-10 sm:h-9 rounded-lg text-sm"
+                  className="w-full h-11 rounded-xl text-sm"
                 >
-                  <Check className="h-4 w-4 mr-1.5" />
-                  Done
+                  <Check className="h-4 w-4 mr-2" />
+                  I did this
                 </Button>
-                <Button
-                  onClick={handleSkip}
-                  variant="outline"
-                  className="h-10 sm:h-9 rounded-lg px-3"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleNotNow}
+                    variant="ghost"
+                    className="flex-1 h-9 rounded-lg text-sm text-muted-foreground"
+                  >
+                    Not now
+                  </Button>
+                  <Button
+                    onClick={handleDismiss}
+                    variant="ghost"
+                    className="h-9 rounded-lg px-3 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-6"
+              className="text-center py-8"
             >
-              <div className="w-10 h-10 mx-auto rounded-lg bg-success/10 flex items-center justify-center mb-2">
-                <Check className="h-5 w-5 text-success" />
+              <div className="w-12 h-12 mx-auto rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+                <Check className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm font-medium">All caught up!</p>
+              <p className="text-sm font-medium">All caught up</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Save content to queue new actions
+                New actions appear as you save content
               </p>
             </motion.div>
           )}
@@ -229,35 +269,19 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
     </div>
   );
 
-  const header = (
-    <>
-      <div className="flex items-center gap-2">
-        <Zap className="h-5 w-5 text-primary" />
-        <span>Apply This</span>
-      </div>
-      <p className="text-sm text-muted-foreground mt-1">
-        {pendingActions.length > 0 
-          ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} queued from your saved content`
-          : "No pending actions"
-        }
-      </p>
-    </>
-  );
-
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="px-4 pb-8 overflow-hidden max-w-full">
           <div className="w-full overflow-hidden">
             <DrawerHeader className="text-left px-0">
-              <DrawerTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" />
-                Apply This
+              <DrawerTitle className="text-lg">
+                Apply what you learned
               </DrawerTitle>
               <DrawerDescription className="break-words">
                 {pendingActions.length > 0 
-                  ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} queued`
-                  : "No pending actions"
+                  ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} from your captures`
+                  : "Nothing pending"
                 }
               </DrawerDescription>
             </DrawerHeader>
@@ -270,16 +294,15 @@ export const ApplyThisDialog = ({ open, onOpenChange }: ApplyThisDialogProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-4 rounded-xl">
+      <DialogContent className="max-w-sm p-5 rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            Apply This
+          <DialogTitle className="text-lg">
+            Apply what you learned
           </DialogTitle>
           <DialogDescription>
             {pendingActions.length > 0 
-              ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} queued from your saved content`
-              : "No pending actions"
+              ? `${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} from your captures`
+              : "Nothing pending"
             }
           </DialogDescription>
         </DialogHeader>

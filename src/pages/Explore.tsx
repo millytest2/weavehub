@@ -6,6 +6,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
@@ -15,353 +16,306 @@ import {
   FlaskConical, 
   Loader2,
   Sparkles,
-  Link2,
-  Target,
-  Layers
+  Clock,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Quote
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ContentItem {
   id: string;
   type: "insight" | "document" | "experiment";
   title: string;
-  preview: string;
-  topic?: string;
-  topicColor?: string;
+  content: string;
+  source?: string;
   created_at: string;
-}
-
-interface TopicCluster {
-  name: string;
-  color: string;
-  items: ContentItem[];
-  connections: string[]; // Connected topic names
-  identityAligned: boolean;
+  last_accessed?: string;
+  access_count?: number;
 }
 
 const Explore = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
-  const [clusters, setClusters] = useState<TopicCluster[]>([]);
-  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<ContentItem[]>([]);
+  const [aiSynthesis, setAiSynthesis] = useState<string | null>(null);
+  const [citedSources, setCitedSources] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
-  const [itemDetail, setItemDetail] = useState<any>(null);
-  const [identityKeywords, setIdentityKeywords] = useState<string[]>([]);
+  const [stats, setStats] = useState({ insights: 0, documents: 0, experiments: 0, forgotten: 0 });
+  const [suggestedQueries, setSuggestedQueries] = useState<string[]>([]);
+  const [forgottenGems, setForgottenGems] = useState<ContentItem[]>([]);
+  const [showForgotten, setShowForgotten] = useState(false);
 
   useEffect(() => {
     if (!user) {
       navigate("/auth");
       return;
     }
-    fetchClusters();
+    loadInitialData();
   }, [user, navigate]);
 
-  const fetchClusters = async () => {
+  const loadInitialData = async () => {
     if (!user) return;
-    setLoading(true);
 
-    try {
-      // Fetch all content types and identity
-      const [insightsResult, documentsResult, experimentsResult, topicsResult, identityResult] = await Promise.all([
-        supabase
-          .from("insights")
-          .select("id, title, content, topic_id, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(150),
-        supabase
-          .from("documents")
-          .select("id, title, summary, topic_id, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(50),
-        supabase
-          .from("experiments")
-          .select("id, title, description, hypothesis, topic_id, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(30),
-        supabase
-          .from("topics")
-          .select("id, name, color")
-          .eq("user_id", user.id),
-        supabase
-          .from("identity_seeds")
-          .select("content, core_values, year_note")
-          .eq("user_id", user.id)
-          .maybeSingle()
-      ]);
+    // Load stats and forgotten gems in parallel
+    const [insightsCount, docsCount, expCount, forgottenInsights, topicsResult, identityResult] = await Promise.all([
+      supabase.from("insights").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("documents").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("experiments").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      // Find insights not accessed in 30+ days
+      supabase
+        .from("insights")
+        .select("id, title, content, source, created_at, last_accessed, access_count")
+        .eq("user_id", user.id)
+        .or(`last_accessed.is.null,last_accessed.lt.${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()}`)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase.from("topics").select("name").eq("user_id", user.id).limit(5),
+      supabase.from("identity_seeds").select("weekly_focus, year_note, core_values").eq("user_id", user.id).maybeSingle()
+    ]);
 
-      const topics = new Map(topicsResult.data?.map(t => [t.id, { name: t.name, color: t.color || "#3B82F6" }]) || []);
-      
-      // Extract identity keywords for alignment detection
-      if (identityResult.data) {
-        const idText = `${identityResult.data.content || ""} ${identityResult.data.core_values || ""} ${identityResult.data.year_note || ""}`;
-        const keywords = idText.toLowerCase()
-          .split(/\s+/)
-          .filter(w => w.length > 4)
-          .slice(0, 20);
-        setIdentityKeywords(keywords);
-      }
-      
-      // Convert to ContentItems
-      const allItems: ContentItem[] = [
-        ...(insightsResult.data || []).map(i => ({
-          id: i.id,
-          type: "insight" as const,
-          title: i.title,
-          preview: i.content?.substring(0, 120) || "",
-          topic: i.topic_id ? topics.get(i.topic_id)?.name : undefined,
-          topicColor: i.topic_id ? topics.get(i.topic_id)?.color : undefined,
-          created_at: i.created_at
-        })),
-        ...(documentsResult.data || []).map(d => ({
-          id: d.id,
-          type: "document" as const,
-          title: d.title,
-          preview: d.summary?.substring(0, 120) || "",
-          topic: d.topic_id ? topics.get(d.topic_id)?.name : undefined,
-          topicColor: d.topic_id ? topics.get(d.topic_id)?.color : undefined,
-          created_at: d.created_at
-        })),
-        ...(experimentsResult.data || []).map(e => ({
-          id: e.id,
-          type: "experiment" as const,
-          title: e.title,
-          preview: e.hypothesis || e.description?.substring(0, 120) || "",
-          topic: (e as any).topic_id ? topics.get((e as any).topic_id)?.name : undefined,
-          topicColor: (e as any).topic_id ? topics.get((e as any).topic_id)?.color : undefined,
-          created_at: e.created_at
-        }))
-      ];
+    setStats({
+      insights: insightsCount.count || 0,
+      documents: docsCount.count || 0,
+      experiments: expCount.count || 0,
+      forgotten: forgottenInsights.data?.length || 0
+    });
 
-      // Build clusters with connection detection
-      const topicClusters = new Map<string, { color: string; items: ContentItem[] }>();
-      const unclustered: ContentItem[] = [];
-
-      for (const item of allItems) {
-        if (item.topic) {
-          if (!topicClusters.has(item.topic)) {
-            topicClusters.set(item.topic, { color: item.topicColor || "#3B82F6", items: [] });
-          }
-          topicClusters.get(item.topic)!.items.push(item);
-        } else {
-          unclustered.push(item);
-        }
-      }
-
-      // Detect connections between topics (shared keywords)
-      const topicKeywords = new Map<string, Set<string>>();
-      for (const [topic, data] of topicClusters) {
-        const words = new Set<string>();
-        for (const item of data.items) {
-          const text = `${item.title} ${item.preview}`.toLowerCase();
-          text.split(/\s+/).filter(w => w.length > 5).forEach(w => words.add(w));
-        }
-        topicKeywords.set(topic, words);
-      }
-
-      // Find connections and identity alignment
-      const clusterArray: TopicCluster[] = Array.from(topicClusters.entries())
-        .map(([name, data]) => {
-          const myWords = topicKeywords.get(name) || new Set();
-          const connections: string[] = [];
-          
-          for (const [otherTopic, otherWords] of topicKeywords) {
-            if (otherTopic !== name) {
-              const shared = [...myWords].filter(w => otherWords.has(w));
-              if (shared.length >= 3) {
-                connections.push(otherTopic);
-              }
-            }
-          }
-
-          // Check identity alignment
-          const topicText = data.items.map(i => `${i.title} ${i.preview}`).join(" ").toLowerCase();
-          const alignmentScore = identityKeywords.filter(kw => topicText.includes(kw)).length;
-          
-          return {
-            name,
-            color: data.color,
-            items: data.items,
-            connections,
-            identityAligned: alignmentScore >= 2
-          };
-        })
-        .sort((a, b) => b.items.length - a.items.length);
-
-      // Add unclustered
-      if (unclustered.length > 0) {
-        clusterArray.push({ 
-          name: "Uncategorized", 
-          color: "#6B7280", 
-          items: unclustered, 
-          connections: [],
-          identityAligned: false
-        });
-      }
-
-      setClusters(clusterArray);
-    } catch (error) {
-      console.error("Error fetching clusters:", error);
-      toast.error("Failed to load content");
-    } finally {
-      setLoading(false);
+    // Set forgotten gems
+    if (forgottenInsights.data) {
+      setForgottenGems(forgottenInsights.data.map(i => ({
+        id: i.id,
+        type: "insight" as const,
+        title: i.title,
+        content: i.content || "",
+        source: i.source,
+        created_at: i.created_at,
+        last_accessed: i.last_accessed,
+        access_count: i.access_count
+      })));
     }
+
+    // Load recent searches from localStorage
+    const stored = localStorage.getItem(`explore_recent_${user.id}`);
+    if (stored) {
+      setRecentSearches(JSON.parse(stored).slice(0, 5));
+    }
+
+    // Generate suggested queries based on user's data
+    const suggestions: string[] = [];
+    
+    if (identityResult.data?.weekly_focus) {
+      const focus = identityResult.data.weekly_focus.split(" ").slice(0, 3).join(" ");
+      suggestions.push(`What did I save about ${focus.toLowerCase()}?`);
+    }
+    
+    if (topicsResult.data) {
+      topicsResult.data.slice(0, 2).forEach(t => {
+        suggestions.push(`My thoughts on ${t.name.toLowerCase()}`);
+      });
+    }
+    
+    if (identityResult.data?.year_note) {
+      suggestions.push("What connects to my 2026 vision?");
+    }
+
+    if (identityResult.data?.core_values) {
+      suggestions.push("What did I capture about my values?");
+    }
+    
+    setSuggestedQueries(suggestions.slice(0, 4));
   };
 
-  const handleSearch = useCallback(async () => {
-    if (!user || !query.trim()) return;
+  const handleSearch = useCallback(async (searchQuery?: string) => {
+    const q = searchQuery || query;
+    if (!user || !q.trim()) return;
     
     setSearching(true);
-    setAiAnswer(null);
-    setSearchResults([]);
+    setResults([]);
+    setAiSynthesis(null);
+    setCitedSources([]);
 
     try {
+      // Try semantic search via retrieval engine
       const { data, error } = await supabase.functions.invoke("retrieval-engine", {
-        body: { action: "surface", query: query.trim(), limit: 15 }
+        body: { action: "surface", query: q.trim(), limit: 15, includeCitations: true }
       });
 
-      if (error) throw error;
-
-      if (data?.items && data.items.length > 0) {
-        setSearchResults(data.items);
-        if (data?.synthesis) {
-          setAiAnswer(data.synthesis);
+      if (!error && data?.items?.length > 0) {
+        setResults(data.items);
+        if (data.synthesis) {
+          setAiSynthesis(data.synthesis);
+        }
+        if (data.citations) {
+          setCitedSources(data.citations);
         }
       } else {
-        throw new Error("No AI results");
+        // Fallback to simple text search
+        await fallbackSearch(q);
       }
+
+      // Save to recent searches
+      const newRecent = [q, ...recentSearches.filter(r => r !== q)].slice(0, 5);
+      setRecentSearches(newRecent);
+      localStorage.setItem(`explore_recent_${user.id}`, JSON.stringify(newRecent));
 
     } catch (error) {
       console.error("Search error:", error);
-      
-      // Fallback to simple text search
-      try {
-        const searchTerm = `%${query.trim().toLowerCase()}%`;
-        
-        const [insightsResult, documentsResult] = await Promise.all([
-          supabase
-            .from("insights")
-            .select("id, title, content, created_at")
-            .eq("user_id", user.id)
-            .or(`title.ilike.${searchTerm},content.ilike.${searchTerm}`)
-            .limit(20),
-          supabase
-            .from("documents")
-            .select("id, title, summary, created_at")
-            .eq("user_id", user.id)
-            .or(`title.ilike.${searchTerm},summary.ilike.${searchTerm}`)
-            .limit(10)
-        ]);
-
-        const results: ContentItem[] = [
-          ...(insightsResult.data || []).map(i => ({
-            id: i.id,
-            type: "insight" as const,
-            title: i.title,
-            preview: i.content?.substring(0, 120) || "",
-            created_at: i.created_at
-          })),
-          ...(documentsResult.data || []).map(d => ({
-            id: d.id,
-            type: "document" as const,
-            title: d.title,
-            preview: d.summary?.substring(0, 120) || "",
-            created_at: d.created_at
-          }))
-        ];
-
-        setSearchResults(results);
-      } catch (fallbackError) {
-        toast.error("Search failed");
-      }
+      await fallbackSearch(q);
     } finally {
       setSearching(false);
     }
-  }, [user, query]);
+  }, [user, query, recentSearches]);
+
+  const fallbackSearch = async (q: string) => {
+    if (!user) return;
+    
+    const searchTerm = `%${q.toLowerCase()}%`;
+    
+    const [insightsResult, documentsResult, experimentsResult] = await Promise.all([
+      supabase
+        .from("insights")
+        .select("id, title, content, source, created_at, last_accessed, access_count")
+        .eq("user_id", user.id)
+        .or(`title.ilike.${searchTerm},content.ilike.${searchTerm}`)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("documents")
+        .select("id, title, summary, created_at")
+        .eq("user_id", user.id)
+        .or(`title.ilike.${searchTerm},summary.ilike.${searchTerm}`)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("experiments")
+        .select("id, title, description, hypothesis, created_at")
+        .eq("user_id", user.id)
+        .or(`title.ilike.${searchTerm},description.ilike.${searchTerm},hypothesis.ilike.${searchTerm}`)
+        .order("created_at", { ascending: false })
+        .limit(5)
+    ]);
+
+    const combined: ContentItem[] = [
+      ...(insightsResult.data || []).map(i => ({
+        id: i.id,
+        type: "insight" as const,
+        title: i.title,
+        content: i.content || "",
+        source: i.source,
+        created_at: i.created_at,
+        last_accessed: i.last_accessed,
+        access_count: i.access_count
+      })),
+      ...(documentsResult.data || []).map(d => ({
+        id: d.id,
+        type: "document" as const,
+        title: d.title,
+        content: d.summary || "",
+        created_at: d.created_at
+      })),
+      ...(experimentsResult.data || []).map(e => ({
+        id: e.id,
+        type: "experiment" as const,
+        title: e.title,
+        content: e.hypothesis || e.description || "",
+        created_at: e.created_at
+      }))
+    ];
+
+    setResults(combined);
+  };
 
   const handleItemClick = async (item: ContentItem) => {
     setSelectedItem(item);
     
-    try {
-      let detail = null;
-      
-      if (item.type === "insight") {
-        const { data } = await supabase
-          .from("insights")
-          .select("*")
-          .eq("id", item.id)
-          .single();
-        detail = data;
-      } else if (item.type === "document") {
-        const { data } = await supabase
-          .from("documents")
-          .select("*")
-          .eq("id", item.id)
-          .single();
-        detail = data;
-      } else if (item.type === "experiment") {
-        const { data } = await supabase
-          .from("experiments")
-          .select("*")
-          .eq("id", item.id)
-          .single();
-        detail = data;
-      }
-      
-      setItemDetail(detail);
-    } catch (error) {
-      console.error("Error fetching detail:", error);
+    // Update access tracking for spaced repetition
+    if (item.type === "insight") {
+      await supabase.rpc("update_item_access", { 
+        table_name: "insights", 
+        item_id: item.id 
+      });
+      // Remove from forgotten gems if present
+      setForgottenGems(prev => prev.filter(g => g.id !== item.id));
+    } else if (item.type === "document") {
+      await supabase.rpc("update_item_access", { 
+        table_name: "documents", 
+        item_id: item.id 
+      });
     }
+  };
+
+  const clearRecentSearches = () => {
+    if (!user) return;
+    setRecentSearches([]);
+    localStorage.removeItem(`explore_recent_${user.id}`);
   };
 
   const getItemIcon = (type: string) => {
     switch (type) {
-      case "insight": return <Lightbulb className="h-3.5 w-3.5" />;
-      case "document": return <FileText className="h-3.5 w-3.5" />;
-      case "experiment": return <FlaskConical className="h-3.5 w-3.5" />;
-      default: return <Lightbulb className="h-3.5 w-3.5" />;
+      case "insight": return <Lightbulb className="h-4 w-4 text-amber-500" />;
+      case "document": return <FileText className="h-4 w-4 text-blue-500" />;
+      case "experiment": return <FlaskConical className="h-4 w-4 text-purple-500" />;
+      default: return <Lightbulb className="h-4 w-4" />;
     }
   };
 
-  // Count total items and connections
-  const stats = useMemo(() => {
-    const totalItems = clusters.reduce((sum, c) => sum + c.items.length, 0);
-    const connectedTopics = clusters.filter(c => c.connections.length > 0).length;
-    const alignedTopics = clusters.filter(c => c.identityAligned).length;
-    return { totalItems, connectedTopics, alignedTopics };
-  }, [clusters]);
+  const formatSource = (source?: string) => {
+    if (!source) return null;
+    if (source.includes("youtube")) return "YouTube";
+    if (source.includes("twitter") || source.includes("x.com")) return "X";
+    if (source.includes("instagram")) return "Instagram";
+    if (source === "voice") return "Voice note";
+    if (source === "manual") return "Manual";
+    return source.split(":")[0];
+  };
+
+  const getDaysSinceAccess = (lastAccessed?: string) => {
+    if (!lastAccessed) return null;
+    const days = Math.floor((Date.now() - new Date(lastAccessed).getTime()) / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  const totalItems = stats.insights + stats.documents + stats.experiments;
 
   return (
     <MainLayout>
-      <div className="space-y-5 max-w-4xl mx-auto">
+      <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Explore</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {stats.totalItems} items across {clusters.length} topics
-            {stats.connectedTopics > 0 && ` • ${stats.connectedTopics} connected`}
-            {stats.alignedTopics > 0 && ` • ${stats.alignedTopics} identity-aligned`}
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-display font-semibold">What did you capture?</h1>
+          <p className="text-sm text-muted-foreground">
+            {totalItems} pieces of wisdom • {stats.forgotten > 0 && (
+              <button 
+                onClick={() => setShowForgotten(!showForgotten)}
+                className="text-primary hover:underline"
+              >
+                {stats.forgotten} waiting to be remembered
+              </button>
+            )}
           </p>
         </div>
 
-        {/* Search */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search your knowledge..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="pl-10 h-10"
-            />
-          </div>
-          <Button onClick={handleSearch} disabled={searching || !query.trim()} size="default">
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
+            placeholder="Search your mind... e.g., 'What did I save about confidence?'"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="h-14 pl-12 pr-24 text-base rounded-2xl border-2 focus-visible:ring-2"
+            autoFocus
+          />
+          <Button
+            onClick={() => handleSearch()}
+            disabled={searching || !query.trim()}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-xl"
+          >
             {searching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -373,231 +327,228 @@ const Explore = () => {
           </Button>
         </div>
 
-        {/* Search Results */}
-        {(searchResults.length > 0 || aiAnswer) && (
-          <div className="space-y-3">
-            {aiAnswer && (
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <div className="flex items-start gap-2.5">
-                  <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-xs font-medium text-primary mb-1">From your knowledge</p>
-                    <p className="text-sm leading-relaxed">{aiAnswer}</p>
-                  </div>
-                </div>
+        {/* AI Synthesis with Citations */}
+        {aiSynthesis && (
+          <Card className="p-4 bg-primary/5 border-primary/20">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Quote className="h-4 w-4 text-primary" />
               </div>
-            )}
-            
-            {searchResults.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground">{searchResults.length} results</p>
-                <div className="grid gap-2">
-                  {searchResults.map((item) => (
-                    <div
-                      key={`${item.type}-${item.id}`}
-                      className="flex items-start gap-2.5 p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => handleItemClick(item)}
-                    >
-                      <div className="h-6 w-6 rounded flex items-center justify-center shrink-0 bg-muted">
-                        {getItemIcon(item.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium truncate">{item.title}</h3>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{item.preview}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Topic Clusters */}
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : clusters.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">No content yet. Start capturing!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {clusters.filter(c => c.name !== "Uncategorized").map((cluster) => (
-              <div key={cluster.name} className="rounded-xl border border-border/50 overflow-hidden">
-                {/* Cluster Header */}
-                <div 
-                  className="flex items-center gap-3 px-3 py-2.5 bg-muted/20"
-                  style={{ borderLeft: `3px solid ${cluster.color}` }}
-                >
-                  <div 
-                    className="h-2 w-2 rounded-full shrink-0"
-                    style={{ backgroundColor: cluster.color }}
-                  />
-                  <span className="text-sm font-medium flex-1">{cluster.name}</span>
-                  <span className="text-xs text-muted-foreground">{cluster.items.length}</span>
-                  
-                  {/* Indicators */}
-                  <div className="flex items-center gap-1.5">
-                  {cluster.identityAligned && (
-                      <span title="Identity-aligned">
-                        <Target className="h-3 w-3 text-primary" />
-                      </span>
-                    )}
-                    {cluster.connections.length > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Link2 className="h-3 w-3" />
-                        <span>{cluster.connections.length}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Connection hints */}
-                {cluster.connections.length > 0 && (
-                  <div className="px-3 py-1.5 bg-muted/10 border-t border-border/30">
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                      <Layers className="h-3 w-3" />
-                      <span>Connects to: {cluster.connections.slice(0, 3).join(", ")}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Items */}
-                <div className="p-2 grid gap-1.5 grid-cols-1 sm:grid-cols-2">
-                  {cluster.items.slice(0, 6).map((item) => (
-                    <div
-                      key={`${item.type}-${item.id}`}
-                      className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => handleItemClick(item)}
-                    >
-                      <div className="h-5 w-5 rounded flex items-center justify-center shrink-0 bg-muted/50">
-                        {getItemIcon(item.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-medium truncate">{item.title}</h4>
-                        <p className="text-[10px] text-muted-foreground line-clamp-1">{item.preview}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {cluster.items.length > 6 && (
-                  <div className="px-3 pb-2">
-                    <p className="text-[10px] text-muted-foreground">
-                      +{cluster.items.length - 6} more
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Uncategorized at bottom */}
-            {clusters.find(c => c.name === "Uncategorized") && (
-              <div className="rounded-xl border border-border/30 overflow-hidden opacity-60">
-                <div className="flex items-center gap-3 px-3 py-2 bg-muted/10">
-                  <span className="text-xs text-muted-foreground">Uncategorized</span>
-                  <span className="text-xs text-muted-foreground/60">
-                    {clusters.find(c => c.name === "Uncategorized")!.items.length}
-                  </span>
-                </div>
-                <div className="p-2 grid gap-1 grid-cols-2">
-                  {clusters.find(c => c.name === "Uncategorized")!.items.slice(0, 4).map((item) => (
-                    <div
-                      key={`${item.type}-${item.id}`}
-                      className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/20 cursor-pointer"
-                      onClick={() => handleItemClick(item)}
-                    >
-                      {getItemIcon(item.type)}
-                      <span className="text-[10px] truncate">{item.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Detail Dialog */}
-      <Dialog open={!!selectedItem} onOpenChange={() => { setSelectedItem(null); setItemDetail(null); }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-muted">
-                {getItemIcon(selectedItem?.type || '')}
-              </div>
-              <div>
-                <DialogTitle className="text-base">{selectedItem?.title}</DialogTitle>
-                <Badge variant="outline" className="text-[10px] h-4 mt-1">
-                  {selectedItem?.type}
-                </Badge>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            {itemDetail ? (
-              <>
-                {selectedItem?.type === "insight" && itemDetail.content && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {itemDetail.content}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-primary">From your own captures</p>
+                <p className="text-sm leading-relaxed">{aiSynthesis}</p>
+                {citedSources.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground pt-1 border-t border-primary/10">
+                    Based on: {citedSources.slice(0, 3).join(" • ")}
                   </p>
                 )}
-                
-                {selectedItem?.type === "document" && (
-                  <>
-                    {itemDetail.summary && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Summary</p>
-                        <p className="text-sm">{itemDetail.summary}</p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Results */}
+        {results.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">{results.length} results</p>
+            <div className="space-y-2">
+              {results.map((item) => {
+                const daysSince = getDaysSinceAccess(item.last_accessed);
+                return (
+                  <button
+                    key={`${item.type}-${item.id}`}
+                    onClick={() => handleItemClick(item)}
+                    className="w-full text-left p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-border/50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        {getItemIcon(item.type)}
                       </div>
-                    )}
-                    {itemDetail.extracted_content && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Content</p>
-                        <div className="max-h-60 overflow-y-auto bg-muted/30 rounded-lg p-3">
-                          <pre className="text-xs whitespace-pre-wrap font-sans">
-                            {itemDetail.extracted_content.substring(0, 2000)}
-                            {itemDetail.extracted_content.length > 2000 && "..."}
-                          </pre>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-sm line-clamp-1">{item.title}</h3>
+                          {daysSince && daysSince > 30 && (
+                            <Badge variant="outline" className="text-[9px] h-4 shrink-0 text-amber-600 border-amber-200 bg-amber-50">
+                              <EyeOff className="h-2.5 w-2.5 mr-0.5" />
+                              {daysSince}d ago
+                            </Badge>
+                          )}
                         </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                          {item.content?.substring(0, 150)}
+                        </p>
+                        {item.source && (
+                          <span className="inline-block mt-1.5 text-[10px] text-muted-foreground/70">
+                            {formatSource(item.source)}
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </>
-                )}
-                
-                {selectedItem?.type === "experiment" && (
-                  <>
-                    {itemDetail.hypothesis && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Hypothesis</p>
-                        <p className="text-sm">{itemDetail.hypothesis}</p>
-                      </div>
-                    )}
-                    {itemDetail.description && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
-                        <p className="text-sm">{itemDetail.description}</p>
-                      </div>
-                    )}
-                    {itemDetail.identity_shift_target && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Identity Shift</p>
-                        <p className="text-sm italic">{itemDetail.identity_shift_target}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-2" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Forgotten Gems Section */}
+        {showForgotten && forgottenGems.length > 0 && results.length === 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <EyeOff className="h-4 w-4 text-amber-500" />
+              <p className="text-sm font-medium">Wisdom waiting to be remembered</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              These insights haven't been accessed in 30+ days. Sometimes what we need most is what we've forgotten.
+            </p>
+            <div className="space-y-2">
+              {forgottenGems.slice(0, 5).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
+                  className="w-full text-left p-3 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors border border-amber-200/50 dark:border-amber-800/30"
+                >
+                  <div className="flex items-start gap-3">
+                    <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm line-clamp-1">{item.title}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                        {item.content?.substring(0, 120)}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State - Suggestions */}
+        {results.length === 0 && !searching && !showForgotten && (
+          <div className="space-y-6 pt-4">
+            {/* Suggested Queries */}
+            {suggestedQueries.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Try asking
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedQueries.map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setQuery(q);
+                        handleSearch(q);
+                      }}
+                      className="px-3 py-2 text-sm rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Recent Searches */}
+            {recentSearches.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Recent
+                  </p>
+                  <button
+                    onClick={clearRecentSearches}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {recentSearches.map((search, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setQuery(search);
+                        handleSearch(search);
+                      }}
+                      className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                    >
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-sm">{search}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Access to Forgotten */}
+            {stats.forgotten > 0 && (
+              <button
+                onClick={() => setShowForgotten(true)}
+                className="w-full p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 text-left hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <EyeOff className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Rediscover what you've forgotten</p>
+                    <p className="text-xs text-muted-foreground">{stats.forgotten} insights haven't been accessed in 30+ days</p>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3 pt-2">
+              <Card className="p-3 text-center">
+                <Lightbulb className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+                <p className="text-lg font-semibold">{stats.insights}</p>
+                <p className="text-[10px] text-muted-foreground">Insights</p>
+              </Card>
+              <Card className="p-3 text-center">
+                <FileText className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                <p className="text-lg font-semibold">{stats.documents}</p>
+                <p className="text-[10px] text-muted-foreground">Documents</p>
+              </Card>
+              <Card className="p-3 text-center">
+                <FlaskConical className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+                <p className="text-lg font-semibold">{stats.experiments}</p>
+                <p className="text-[10px] text-muted-foreground">Experiments</p>
+              </Card>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+
+        {/* Detail Dialog */}
+        <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center gap-2">
+                {selectedItem && getItemIcon(selectedItem.type)}
+                <DialogTitle className="text-lg">{selectedItem?.title}</DialogTitle>
+              </div>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                {selectedItem?.content}
+              </p>
+              {selectedItem?.source && (
+                <p className="text-xs text-muted-foreground pt-2 border-t">
+                  Source: {formatSource(selectedItem.source)}
+                </p>
+              )}
+              {selectedItem?.access_count !== undefined && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Eye className="h-3 w-3" />
+                  Accessed {selectedItem.access_count + 1} times
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </MainLayout>
   );
 };
