@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap, Sparkles, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium } from "lucide-react";
+import { ArrowRight, Check, Zap, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium } from "lucide-react";
 import { toast } from "sonner";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
@@ -166,7 +166,7 @@ const Dashboard = () => {
       clearInterval(midnightCheck);
       supabase.removeChannel(taskChannel);
     };
-  }, [user, fetchData]); // Removed tasksForToday to prevent reconnection loops
+  }, [user, fetchData]);
 
   const handleGenerateTask = async (contextOverride?: { energy?: string; time?: string }) => {
     if (!user || isGenerating) return;
@@ -348,22 +348,22 @@ const Dashboard = () => {
   const showBonusOption = threeComplete && completedCount === 3 && !tasksForToday.some(t => t.task_sequence === 4);
   
   const energyOptions = [
-    { value: "high", label: "High energy", icon: Battery },
+    { value: "high", label: "High", icon: Battery },
     { value: "medium", label: "Medium", icon: BatteryMedium },
-    { value: "low", label: "Low energy", icon: BatteryLow },
+    { value: "low", label: "Low", icon: BatteryLow },
   ];
   
   const timeOptions = [
-    { value: "5-10 min", label: "Quick (5-10 min)" },
-    { value: "20-30 min", label: "Focused (20-30 min)" },
-    { value: "60+ min", label: "Deep work (60+ min)" },
+    { value: "5-10 min", label: "Quick" },
+    { value: "20-30 min", label: "Focused" },
+    { value: "60+ min", label: "Deep" },
   ];
 
   // Memoized dot count to prevent flickering
   const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-8 animate-fade-in overflow-x-hidden w-full">
+    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-6 animate-fade-in overflow-x-hidden w-full">
       {user && (
         <>
           <FirstTimeTooltip userId={user.id} isFirstTime={isFirstTime} />
@@ -373,232 +373,207 @@ const Dashboard = () => {
         </>
       )}
 
-      <div className="flex-1 space-y-6">
-        {/* What's Emerging - shows once per ~12 hours */}
+      <div className="flex-1 space-y-4">
+        {/* What's Emerging */}
         {user && <WhatsEmerging userId={user.id} />}
         
-        {/* Today's Invitation Card - Device Agnostic */}
-        <div className="invitation-card">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-muted-foreground">Today's Invitation</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {Array.from({ length: dotsToShow }, (_, i) => i + 1).map((num) => {
-                const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
-                const isCurrent = num === currentSequence && !allDone;
-                return (
-                  <div
-                    key={num}
-                    className={`progress-dot ${isCompleted ? 'complete' : isCurrent ? 'active' : 'pending'}`}
-                  />
-                );
-              })}
-            </div>
+        {/* Primary Action - Today's Invitation */}
+        <section className="relative">
+          {/* Progress indicators - floating top right */}
+          <div className="absolute -top-1 right-3 flex items-center gap-1.5 z-10">
+            {Array.from({ length: dotsToShow }, (_, i) => i + 1).map((num) => {
+              const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
+              const isCurrent = num === currentSequence && !allDone;
+              return (
+                <div
+                  key={num}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    isCompleted 
+                      ? 'bg-primary scale-100' 
+                      : isCurrent 
+                        ? 'bg-primary/40 scale-110 ring-2 ring-primary/20' 
+                        : 'bg-muted-foreground/20'
+                  }`}
+                />
+              );
+            })}
           </div>
 
-          {/* Content */}
-          {isGenerating ? (
-            <div className="py-12 flex flex-col items-center justify-center">
-              <WeaveLoader size="lg" text="Preparing your invitation..." />
-            </div>
-          ) : showBonusOption ? (
-            <div className="py-10 text-center space-y-5">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
-                <Check className="h-7 w-7 text-success" />
+          <div className="rounded-3xl border border-border/50 bg-gradient-to-br from-card via-card to-muted/20 p-6 shadow-soft">
+            {isGenerating ? (
+              <div className="py-16 flex flex-col items-center justify-center">
+                <WeaveLoader size="lg" text="Weaving your invitation..." />
               </div>
-              <div className="space-y-1">
-                <h3 className="text-xl font-display font-semibold">Complete</h3>
-                <p className="text-sm text-muted-foreground">Three aligned actions. Well done.</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleGenerateTask({})}
-                className="mt-3 rounded-xl"
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                I'm motivated — one more
-              </Button>
-            </div>
-          ) : allDone ? (
-            <div className="py-12 text-center space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
-                <Check className="h-7 w-7 text-success" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-xl font-display font-semibold">Complete</h3>
-                <p className="text-sm text-muted-foreground">You showed up. That matters.</p>
-              </div>
-            </div>
-          ) : todayTask ? (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                {todayTask.pillar && (
-                  <span className="inline-block px-3 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
-                    {todayTask.pillar}
-                  </span>
-                )}
+            ) : showBonusOption ? (
+              <div className="py-12 text-center space-y-5">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Check className="h-8 w-8 text-primary" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-display font-semibold">Complete</h2>
+                  <p className="text-muted-foreground">Three aligned actions. Well done.</p>
+                </div>
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSkipTask}
-                  disabled={isSkipping}
-                  className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => handleGenerateTask({})}
+                  className="rounded-2xl h-12 px-6"
                 >
-                  {isSkipping ? (
-                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                  )}
-                  Not now
+                  <Zap className="h-4 w-4 mr-2" />
+                  One more
                 </Button>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-xl font-display font-semibold leading-snug">
-                  {todayTask.one_thing}
-                </h3>
-                {todayTask.why_matters && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {todayTask.why_matters}
-                  </p>
-                )}
-                {todayTask.description && (
-                  <p className="text-xs text-muted-foreground/70">{todayTask.description}</p>
-                )}
+            ) : allDone ? (
+              <div className="py-16 text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Check className="h-8 w-8 text-primary" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-display font-semibold">Complete</h2>
+                  <p className="text-muted-foreground">You showed up. That matters.</p>
+                </div>
               </div>
-              <Button 
-                onClick={handleCompleteTask} 
-                className="w-full h-12 rounded-xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
-                size="lg"
-              >
-                Done <Check className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="py-6 space-y-4">
-              {isFirstTime && identitySeed && (
-                <div className="mb-4 p-4 rounded-xl bg-primary/5 border border-primary/10 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">You said you're becoming someone who:</p>
-                  <p className="text-sm font-medium text-foreground">{identitySeed}</p>
-                </div>
-              )}
-              
-              {showContextChips ? (
-                <div className="space-y-4 animate-fade-in">
-                  <p className="text-sm text-muted-foreground text-center">How are you feeling?</p>
-                  
-                  {/* Energy chips */}
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {energyOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedEnergy(selectedEnergy === opt.value ? null : opt.value)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                          selectedEnergy === opt.value
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                        }`}
-                      >
-                        <opt.icon className="h-3 w-3" />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Time chips */}
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {timeOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedTime(selectedTime === opt.value ? null : opt.value)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                          selectedTime === opt.value
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                        }`}
-                      >
-                        <Clock className="h-3 w-3" />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  <div className="flex gap-2 justify-center pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setShowContextChips(false);
-                        setSelectedEnergy(null);
-                        setSelectedTime(null);
-                      }}
-                      className="rounded-xl"
-                    >
-                      Skip
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleGenerateTask({})}
-                      className="rounded-xl"
-                    >
-                      Get Invitation
-                      <ArrowRight className="ml-1 h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center space-y-4">
-                  <p className="text-muted-foreground text-sm">
-                    {isFirstTime ? "Let's get your first invitation" : "Ready for today's focus?"}
-                  </p>
+            ) : todayTask ? (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  {todayTask.pillar && (
+                    <span className="inline-block px-3 py-1.5 rounded-xl text-xs font-medium bg-primary/10 text-primary">
+                      {todayTask.pillar}
+                    </span>
+                  )}
                   <Button
-                    onClick={() => setShowContextChips(true)}
-                    size="lg"
-                    className="px-10 h-12 rounded-xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSkipTask}
+                    disabled={isSkipping}
+                    className="text-xs text-muted-foreground hover:text-foreground h-8 px-3 rounded-xl"
                   >
-                    {isFirstTime ? "Get My First Invitation" : "Start My Day"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    {isSkipping ? (
+                      <RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-1.5" />
+                    )}
+                    Not this
                   </Button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                <div className="space-y-3">
+                  <h2 className="text-xl font-display font-semibold leading-snug">
+                    {todayTask.one_thing}
+                  </h2>
+                  {todayTask.why_matters && (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {todayTask.why_matters}
+                    </p>
+                  )}
+                  {todayTask.description && (
+                    <p className="text-xs text-muted-foreground/70 flex items-center gap-1.5">
+                      <Clock className="h-3 w-3" />
+                      {todayTask.description}
+                    </p>
+                  )}
+                </div>
+                <Button 
+                  onClick={handleCompleteTask} 
+                  className="w-full h-12 rounded-2xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
+                  size="lg"
+                >
+                  Done <Check className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="py-8 space-y-5">
+                {isFirstTime && identitySeed && (
+                  <div className="p-4 rounded-2xl bg-muted/50 border border-border/30 text-center">
+                    <p className="text-xs text-muted-foreground mb-1.5">You're becoming someone who:</p>
+                    <p className="text-sm font-medium text-foreground">{identitySeed}</p>
+                  </div>
+                )}
+                
+                {showContextChips ? (
+                  <div className="space-y-5 animate-fade-in">
+                    <p className="text-sm text-muted-foreground text-center">How are you feeling?</p>
+                    
+                    {/* Energy chips */}
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {energyOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setSelectedEnergy(selectedEnergy === opt.value ? null : opt.value)}
+                          className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                            selectedEnergy === opt.value
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'bg-muted/60 hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          <opt.icon className="h-3.5 w-3.5" />
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* Time chips */}
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {timeOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setSelectedTime(selectedTime === opt.value ? null : opt.value)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                            selectedTime === opt.value
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'bg-muted/60 hover:bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div className="flex gap-3 justify-center pt-2">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => {
+                          setShowContextChips(false);
+                          setSelectedEnergy(null);
+                          setSelectedTime(null);
+                        }}
+                        className="rounded-2xl h-12"
+                      >
+                        Skip
+                      </Button>
+                      <Button
+                        size="lg"
+                        onClick={() => handleGenerateTask({})}
+                        className="rounded-2xl h-12"
+                      >
+                        Get Invitation
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-5">
+                    <p className="text-muted-foreground">
+                      {isFirstTime ? "Let's get your first invitation" : "Ready for today's focus?"}
+                    </p>
+                    <Button
+                      onClick={() => setShowContextChips(true)}
+                      size="lg"
+                      className="px-10 h-14 rounded-2xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
+                    >
+                      {isFirstTime ? "Get My First Invitation" : "Start My Day"}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
 
-
-        {/* Active Experiment Card */}
+        {/* Active Experiment - Compact inline */}
         {activeExperiment && (
-          <div className="invitation-card">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-muted-foreground">Active Experiment</span>
-              {(() => {
-                const createdDate = new Date(activeExperiment.created_at);
-                const now = new Date();
-                const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                
-                const durationStr = activeExperiment.duration?.toLowerCase() || '';
-                let totalDays = 7;
-                if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
-                else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
-                else if (durationStr.includes('3 day')) totalDays = 3;
-                else if (durationStr.includes('5 day')) totalDays = 5;
-                else if (durationStr.includes('week')) totalDays = 7;
-                else if (durationStr.includes('2 week')) totalDays = 14;
-                
-                const daysLeft = Math.max(0, totalDays - dayNumber + 1);
-                
-                return (
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                    Day {dayNumber}/{totalDays}
-                  </span>
-                );
-              })()}
-            </div>
+          <section className="rounded-2xl border border-border/40 bg-card/50 p-5">
             {(() => {
               const createdDate = new Date(activeExperiment.created_at);
               const now = new Date();
@@ -606,6 +581,15 @@ const Dashboard = () => {
               const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
               const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
               const currentHour = now.getHours();
+              
+              const durationStr = activeExperiment.duration?.toLowerCase() || '';
+              let totalDays = 7;
+              if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
+              else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
+              else if (durationStr.includes('3 day')) totalDays = 3;
+              else if (durationStr.includes('5 day')) totalDays = 5;
+              else if (durationStr.includes('week')) totalDays = 7;
+              else if (durationStr.includes('2 week')) totalDays = 14;
               
               const getTimeOfDay = (hour: number) => {
                 if (hour >= 5 && hour < 12) return 'Morning';
@@ -632,31 +616,38 @@ const Dashboard = () => {
               return (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground/70 truncate max-w-[60%]">{activeExperiment.title}</p>
-                    <span className="text-xs text-muted-foreground">{timeOfDay}</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                      Experiment
+                    </span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{timeOfDay}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-muted font-medium">
+                        Day {dayNumber}/{totalDays}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-base font-medium leading-relaxed">
                     {todayStep}
                   </p>
                   {activeExperiment.identity_shift_target && (
                     <p className="text-xs text-primary/70 italic">
-                      → {activeExperiment.identity_shift_target}
+                      {activeExperiment.identity_shift_target}
                     </p>
                   )}
                 </div>
               );
             })()}
-          </div>
+          </section>
         )}
 
-        {/* Next Best Rep Button */}
+        {/* Next Best Rep - Flowing CTA */}
         <button
           onClick={handleNextRep}
           disabled={isGettingRep}
-          className="w-full invitation-card group text-left hover:border-primary/30"
+          className="w-full group text-left"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
+          <div className="flex items-center gap-4 p-5 rounded-2xl border border-border/40 bg-card/30 hover:bg-card/60 hover:border-primary/20 transition-all">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-colors">
               <Zap className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
@@ -674,7 +665,7 @@ const Dashboard = () => {
 
       {/* Next Best Rep Dialog */}
       <Dialog open={showRepDialog} onOpenChange={setShowRepDialog}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-3xl border-border/50">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-display">
               <Zap className="h-4 w-4 text-primary" />
@@ -690,7 +681,7 @@ const Dashboard = () => {
                 <span>{nextRep.time}</span>
                 <span className="px-2 py-1 rounded-md bg-muted font-medium">{nextRep.bucket}</span>
               </div>
-              <Button onClick={() => setShowRepDialog(false)} className="w-full h-11 rounded-xl">
+              <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">
                 Got it
               </Button>
             </div>

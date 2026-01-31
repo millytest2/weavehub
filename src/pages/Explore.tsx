@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -15,14 +15,14 @@ import {
   FileText, 
   FlaskConical, 
   Loader2,
-  Sparkles,
   Clock,
   ArrowRight,
   Eye,
   EyeOff,
-  Quote
+  Compass,
+  Target,
+  Layers
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface ContentItem {
   id: string;
@@ -35,6 +35,13 @@ interface ContentItem {
   access_count?: number;
 }
 
+interface IdentityContext {
+  yearNote?: string;
+  weeklyFocus?: string;
+  coreValues?: string;
+  content?: string;
+}
+
 const Explore = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -43,12 +50,14 @@ const Explore = () => {
   const [results, setResults] = useState<ContentItem[]>([]);
   const [aiSynthesis, setAiSynthesis] = useState<string | null>(null);
   const [citedSources, setCitedSources] = useState<string[]>([]);
+  const [connectionToIdentity, setConnectionToIdentity] = useState<string | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   const [stats, setStats] = useState({ insights: 0, documents: 0, experiments: 0, forgotten: 0 });
   const [suggestedQueries, setSuggestedQueries] = useState<string[]>([]);
   const [forgottenGems, setForgottenGems] = useState<ContentItem[]>([]);
   const [showForgotten, setShowForgotten] = useState(false);
+  const [identityContext, setIdentityContext] = useState<IdentityContext | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -75,7 +84,7 @@ const Explore = () => {
         .order("created_at", { ascending: false })
         .limit(10),
       supabase.from("topics").select("name").eq("user_id", user.id).limit(5),
-      supabase.from("identity_seeds").select("weekly_focus, year_note, core_values").eq("user_id", user.id).maybeSingle()
+      supabase.from("identity_seeds").select("weekly_focus, year_note, core_values, content").eq("user_id", user.id).maybeSingle()
     ]);
 
     setStats({
@@ -84,6 +93,16 @@ const Explore = () => {
       experiments: expCount.count || 0,
       forgotten: forgottenInsights.data?.length || 0
     });
+
+    // Store identity context for showing connections
+    if (identityResult.data) {
+      setIdentityContext({
+        yearNote: identityResult.data.year_note,
+        weeklyFocus: identityResult.data.weekly_focus,
+        coreValues: identityResult.data.core_values,
+        content: identityResult.data.content
+      });
+    }
 
     // Set forgotten gems
     if (forgottenInsights.data) {
@@ -138,6 +157,7 @@ const Explore = () => {
     setResults([]);
     setAiSynthesis(null);
     setCitedSources([]);
+    setConnectionToIdentity(null);
 
     try {
       // Try semantic search via retrieval engine
@@ -152,6 +172,14 @@ const Explore = () => {
         }
         if (data.citations) {
           setCitedSources(data.citations);
+        }
+        
+        // Generate connection to identity/2026/values
+        if (identityContext) {
+          const connection = generateIdentityConnection(q, identityContext);
+          if (connection) {
+            setConnectionToIdentity(connection);
+          }
         }
       } else {
         // Fallback to simple text search
@@ -169,7 +197,50 @@ const Explore = () => {
     } finally {
       setSearching(false);
     }
-  }, [user, query, recentSearches]);
+  }, [user, query, recentSearches, identityContext]);
+
+  const generateIdentityConnection = (searchQuery: string, context: IdentityContext): string | null => {
+    const q = searchQuery.toLowerCase();
+    const connections: string[] = [];
+    
+    // Check values connection
+    if (context.coreValues) {
+      const values = context.coreValues.split(',').map(v => v.trim().toLowerCase());
+      const matchedValue = values.find(v => q.includes(v) || v.includes(q.split(' ')[0]));
+      if (matchedValue) {
+        connections.push(`This connects to your value of "${matchedValue}"`);
+      }
+    }
+    
+    // Check 2026/year note connection
+    if (context.yearNote) {
+      const yearWords = context.yearNote.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      const matchedWord = yearWords.find(w => q.includes(w));
+      if (matchedWord) {
+        connections.push(`This relates to your 2026 direction`);
+      }
+    }
+    
+    // Check weekly focus connection
+    if (context.weeklyFocus) {
+      const focusWords = context.weeklyFocus.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const matchedFocus = focusWords.find(w => q.includes(w));
+      if (matchedFocus) {
+        connections.push(`Aligned with your current focus`);
+      }
+    }
+    
+    // Check identity content
+    if (context.content) {
+      const identityWords = context.content.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      const matchedIdentity = identityWords.find(w => q.includes(w));
+      if (matchedIdentity && connections.length === 0) {
+        connections.push(`Part of who you're becoming`);
+      }
+    }
+    
+    return connections.length > 0 ? connections[0] : null;
+  };
 
   const fallbackSearch = async (q: string) => {
     if (!user) return;
@@ -228,6 +299,14 @@ const Explore = () => {
     ];
 
     setResults(combined);
+    
+    // Generate connection even for fallback
+    if (identityContext && combined.length > 0) {
+      const connection = generateIdentityConnection(q, identityContext);
+      if (connection) {
+        setConnectionToIdentity(connection);
+      }
+    }
   };
 
   const handleItemClick = async (item: ContentItem) => {
@@ -285,26 +364,28 @@ const Explore = () => {
   return (
     <MainLayout>
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-1">
+        {/* Header with identity context */}
+        <div className="text-center space-y-2">
           <h1 className="text-2xl font-display font-semibold">What did you capture?</h1>
           <p className="text-sm text-muted-foreground">
-            {totalItems} pieces of wisdom • {stats.forgotten > 0 && (
-              <button 
-                onClick={() => setShowForgotten(!showForgotten)}
-                className="text-primary hover:underline"
-              >
-                {stats.forgotten} waiting to be remembered
-              </button>
-            )}
+            {totalItems} pieces of wisdom
           </p>
+          {identityContext?.yearNote && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-xs">
+              <Target className="h-3 w-3 text-primary" />
+              <span className="text-muted-foreground">2026:</span>
+              <span className="text-foreground font-medium truncate max-w-[200px]">
+                {identityContext.yearNote.split(' ').slice(0, 6).join(' ')}...
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Search Input */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
-            placeholder="Search your mind... e.g., 'What did I save about confidence?'"
+            placeholder="Search your mind..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -319,30 +400,33 @@ const Explore = () => {
             {searching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-1.5" />
-                Search
-              </>
+              "Search"
             )}
           </Button>
         </div>
 
+        {/* Identity Connection Banner */}
+        {connectionToIdentity && results.length > 0 && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
+            <Compass className="h-4 w-4 text-primary shrink-0" />
+            <p className="text-sm text-foreground">{connectionToIdentity}</p>
+          </div>
+        )}
+
         {/* AI Synthesis with Citations */}
         {aiSynthesis && (
-          <Card className="p-4 bg-primary/5 border-primary/20">
-            <div className="flex items-start gap-3">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Quote className="h-4 w-4 text-primary" />
+          <Card className="p-5 bg-gradient-to-br from-muted/30 to-muted/10 border-border/50">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                <p className="text-xs font-medium text-primary uppercase tracking-wide">From your captures</p>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-primary">From your own captures</p>
-                <p className="text-sm leading-relaxed">{aiSynthesis}</p>
-                {citedSources.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground pt-1 border-t border-primary/10">
-                    Based on: {citedSources.slice(0, 3).join(" • ")}
-                  </p>
-                )}
-              </div>
+              <p className="text-sm leading-relaxed">{aiSynthesis}</p>
+              {citedSources.length > 0 && (
+                <p className="text-[10px] text-muted-foreground pt-2 border-t border-border/30">
+                  Sources: {citedSources.slice(0, 3).join(" • ")}
+                </p>
+              )}
             </div>
           </Card>
         )}
@@ -358,7 +442,7 @@ const Explore = () => {
                   <button
                     key={`${item.type}-${item.id}`}
                     onClick={() => handleItemClick(item)}
-                    className="w-full text-left p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-border/50"
+                    className="w-full text-left p-4 rounded-xl bg-card hover:bg-muted/50 transition-colors border border-border/50"
                   >
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
@@ -368,9 +452,9 @@ const Explore = () => {
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium text-sm line-clamp-1">{item.title}</h3>
                           {daysSince && daysSince > 30 && (
-                            <Badge variant="outline" className="text-[9px] h-4 shrink-0 text-amber-600 border-amber-200 bg-amber-50">
+                            <Badge variant="outline" className="text-[9px] h-4 shrink-0 text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
                               <EyeOff className="h-2.5 w-2.5 mr-0.5" />
-                              {daysSince}d ago
+                              {daysSince}d
                             </Badge>
                           )}
                         </div>
@@ -407,7 +491,7 @@ const Explore = () => {
                 <button
                   key={item.id}
                   onClick={() => handleItemClick(item)}
-                  className="w-full text-left p-3 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors border border-amber-200/50 dark:border-amber-800/30"
+                  className="w-full text-left p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors border border-amber-200/50 dark:border-amber-800/30"
                 >
                   <div className="flex items-start gap-3">
                     <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
@@ -441,7 +525,7 @@ const Explore = () => {
                         setQuery(q);
                         handleSearch(q);
                       }}
-                      className="px-3 py-2 text-sm rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                      className="px-4 py-2.5 text-sm rounded-xl bg-muted/50 hover:bg-muted transition-colors text-left"
                     >
                       {q}
                     </button>
@@ -472,7 +556,7 @@ const Explore = () => {
                         setQuery(search);
                         handleSearch(search);
                       }}
-                      className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                      className="flex items-center gap-2 w-full p-3 rounded-xl hover:bg-muted/50 transition-colors text-left"
                     >
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-sm">{search}</span>
@@ -489,12 +573,12 @@ const Explore = () => {
                 className="w-full p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 text-left hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                     <EyeOff className="h-5 w-5 text-amber-600" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">Rediscover what you've forgotten</p>
-                    <p className="text-xs text-muted-foreground">{stats.forgotten} insights haven't been accessed in 30+ days</p>
+                    <p className="text-xs text-muted-foreground">{stats.forgotten} insights waiting</p>
                   </div>
                 </div>
               </button>
@@ -502,18 +586,18 @@ const Explore = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 pt-2">
-              <Card className="p-3 text-center">
-                <Lightbulb className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+              <Card className="p-4 text-center">
+                <Lightbulb className="h-5 w-5 text-amber-500 mx-auto mb-1.5" />
                 <p className="text-lg font-semibold">{stats.insights}</p>
                 <p className="text-[10px] text-muted-foreground">Insights</p>
               </Card>
-              <Card className="p-3 text-center">
-                <FileText className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+              <Card className="p-4 text-center">
+                <FileText className="h-5 w-5 text-blue-500 mx-auto mb-1.5" />
                 <p className="text-lg font-semibold">{stats.documents}</p>
                 <p className="text-[10px] text-muted-foreground">Documents</p>
               </Card>
-              <Card className="p-3 text-center">
-                <FlaskConical className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+              <Card className="p-4 text-center">
+                <FlaskConical className="h-5 w-5 text-purple-500 mx-auto mb-1.5" />
                 <p className="text-lg font-semibold">{stats.experiments}</p>
                 <p className="text-[10px] text-muted-foreground">Experiments</p>
               </Card>
@@ -523,7 +607,7 @@ const Explore = () => {
 
         {/* Detail Dialog */}
         <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
-          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl">
             <DialogHeader>
               <div className="flex items-center gap-2">
                 {selectedItem && getItemIcon(selectedItem.type)}
@@ -544,6 +628,15 @@ const Explore = () => {
                   <Eye className="h-3 w-3" />
                   Accessed {selectedItem.access_count + 1} times
                 </p>
+              )}
+              {/* Show connection to identity in detail view */}
+              {identityContext?.yearNote && (
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Compass className="h-3 w-3 text-primary" />
+                    Your direction: {identityContext.yearNote.split(' ').slice(0, 8).join(' ')}...
+                  </p>
+                </div>
               )}
             </div>
           </DialogContent>
