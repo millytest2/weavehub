@@ -3,7 +3,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sunrise, X, Sparkles } from "lucide-react";
+import { X } from "lucide-react";
 
 interface MorningRitualPromptProps {
   onComplete: () => void;
@@ -73,7 +73,7 @@ async function generateMorningRitual(context: {
   const anchors = [
     `You are ${identityEssence}. That's who shows up today.`,
     `"${randomValue}" isn't just a word—it's how you move through today.`,
-    `Remember: identity is built through action, not intention.`,
+    `Identity is built through action, not intention.`,
     `Today isn't about being perfect. It's about being aligned.`,
     `The person you're becoming takes action even when it's hard.`,
     `${primaryValue} guides your choices. Trust it.`,
@@ -196,22 +196,20 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-sm p-0 overflow-hidden border-0 bg-card shadow-elevated rounded-2xl">
-        <div className="p-5 space-y-4">
-          {/* Header */}
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-sm p-0 overflow-hidden border border-border/50 bg-gradient-to-b from-card via-card to-muted/20 shadow-elevated rounded-3xl">
+        {/* Subtle top accent */}
+        <div className="h-1 w-full bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+        
+        <div className="p-6 space-y-5">
+          {/* Header - minimal */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sunrise className="h-4 w-4 text-primary" />
-              </div>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Morning Ritual
-              </span>
-            </div>
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+              Morning
+            </span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-7 w-7 rounded-full"
               onClick={handleSkip}
             >
               <X className="h-3.5 w-3.5" />
@@ -219,40 +217,39 @@ export function MorningRitualPrompt({ onComplete }: MorningRitualPromptProps) {
           </div>
           
           <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-lg font-display font-semibold leading-snug">
+            <DialogTitle className="text-2xl font-display font-semibold leading-tight tracking-tight">
               {ritual.greeting}
             </DialogTitle>
             <DialogDescription className="sr-only">Morning grounding ritual</DialogDescription>
           </DialogHeader>
           
           {/* Anchor - the grounding message */}
-          <div className="py-3 px-4 rounded-xl bg-muted/50 border border-border/50">
-            <p className="text-sm leading-relaxed text-foreground">
+          <div className="py-4 px-5 rounded-2xl bg-muted/40 border border-border/30">
+            <p className="text-base leading-relaxed text-foreground font-medium">
               {ritual.anchor}
             </p>
           </div>
           
-          {/* Fuel - energy for the day */}
-          <p className="text-sm text-muted-foreground leading-relaxed flex items-start gap-2">
-            <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          {/* Fuel - subtle */}
+          <p className="text-sm text-muted-foreground leading-relaxed pl-1">
             {ritual.fuel}
           </p>
 
-          <div className="flex gap-3 pt-1">
+          <div className="flex gap-3 pt-2">
             <Button
               variant="ghost"
-              size="sm"
-              className="flex-1 h-10 text-sm"
+              size="lg"
+              className="flex-1 h-12 text-sm rounded-2xl text-muted-foreground"
               onClick={handleSkip}
             >
-              Skip
+              Later
             </Button>
             <Button
-              size="sm"
-              className="flex-1 h-10 text-sm"
+              size="lg"
+              className="flex-1 h-12 text-sm rounded-2xl font-medium"
               onClick={handleDismiss}
             >
-              Let's go
+              Begin
             </Button>
           </div>
         </div>

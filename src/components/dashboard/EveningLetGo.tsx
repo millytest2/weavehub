@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Moon, X, Sparkles } from "lucide-react";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 
 interface EveningLetGoProps {
@@ -86,9 +86,9 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
 
       // Build combined content
       const parts = [];
-      if (wentWell.trim()) parts.push(`**What went well:** ${wentWell.trim()}`);
-      if (release.trim()) parts.push(`**Releasing:** ${release.trim()}`);
-      if (grateful.trim()) parts.push(`**Grateful for:** ${grateful.trim()}`);
+      if (wentWell.trim()) parts.push(`What went well: ${wentWell.trim()}`);
+      if (release.trim()) parts.push(`Releasing: ${release.trim()}`);
+      if (grateful.trim()) parts.push(`Grateful for: ${grateful.trim()}`);
 
       if (parts.length > 0) {
         const { error } = await supabase.from("insights").insert({
@@ -98,13 +98,13 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
           source: "evening_reflection"
         });
         if (error) throw error;
-        toast.success("Reflection saved");
+        toast.success("Saved");
       }
 
       handleDismiss();
     } catch (error) {
       console.error("Error saving reflection:", error);
-      toast.error("Couldn't save reflection");
+      toast.error("Couldn't save");
     } finally {
       setSaving(false);
     }
@@ -129,91 +129,92 @@ export function EveningLetGo({ onComplete }: EveningLetGoProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-0 overflow-hidden border-0 bg-gradient-to-b from-card to-background shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="p-4 space-y-3">
-          <DialogHeader className="space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Moon className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">Evening</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 -mr-2 -mt-2 hover:bg-muted/50"
-                onClick={handleSkip}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            <DialogTitle className="text-base font-bold tracking-tight text-left pt-1 leading-snug">
-              Let it go
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-0 overflow-hidden border border-border/50 bg-gradient-to-b from-card via-card to-muted/30 shadow-elevated rounded-3xl max-h-[90vh] overflow-y-auto">
+        {/* Subtle top accent - evening color */}
+        <div className="h-1 w-full bg-gradient-to-r from-indigo-400/40 via-indigo-500 to-indigo-400/40" />
+        
+        <div className="p-6 space-y-5">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+              Evening
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full"
+              onClick={handleSkip}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          
+          <DialogHeader className="space-y-1 text-left">
+            <DialogTitle className="text-2xl font-display font-semibold tracking-tight">
+              Close the day
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground text-left">
-              3 minutes. Close the day with clarity.
+            <DialogDescription className="text-sm text-muted-foreground">
+              3 minutes to release and rest.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2.5">
+          <div className="space-y-4">
             {/* What went well */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3 text-amber-500" />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
                 What went well today?
               </label>
               <Textarea
                 value={wentWell}
                 onChange={(e) => setWentWell(e.target.value)}
                 placeholder="One thing, big or small..."
-                className="min-h-[50px] text-sm resize-none bg-muted/30 border-muted"
+                className="min-h-[60px] text-sm resize-none bg-muted/30 border-border/50 rounded-xl focus-visible:ring-1"
               />
             </div>
 
             {/* What to release */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium flex items-center gap-1.5">
-                <Moon className="h-3 w-3 text-blue-400" />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
                 What are you releasing?
               </label>
               <Textarea
                 value={release}
                 onChange={(e) => setRelease(e.target.value)}
                 placeholder="A thought, worry, or tension..."
-                className="min-h-[50px] text-sm resize-none bg-muted/30 border-muted"
+                className="min-h-[60px] text-sm resize-none bg-muted/30 border-border/50 rounded-xl focus-visible:ring-1"
               />
             </div>
 
             {/* Gratitude */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium flex items-center gap-1.5">
-                <span className="text-rose-400">♡</span>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
                 What are you grateful for?
               </label>
               <Textarea
                 value={grateful}
                 onChange={(e) => setGrateful(e.target.value)}
                 placeholder="Person, moment, or thing..."
-                className="min-h-[50px] text-sm resize-none bg-muted/30 border-muted"
+                className="min-h-[60px] text-sm resize-none bg-muted/30 border-border/50 rounded-xl focus-visible:ring-1"
               />
             </div>
           </div>
 
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-3 pt-2">
             <Button
               variant="ghost"
-              className="flex-1 text-xs text-muted-foreground hover:text-foreground h-9"
+              size="lg"
+              className="flex-1 text-sm text-muted-foreground rounded-2xl h-12"
               onClick={handleSkip}
             >
               Not tonight
             </Button>
             <Button
-              className="flex-1 text-xs h-9"
+              size="lg"
+              className="flex-1 text-sm rounded-2xl h-12 font-medium"
               onClick={handleSave}
               disabled={saving}
             >
-              {saving ? "Saving..." : "Release & rest"}
+              {saving ? "Saving..." : "Release"}
             </Button>
           </div>
         </div>

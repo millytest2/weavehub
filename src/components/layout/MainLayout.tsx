@@ -20,7 +20,6 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Insights", href: "/insights", icon: Lightbulb },
     { name: "Documents", href: "/documents", icon: FileText },
     { name: "Experiments", href: "/experiments", icon: FlaskConical },
-    { name: "Paths", href: "/learning-paths", icon: Brain },
   ];
 
   // Mobile bottom nav: 4 core tabs
