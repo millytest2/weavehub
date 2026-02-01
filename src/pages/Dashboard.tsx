@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium } from "lucide-react";
+import { ArrowRight, Check, Zap, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium, Sparkles, Target } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
@@ -30,6 +31,7 @@ const Dashboard = () => {
   
   // Identity state for personalized welcome
   const [identitySeed, setIdentitySeed] = useState<string | null>(null);
+  const [yearNote, setYearNote] = useState<string | null>(null);
   const [isFirstTime, setIsFirstTime] = useState(false);
   
   const [morningComplete, setMorningComplete] = useState(false);
@@ -76,12 +78,15 @@ const Dashboard = () => {
     // Fetch identity for personalized welcome
     const { data: identityRes } = await supabase
       .from("identity_seeds")
-      .select("content")
+      .select("content, year_note")
       .eq("user_id", user.id)
       .maybeSingle();
     
     if (identityRes?.content) {
       setIdentitySeed(identityRes.content);
+    }
+    if (identityRes?.year_note) {
+      setYearNote(identityRes.year_note);
     }
 
     const { data: tasksRes } = await supabase
@@ -146,21 +151,15 @@ const Dashboard = () => {
       }
     }, 60000);
 
-    // Use unique channel name per user to avoid cross-device conflicts
     const channelName = `dashboard-tasks-${user.id}`;
     const taskChannel = supabase
       .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_tasks", filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          console.log("Realtime update received:", payload);
-          fetchData();
-        },
+        () => fetchData(),
       )
-      .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
-      });
+      .subscribe();
 
     return () => {
       clearInterval(midnightCheck);
@@ -176,7 +175,6 @@ const Dashboard = () => {
     const today = getLocalToday();
     
     try {
-      // Re-fetch to get accurate count and avoid race conditions
       const { data: existingTasks } = await supabase
         .from("daily_tasks")
         .select("id, task_sequence")
@@ -189,13 +187,11 @@ const Dashboard = () => {
         return;
       }
       
-      // Calculate next sequence from max existing + 1
       const maxSeq = existingTasks?.[0]?.task_sequence || 0;
       const nextSequence = maxSeq + 1;
       
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       
-      // Build context string from selected chips
       const energyContext = contextOverride?.energy || selectedEnergy;
       const timeContext = contextOverride?.time || selectedTime;
       let contextString = '';
@@ -226,7 +222,6 @@ const Dashboard = () => {
           });
 
         if (insertError) {
-          // Duplicate insert (double click / multiple tabs) - just refresh state
           if (insertError.code === "23505") {
             await fetchData();
             return;
@@ -317,7 +312,6 @@ const Dashboard = () => {
     
     setIsSkipping(true);
     try {
-      // Track skip for learning
       const now = new Date();
       await supabase.from('user_activity_patterns').insert({
         user_id: user.id,
@@ -327,10 +321,8 @@ const Dashboard = () => {
         pillar: todayTask?.pillar
       });
       
-      // Delete current task
       await supabase.from("daily_tasks").delete().eq("id", todayTask.id);
       
-      // Generate a new one
       setTodayTask(null);
       toast.info("Finding something better...");
       await handleGenerateTask();
@@ -359,7 +351,6 @@ const Dashboard = () => {
     { value: "60+ min", label: "Deep" },
   ];
 
-  // Memoized dot count to prevent flickering
   const dotsToShow = tasksForToday.some(t => t.task_sequence === 4) ? 4 : 3;
 
   return (
@@ -373,7 +364,22 @@ const Dashboard = () => {
         </>
       )}
 
-      <div className="flex-1 space-y-4">
+      <div className="flex-1 space-y-5">
+        {/* Identity Direction Banner - Subtle reminder */}
+        {yearNote && !todayTask && !isGenerating && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-primary/5 to-transparent border border-primary/10"
+          >
+            <Target className="h-4 w-4 text-primary shrink-0" />
+            <p className="text-xs text-muted-foreground truncate">
+              <span className="text-foreground font-medium">{yearNote.split(' ').slice(0, 6).join(' ')}</span>
+              {yearNote.split(' ').length > 6 && "..."}
+            </p>
+          </motion.div>
+        )}
+
         {/* What's Emerging */}
         {user && <WhatsEmerging userId={user.id} />}
         
@@ -385,28 +391,41 @@ const Dashboard = () => {
               const isCompleted = tasksForToday.some(t => t.task_sequence === num && t.completed);
               const isCurrent = num === currentSequence && !allDone;
               return (
-                <div
+                <motion.div
                   key={num}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    isCompleted 
-                      ? 'bg-primary scale-100' 
+                  initial={false}
+                  animate={{ 
+                    scale: isCurrent ? 1.2 : 1,
+                    backgroundColor: isCompleted 
+                      ? 'hsl(var(--primary))' 
                       : isCurrent 
-                        ? 'bg-primary/40 scale-110 ring-2 ring-primary/20' 
-                        : 'bg-muted-foreground/20'
-                  }`}
+                        ? 'hsl(var(--primary) / 0.5)' 
+                        : 'hsl(var(--muted-foreground) / 0.2)'
+                  }}
+                  className="w-2 h-2 rounded-full"
                 />
               );
             })}
           </div>
 
-          <div className="rounded-3xl border border-border/50 bg-gradient-to-br from-card via-card to-muted/20 p-6 shadow-soft">
+          <div className="rounded-3xl border border-border/40 bg-gradient-to-br from-card via-card to-muted/30 p-6 shadow-soft overflow-hidden relative">
+            {/* Subtle weave pattern */}
+            <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
+              <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                <pattern id="weave" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M0 20h40M20 0v40" stroke="currentColor" strokeWidth="0.5" fill="none"/>
+                </pattern>
+                <rect width="100%" height="100%" fill="url(#weave)"/>
+              </svg>
+            </div>
+
             {isGenerating ? (
-              <div className="py-16 flex flex-col items-center justify-center">
+              <div className="py-16 flex flex-col items-center justify-center relative">
                 <WeaveLoader size="lg" text="Weaving your invitation..." />
               </div>
             ) : showBonusOption ? (
-              <div className="py-12 text-center space-y-5">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+              <div className="py-12 text-center space-y-5 relative">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                   <Check className="h-8 w-8 text-primary" />
                 </div>
                 <div className="space-y-2">
@@ -424,8 +443,8 @@ const Dashboard = () => {
                 </Button>
               </div>
             ) : allDone ? (
-              <div className="py-16 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+              <div className="py-16 text-center space-y-4 relative">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                   <Check className="h-8 w-8 text-primary" />
                 </div>
                 <div className="space-y-2">
@@ -434,7 +453,7 @@ const Dashboard = () => {
                 </div>
               </div>
             ) : todayTask ? (
-              <div className="space-y-5">
+              <div className="space-y-5 relative">
                 <div className="flex items-center justify-between">
                   {todayTask.pillar && (
                     <span className="inline-block px-3 py-1.5 rounded-xl text-xs font-medium bg-primary/10 text-primary">
@@ -481,7 +500,7 @@ const Dashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="py-8 space-y-5">
+              <div className="py-8 space-y-5 relative">
                 {isFirstTime && identitySeed && (
                   <div className="p-4 rounded-2xl bg-muted/50 border border-border/30 text-center">
                     <p className="text-xs text-muted-foreground mb-1.5">You're becoming someone who:</p>
@@ -493,7 +512,6 @@ const Dashboard = () => {
                   <div className="space-y-5 animate-fade-in">
                     <p className="text-sm text-muted-foreground text-center">How are you feeling?</p>
                     
-                    {/* Energy chips */}
                     <div className="flex flex-wrap gap-2 justify-center">
                       {energyOptions.map((opt) => (
                         <button
@@ -511,7 +529,6 @@ const Dashboard = () => {
                       ))}
                     </div>
                     
-                    {/* Time chips */}
                     <div className="flex flex-wrap gap-2 justify-center">
                       {timeOptions.map((opt) => (
                         <button
@@ -559,10 +576,10 @@ const Dashboard = () => {
                     <Button
                       onClick={() => setShowContextChips(true)}
                       size="lg"
-                      className="px-10 h-14 rounded-2xl text-base font-medium shadow-soft hover:shadow-elevated transition-all"
+                      className="px-10 h-14 rounded-2xl text-base font-medium shadow-soft hover:shadow-elevated transition-all gap-2"
                     >
+                      <Sparkles className="h-4 w-4" />
                       {isFirstTime ? "Get My First Invitation" : "Start My Day"}
-                      <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
                 )}
@@ -573,7 +590,7 @@ const Dashboard = () => {
 
         {/* Active Experiment - Compact inline */}
         {activeExperiment && (
-          <section className="rounded-2xl border border-border/40 bg-card/50 p-5">
+          <section className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/80 to-muted/10 p-5">
             {(() => {
               const createdDate = new Date(activeExperiment.created_at);
               const now = new Date();
@@ -621,7 +638,7 @@ const Dashboard = () => {
                     </span>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{timeOfDay}</span>
-                      <span className="px-2 py-0.5 rounded-md bg-muted font-medium">
+                      <span className="px-2 py-0.5 rounded-lg bg-muted font-medium">
                         Day {dayNumber}/{totalDays}
                       </span>
                     </div>
@@ -646,8 +663,8 @@ const Dashboard = () => {
           disabled={isGettingRep}
           className="w-full group text-left"
         >
-          <div className="flex items-center gap-4 p-5 rounded-2xl border border-border/40 bg-card/30 hover:bg-card/60 hover:border-primary/20 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-colors">
+          <div className="flex items-center gap-4 p-5 rounded-2xl border border-border/40 bg-gradient-to-r from-card/60 to-muted/20 hover:from-card hover:to-muted/30 hover:border-primary/20 transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-colors shrink-0">
               <Zap className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
@@ -679,7 +696,7 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">{nextRep.why}</p>
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border">
                 <span>{nextRep.time}</span>
-                <span className="px-2 py-1 rounded-md bg-muted font-medium">{nextRep.bucket}</span>
+                <span className="px-2 py-1 rounded-lg bg-muted font-medium">{nextRep.bucket}</span>
               </div>
               <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">
                 Got it

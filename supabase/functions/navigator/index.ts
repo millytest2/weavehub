@@ -440,13 +440,19 @@ ${contextPrompt}${semanticContext}${userMindContext}${coreValuesContext}
 
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
+REVERSE ENGINEERING FROM 2026:
+1. START FROM THE END - What does their year_note/2026 vision require?
+2. WORK BACKWARD - What capability, habit, or proof point moves them there?
+3. TODAY'S STEP - What's the smallest action that builds that capability?
+
 CRITICAL QUALITY RULES:
 1. EACH OPTION FROM A DIFFERENT PILLAR
-2. GROUND IN VALUES - "Your identity says X, so do Y" not "go learn about X"
+2. GROUND IN 2026 VISION - "Your 2026 goal requires X, today's step is Y"
 3. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
 4. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features, real project names
 5. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
 6. ACTIONS EXPRESS IDENTITY - Create, build, reach out, ship, move, connect—not consume
+7. SHOW THE THREAD - Help them see how this action connects to where they're going
 
 BANNED PATTERNS (instant rejection):
 - "watch/read/review/look at" ANYTHING
@@ -597,12 +603,18 @@ ${contextPrompt}${semanticContext}${coreValuesContext}
 
 PILLAR: ${suggestedPillar}
 
+REVERSE ENGINEERING FROM 2026:
+1. START FROM THE END - What does their year_note/2026 vision require?
+2. WORK BACKWARD - What capability, habit, or proof point moves them there?
+3. TODAY'S STEP - What's the smallest action that builds that capability?
+
 CRITICAL QUALITY RULES:
-1. GROUND IN VALUES - "Your identity says X, so do Y"
+1. GROUND IN 2026 VISION - "Your 2026 goal requires X, today's step is Y"
 2. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
-3. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features
+3. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features, real project names
 4. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
 5. ACTIONS EXPRESS IDENTITY - Create, build, reach out, ship, move, connect—not consume
+6. SHOW THE THREAD - Help them see how this action connects to where they're going
 
 BANNED PATTERNS (instant rejection):
 - "watch/read/review/look at" ANYTHING
