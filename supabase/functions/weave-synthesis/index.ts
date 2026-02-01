@@ -20,6 +20,17 @@ serve(async (req) => {
   }
 
   try {
+    // Parse body for action type
+    let action = "full_synthesis";
+    let includeSynthesis = false;
+    try {
+      const body = await req.json();
+      action = body?.action || "full_synthesis";
+      includeSynthesis = body?.includeSynthesis === true;
+    } catch {
+      // Default action
+    }
+
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(
@@ -45,6 +56,143 @@ serve(async (req) => {
 
     const userId = user.id;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    // Handle "surface_one" action - surfaces a single insight with connection to identity
+    if (action === "surface_one") {
+      // Fetch user's identity context
+      const { data: identityData } = await supabase
+        .from("identity_seeds")
+        .select("content, year_note, core_values, weekly_focus")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      // Fetch random insights (preferring less-accessed ones)
+      const { data: insights } = await supabase
+        .from("insights")
+        .select("id, title, content, source, created_at, access_count")
+        .eq("user_id", userId)
+        .order("access_count", { ascending: true })
+        .limit(30);
+
+      if (!insights || insights.length === 0) {
+        return new Response(JSON.stringify({ 
+          error: "No insights found",
+          message: "Add some insights first by pasting content on the Dashboard"
+        }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+
+      // Pick a random insight (weighted toward less-accessed)
+      const weights = insights.map((_, i) => Math.max(1, insights.length - i));
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      let random = Math.random() * totalWeight;
+      let selectedIndex = 0;
+      for (let i = 0; i < weights.length; i++) {
+        random -= weights[i];
+        if (random <= 0) {
+          selectedIndex = i;
+          break;
+        }
+      }
+      const selectedInsight = insights[selectedIndex];
+
+      // Generate connection to identity using AI if available
+      let connection = "Wisdom you captured";
+      let application = "How might this inform a decision today?";
+      let synthesis: string | null = null;
+
+      if (LOVABLE_API_KEY && identityData) {
+        try {
+          const systemPrompt = `You help users see how their captured wisdom connects to their direction.
+
+USER'S CONTEXT:
+- Direction: ${identityData.year_note || identityData.content || "Not specified"}
+- Values: ${identityData.core_values || "Not specified"}
+- Weekly Focus: ${identityData.weekly_focus || "Not specified"}
+
+INSIGHT TO CONNECT:
+Title: ${selectedInsight.title}
+Content: ${selectedInsight.content?.substring(0, 500)}
+
+Return a JSON object with:
+1. "connection": One sentence showing how this insight relates to their direction/values (be specific, not generic)
+2. "application": One reflective question or micro-action they could take today (concrete, not vague)
+${includeSynthesis ? '3. "synthesis": A brief pattern you notice - what theme does this insight suggest across their journey?' : ''}
+
+Be direct. No fluff. Ground everything in their actual words.`;
+
+          const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: "Generate the connection and application for this insight." }
+              ],
+              response_format: { type: "json_object" }
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.choices[0]?.message?.content;
+            if (content) {
+              try {
+                const parsed = JSON.parse(content);
+                connection = parsed.connection || connection;
+                application = parsed.application || application;
+                if (parsed.synthesis) {
+                  synthesis = parsed.synthesis;
+                }
+              } catch {
+                // Use defaults if parsing fails
+              }
+            }
+          }
+        } catch (aiError) {
+          console.error("AI connection error:", aiError);
+        }
+      }
+
+      // Local fallback for connection generation
+      if (connection === "Wisdom you captured" && identityData) {
+        const content = selectedInsight.content?.toLowerCase() || "";
+        const title = selectedInsight.title?.toLowerCase() || "";
+        
+        if (identityData.core_values) {
+          const values = identityData.core_values.split(',').map((v: string) => v.trim().toLowerCase());
+          const matchedValue = values.find((v: string) => content.includes(v) || title.includes(v));
+          if (matchedValue) {
+            connection = `Connects to your value of ${matchedValue}`;
+          }
+        }
+        
+        if (connection === "Wisdom you captured" && identityData.year_note) {
+          const yearWords = identityData.year_note.toLowerCase().split(/\s+/).filter((w: string) => w.length > 4);
+          if (yearWords.some((w: string) => content.includes(w) || title.includes(w))) {
+            connection = "Aligned with your 2026 direction";
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({
+        insight: selectedInsight,
+        connection,
+        application,
+        synthesis,
+        totalInsights: insights.length
+      }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // Full synthesis requires API key
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     console.log(`Weave Synthesis: generating for user ${userId}`);
