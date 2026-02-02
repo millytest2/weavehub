@@ -336,10 +336,20 @@ serve(async (req) => {
     
     const { data: identityData } = await supabase
       .from("identity_seeds")
-      .select("last_pillar_used, content, core_values")
+      .select("last_pillar_used, content, core_values, year_note, weekly_focus")
       .eq("user_id", user.id)
       .maybeSingle();
     
+    // Fetch recent completed actions to avoid repetition (past 7 days)
+    const { data: recentActions } = await supabase
+      .from("action_history")
+      .select("action_text, pillar, action_date")
+      .eq("user_id", user.id)
+      .gte("action_date", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      .order("action_date", { ascending: false })
+      .limit(20);
+    
+    // Fetch MORE semantic insights - expand to 15 for better grounding
     let semanticInsights: string[] = [];
     if (identityData?.content) {
       try {
@@ -363,12 +373,14 @@ serve(async (req) => {
             const { data: relevantInsights } = await supabase.rpc('search_insights_semantic', {
               user_uuid: user.id,
               query_embedding: `[${embedding.join(',')}]`,
-              match_count: 5,
-              similarity_threshold: 0.4
+              match_count: 15,
+              similarity_threshold: 0.35
             });
             
             if (relevantInsights && relevantInsights.length > 0) {
-              semanticInsights = relevantInsights.map((i: any) => `[${i.source || 'insight'}] ${i.title}: ${i.content.substring(0, 150)}`);
+              semanticInsights = relevantInsights.map((i: any) => 
+                `[${i.source || 'insight'}] "${i.title}": ${i.content.substring(0, 200)}`
+              );
             }
           }
         }
@@ -387,6 +399,21 @@ serve(async (req) => {
     const pillar1 = choosePillar(recentPillars);
     const pillar2 = choosePillar([pillar1, ...recentPillars]);
     const pillar3 = choosePillar([pillar1, pillar2, ...recentPillars]);
+    
+    // Build recent actions context for de-duplication
+    const recentActionsContext = recentActions && recentActions.length > 0
+      ? `\n\nACTIONS ALREADY TAKEN (DO NOT REPEAT THESE):\n${recentActions.map(a => `- [${a.pillar}] ${a.action_text}`).join('\n')}`
+      : '';
+    
+    // Build 2026 direction context
+    const yearDirection = identityData?.year_note 
+      ? `\n\n=== 2026 MISOGI / YEARLY DIRECTION ===\n${identityData.year_note}`
+      : '';
+    
+    // Build weekly focus context  
+    const weeklyContext = identityData?.weekly_focus
+      ? `\n\n=== THIS WEEK'S FOCUS ===\n${identityData.weekly_focus}`
+      : '';
 
     const contextPrompt = formatContextForAI(userContextData);
     const semanticContext = semanticInsights.length > 0 
@@ -422,53 +449,67 @@ ${dateTime.isLateNight ? '\n*** CRITICAL: It is LATE NIGHT. Only suggest reflect
       const effectivePillar2 = dateTime.isLateNight ? "Health" : pillar2;
       const effectivePillar3 = dateTime.isLateNight ? "Admin" : pillar3;
       
-      // Generate 3 options
-      const systemPrompt = `You ground the user in their VALUES and IDENTITY. Return 3 concrete actions rooted in WHO THEY ARE BECOMING.
+      // Generate 3 options with comprehensive context
+      const systemPrompt = `You help this person take ONE action that moves them toward their 2026 vision. Return 3 options.
 
-CRITICAL ORIENTATION:
-- Their IDENTITY SEED and CORE VALUES are the PRIMARY anchor
-- Actions should EXPRESS their identity, not CONSUME content
-- Insights are EXTRACTED WISDOM they already internalized
-- NEVER suggest watching, reading, or reviewing content
-- "Based on your value of X, do Y" not "watch the video about X"
-      
+=== WHO THEY ARE ===
+${identityData?.content || 'Full-stack human building toward their vision'}
+${yearDirection}
+${weeklyContext}
+${coreValuesContext}
+
+=== THEIR CAPTURED WISDOM (from YouTube, articles, PDFs they've saved) ===
+${semanticContext || 'No recent insights captured'}
+
+=== WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
+${recentActionsContext || 'No recent actions tracked'}
+
+=== ACTIVE PROJECTS ===
+${userContextData.active_projects?.join(', ') || 'UPath, content creation'}
+
+=== CURRENT HURDLES THEY'VE MENTIONED ===
+${userContextData.current_hurdles?.join(', ') || 'Consistency, showing up authentically'}
+
 TODAY: ${dateTime.fullContext}
-
 ${timeContextBlock}
-
-${contextPrompt}${semanticContext}${userMindContext}${coreValuesContext}
+${userMindContext}
 
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
-REVERSE ENGINEERING FROM 2026:
-1. START FROM THE END - What does their year_note/2026 vision require?
-2. WORK BACKWARD - What capability, habit, or proof point moves them there?
-3. TODAY'S STEP - What's the smallest action that builds that capability?
+=== HOW TO GENERATE GOOD INVITATIONS ===
 
-CRITICAL QUALITY RULES:
-1. EACH OPTION FROM A DIFFERENT PILLAR
-2. GROUND IN 2026 VISION - "Your 2026 goal requires X, today's step is Y"
-3. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
-4. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features, real project names
-5. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
-6. ACTIONS EXPRESS IDENTITY - Create, build, reach out, ship, move, connect—not consume
-7. SHOW THE THREAD - Help them see how this action connects to where they're going
+1. REVERSE ENGINEER FROM 2026:
+   - Their year_note/Misogi is the END goal
+   - What capability, proof point, or habit builds toward that?
+   - What's ONE step they can take TODAY toward that capability?
 
-BANNED PATTERNS (instant rejection):
-- "watch/read/review/look at" ANYTHING
-- "check out the insight about..."
-- "revisit the article/video on..."
-- Any suggestion to CONSUME content
-- Vague suggestions without project names
+2. BE SPECIFIC TO THEIR CONTEXT:
+   - Use their actual project names (UPath, Weave, etc.)
+   - Reference their actual hurdles (posting consistently, etc.)
+   - Ground in their actual values
+
+3. AVOID WHAT THEY'VE ALREADY DONE:
+   - Check the "already done" list above
+   - Don't suggest the same action twice in a week
+
+4. MATCH TIME OF DAY:
+   - Energy level: ${dateTime.energyLevel}
+   - Duration: ${dateTime.duration}
+
+BANNED:
+- "watch/read/review" anything
+- Vague actions like "work on your project"
+- Generic productivity advice
 - Emotional/motivational language
+- Anything they've already done this week
 
-${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
-- ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep
-- Examples: "Journal 3 wins from today (5 min)", "Review tomorrow's calendar (5 min)", "Write one thing you're grateful for"
-- Duration: 5-15 minutes MAX
-- NEVER suggest: work tasks, deep focus, building, shipping, meetings, anything requiring energy` : ''}
+GOOD EXAMPLES:
+- "Record a 60-second talking head video about UPath for LinkedIn (15 min)"
+- "DM 3 creators you admire on Twitter with genuine feedback (10 min)"
+- "Build the UPath onboarding flow first screen (45 min)"
+- "5-minute breathwork before your next call"
 
-Surface what resonates from their own captured wisdom.`;
+${dateTime.isLateNight ? `LATE NIGHT: Only journaling, tomorrow prep, gratitude, breathing. 5-15 min max.` : ''}`;
 
       // Model strategy: Try cheap model first, fall back to best if needed, then local fallback
       // 1. Primary: gemini-2.5-flash-lite (cheapest, fast)
@@ -586,48 +627,55 @@ Surface what resonates from their own captured wisdom.`;
       // For late night, override to relaxing pillar
       const suggestedPillar = dateTime.isLateNight ? "Presence" : pillar1;
       
-      const systemPrompt = `You ground the user in their VALUES and IDENTITY. Return ONE concrete action rooted in WHO THEY ARE BECOMING.
+      const systemPrompt = `You help this person take ONE action that moves them toward their 2026 vision.
 
-CRITICAL ORIENTATION:
-- Their IDENTITY SEED and CORE VALUES are the PRIMARY anchor
-- Actions should EXPRESS their identity, not CONSUME content
-- Insights are EXTRACTED WISDOM they already internalized
-- NEVER suggest watching, reading, or reviewing content
-- "Based on your value of X, do Y" not "watch the video about X"
+=== WHO THEY ARE ===
+${identityData?.content || 'Full-stack human building toward their vision'}
+${yearDirection}
+${weeklyContext}
+${coreValuesContext}
+
+=== THEIR CAPTURED WISDOM ===
+${semanticContext || 'No recent insights captured'}
+
+=== WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
+${recentActionsContext || 'No recent actions tracked'}
+
+=== ACTIVE PROJECTS ===
+${userContextData.active_projects?.join(', ') || 'UPath, content creation'}
+
+=== CURRENT HURDLES ===
+${userContextData.current_hurdles?.join(', ') || 'Consistency, showing up authentically'}
 
 TODAY: ${dateTime.fullContext}
-
 ${timeContextBlock}
-
-${contextPrompt}${semanticContext}${coreValuesContext}
+${userMindContext}
 
 PILLAR: ${suggestedPillar}
 
-REVERSE ENGINEERING FROM 2026:
-1. START FROM THE END - What does their year_note/2026 vision require?
-2. WORK BACKWARD - What capability, habit, or proof point moves them there?
-3. TODAY'S STEP - What's the smallest action that builds that capability?
+=== HOW TO GENERATE A GOOD INVITATION ===
 
-CRITICAL QUALITY RULES:
-1. GROUND IN 2026 VISION - "Your 2026 goal requires X, today's step is Y"
-2. BE HYPER-SPECIFIC - "Build the UPath dashboard filter component" not "work on your project"
-3. INCLUDE CONCRETE DETAILS - Specific numbers, time blocks, exact features, real project names
-4. MATCH THE TIME OF DAY ENERGY - ${dateTime.energyLevel}
-5. ACTIONS EXPRESS IDENTITY - Create, build, reach out, ship, move, connect—not consume
-6. SHOW THE THREAD - Help them see how this action connects to where they're going
+1. REVERSE ENGINEER FROM 2026:
+   - Their year_note/Misogi is the END goal
+   - What capability builds toward that?
+   - What's ONE step they can take TODAY?
 
-BANNED PATTERNS (instant rejection):
-- "watch/read/review/look at" ANYTHING
-- "check out the insight about..."
-- "revisit the article/video on..."
-- Any suggestion to CONSUME content
-- Vague suggestions without project names
-- Emotional/motivational language
+2. BE SPECIFIC:
+   - Use their actual project names
+   - Reference their actual hurdles
+   - Ground in their actual values
 
-${dateTime.isLateNight ? `LATE NIGHT OVERRIDE:
-- ONLY suggest: journaling, tomorrow prep, light reflection, gratitude, sleep prep, breathing exercise
-- Duration: 5-15 minutes MAX
-- NEVER suggest: work tasks, deep focus, building, shipping, anything requiring energy` : ''}`;
+3. AVOID REPETITION:
+   - Don't suggest what they've already done
+
+BANNED: "watch/read/review", vague actions, generic advice, emotional language
+
+GOOD EXAMPLES:
+- "Record a 60-second UPath explainer video (15 min)"
+- "DM 3 creators on Twitter with genuine feedback (10 min)"
+- "Build the onboarding first screen (45 min)"
+
+${dateTime.isLateNight ? `LATE NIGHT: Only journaling, tomorrow prep, breathing. 5-15 min max.` : ''}`;
 
 
       // Model strategy for single action: cheap model first, then local fallback
