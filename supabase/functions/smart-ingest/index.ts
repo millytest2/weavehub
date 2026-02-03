@@ -824,6 +824,7 @@ serve(async (req) => {
     
     // Generate and save insights with IDENTITY-WEIGHTED topic matching
     let insightsCreated = 0;
+    let createdInsightIds: string[] = [];
     if (content && content.length > 50) {
       const insights = await generateInsights(content, title, detected.type);
       
@@ -840,19 +841,119 @@ serve(async (req) => {
       
       for (const insight of insights) {
         if (insight.title && insight.content) {
-          await supabase.from("insights").insert({
+          const { data: insightData } = await supabase.from("insights").insert({
             user_id: user.id,
             title: insight.title,
             content: insight.content,
             source,
             topic_id: matchedTopicId,
-          });
+          }).select("id").single();
+          
+          if (insightData) {
+            createdInsightIds.push(insightData.id);
+          }
           insightsCreated++;
         }
       }
     }
     
     console.log("Created document and", insightsCreated, "insights");
+    
+    // Find connected insights using semantic similarity
+    let connectedInsights: { id: string; title: string; similarity: number }[] = [];
+    let synthesis = "";
+    let capability = "";
+    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (LOVABLE_API_KEY && content && content.length > 100) {
+      try {
+        // Generate embedding for the new content
+        const embedResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'text-embedding-3-small',
+            input: `${title} ${content}`.substring(0, 3000)
+          }),
+        });
+        
+        if (embedResponse.ok) {
+          const embedData = await embedResponse.json();
+          const embedding = embedData.data?.[0]?.embedding;
+          
+          if (embedding) {
+            // Find similar existing insights
+            const { data: similarInsights } = await supabase.rpc('search_insights_semantic', {
+              user_uuid: user.id,
+              query_embedding: `[${embedding.join(',')}]`,
+              match_count: 5,
+              similarity_threshold: 0.5
+            });
+            
+            if (similarInsights && similarInsights.length > 0) {
+              // Filter out the ones we just created
+              connectedInsights = similarInsights
+                .filter((i: any) => !createdInsightIds.includes(i.id))
+                .slice(0, 3)
+                .map((i: any) => ({
+                  id: i.id,
+                  title: i.title,
+                  similarity: i.similarity
+                }));
+              
+              console.log("Found connected insights:", connectedInsights.length);
+              
+              // Generate synthesis if we have connections
+              if (connectedInsights.length > 0 && identityData?.content) {
+                try {
+                  const synthesisResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      model: "google/gemini-2.5-flash-lite",
+                      max_tokens: 150,
+                      messages: [
+                        {
+                          role: "system",
+                          content: `User's 2026 direction: ${identityData.content.substring(0, 500)}
+
+New content just saved: "${title}"
+Connected to: ${connectedInsights.map(c => c.title).join(", ")}
+
+In ONE sentence (under 25 words), explain what CAPABILITY or understanding the user is building by connecting these pieces. Be specific to their direction.`
+                        },
+                        { role: "user", content: "What am I building?" }
+                      ],
+                    }),
+                  });
+                  
+                  if (synthesisResponse.ok) {
+                    const synthData = await synthesisResponse.json();
+                    synthesis = synthData.choices?.[0]?.message?.content?.trim() || "";
+                    
+                    // Extract capability
+                    const capMatch = synthesis.match(/building\s+(?:the\s+)?(?:ability|skill|capacity)\s+to\s+([^.]+)/i);
+                    if (capMatch) {
+                      capability = capMatch[1].trim();
+                    }
+                  }
+                } catch (e) {
+                  console.error("Synthesis error:", e);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Connection finding error:", e);
+      }
+    }
     
     // Generate pending action for "Zero Information Waste" system
     let pendingActionCreated = false;
@@ -902,13 +1003,19 @@ serve(async (req) => {
         insightsCreated,
         pendingActionCreated,
         needsManualContent,
+        // NEW: Connection data for visual feedback
+        connections: connectedInsights,
+        synthesis,
+        capability,
         message: needsManualContent 
           ? "Saved metadata. Paste caption/thread for full extraction."
-          : pendingActionCreated
-            ? `Saved + action queued`
-            : insightsCreated > 0 
-              ? `Saved + ${insightsCreated} insight${insightsCreated > 1 ? 's' : ''} extracted`
-              : "Saved"
+          : connectedInsights.length > 0
+            ? `Woven with ${connectedInsights.length} existing insight${connectedInsights.length > 1 ? 's' : ''}`
+            : pendingActionCreated
+              ? `Saved + action queued`
+              : insightsCreated > 0 
+                ? `Saved + ${insightsCreated} insight${insightsCreated > 1 ? 's' : ''} extracted`
+                : "Saved"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

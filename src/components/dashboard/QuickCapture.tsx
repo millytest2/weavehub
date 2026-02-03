@@ -141,6 +141,15 @@ export const QuickCapture = () => {
     }
   };
 
+  // State for showing connections after paste
+  const [showConnections, setShowConnections] = useState(false);
+  const [captureResult, setCaptureResult] = useState<{
+    title: string;
+    connections: { id: string; title: string; similarity: number }[];
+    synthesis: string;
+    capability: string;
+  } | null>(null);
+
   const executeSubmit = async () => {
     if (!user || !content.trim()) return;
     
@@ -166,14 +175,28 @@ export const QuickCapture = () => {
           return;
         }
         
-        // First paste celebration!
-        if (isFirstPaste && user) {
-          celebrate();
-          localStorage.setItem(`first_paste_${user.id}`, "true");
-          setIsFirstPaste(false);
-          toast.success("First capture! You're weaving. 🎉");
+        // Show connections if we found any
+        if (data.connections && data.connections.length > 0) {
+          setCaptureResult({
+            title: data.title || "Captured content",
+            connections: data.connections,
+            synthesis: data.synthesis || "",
+            capability: data.capability || "",
+          });
+          setShowConnections(true);
+          setContent("");
+          toast.success(`Woven with ${data.connections.length} existing insight${data.connections.length > 1 ? 's' : ''}`);
         } else {
-          toast.success(data.message || "Saved");
+          // First paste celebration!
+          if (isFirstPaste && user) {
+            celebrate();
+            localStorage.setItem(`first_paste_${user.id}`, "true");
+            setIsFirstPaste(false);
+            toast.success("First capture! You're weaving. 🎉");
+          } else {
+            toast.success(data.message || "Saved");
+          }
+          handleClose();
         }
         showCareerToastForPaste(content);
       } else if (captureType === "insight") {
@@ -187,9 +210,8 @@ export const QuickCapture = () => {
           source: "quick_capture",
         });
         toast.success("Insight captured");
+        handleClose();
       }
-      
-      handleClose();
     } catch (error: any) {
       console.error("Capture error:", error);
       toast.error(error.message || "Failed to capture");
