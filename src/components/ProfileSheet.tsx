@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-import { WeaveView } from "./profile/WeaveView";
 import { DailyWisdom } from "./dashboard/DailyWisdom";
 import { useTheme } from "next-themes";
 
@@ -421,30 +420,23 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                 {/* Your Mind Said - Daily Wisdom with spaced repetition */}
                 <DailyWisdom userId={user?.id || ""} />
                 
-                {/* Thread Weaving - Patterns and connections */}
-                <WeaveView
-                  insights={insightClusters.flatMap(c => c.insights.map(i => ({
-                    id: i.id,
-                    title: i.title,
-                    content: i.content,
-                    topic_id: i.topic_id,
-                    created_at: i.created_at,
-                    topics: i.topics ? { name: i.topics.name, color: i.topics.color } : null
-                  })))}
-                  actions={weeklyActions.map(a => ({
-                    id: a.id,
-                    action_text: a.action_text,
-                    pillar: a.pillar,
-                    action_date: a.action_date
-                  }))}
-                  experiments={activeExperiments.map(e => ({
-                    id: e.id,
-                    title: e.title,
-                    status: e.status,
-                    identity_shift_target: e.identity_shift_target
-                  }))}
-                  identitySeed={identitySeed}
-                />
+                {/* Explore link - go to /explore for full knowledge map */}
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Your full knowledge map with connections and patterns is in Explore.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => {
+                      onOpenChange(false);
+                      window.location.href = '/explore';
+                    }}
+                  >
+                    Go to Explore
+                  </Button>
+                </div>
               </>
             )}
           </TabsContent>
