@@ -449,8 +449,21 @@ ${dateTime.isLateNight ? '\n*** CRITICAL: It is LATE NIGHT. Only suggest reflect
       const effectivePillar2 = dateTime.isLateNight ? "Health" : pillar2;
       const effectivePillar3 = dateTime.isLateNight ? "Admin" : pillar3;
       
-      // Generate 3 options with comprehensive context
+      // Generate 3 options with comprehensive context - v2 improved prompt
       const systemPrompt = `You help this person take ONE action that moves them toward their 2026 vision. Return 3 options.
+
+=== CORE APPROACH: REVERSE ENGINEER FROM THE END ===
+
+1. START FROM END: What does achieving their 2026 Misogi/year_note require?
+2. REVERSE ENGINEER: What capability needs building right now?
+3. CHECK LAST 7 DAYS: What have they been doing? (DON'T REPEAT)
+4. FACTOR weekly_focus: What's the current priority?
+5. CONSIDER TIME/DAY:
+   - Monday morning: high-energy, clarity tasks
+   - Friday afternoon: lighter, creative tasks  
+   - Evening: reflection, low-friction tasks
+6. CHECK ACTIVE EXPERIMENTS: Any micro-reps due today?
+7. GENERATE ONE ACTION that builds toward 2026
 
 === WHO THEY ARE ===
 ${identityData?.content || 'Full-stack human building toward their vision'}
@@ -476,25 +489,24 @@ ${userMindContext}
 
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
-=== HOW TO GENERATE GOOD INVITATIONS ===
+=== HOW TO GENERATE RADICALLY SPECIFIC INVITATIONS ===
 
-1. REVERSE ENGINEER FROM 2026:
-   - Their year_note/Misogi is the END goal
-   - What capability, proof point, or habit builds toward that?
-   - What's ONE step they can take TODAY toward that capability?
+BE SPECIFIC (this is the #1 problem right now):
+- BAD: "Make a TikTok"
+- GOOD: "Record 60-sec TikTok about pain-first discovery (insight you saved). You've done business stuff all week but no content. 30 min."
 
-2. BE SPECIFIC TO THEIR CONTEXT:
-   - Use their actual project names (UPath, Weave, etc.)
-   - Reference their actual hurdles (posting consistently, etc.)
-   - Ground in their actual values
+Every action MUST reference:
+1. A SPECIFIC insight, project, or context from their data
+2. WHY it matters (connect to 2026 Misogi)
+3. What they've been AVOIDING (if they've done 5 business tasks, push content)
 
-3. AVOID WHAT THEY'VE ALREADY DONE:
-   - Check the "already done" list above
-   - Don't suggest the same action twice in a week
+=== OUTPUT FORMAT ===
 
-4. MATCH TIME OF DAY:
-   - Energy level: ${dateTime.energyLevel}
-   - Duration: ${dateTime.duration}
+Each option should include:
+- priority_for_today: The pillar
+- do_this_now: SPECIFIC, CONCRETE action with their actual project names
+- why_it_matters: Explicit connection to 2026 Misogi
+- time_required: Realistic duration (15-90 min)
 
 BANNED:
 - "watch/read/review" anything
@@ -629,6 +641,14 @@ ${dateTime.isLateNight ? `LATE NIGHT: Only journaling, tomorrow prep, gratitude,
       
       const systemPrompt = `You help this person take ONE action that moves them toward their 2026 vision.
 
+=== CORE APPROACH: REVERSE ENGINEER FROM THE END ===
+
+1. START FROM END: What does achieving their 2026 Misogi require?
+2. REVERSE ENGINEER: What capability needs building right now?
+3. CHECK LAST 7 DAYS: What have they been doing? (DON'T REPEAT)
+4. FACTOR weekly_focus: What's the current priority?
+5. GENERATE ONE ACTION that builds toward 2026
+
 === WHO THEY ARE ===
 ${identityData?.content || 'Full-stack human building toward their vision'}
 ${yearDirection}
@@ -653,27 +673,16 @@ ${userMindContext}
 
 PILLAR: ${suggestedPillar}
 
-=== HOW TO GENERATE A GOOD INVITATION ===
+=== RADICALLY SPECIFIC ===
 
-1. REVERSE ENGINEER FROM 2026:
-   - Their year_note/Misogi is the END goal
-   - What capability builds toward that?
-   - What's ONE step they can take TODAY?
+BE SPECIFIC:
+- BAD: "Make content"
+- GOOD: "Record 60-sec TikTok about [specific insight they saved]. 30 min."
 
-2. BE SPECIFIC:
-   - Use their actual project names
-   - Reference their actual hurdles
-   - Ground in their actual values
-
-3. AVOID REPETITION:
-   - Don't suggest what they've already done
+Must reference their actual project names, actual hurdles, actual insights.
+Connect explicitly to 2026 Misogi.
 
 BANNED: "watch/read/review", vague actions, generic advice, emotional language
-
-GOOD EXAMPLES:
-- "Record a 60-second UPath explainer video (15 min)"
-- "DM 3 creators on Twitter with genuine feedback (10 min)"
-- "Build the onboarding first screen (45 min)"
 
 ${dateTime.isLateNight ? `LATE NIGHT: Only journaling, tomorrow prep, breathing. 5-15 min max.` : ''}`;
 
