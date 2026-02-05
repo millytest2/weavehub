@@ -11,7 +11,6 @@ import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRe
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
-import { WhatsEmerging } from "@/components/dashboard/WhatsEmerging";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -380,9 +379,6 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* What's Emerging */}
-        {user && <WhatsEmerging userId={user.id} />}
-        
         {/* Primary Action - Today's Invitation */}
         <section className="relative">
           {/* Progress indicators - floating top right */}

@@ -57,6 +57,83 @@ serve(async (req) => {
     const userId = user.id;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
+    // Handle "cluster_connection" action - shows how a topic cluster connects to Misogi
+    if (action === "cluster_connection") {
+      let clusterName = "";
+      let insightTitles: string[] = [];
+      let yearNote = "";
+      
+      try {
+        const body = await req.clone().json();
+        clusterName = body?.clusterName || "";
+        insightTitles = body?.insightTitles || [];
+        yearNote = body?.yearNote || "";
+      } catch {
+        // Default values
+      }
+      
+      // Generate connection using AI
+      if (LOVABLE_API_KEY && yearNote) {
+        try {
+          const systemPrompt = `You help users understand how clusters of knowledge connect to their life direction.
+
+CLUSTER: ${clusterName}
+INSIGHTS IN THIS CLUSTER: ${insightTitles.join(", ")}
+USER'S 2026 DIRECTION: ${yearNote}
+
+Return a JSON object with:
+1. "connection": One sentence (max 20 words) showing how this topic cluster contributes to their 2026 direction. Be specific, reference their actual words.
+2. "action": One simple thing they could do with this cluster (max 15 words). Concrete and actionable.
+
+Be direct. No fluff. No generic advice.`;
+
+          const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: "Generate the connection and action." }
+              ],
+              response_format: { type: "json_object" }
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.choices[0]?.message?.content;
+            if (content) {
+              try {
+                const parsed = JSON.parse(content);
+                return new Response(JSON.stringify({
+                  connection: parsed.connection || `Your ${clusterName} insights support your direction.`,
+                  action: parsed.action || `Review one ${clusterName} insight and apply it.`
+                }), { 
+                  headers: { ...corsHeaders, "Content-Type": "application/json" } 
+                });
+              } catch {
+                // Fall through to default
+              }
+            }
+          }
+        } catch (aiError) {
+          console.error("AI cluster connection error:", aiError);
+        }
+      }
+      
+      // Fallback
+      return new Response(JSON.stringify({
+        connection: `These ${insightTitles.length} insights in ${clusterName} are part of your growth trajectory.`,
+        action: `Pick one insight from this cluster and experiment with it this week.`
+      }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     // Handle "surface_one" action - surfaces a single insight with connection to identity
     if (action === "surface_one") {
       // Fetch user's identity context
