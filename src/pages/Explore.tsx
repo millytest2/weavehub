@@ -1,26 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Lightbulb, 
-  FileText, 
-  FlaskConical, 
-  ArrowRight,
-  Target,
   Layers,
-  Network,
   Sparkles,
   RefreshCw
 } from "lucide-react";
 import { WeaveLoader } from "@/components/ui/weave-loader";
-import { KnowledgeGraph } from "@/components/explore/KnowledgeGraph";
+import { TopicClusterView } from "@/components/explore/TopicClusterView";
 
 interface ContentItem {
   id: string;
@@ -56,8 +50,7 @@ const Explore = () => {
   const [experiments, setExperiments] = useState<ContentItem[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [identityContext, setIdentityContext] = useState<IdentityContext | null>(null);
-  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
-  const [activeTab, setActiveTab] = useState<"graph" | "weave">("graph");
+  const [activeTab, setActiveTab] = useState<"topics" | "weave">("topics");
   const [isWeaving, setIsWeaving] = useState(false);
   const [currentWeave, setCurrentWeave] = useState<{
     insight: ContentItem;
@@ -156,24 +149,6 @@ const Explore = () => {
     }
   };
 
-  const handleNodeClick = async (node: any) => {
-    setSelectedItem({
-      id: node.id,
-      type: node.type,
-      title: node.title,
-      content: node.content,
-      source: node.source,
-      created_at: "",
-    });
-
-    // Track access
-    if (node.type === "insight") {
-      await supabase.rpc("update_item_access", { table_name: "insights", item_id: node.id });
-    } else if (node.type === "document") {
-      await supabase.rpc("update_item_access", { table_name: "documents", item_id: node.id });
-    }
-  };
-
   const handleWeave = async () => {
     if (!user) return;
     
@@ -243,15 +218,15 @@ const Explore = () => {
         {/* Tab Switcher */}
         <div className="flex gap-2 p-1 bg-muted/50 rounded-2xl">
           <button
-            onClick={() => setActiveTab("graph")}
+            onClick={() => setActiveTab("topics")}
             className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "graph" 
+              activeTab === "topics" 
                 ? "bg-background shadow-sm text-foreground" 
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Network className="h-4 w-4 inline mr-1.5 -mt-0.5" />
-            Network
+            <Layers className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+            Topics
           </button>
           <button
             onClick={() => setActiveTab("weave")}
@@ -267,66 +242,50 @@ const Explore = () => {
         </div>
 
         <AnimatePresence mode="wait">
-          {activeTab === "graph" ? (
+          {activeTab === "topics" ? (
             <motion.div
-              key="graph"
+              key="topics"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className="space-y-4"
             >
-              {/* 2026 Direction Banner */}
-              {identityContext?.yearNote && (
-                <Card className="p-3 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                  <div className="flex items-center gap-3">
-                    <Target className="h-5 w-5 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-primary font-medium">2026 Direction</p>
-                      <p className="text-sm line-clamp-1">
-                        {identityContext.yearNote.split(' ').slice(0, 12).join(' ')}...
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {/* Network Graph */}
+              {/* Topic Clusters View */}
               {totalItems > 0 ? (
-                <KnowledgeGraph
-                  insights={insights}
-                  documents={documents}
-                  experiments={experiments}
+                <TopicClusterView
+                  insights={insights.map(i => ({
+                    id: i.id,
+                    title: i.title,
+                    content: i.content,
+                    source: i.source,
+                    topic_id: i.topic_id,
+                    created_at: i.created_at,
+                    last_accessed: i.last_accessed
+                  }))}
+                  documents={documents.map(d => ({
+                    id: d.id,
+                    title: d.title,
+                    content: d.content,
+                    topic_id: d.topic_id
+                  }))}
+                  experiments={experiments.map(e => ({
+                    id: e.id,
+                    title: e.title,
+                    content: e.content,
+                    topic_id: e.topic_id
+                  }))}
                   topics={topics}
-                  onNodeClick={handleNodeClick}
                   yearNote={identityContext?.yearNote}
+                  userId={user?.id || ""}
                 />
               ) : (
                 <Card className="p-8 rounded-2xl text-center">
                   <Layers className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">
-                    Start capturing insights to see your knowledge network
+                    Start capturing insights to see your knowledge organized by topic
                   </p>
                 </Card>
               )}
-
-              {/* Quick stats */}
-              <div className="grid grid-cols-3 gap-2">
-                <Card className="p-3 rounded-xl text-center">
-                  <Lightbulb className="h-4 w-4 text-primary mx-auto mb-1" />
-                  <p className="text-lg font-semibold">{insights.length}</p>
-                  <p className="text-xs text-muted-foreground">Insights</p>
-                </Card>
-                <Card className="p-3 rounded-xl text-center">
-                  <FileText className="h-4 w-4 text-blue-500 mx-auto mb-1" />
-                  <p className="text-lg font-semibold">{documents.length}</p>
-                  <p className="text-xs text-muted-foreground">Documents</p>
-                </Card>
-                <Card className="p-3 rounded-xl text-center">
-                  <FlaskConical className="h-4 w-4 text-green-500 mx-auto mb-1" />
-                  <p className="text-lg font-semibold">{experiments.length}</p>
-                  <p className="text-xs text-muted-foreground">Experiments</p>
-                </Card>
-              </div>
             </motion.div>
           ) : (
             <motion.div
@@ -409,33 +368,6 @@ const Explore = () => {
           )}
         </AnimatePresence>
       </div>
-
-      {/* Item detail dialog */}
-      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-xl">
-          <DialogHeader>
-            <DialogTitle className="text-base flex items-center gap-2">
-              {selectedItem?.type === "insight" && <Lightbulb className="h-4 w-4 text-primary" />}
-              {selectedItem?.type === "document" && <FileText className="h-4 w-4 text-blue-500" />}
-              {selectedItem?.type === "experiment" && <FlaskConical className="h-4 w-4 text-green-500" />}
-              <span className="capitalize">{selectedItem?.type}</span>
-            </DialogTitle>
-          </DialogHeader>
-          {selectedItem && (
-            <div className="space-y-3">
-              <h3 className="font-semibold">{selectedItem.title}</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {selectedItem.content}
-              </p>
-              {selectedItem.source && (
-                <p className="text-xs text-muted-foreground">
-                  Source: {selectedItem.source}
-                </p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </MainLayout>
   );
 };
