@@ -10,8 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-import { DailyWisdom } from "./dashboard/DailyWisdom";
-import { useTheme } from "next-themes";
+ import { useTheme } from "next-themes";
 
 interface ActionHistoryItem {
   id: string;
@@ -417,16 +416,14 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
               </div>
             ) : (
               <>
-                {/* Your Mind Said - Daily Wisdom with spaced repetition */}
-                <DailyWisdom userId={user?.id || ""} />
-                
-                {/* Explore link - go to /explore for full knowledge map */}
-                <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Your full knowledge map with connections and patterns is in Explore.
+                 {/* Direct link to Explore for knowledge graph */}
+                 <div className="p-5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10">
+                   <h3 className="text-sm font-medium mb-2">Your Knowledge Graph</h3>
+                   <p className="text-xs text-muted-foreground mb-4">
+                     See how your 290+ insights connect and weave together in the interactive network view.
                   </p>
                   <Button 
-                    variant="outline" 
+                     variant="default" 
                     size="sm" 
                     className="w-full"
                     onClick={() => {
@@ -434,7 +431,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                       window.location.href = '/explore';
                     }}
                   >
-                    Go to Explore
+                     Open Knowledge Graph
                   </Button>
                 </div>
               </>
