@@ -215,8 +215,7 @@ CURRENT MONTH: ${currentMonth} (${new Date().toLocaleDateString('en-US', { month
 Generate 12 milestones (months 1-12). Months before ${currentMonth} = "completed", month ${currentMonth} = "current", after = "upcoming". Each needs: title, description, capability_focus.`;
 
       try {
-        console.log("LOVABLE_API_KEY present:", !!LOVABLE_API_KEY, "length:", LOVABLE_API_KEY?.length);
-        console.log("Generating milestones, prompt length:", milestonePrompt.length);
+        console.log("Generating milestones for user:", userId);
         const aiBody = {
           model: "openai/gpt-5-mini",
           messages: [
@@ -224,7 +223,7 @@ Generate 12 milestones (months 1-12). Months before ${currentMonth} = "completed
             { role: "user", content: "Generate the 12 monthly milestones. Return ONLY a JSON object with key 'milestones'. No markdown, no explanation." }
           ],
         };
-        console.log("AI request body size:", JSON.stringify(aiBody).length);
+        
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
