@@ -905,6 +905,48 @@ export type Database = {
         }
         Relationships: []
       }
+      thread_milestones: {
+        Row: {
+          capability_focus: string | null
+          created_at: string
+          description: string | null
+          id: string
+          insights_connected: number | null
+          month_number: number
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          capability_focus?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          insights_connected?: number | null
+          month_number: number
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          year?: number
+        }
+        Update: {
+          capability_focus?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          insights_connected?: number | null
+          month_number?: number
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       topics: {
         Row: {
           color: string | null

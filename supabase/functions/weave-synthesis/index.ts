@@ -134,6 +134,145 @@ Be direct. No fluff. No generic advice.`;
       });
     }
 
+    // Handle "generate_milestones" action - reverse-engineer 2026 Misogi into monthly milestones
+    if (action === "generate_milestones") {
+      const { data: identityData } = await supabase
+        .from("identity_seeds")
+        .select("content, year_note, core_values, weekly_focus")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!identityData?.year_note) {
+        return new Response(JSON.stringify({ 
+          error: "No 2026 direction set",
+          message: "Set your 2026 Misogi in Identity Seed first"
+        }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+
+      // Check if milestones already cached
+      const { data: existingMilestones } = await supabase
+        .from("thread_milestones")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("year", 2026)
+        .order("month_number", { ascending: true });
+
+      if (existingMilestones && existingMilestones.length >= 10) {
+        // Return cached milestones
+        return new Response(JSON.stringify({ 
+          milestones: existingMilestones,
+          cached: true 
+        }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+
+      // Fetch insight count per topic for context
+      const { data: insightCounts } = await supabase
+        .from("insights")
+        .select("topic_id, title")
+        .eq("user_id", userId)
+        .limit(100);
+
+      const { data: recentActions } = await supabase
+        .from("action_history")
+        .select("action_text, pillar, action_date")
+        .eq("user_id", userId)
+        .order("action_date", { ascending: false })
+        .limit(30);
+
+      if (!LOVABLE_API_KEY) {
+        return new Response(JSON.stringify({ error: "AI not configured" }), { 
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+
+      const currentMonth = new Date().getMonth() + 1; // 1-12
+
+      const milestonePrompt = `You reverse-engineer yearly goals into monthly milestones.
+
+USER'S 2026 DIRECTION (MISOGI):
+${identityData.year_note}
+
+WHO THEY'RE BECOMING:
+${identityData.content || "Not specified"}
+
+CORE VALUES: ${identityData.core_values || "Not specified"}
+
+CURRENT WEEKLY FOCUS: ${identityData.weekly_focus || "Not specified"}
+
+WHAT THEY'VE CAPTURED: ${insightCounts?.length || 0} insights
+RECENT ACTIONS: ${recentActions?.map(a => a.action_text).slice(0, 10).join("; ") || "None yet"}
+
+CURRENT MONTH: ${currentMonth} (${new Date().toLocaleDateString('en-US', { month: 'long' })})
+
+Generate 12 monthly milestones (months 1-12 of 2026) that reverse-engineer their Misogi into a logical progression. Each milestone should:
+1. Build on the previous month's capability
+2. Be specific to THEIR stated goals (use their words)
+3. Include one concrete capability they'll develop that month
+4. Months before the current month should be marked as "completed" (assume progress)
+5. The current month should be marked as "current"
+6. Future months should be "upcoming"
+
+Return JSON: { "milestones": [{ "month_number": 1, "title": "...", "description": "...", "capability_focus": "...", "status": "upcoming|current|completed" }] }`;
+
+      try {
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: milestonePrompt },
+              { role: "user", content: "Generate the 12 monthly milestones." }
+            ],
+            response_format: { type: "json_object" }
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`AI error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0]?.message?.content;
+        const parsed = JSON.parse(content);
+        const milestones = parsed.milestones || [];
+
+        // Cache milestones in DB (upsert)
+        for (const m of milestones) {
+          await supabase
+            .from("thread_milestones")
+            .upsert({
+              user_id: userId,
+              month_number: m.month_number,
+              year: 2026,
+              title: m.title,
+              description: m.description,
+              capability_focus: m.capability_focus,
+              status: m.status || "upcoming"
+            }, { onConflict: "user_id,month_number,year" });
+        }
+
+        return new Response(JSON.stringify({ milestones, cached: false }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      } catch (aiError) {
+        console.error("Milestone generation error:", aiError);
+        return new Response(JSON.stringify({ 
+          error: "Failed to generate milestones",
+          message: String(aiError)
+        }), { 
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+    }
+
     // Handle "surface_one" action - surfaces a single insight with connection to identity
     if (action === "surface_one") {
       // Fetch user's identity context
