@@ -97,9 +97,8 @@ Be direct. No fluff. No generic advice.`;
               model: "google/gemini-2.5-flash-lite",
               messages: [
                 { role: "system", content: systemPrompt },
-                { role: "user", content: "Generate the connection and action." }
+                { role: "user", content: "Generate the connection and action. Return ONLY valid JSON." }
               ],
-              response_format: { type: "json_object" }
             }),
           });
 
@@ -191,57 +190,61 @@ Be direct. No fluff. No generic advice.`;
 
       const currentMonth = new Date().getMonth() + 1; // 1-12
 
-      const milestonePrompt = `You reverse-engineer yearly goals into monthly milestones.
+      // Truncate content to avoid overly large prompts
+      const yearNote = (identityData.year_note || "").substring(0, 2000);
+      const identityContent = (identityData.content || "Not specified").substring(0, 1000);
+      const coreValues = (identityData.core_values || "Not specified").substring(0, 500);
+      const weeklyFocus = (identityData.weekly_focus || "Not specified").substring(0, 300);
+      const recentActionsSummary = recentActions?.map(a => a.action_text).filter(Boolean).slice(0, 5).join("; ") || "None yet";
 
-USER'S 2026 DIRECTION (MISOGI):
-${identityData.year_note}
+      const milestonePrompt = `Reverse-engineer this yearly goal into 12 monthly milestones.
 
-WHO THEY'RE BECOMING:
-${identityData.content || "Not specified"}
+2026 DIRECTION: ${yearNote}
 
-CORE VALUES: ${identityData.core_values || "Not specified"}
+WHO THEY'RE BECOMING: ${identityContent}
 
-CURRENT WEEKLY FOCUS: ${identityData.weekly_focus || "Not specified"}
+VALUES: ${coreValues}
 
-WHAT THEY'VE CAPTURED: ${insightCounts?.length || 0} insights
-RECENT ACTIONS: ${recentActions?.map(a => a.action_text).slice(0, 10).join("; ") || "None yet"}
+WEEKLY FOCUS: ${weeklyFocus}
+
+INSIGHTS CAPTURED: ${insightCounts?.length || 0}
+RECENT ACTIONS: ${recentActionsSummary}
 
 CURRENT MONTH: ${currentMonth} (${new Date().toLocaleDateString('en-US', { month: 'long' })})
 
-Generate 12 monthly milestones (months 1-12 of 2026) that reverse-engineer their Misogi into a logical progression. Each milestone should:
-1. Build on the previous month's capability
-2. Be specific to THEIR stated goals (use their words)
-3. Include one concrete capability they'll develop that month
-4. Months before the current month should be marked as "completed" (assume progress)
-5. The current month should be marked as "current"
-6. Future months should be "upcoming"
-
-Return JSON: { "milestones": [{ "month_number": 1, "title": "...", "description": "...", "capability_focus": "...", "status": "upcoming|current|completed" }] }`;
+Generate 12 milestones (months 1-12). Months before ${currentMonth} = "completed", month ${currentMonth} = "current", after = "upcoming". Each needs: title, description, capability_focus.`;
 
       try {
+        console.log("LOVABLE_API_KEY present:", !!LOVABLE_API_KEY, "length:", LOVABLE_API_KEY?.length);
+        console.log("Generating milestones, prompt length:", milestonePrompt.length);
+        const aiBody = {
+          model: "openai/gpt-5-mini",
+          messages: [
+            { role: "system", content: milestonePrompt },
+            { role: "user", content: "Generate the 12 monthly milestones. Return ONLY a JSON object with key 'milestones'. No markdown, no explanation." }
+          ],
+        };
+        console.log("AI request body size:", JSON.stringify(aiBody).length);
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
-            messages: [
-              { role: "system", content: milestonePrompt },
-              { role: "user", content: "Generate the 12 monthly milestones." }
-            ],
-            response_format: { type: "json_object" }
-          }),
+          body: JSON.stringify(aiBody),
         });
 
         if (!response.ok) {
-          throw new Error(`AI error: ${response.status}`);
+          const errText = await response.text();
+          console.error("AI gateway error:", response.status, errText);
+          throw new Error(`AI error: ${response.status} - ${errText.substring(0, 200)}`);
         }
 
         const data = await response.json();
-        const content = data.choices[0]?.message?.content;
-        const parsed = JSON.parse(content);
+        const content = data.choices?.[0]?.message?.content || "";
+        // Strip markdown code fences if present
+        const cleanContent = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        const parsed = JSON.parse(cleanContent);
         const milestones = parsed.milestones || [];
 
         // Cache milestones in DB (upsert)
@@ -349,9 +352,8 @@ Be direct. No fluff. Ground everything in their actual words.`;
               model: "google/gemini-2.5-flash-lite",
               messages: [
                 { role: "system", content: systemPrompt },
-                { role: "user", content: "Generate the connection and application for this insight." }
+                { role: "user", content: "Generate the connection and application. Return ONLY valid JSON." }
               ],
-              response_format: { type: "json_object" }
             }),
           });
 
