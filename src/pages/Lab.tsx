@@ -609,7 +609,7 @@ const Lab = () => {
           <h1 className="text-2xl sm:text-3xl font-bold">Lab</h1>
         </div>
 
-        <Tabs defaultValue="experiments" className="space-y-6">
+        <Tabs defaultValue="freewrite" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 h-11 p-1 bg-card border border-border rounded-xl shadow-sm">
             <TabsTrigger 
               value="experiments" 
