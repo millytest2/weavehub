@@ -227,24 +227,36 @@ const Explore = () => {
                         </span>
                       </div>
                       <h3 className="font-semibold">{currentWeave.insight.title}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-3">
+                      
+                      {/* Full insight content - expandable */}
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                         {currentWeave.insight.content}
-                      </p>
+                      </div>
 
                       <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
                         <p className="text-xs text-primary font-medium mb-1">How this connects</p>
                         <p className="text-sm">{currentWeave.connection}</p>
                       </div>
 
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={handleWeave}
-                        disabled={isWeaving}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Weave another
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => navigate(`/insights?id=${currentWeave.insight.id}`)}
+                        >
+                          <Lightbulb className="h-4 w-4 mr-2" />
+                          View Source
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={handleWeave}
+                          disabled={isWeaving}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Weave another
+                        </Button>
+                      </div>
                     </Card>
                   </motion.div>
                 )}

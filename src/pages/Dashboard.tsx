@@ -364,20 +364,6 @@ const Dashboard = () => {
       )}
 
       <div className="flex-1 space-y-5">
-        {/* Identity Direction Banner - Subtle reminder */}
-        {yearNote && !todayTask && !isGenerating && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-primary/5 to-transparent border border-primary/10"
-          >
-            <Target className="h-4 w-4 text-primary shrink-0" />
-            <p className="text-xs text-muted-foreground truncate">
-              <span className="text-foreground font-medium">{yearNote.split(' ').slice(0, 6).join(' ')}</span>
-              {yearNote.split(' ').length > 6 && "..."}
-            </p>
-          </motion.div>
-        )}
 
         {/* Primary Action - Today's Invitation */}
         <section className="relative">
