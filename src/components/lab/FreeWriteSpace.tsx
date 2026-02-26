@@ -14,9 +14,11 @@ import {
   Sparkles,
   Copy,
   Check,
-  X
+  X,
+  Network
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MultiPlatformPostDialog } from "./MultiPlatformPostDialog";
 
 interface FreeWrite {
   id: string;
@@ -54,6 +56,7 @@ export const FreeWriteSpace = () => {
   const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showMultiPlatform, setShowMultiPlatform] = useState(false);
   
   // Generate a SHORT, personalized question from latest user data
   const getProvocativeQuestion = useCallback(async () => {
@@ -352,16 +355,27 @@ export const FreeWriteSpace = () => {
             
             {/* Turn into content button - only show if enough content */}
             {getWordCount(content) >= 20 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleGenerateContent}
-                disabled={isGeneratingContent}
-                className="ml-2 text-primary hover:text-primary"
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                Find the gold
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerateContent}
+                  disabled={isGeneratingContent}
+                  className="ml-2 text-primary hover:text-primary"
+                >
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  Find the gold
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowMultiPlatform(true)}
+                  className="text-purple-500 hover:text-purple-600"
+                >
+                  <Network className="h-3.5 w-3.5 mr-1.5" />
+                  Publish
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -462,6 +476,17 @@ export const FreeWriteSpace = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Multi-Platform Publish Dialog */}
+        <MultiPlatformPostDialog
+          open={showMultiPlatform}
+          onOpenChange={setShowMultiPlatform}
+          connection={{
+            title: content.trim().split('\n')[0]?.slice(0, 80) || "Journal Entry",
+            insight: content,
+            domains: ["journal"],
+          }}
+        />
       </div>
     );
   }
