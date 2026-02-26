@@ -242,10 +242,21 @@ const Explore = () => {
                         <Button
                           variant="outline"
                           className="flex-1"
-                          onClick={() => navigate(`/insights?id=${currentWeave.insight.id}`)}
+                          onClick={() => {
+                            const source = currentWeave.insight.source;
+                            // If source is a URL, open it directly
+                            if (source && (source.startsWith('http://') || source.startsWith('https://'))) {
+                              window.open(source, '_blank', 'noopener');
+                            } else {
+                              // Otherwise navigate to the insight detail
+                              navigate(`/insights?id=${currentWeave.insight.id}`);
+                            }
+                          }}
                         >
                           <Lightbulb className="h-4 w-4 mr-2" />
-                          View Source
+                          {currentWeave.insight.source && (currentWeave.insight.source.startsWith('http://') || currentWeave.insight.source.startsWith('https://'))
+                            ? 'Open Source'
+                            : 'View Insight'}
                         </Button>
                         <Button
                           variant="outline"
