@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Moon, Sun, ChevronRight } from "lucide-react";
+import { LogOut, ChevronDown, Beaker, Pause, Play, CheckCircle2, Circle, Moon, Sun, ChevronRight, Lightbulb, FileText, ExternalLink } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -60,6 +60,10 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [showExperiments, setShowExperiments] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("progress");
+  const [allInsights, setAllInsights] = useState<InsightWithTopic[]>([]);
+  const [allDocuments, setAllDocuments] = useState<Array<{ id: string; title: string; summary: string | null; file_type: string | null; created_at: string; source?: string | null }>>([]);
+  const [showAllInsights, setShowAllInsights] = useState(false);
+  const [showAllDocs, setShowAllDocs] = useState(false);
   
   // Gamification stats
   const [weeklyStats, setWeeklyStats] = useState<{ pillar: string; count: number; color: string }[]>([]);
@@ -83,7 +87,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     try {
-      const [actionsResult, experimentsResult, insightsResult, identityResult, pendingResult] = await Promise.all([
+      const [actionsResult, experimentsResult, insightsResult, identityResult, pendingResult, docsResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("id, action_text, pillar, action_date, completed_at")
@@ -112,7 +116,13 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .from("pending_actions")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
-          .eq("status", "pending")
+          .eq("status", "pending"),
+        supabase
+          .from("documents")
+          .select("id, title, summary, file_type, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50)
       ]);
 
       if (actionsResult.error) throw actionsResult.error;
@@ -135,6 +145,8 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       // Cluster insights by topic
       const clusters = clusterInsightsByTopic(insightsResult.data as InsightWithTopic[] || []);
       setInsightClusters(clusters);
+      setAllInsights(insightsResult.data as InsightWithTopic[] || []);
+      setAllDocuments(docsResult.data || []);
       
       // Calculate gamification stats
       const weekStart = new Date();
@@ -416,14 +428,14 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
               </div>
             ) : (
               <>
-                 {/* Direct link to Explore for knowledge graph */}
-                 <div className="p-5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10">
-                   <h3 className="text-sm font-medium mb-2">Your Knowledge Graph</h3>
-                   <p className="text-xs text-muted-foreground mb-4">
-                     See how your 290+ insights connect and weave together in the interactive network view.
+                {/* Knowledge Graph Link */}
+                <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10">
+                  <h3 className="text-sm font-medium mb-2">Your Knowledge Graph</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    See how your insights connect in the interactive network view.
                   </p>
                   <Button 
-                     variant="default" 
+                    variant="default" 
                     size="sm" 
                     className="w-full"
                     onClick={() => {
@@ -431,8 +443,106 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                       window.location.href = '/explore';
                     }}
                   >
-                     Open Knowledge Graph
+                    Open Knowledge Graph
                   </Button>
+                </div>
+
+                {/* Insights Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Insights ({allInsights.length})
+                      </span>
+                    </div>
+                    {allInsights.length > 10 && (
+                      <button 
+                        onClick={() => setShowAllInsights(!showAllInsights)}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        {showAllInsights ? 'Show less' : 'Show all'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {(showAllInsights ? allInsights : allInsights.slice(0, 10)).map((insight) => (
+                      <div 
+                        key={insight.id}
+                        className="p-2.5 rounded-lg bg-muted/30 border border-border/30"
+                      >
+                        <p className="text-sm font-medium truncate">{insight.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {insight.topics?.name && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                              {insight.topics.name}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(new Date(insight.created_at), "MMM d")}
+                          </span>
+                          {insight.source && (insight.source.startsWith('http://') || insight.source.startsWith('https://')) && (
+                            <button
+                              onClick={() => window.open(insight.source!, '_blank', 'noopener')}
+                              className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                            >
+                              <ExternalLink className="h-2.5 w-2.5" />
+                              Source
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {allInsights.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4">No insights captured yet</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Documents Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Documents ({allDocuments.length})
+                      </span>
+                    </div>
+                    {allDocuments.length > 10 && (
+                      <button 
+                        onClick={() => setShowAllDocs(!showAllDocs)}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        {showAllDocs ? 'Show less' : 'Show all'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {(showAllDocs ? allDocuments : allDocuments.slice(0, 10)).map((doc) => (
+                      <div 
+                        key={doc.id}
+                        className="p-2.5 rounded-lg bg-muted/30 border border-border/30"
+                      >
+                        <p className="text-sm font-medium truncate">{doc.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {doc.file_type && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/50 text-accent-foreground">
+                              {doc.file_type}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(new Date(doc.created_at), "MMM d")}
+                          </span>
+                        </div>
+                        {doc.summary && (
+                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{doc.summary}</p>
+                        )}
+                      </div>
+                    ))}
+                    {allDocuments.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4">No documents yet</p>
+                    )}
+                  </div>
                 </div>
               </>
             )}
