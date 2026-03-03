@@ -456,7 +456,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                         Insights ({allInsights.length})
                       </span>
                     </div>
-                    {allInsights.length > 10 && (
+                    {allInsights.length > 5 && (
                       <button 
                         onClick={() => setShowAllInsights(!showAllInsights)}
                         className="text-[10px] text-primary hover:underline"
@@ -466,7 +466,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                     )}
                   </div>
                   <div className="space-y-1">
-                    {(showAllInsights ? allInsights : allInsights.slice(0, 10)).map((insight) => (
+                    {(showAllInsights ? allInsights : allInsights.slice(0, 5)).map((insight) => (
                       <div 
                         key={insight.id}
                         className="p-2.5 rounded-lg bg-muted/30 border border-border/30"

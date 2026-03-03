@@ -1,4 +1,4 @@
-import { Brain, Home, ListTodo, FlaskConical, Compass, Menu, User } from "lucide-react";
+import { Brain, Home, ListTodo, FlaskConical, Compass, Menu, User, PenLine } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -18,6 +18,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Daily", href: "/daily", icon: ListTodo },
     { name: "Identity", href: "/identity", icon: Compass },
     { name: "Experiments", href: "/experiments", icon: FlaskConical },
+    { name: "Lab", href: "/lab", icon: PenLine },
   ];
 
   // Mobile bottom nav: 4 core tabs
