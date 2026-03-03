@@ -217,7 +217,7 @@ Generate 12 milestones (months 1-12). Months before ${currentMonth} = "completed
       try {
         console.log("Generating milestones for user:", userId);
         const aiBody = {
-          model: "openai/gpt-5-mini",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: milestonePrompt },
             { role: "user", content: "Generate the 12 monthly milestones. Return ONLY a JSON object with key 'milestones'. No markdown, no explanation." }

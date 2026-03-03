@@ -122,7 +122,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .select("id, title, summary, file_type, created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(50)
+          .limit(5)
       ]);
 
       if (actionsResult.error) throw actionsResult.error;
@@ -508,7 +508,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                         Documents ({allDocuments.length})
                       </span>
                     </div>
-                    {allDocuments.length > 10 && (
+                    {allDocuments.length > 5 && (
                       <button 
                         onClick={() => setShowAllDocs(!showAllDocs)}
                         className="text-[10px] text-primary hover:underline"
@@ -518,7 +518,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
                     )}
                   </div>
                   <div className="space-y-1">
-                    {(showAllDocs ? allDocuments : allDocuments.slice(0, 10)).map((doc) => (
+                    {(showAllDocs ? allDocuments : allDocuments.slice(0, 5)).map((doc) => (
                       <div 
                         key={doc.id}
                         className="p-2.5 rounded-lg bg-muted/30 border border-border/30"
