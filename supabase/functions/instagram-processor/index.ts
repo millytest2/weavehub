@@ -9,16 +9,12 @@ const corsHeaders = {
 // Extract Instagram post/reel ID from URL
 function extractInstagramId(url: string): { id: string; type: 'post' | 'reel' } | null {
   if (!url) return null;
-  
   const cleanUrl = url.trim();
-  
-  // Match various Instagram URL formats
   const patterns = [
     /(?:https?:\/\/)?(?:www\.)?instagram\.com\/p\/([a-zA-Z0-9_-]+)/,
     /(?:https?:\/\/)?(?:www\.)?instagram\.com\/reel\/([a-zA-Z0-9_-]+)/,
     /(?:https?:\/\/)?(?:www\.)?instagram\.com\/reels\/([a-zA-Z0-9_-]+)/,
   ];
-  
   for (const pattern of patterns) {
     const match = cleanUrl.match(pattern);
     if (match && match[1]) {
@@ -26,11 +22,9 @@ function extractInstagramId(url: string): { id: string; type: 'post' | 'reel' } 
       return { id: match[1], type };
     }
   }
-  
   return null;
 }
 
-// Decode HTML entities
 function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#39;/g, "'")
@@ -39,14 +33,65 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num)))
-    .replace(/\\n/g, ' ')
+    .replace(/\\n/g, '\n')
     .replace(/\s+/g, ' ');
 }
 
-// Extract metadata from Instagram page
-async function fetchInstagramMetadata(url: string): Promise<{ title: string; description: string; hashtags: string[] }> {
-  console.log("Fetching Instagram metadata for:", url);
-  
+interface InstagramMetadata {
+  title: string;
+  description: string;
+  hashtags: string[];
+  authorName: string;
+  authorUrl: string;
+  thumbnailUrl: string;
+  embedHtml: string;
+  captionText: string;
+}
+
+// Try Instagram oEmbed API first (free, reliable for public posts)
+async function fetchOEmbed(url: string): Promise<Partial<InstagramMetadata>> {
+  try {
+    const oembedUrl = `https://api.instagram.com/oembed?url=${encodeURIComponent(url)}&omitscript=true`;
+    const response = await fetch(oembedUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot)' },
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log("oEmbed success - author:", data.author_name, "title length:", data.title?.length);
+      
+      // The oEmbed HTML contains the full caption
+      let captionText = '';
+      if (data.html) {
+        // Extract caption from embed HTML - it's between blockquote tags
+        const captionMatch = data.html.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+        if (captionMatch) {
+          captionText = captionMatch[1]
+            .replace(/<[^>]+>/g, '') // strip HTML tags
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+      }
+      
+      return {
+        title: data.title || '',
+        authorName: data.author_name || '',
+        authorUrl: data.author_url || '',
+        thumbnailUrl: data.thumbnail_url || '',
+        embedHtml: data.html || '',
+        captionText: decodeHtmlEntities(captionText),
+      };
+    } else {
+      console.log("oEmbed failed:", response.status);
+    }
+  } catch (e) {
+    console.error("oEmbed error:", e);
+  }
+  return {};
+}
+
+// Fallback: scrape og:meta from page
+async function fetchPageMetadata(url: string): Promise<Partial<InstagramMetadata>> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -56,46 +101,38 @@ async function fetchInstagramMetadata(url: string): Promise<{ title: string; des
       }
     });
     
-    if (!response.ok) {
-      console.error("Failed to fetch Instagram page:", response.status);
-      return { title: "", description: "", hashtags: [] };
-    }
-    
+    if (!response.ok) return {};
     const html = await response.text();
     
-    // Extract title from og:title or twitter:title
-    let title = "";
+    let title = '';
     const ogTitleMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) ||
                          html.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:title"/i);
-    if (ogTitleMatch) {
-      title = decodeHtmlEntities(ogTitleMatch[1]);
-    }
+    if (ogTitleMatch) title = decodeHtmlEntities(ogTitleMatch[1]);
     
-    // Extract description from og:description or meta description
-    let description = "";
+    let description = '';
     const ogDescMatch = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i) ||
                         html.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i) ||
                         html.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
-    if (ogDescMatch) {
-      description = decodeHtmlEntities(ogDescMatch[1]);
-    }
+    if (ogDescMatch) description = decodeHtmlEntities(ogDescMatch[1]);
     
-    // Extract hashtags from description
-    const hashtagMatches = description.match(/#[a-zA-Z0-9_]+/g) || [];
+    // Extract author from title pattern "Author on Instagram: ..."
+    let authorName = '';
+    const authorMatch = title.match(/^(.+?)\s+on\s+Instagram/i);
+    if (authorMatch) authorName = authorMatch[1].trim();
+    
+    // Try to get image URL
+    let thumbnailUrl = '';
+    const ogImageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    if (ogImageMatch) thumbnailUrl = ogImageMatch[1];
+    
+    const hashtagMatches = (description + ' ' + title).match(/#[a-zA-Z0-9_]+/g) || [];
     const hashtags = [...new Set(hashtagMatches.map(h => h.toLowerCase()))];
     
-    // Also try to get hashtags from the page content
-    const pageHashtags = html.match(/#[a-zA-Z0-9_]{2,30}/g) || [];
-    const allHashtags = [...new Set([...hashtags, ...pageHashtags.map(h => h.toLowerCase())])].slice(0, 20);
-    
-    console.log("Extracted - Title:", title?.substring(0, 50), "Description length:", description?.length, "Hashtags:", allHashtags.length);
-    
-    return { title, description, hashtags: allHashtags };
-    
+    return { title, description, hashtags, authorName, thumbnailUrl };
   } catch (e) {
-    console.error("Error fetching Instagram metadata:", e);
-    return { title: "", description: "", hashtags: [] };
+    console.error("Page fetch error:", e);
   }
+  return {};
 }
 
 serve(async (req) => {
@@ -115,53 +152,64 @@ serve(async (req) => {
     if (!user) throw new Error("Unauthorized");
 
     const body = await req.json();
-    
     const rawUrl = body.instagramUrl;
     const rawTitle = body.title;
     
-    if (!rawUrl || typeof rawUrl !== 'string') {
-      throw new Error("Instagram URL is required");
-    }
+    if (!rawUrl || typeof rawUrl !== 'string') throw new Error("Instagram URL is required");
     
     const instagramUrl = rawUrl.trim().slice(0, 500);
     const providedTitle = (typeof rawTitle === 'string') ? rawTitle.trim().slice(0, 200) : undefined;
     
     if (!instagramUrl.includes('instagram.com')) {
-      throw new Error("Invalid Instagram URL format. Please provide a valid Instagram link.");
+      throw new Error("Invalid Instagram URL format.");
     }
 
-    console.log("Processing Instagram URL:", instagramUrl);
-    
     const extracted = extractInstagramId(instagramUrl);
-    if (!extracted) {
-      throw new Error("Invalid Instagram URL format. Please provide a valid post or reel link.");
-    }
+    if (!extracted) throw new Error("Invalid Instagram URL format.");
 
-    console.log("Instagram ID:", extracted.id, "Type:", extracted.type);
+    console.log("Processing Instagram:", extracted.id, "Type:", extracted.type);
 
-    // Fetch metadata from Instagram
-    const { title: fetchedTitle, description, hashtags } = await fetchInstagramMetadata(instagramUrl);
-    const videoTitle = providedTitle || fetchedTitle || `Instagram ${extracted.type}`;
+    // Layer 1: Try oEmbed (most reliable for public content)
+    const oembedData = await fetchOEmbed(instagramUrl);
     
-    console.log("Final - Title:", videoTitle, "Description length:", description.length);
-
-    // Build extracted content from available metadata
+    // Layer 2: Fallback to page scraping
+    const pageData = await fetchPageMetadata(instagramUrl);
+    
+    // Merge all sources - prioritize oEmbed
+    const authorName = oembedData.authorName || pageData.authorName || '';
+    const captionText = oembedData.captionText || pageData.description || '';
+    const videoTitle = providedTitle || 
+      (authorName ? `${authorName}'s Instagram ${extracted.type}` : '') ||
+      oembedData.title || pageData.title || 
+      `Instagram ${extracted.type}`;
+    
+    const allHashtags = [
+      ...(pageData.hashtags || []),
+      ...(captionText.match(/#[a-zA-Z0-9_]+/g) || []).map(h => h.toLowerCase()),
+    ];
+    const hashtags = [...new Set(allHashtags)].slice(0, 30);
+    
+    // Build rich extracted content
     const extractedContent = [
       `Title: ${videoTitle}`,
-      description ? `\nDescription: ${description}` : '',
+      authorName ? `Author: ${authorName}` : '',
+      captionText ? `\nCaption:\n${captionText}` : '',
       hashtags.length > 0 ? `\nHashtags: ${hashtags.join(' ')}` : '',
       `\nType: Instagram ${extracted.type}`,
-      `\nURL: ${instagramUrl}`,
-      '\n\nNote: Full transcript not available for Instagram videos. Insights generated from available metadata.'
-    ].filter(Boolean).join('');
+      `URL: ${instagramUrl}`,
+      oembedData.thumbnailUrl ? `\nThumbnail: ${oembedData.thumbnailUrl}` : '',
+      !captionText ? '\nNote: Caption not available. Insights generated from available metadata.' : '',
+    ].filter(Boolean).join('\n');
 
-    // Create document entry
+    console.log("Extracted content length:", extractedContent.length, "Caption length:", captionText.length, "Hashtags:", hashtags.length);
+
+    // Create document
     const { data: docData, error: docError } = await supabase
       .from("documents")
       .insert({
         user_id: user.id,
         title: videoTitle,
-        summary: `Instagram ${extracted.type}: ${instagramUrl}`,
+        summary: `Instagram ${extracted.type} by ${authorName || 'unknown'}${captionText ? ': ' + captionText.slice(0, 150) : ''}`,
         file_type: `instagram_${extracted.type}`,
         file_path: instagramUrl,
         extracted_content: extractedContent.substring(0, 100000),
@@ -171,9 +219,11 @@ serve(async (req) => {
 
     if (docError) throw docError;
 
-    // Process with AI if we have description
+    // AI processing - use caption + hashtags for richer insights
     let insightsCreated = 0;
-    if (description && description.length > 20) {
+    const contentForAI = captionText || pageData.description || '';
+    
+    if (contentForAI.length > 15) {
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       
       try {
@@ -184,25 +234,25 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "google/gemini-2.5-flash-lite",
             messages: [
               {
                 role: "system",
-                content: `Extract 1-3 actionable insights from this Instagram content metadata.
+                content: `Extract 1-3 actionable insights from this Instagram content.
 
-Return ONLY a valid JSON array, no other text. Format:
-[{"title": "short title", "content": "detailed insight"}]
+Return ONLY a valid JSON array. Format:
+[{"title": "short title under 10 words", "content": "detailed insight with specific takeaway"}]
 
-Each insight should be:
-- Immediately actionable
-- Specific with examples if possible
-- Relevant to personal growth, productivity, or the topic at hand
-
-If the content is too vague or promotional, return just 1 general insight.`
+Rules:
+- Focus on the CORE message, not surface-level observations
+- Each insight should be something the reader can immediately apply
+- If the creator shared a tip, framework, or perspective — extract that specifically
+- If it's lifestyle/motivational — extract the underlying principle
+- Ignore promotional/CTA content`
               },
               {
                 role: "user",
-                content: `Instagram ${extracted.type}: ${videoTitle}\n\nDescription: ${description}\n\nHashtags: ${hashtags.join(' ')}`
+                content: `Instagram ${extracted.type} by ${authorName}:\n\nCaption: ${contentForAI}\n\nHashtags: ${hashtags.join(' ')}`
               }
             ],
           }),
@@ -211,31 +261,28 @@ If the content is too vague or promotional, return just 1 general insight.`
         if (response.ok) {
           const data = await response.json();
           let content = data.choices[0].message.content;
-          
-          // Clean up response
           content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           
-          // Find JSON array in response
           const jsonMatch = content.match(/\[[\s\S]*\]/);
           if (jsonMatch) {
             const insights = JSON.parse(jsonMatch[0]);
-            
             for (const insight of insights) {
               if (insight.title && insight.content) {
                 await supabase.from("insights").insert({
                   user_id: user.id,
                   title: insight.title,
                   content: insight.content,
-                  source: `instagram:${extracted.id}`,
+                  source: instagramUrl,
                 });
                 insightsCreated++;
               }
             }
-            
             console.log("Created", insightsCreated, "insights from Instagram");
           }
         } else {
           console.error("AI request failed:", response.status);
+          const errText = await response.text();
+          console.error("AI error body:", errText);
         }
       } catch (aiError) {
         console.error("AI processing error:", aiError);
@@ -249,9 +296,11 @@ If the content is too vague or promotional, return just 1 general insight.`
         instagramId: extracted.id,
         type: extracted.type,
         insightsCreated,
+        author: authorName,
+        captionLength: captionText.length,
         message: insightsCreated > 0 
           ? `Instagram ${extracted.type} processed! Created ${insightsCreated} insights.`
-          : `Instagram ${extracted.type} saved. Add your own insights manually for best results.`
+          : `Instagram ${extracted.type} saved.${captionText.length < 15 ? ' Caption was too short for AI insights.' : ''}`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
