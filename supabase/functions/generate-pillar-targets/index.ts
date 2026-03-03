@@ -162,7 +162,7 @@ Return ONLY a JSON object with this exact structure:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "You are a life design coach. Always respond with valid JSON only, no markdown." },
           { role: "user", content: prompt }

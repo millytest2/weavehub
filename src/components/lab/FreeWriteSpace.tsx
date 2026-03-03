@@ -15,10 +15,15 @@ import {
   Copy,
   Check,
   X,
-  Network
+  Network,
+  Mic,
+  MicOff,
+  Search
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MultiPlatformPostDialog } from "./MultiPlatformPostDialog";
+import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
+import { Input } from "@/components/ui/input";
 
 interface FreeWrite {
   id: string;
@@ -57,6 +62,19 @@ export const FreeWriteSpace = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showMultiPlatform, setShowMultiPlatform] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Voice capture for brain dump mode
+  const voice = useVoiceCaptureWebSpeech({
+    onTranscript: (text) => {
+      if (activeWrite) {
+        const newContent = content ? `${content}\n\n${text}` : text;
+        handleContentChange(newContent);
+        setContent(newContent);
+      }
+    },
+    maxDuration: 300, // 5 min voice sessions
+  });
   
   // Generate a SHORT, personalized question from latest user data
   const getProvocativeQuestion = useCallback(async () => {
@@ -338,16 +356,43 @@ export const FreeWriteSpace = () => {
             Back
           </Button>
           
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {/* Voice brain dump toggle */}
+            <Button
+              variant={voice.isRecording ? "destructive" : "outline"}
+              size="sm"
+              onClick={voice.toggleRecording}
+              disabled={voice.isTranscribing}
+              className="gap-1.5"
+            >
+              {voice.isRecording ? (
+                <>
+                  <MicOff className="h-3.5 w-3.5" />
+                  {voice.formattedDuration}
+                </>
+              ) : (
+                <>
+                  <Mic className="h-3.5 w-3.5" />
+                  Talk
+                </>
+              )}
+            </Button>
+            
+            {voice.isRecording && voice.interimTranscript && (
+              <span className="text-[10px] text-muted-foreground/60 max-w-[120px] truncate">
+                {voice.interimTranscript}
+              </span>
+            )}
+
             {isSaving && (
               <span className="flex items-center gap-1">
-                <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                <div className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
                 Saving...
               </span>
             )}
             {lastSaved && !isSaving && (
               <span className="flex items-center gap-1">
-                <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                 Saved
               </span>
             )}
@@ -370,7 +415,7 @@ export const FreeWriteSpace = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowMultiPlatform(true)}
-                  className="text-purple-500 hover:text-purple-600"
+                  className="text-accent-foreground hover:text-accent-foreground"
                 >
                   <Network className="h-3.5 w-3.5 mr-1.5" />
                   Publish
@@ -491,22 +536,40 @@ export const FreeWriteSpace = () => {
     );
   }
 
+  // Filter writes by search
+  const filteredWrites = searchQuery.trim()
+    ? writes.filter(w => 
+        w.content.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : writes;
+
   // List view
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <p className="text-sm text-muted-foreground">Blank page. Just write. Brain dump. Let it flow.</p>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <p className="text-sm text-muted-foreground">Blank page. Just write. Brain dump. Let it flow.</p>
         <Button size="sm" onClick={handleNewWrite} disabled={isCreating}>
           <Plus className="h-4 w-4 mr-2" />
           New Page
         </Button>
       </div>
 
-      {writes.length > 0 ? (
+      {/* Search bar - only show when there are writes */}
+      {writes.length > 3 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search your pages..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
+        </div>
+      )}
+
+      {filteredWrites.length > 0 ? (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {writes.map((write) => {
+          {filteredWrites.map((write) => {
             const preview = write.content.trim().slice(0, 150);
             const firstLine = write.content.trim().split('\n')[0].slice(0, 50) || "Untitled";
             const wordCount = getWordCount(write.content);
@@ -556,6 +619,8 @@ export const FreeWriteSpace = () => {
             );
           })}
         </div>
+      ) : writes.length > 0 && searchQuery ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No pages matching "{searchQuery}"</p>
       ) : (
         <Card className="border-dashed">
           <CardContent className="py-16 text-center">
