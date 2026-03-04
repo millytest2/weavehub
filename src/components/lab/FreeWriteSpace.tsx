@@ -25,6 +25,15 @@ import { MultiPlatformPostDialog } from "./MultiPlatformPostDialog";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
 import { Input } from "@/components/ui/input";
 
+type EntryType = "journal" | "content" | "braindump" | "adventure";
+
+const ENTRY_TYPES: { key: EntryType; label: string; icon: string; color: string }[] = [
+  { key: "journal", label: "Journal", icon: "📝", color: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
+  { key: "content", label: "Content", icon: "🎬", color: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+  { key: "braindump", label: "Brain Dump", icon: "🧠", color: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30" },
+  { key: "adventure", label: "Adventure", icon: "🌍", color: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30" },
+];
+
 interface FreeWrite {
   id: string;
   content: string;
@@ -32,6 +41,7 @@ interface FreeWrite {
   source: string | null;
   created_at: string;
   updated_at?: string;
+  platform?: string | null; // reuse platform field for entry_type tag
 }
 
 // Short, punchy default provocations
@@ -63,6 +73,8 @@ export const FreeWriteSpace = () => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showMultiPlatform, setShowMultiPlatform] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<EntryType | "all">("all");
+  const [activeEntryType, setActiveEntryType] = useState<EntryType>("journal");
   
   // Voice capture for brain dump mode
   const voice = useVoiceCaptureWebSpeech({
@@ -205,9 +217,10 @@ export const FreeWriteSpace = () => {
     }
   }, [activeWrite, user]);
 
-  const handleNewWrite = async () => {
+  const handleNewWrite = async (type: EntryType = "journal") => {
     if (!user) return;
     setIsCreating(true);
+    setActiveEntryType(type);
     
     // Get a provocative question to start with
     const question = await getProvocativeQuestion();
@@ -219,7 +232,8 @@ export const FreeWriteSpace = () => {
         user_id: user.id,
         observation_type: "freewrite",
         content: "",
-        source: null
+        source: null,
+        platform: type, // reuse platform field to store entry type
       })
       .select()
       .single();
@@ -536,34 +550,86 @@ export const FreeWriteSpace = () => {
     );
   }
 
-  // Filter writes by search
-  const filteredWrites = searchQuery.trim()
-    ? writes.filter(w => 
-        w.content.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : writes;
+  // Filter writes by search and type
+  const filteredWrites = writes.filter(w => {
+    const matchesSearch = !searchQuery.trim() || w.content.toLowerCase().includes(searchQuery.toLowerCase());
+    const entryType = (w.platform as EntryType) || "journal";
+    const matchesType = filterType === "all" || entryType === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  const getEntryTypeConfig = (write: FreeWrite) => {
+    const type = (write.platform as EntryType) || "journal";
+    return ENTRY_TYPES.find(t => t.key === type) || ENTRY_TYPES[0];
+  };
 
   // List view
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <p className="text-sm text-muted-foreground">Blank page. Just write. Brain dump. Let it flow.</p>
-        <Button size="sm" onClick={handleNewWrite} disabled={isCreating}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Page
-        </Button>
       </div>
 
-      {/* Search bar - only show when there are writes */}
-      {writes.length > 3 && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search your pages..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 text-sm"
-          />
+      {/* Entry type quick-create buttons */}
+      <div className="flex flex-wrap gap-2">
+        {ENTRY_TYPES.map((type) => (
+          <Button
+            key={type.key}
+            size="sm"
+            variant="outline"
+            className={`gap-1.5 ${type.color} border`}
+            onClick={() => handleNewWrite(type.key)}
+            disabled={isCreating}
+          >
+            <span>{type.icon}</span>
+            {type.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Filter chips + search */}
+      {writes.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <button
+              onClick={() => setFilterType("all")}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                filterType === "all"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              All ({writes.length})
+            </button>
+            {ENTRY_TYPES.map((type) => {
+              const count = writes.filter(w => (w.platform || "journal") === type.key).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={type.key}
+                  onClick={() => setFilterType(type.key)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                    filterType === type.key
+                      ? `${type.color} border`
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {type.icon} {type.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+          {writes.length > 3 && (
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-8 text-sm"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -573,6 +639,7 @@ export const FreeWriteSpace = () => {
             const preview = write.content.trim().slice(0, 150);
             const firstLine = write.content.trim().split('\n')[0].slice(0, 50) || "Untitled";
             const wordCount = getWordCount(write.content);
+            const typeConfig = getEntryTypeConfig(write);
             
             return (
               <Card 
@@ -583,7 +650,7 @@ export const FreeWriteSpace = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{typeConfig.icon}</span>
                       <span className="text-sm font-medium truncate max-w-[180px]">
                         {firstLine || "Empty"}
                       </span>
@@ -608,6 +675,9 @@ export const FreeWriteSpace = () => {
                   )}
                   
                   <div className="flex items-center gap-3 text-xs text-muted-foreground/70">
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${typeConfig.color} border`}>
+                      {typeConfig.label}
+                    </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {format(new Date(write.created_at), "MMM d")}
@@ -619,20 +689,16 @@ export const FreeWriteSpace = () => {
             );
           })}
         </div>
-      ) : writes.length > 0 && searchQuery ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No pages matching "{searchQuery}"</p>
+      ) : writes.length > 0 && (searchQuery || filterType !== "all") ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No entries matching your filter</p>
       ) : (
         <Card className="border-dashed">
           <CardContent className="py-16 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
             <p className="text-muted-foreground mb-2">No pages yet</p>
             <p className="text-sm text-muted-foreground/60 mb-4 max-w-md mx-auto">
-              A blank page. No prompts. No AI. Just you and your thoughts.
+              Pick a type above and start writing. Everything weaves into your 2026 vision.
             </p>
-            <Button onClick={handleNewWrite} disabled={isCreating}>
-              <Plus className="h-4 w-4 mr-2" />
-              Start Writing
-            </Button>
           </CardContent>
         </Card>
       )}

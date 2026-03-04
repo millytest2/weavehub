@@ -103,6 +103,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [prevWeekData, setPrevWeekData] = useState<WeeklyIntegration | null>(null);
   const [loading, setLoading] = useState(true);
   const [pillarScope, setPillarScope] = useState<'day' | 'week'>('day');
+  const [currentMilestone, setCurrentMilestone] = useState<{ title: string; description: string | null; capability_focus: string | null } | null>(null);
   
   // Pillar targets state
   const [pillarTargets, setPillarTargets] = useState<Record<string, PillarTarget>>({});
@@ -303,7 +304,8 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       const prevWeekNum = currentWeekNumber === 1 ? 52 : currentWeekNumber - 1;
       const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
-      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, identityResult] = await Promise.all([
+      const currentMonth = new Date().getMonth() + 1;
+      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, identityResult, milestoneResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("*")
@@ -333,6 +335,13 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           .from("identity_seeds")
           .select("content, core_values, year_note")
           .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("thread_milestones")
+          .select("title, description, capability_focus")
+          .eq("user_id", user.id)
+          .eq("year", 2026)
+          .eq("month_number", currentMonth)
           .maybeSingle()
       ]);
 
@@ -340,6 +349,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       setWeeklyData(weeklyResult.data);
       setPrevWeekData(prevWeekResult.data);
       setIdentitySeed(identityResult.data);
+      setCurrentMilestone(milestoneResult.data);
       
       // Process pillar targets
       const targetsMap: Record<string, PillarTarget> = {};
@@ -681,6 +691,51 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Always-visible Alignment Cascade: 2026 → Month → This Week */}
+      {isCurrentWeek && identitySeed?.year_note && (
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-orange-500/5 to-transparent overflow-hidden">
+          <CardContent className="p-3 space-y-2">
+            {/* 2026 Vision - compact */}
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-md bg-orange-500/20 flex items-center justify-center shrink-0">
+                <Mountain className="h-3.5 w-3.5 text-orange-500" />
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-1 flex-1">
+                <span className="font-medium text-orange-600 dark:text-orange-400">2026:</span>{" "}
+                {identitySeed.year_note.split('.')[0]}
+              </p>
+            </div>
+            
+            {/* Current month milestone from The Thread */}
+            {currentMilestone && (
+              <div className="flex items-center gap-2 pl-3 border-l-2 border-primary/30">
+                <div className="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+                  <Target className="h-3 w-3 text-primary" />
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-1 flex-1">
+                  <span className="font-medium text-foreground">{format(new Date(), 'MMM')}:</span>{" "}
+                  {currentMilestone.title}
+                  {currentMilestone.capability_focus && (
+                    <span className="text-primary/70"> · Building: {currentMilestone.capability_focus}</span>
+                  )}
+                </p>
+              </div>
+            )}
+            
+            {/* This week's weave summary */}
+            <div className="flex items-center gap-2 pl-6 border-l-2 border-muted-foreground/20">
+              <div className="h-5 w-5 rounded-md bg-muted flex items-center justify-center shrink-0">
+                <Sparkles className="h-3 w-3 text-muted-foreground" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">This week:</span>{" "}
+                {weekAnalysis.totalActions} actions · {weekAnalysis.activePillars}/6 pillars · {weekAnalysis.activeDays}/7 days
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Log Input */}
       {isCurrentWeek && (
@@ -1130,137 +1185,54 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         );
       })()}
 
-      {/* Monthly Misogi Reverse-Engineering */}
+      {/* Monthly Focus + AI Insight (compact, replaces old collapsed Compass) */}
       {isCurrentWeek && identitySeed?.year_note && (
-        <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-amber-500/5">
-          <Collapsible open={monthlyInsightsExpanded} onOpenChange={setMonthlyInsightsExpanded}>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 flex items-center justify-center">
-                      <Mountain className="h-5 w-5 text-orange-500" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        2026 Compass
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        {format(new Date(), 'MMMM')} · Week {currentWeekNumber} · {differenceInDays(new Date(2026, 11, 31), new Date())} days left
-                      </CardDescription>
-                    </div>
-                  </div>
-                  {monthlyInsightsExpanded ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
+        <Card className="border-orange-500/20">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <Wand2 className="h-3.5 w-3.5 text-orange-500" />
+                Monthly Focus
+              </h3>
+              <span className="text-[10px] text-muted-foreground">
+                {format(new Date(), 'MMMM')} · {differenceInDays(new Date(2026, 11, 31), new Date())} days to 2026
+              </span>
+            </div>
             
-            <CollapsibleContent>
-              <CardContent className="pt-0 space-y-4">
-                {/* Misogi (Outcome) */}
-                <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
-                  <div className="flex items-start gap-2">
-                    <Mountain className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-1">The Misogi (Outcomes)</p>
-                      <p className="text-sm text-muted-foreground line-clamp-3">{identitySeed.year_note}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Identity (Who you're becoming) - only show if different from year_note */}
-                {identitySeed.content && identitySeed.content !== identitySeed.year_note && (
-                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                    <div className="flex items-start gap-2">
-                      <Compass className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium text-primary mb-1">Who You're Becoming</p>
-                        <p className="text-sm text-muted-foreground line-clamp-3">{identitySeed.content}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Progress Indicators - Activity-based */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-2 rounded-lg bg-muted/20">
-                    <p className="text-lg font-bold text-foreground">{currentWeekNumber}</p>
-                    <p className="text-[10px] text-muted-foreground">Week</p>
-                  </div>
-                  <div className="text-center p-2 rounded-lg bg-muted/20">
-                    <p className="text-lg font-bold text-foreground">{weekAnalysis.totalActions}</p>
-                    <p className="text-[10px] text-muted-foreground">This Week</p>
-                  </div>
-                  <div className="text-center p-2 rounded-lg bg-muted/20">
-                    {/* Calculate momentum score based on pillar balance + streak + completion */}
-                    {(() => {
-                      const pillarsActive = weekAnalysis.activePillars || 0;
-                      const daysActive = weekAnalysis.activeDays || 0;
-                      const totalActions = weekAnalysis.totalActions || 0;
-                      // Momentum: balance of pillars (0-6) + active days (0-7) + volume bonus
-                      const momentumScore = Math.min(100, Math.round(
-                        (pillarsActive / 6 * 30) + // pillar balance: 30%
-                        (daysActive / 7 * 40) + // consistency: 40%
-                        (Math.min(totalActions, 15) / 15 * 30) // volume: 30%
-                      ));
-                      return (
-                        <>
-                          <p className={`text-lg font-bold ${momentumScore >= 70 ? 'text-green-500' : momentumScore >= 40 ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                            {momentumScore}%
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">Momentum</p>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-                
-                {/* AI Monthly Insight */}
-                {monthlyInsight ? (
-                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                    <p className="text-sm text-foreground whitespace-pre-line">{monthlyInsight}</p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="mt-2 h-7 text-xs"
-                      onClick={generateMonthlyInsight}
-                      disabled={generatingMonthlyInsight}
-                    >
-                      {generatingMonthlyInsight ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      ) : (
-                        <Wand2 className="h-3 w-3 mr-1" />
-                      )}
-                      Refresh insight
-                    </Button>
-                  </div>
+            {monthlyInsight ? (
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="text-sm text-foreground whitespace-pre-line">{monthlyInsight}</p>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mt-2 h-7 text-xs"
+                  onClick={generateMonthlyInsight}
+                  disabled={generatingMonthlyInsight}
+                >
+                  {generatingMonthlyInsight ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <Wand2 className="h-3 w-3 mr-1" />
+                  )}
+                  Refresh
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="w-full border-dashed"
+                onClick={generateMonthlyInsight}
+                disabled={generatingMonthlyInsight}
+              >
+                {generatingMonthlyInsight ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> Thinking...</>
                 ) : (
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-dashed border-orange-500/30 hover:border-orange-500/50"
-                    onClick={generateMonthlyInsight}
-                    disabled={generatingMonthlyInsight}
-                  >
-                    {generatingMonthlyInsight ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Reverse-engineering from your Misogi...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="h-4 w-4 mr-2" />
-                        What should I focus on this month?
-                      </>
-                    )}
-                  </Button>
+                  <><Wand2 className="h-3.5 w-3.5 mr-2" /> What should I focus on this month?</>
                 )}
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
+              </Button>
+            )}
+          </CardContent>
         </Card>
       )}
 
