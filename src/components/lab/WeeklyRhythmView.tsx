@@ -977,16 +977,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
             </div>
           </div>
           
-          {/* Goal Connection - Visual Flow */}
-          <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground px-2 py-1.5 bg-muted/20 rounded">
-            <span className="px-1.5 py-0.5 bg-background rounded text-foreground/80">Daily Log</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <span className="px-1.5 py-0.5 bg-primary/10 rounded text-primary font-medium">This Week</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <span className="px-1.5 py-0.5 bg-background rounded text-foreground/80">Monthly</span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <span className="px-1.5 py-0.5 bg-orange-500/10 rounded text-orange-600 dark:text-orange-400">2026 Compass</span>
-          </div>
         </CardContent>
       </Card>
 
