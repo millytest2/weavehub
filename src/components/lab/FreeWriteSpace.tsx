@@ -18,7 +18,11 @@ import {
   Network,
   Mic,
   MicOff,
-  Search
+  Search,
+  BookOpen,
+  PenLine,
+  Brain,
+  Compass
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MultiPlatformPostDialog } from "./MultiPlatformPostDialog";
@@ -27,11 +31,11 @@ import { Input } from "@/components/ui/input";
 
 type EntryType = "journal" | "content" | "braindump" | "adventure";
 
-const ENTRY_TYPES: { key: EntryType; label: string; icon: string; color: string }[] = [
-  { key: "journal", label: "Journal", icon: "📝", color: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
-  { key: "content", label: "Content", icon: "🎬", color: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
-  { key: "braindump", label: "Brain Dump", icon: "🧠", color: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30" },
-  { key: "adventure", label: "Adventure", icon: "🌍", color: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30" },
+const ENTRY_TYPES: { key: EntryType; label: string; icon: typeof BookOpen; color: string }[] = [
+  { key: "journal", label: "Journal", icon: BookOpen, color: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
+  { key: "content", label: "Content", icon: PenLine, color: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+  { key: "braindump", label: "Brain Dump", icon: Brain, color: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30" },
+  { key: "adventure", label: "Adventure", icon: Compass, color: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30" },
 ];
 
 interface FreeWrite {
@@ -581,7 +585,7 @@ export const FreeWriteSpace = () => {
             onClick={() => handleNewWrite(type.key)}
             disabled={isCreating}
           >
-            <span>{type.icon}</span>
+            <type.icon className="h-3.5 w-3.5" />
             {type.label}
           </Button>
         ))}
@@ -608,13 +612,13 @@ export const FreeWriteSpace = () => {
                 <button
                   key={type.key}
                   onClick={() => setFilterType(type.key)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
                     filterType === type.key
                       ? `${type.color} border`
                       : "bg-muted/50 text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  {type.icon} {type.label} ({count})
+                  <type.icon className="h-3 w-3" /> {type.label} ({count})
                 </button>
               );
             })}
@@ -650,7 +654,7 @@ export const FreeWriteSpace = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm">{typeConfig.icon}</span>
+                      <typeConfig.icon className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-sm font-medium truncate max-w-[180px]">
                         {firstLine || "Empty"}
                       </span>

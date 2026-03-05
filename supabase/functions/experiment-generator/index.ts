@@ -46,6 +46,10 @@ const BANNED_WORDS = [
   "relationship with yourself", "journey of", "embrace the"
 ];
 
+function stripEmojis(text: string): string {
+  return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25AA}-\u{25AB}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]/gu, '').trim();
+}
+
 // Concept extraction for semantic deduplication - maps similar ideas to canonical concepts
 function extractConcepts(text: string): string[] {
   const conceptMap: Record<string, string[]> = {
@@ -940,11 +944,11 @@ Make it about THEIR specific life. No generic productivity experiments.` }
       for (const exp of exps) {
         const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
           user_id: user!.id,
-          title: exp.title,
-          description: exp.description,
-          steps: exp.steps.join("\n"),
+          title: stripEmojis(exp.title),
+          description: stripEmojis(exp.description),
+          steps: exp.steps.map(s => stripEmojis(s)).join("\n"),
           duration: exp.duration,
-          identity_shift_target: exp.identity_shift_target,
+          identity_shift_target: stripEmojis(exp.identity_shift_target),
           hypothesis: `Sprint: ${sprint.type} | Intensity: ${sprint.intensity} | ${sprint.reason}`,
           status: "planning"
         }).select("id").single();
@@ -1023,11 +1027,11 @@ Make it about THEIR specific life. No generic productivity experiments.` }
     for (const exp of experiments) {
       const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
         user_id: user.id,
-        title: exp.title,
-        description: exp.description,
-        steps: exp.steps.join("\n"),
+        title: stripEmojis(exp.title),
+        description: stripEmojis(exp.description),
+        steps: exp.steps.map(s => stripEmojis(s)).join("\n"),
         duration: exp.duration,
-        identity_shift_target: exp.identity_shift_target,
+        identity_shift_target: stripEmojis(exp.identity_shift_target),
         hypothesis: `Sprint: ${sprintConfig.type} | Intensity: ${sprintConfig.intensity} | ${sprintConfig.reason}`,
         status: "planning"
       }).select("id").single();
