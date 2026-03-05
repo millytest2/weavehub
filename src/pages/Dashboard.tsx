@@ -553,7 +553,7 @@ const Dashboard = () => {
                 ) : (
                   <div className="text-center space-y-5">
                     <p className="text-muted-foreground">
-                      {isFirstTime ? "Let's get your first invitation" : "Ready for today's focus?"}
+                      {isFirstTime ? "Let's get your first invitation" : "Ready?"}
                     </p>
                     <Button
                       onClick={() => setShowContextChips(true)}
@@ -561,7 +561,7 @@ const Dashboard = () => {
                       className="px-10 h-14 rounded-2xl text-base font-medium shadow-soft hover:shadow-elevated transition-all gap-2"
                     >
                       <Sparkles className="h-4 w-4" />
-                      {isFirstTime ? "Get My First Invitation" : "Start My Day"}
+                      {isFirstTime ? "Get My First Invitation" : "Start"}
                     </Button>
                   </div>
                 )}
