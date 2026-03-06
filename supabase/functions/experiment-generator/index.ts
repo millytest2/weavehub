@@ -74,9 +74,7 @@ function extractConcepts(text: string): string[] {
   return foundConcepts;
 }
 
-function stripEmojis(text: string): string {
-  return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25AA}-\u{25AB}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{2614}-\u{2615}]|[\u{2648}-\u{2653}]|[\u{267F}]|[\u{2693}]|[\u{26A1}]|[\u{26AA}-\u{26AB}]|[\u{26BD}-\u{26BE}]|[\u{26C4}-\u{26C5}]|[\u{26CE}]|[\u{26D4}]|[\u{26EA}]|[\u{26F2}-\u{26F3}]|[\u{26F5}]|[\u{26FA}]|[\u{26FD}]|[\u{2702}]|[\u{2705}]|[\u{2708}-\u{270D}]|[\u{270F}]|[\u{2712}]|[\u{2714}]|[\u{2716}]|[\u{271D}]|[\u{2721}]|[\u{2728}]|[\u{2733}-\u{2734}]|[\u{2744}]|[\u{2747}]|[\u{274C}]|[\u{274E}]|[\u{2753}-\u{2755}]|[\u{2757}]|[\u{2763}-\u{2764}]|[\u{2795}-\u{2797}]|[\u{27A1}]|[\u{27B0}]|[\u{27BF}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{2B50}]|[\u{2B55}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{1F191}-\u{1F19A}]|[\u{1F201}-\u{1F202}]|[\u{1F21A}]|[\u{1F22F}]|[\u{1F232}-\u{1F23A}]|[\u{1F250}-\u{1F251}]/gu, '').trim();
-}
+// (duplicate removed — using stripEmojis from line 49)
 
 function containsBannedWords(text: string): boolean {
   const lowerText = text.toLowerCase();
@@ -747,8 +745,8 @@ PERSONALIZATION CHECK - Your experiment MUST:
 4. Feel like a chapter in their story: ${storyArc || 'their transformation'}
 ═══════════════════════════════════════════════════════════════`;
 
-    // SIMPLIFIED SYSTEM PROMPT - Focus on EMOTIONAL/IDENTITY blocks, not just behaviors
-    const systemPrompt = `Generate ONE experiment (3-10 days) that addresses an EMOTIONAL or IDENTITY block, not just behavior.
+    // SYSTEM PROMPT - Specific, measurable, personally calibrated challenges
+    const systemPrompt = `Generate ONE experiment that is SPECIFIC, MEASURABLE, and PERSONALLY RELEVANT to this user.
 
 ${dateContext}
 
@@ -760,98 +758,107 @@ ${sprintInstructions}
 ${avoidList}
 
 ═══════════════════════════════════════════════════════════════
-THE CORE PROBLEM TO SOLVE:
-═══════════════════════════════════════════════════════════════
-
-This person already KNOWS what to do. They've saved insights about it. The problem isn't knowledge - it's an EMOTIONAL or IDENTITY block preventing action.
-
-Your job: Design an experiment that breaks through THAT block, not just suggests the behavior they already know they should do.
-
-═══════════════════════════════════════════════════════════════
 WHAT MAKES A GREAT EXPERIMENT:
 ═══════════════════════════════════════════════════════════════
 
-1. ADDRESSES EMOTIONAL/IDENTITY BLOCK, NOT JUST BEHAVIOR
-   BAD: "Post 5 TikToks" (they already know this)
-   GOOD: "Record ONE video where you visibly feel uncomfortable. Don't post yet. Tests: comfort on camera."
-   
-   The block is usually: fear of judgment, perfectionism, identity conflict, or fear of exposure.
-   Design the experiment to directly confront THAT.
+The best experiments have:
+1. A SPECIFIC NUMBER or CONSTRAINT (not vague)
+2. A CLEAR TIMEFRAME
+3. A MEASURABLE OUTCOME
+4. PERSONAL RELEVANCE to their actual projects, goals, and life
 
-2. CREATES SHAREABLE PROOF
-   Every experiment must produce something they can document:
-   - Before/after
-   - The journey itself
-   - Results or learnings
-   - A transformation story
-   
-   Specify EXACTLY what proof they'll have.
+GREAT EXAMPLES (the kind of experiments this user loves):
+- "Make 3 TikToks a day for 30 days"
+- "Make $500 in a single day from scratch"
+- "Get 20 people to sign up for UPath this week"
+- "Eat 200g of protein every day for 2 weeks"
+- "Do literally nothing for 24 hours — no phone, no social, no screens"
+- "Cold call 10 potential customers before noon"
+- "Ship one feature per day for 5 days straight"
+- "Wake up at 5am for 7 days and film the process"
 
-3. BUILDS ON WHAT THEY ALREADY KNOW (check their insights)
-   Don't suggest things they've already captured. Their insights show what they know.
-   Design experiments that TEST or APPLY their knowledge, not repeat it.
+Notice the pattern: SPECIFIC + MEASURABLE + SLIGHTLY SCARY + CREATES PROOF
 
-4. FEELS EMOTIONALLY COMPELLING AND SLIGHTLY SCARY
-   Should trigger: "oh shit, that's hard but I want to try it"
-   Not: "yeah I know I should do that"
-   
-   The slight fear = you've found the edge. That's where growth is.
+═══════════════════════════════════════════════════════════════
+PERSONALIZATION (USE THEIR DATA):
+═══════════════════════════════════════════════════════════════
 
-5. CONNECTS TO 2026 MISOGI
-   Must explicitly connect to their yearly direction/vision.
-   Make them see how this experiment moves them toward their bigger picture.
+1. Reference their ACTUAL projects (like UPath, or whatever they're building)
+2. Reference their ACTUAL body/health goals (specific numbers from their identity)
+3. Reference their ACTUAL content platforms
+4. Reference their ACTUAL income/business targets
+5. Make it something ONLY THEY would do — not generic productivity advice
+
+═══════════════════════════════════════════════════════════════
+CREATES SHAREABLE PROOF:
+═══════════════════════════════════════════════════════════════
+
+Every experiment must produce something they'd naturally want to document:
+- Before/after results
+- The journey itself (daily vlogs, posts, updates)
+- Hard numbers and data
+- A transformation story
 
 ═══════════════════════════════════════════════════════════════
 DO NOT SUGGEST:
 ═══════════════════════════════════════════════════════════════
 
-- Generic content challenges without addressing resistance ("post 5 videos")
-- Things they've already stated they know (check their insights library)
-- Behaviors without identity transformation
-- Therapy-speak: "embrace", "unlock", "journey", "sit with", "inner"
+- Vague experiments without numbers ("work on your project more")
+- Therapy-speak: "embrace", "unlock", "journey", "sit with", "inner", "authentic self"
 - Abstract concepts: "find your voice", "build confidence"
+- Things that are too easy (no edge, no challenge)
+- Repeating past experiments (check the avoid list)
 
 ═══════════════════════════════════════════════════════════════
-EXPERIMENT TYPES (pick based on their block):
+EXPERIMENT TYPES (mix these up):
 ═══════════════════════════════════════════════════════════════
 
-MICRO-BET (when they need to lower the stakes):
-- 2-3 minutes, super low friction
-- "Record one 30-second thought. Don't post. Just see what it feels like."
-- "Send one DM to someone you admire. That's it."
-- Good for: people paralyzed by perfectionism or scale
+VOLUME CHALLENGE (prove you can output):
+- "3 TikToks/day for a week"
+- "Write 1000 words every morning for 5 days"
+- "DM 50 people in 48 hours"
 
-IDENTITY EXPERIMENT (3-7 days, for real blocks):
-- Address the WHY they're not doing what they know
-- "For 5 days, post before you're ready. Notice: the world doesn't end."
-- "Talk to 3 strangers per day. Notice: you don't die."
-- Good for: fear of judgment, identity conflict, perfectionism
+CONSTRAINT EXPERIMENT (remove something, see what happens):
+- "No phone for 48 hours"
+- "No social media for a week — only create, don't consume"
+- "Do literally nothing for a full day"
+
+SPECIFIC TARGET (hit a number):
+- "Get 20 signups for your product"
+- "Make $500 from scratch in one day"
+- "Hit 200g protein every day for a week"
+
+INTENSITY SPRINT (compressed effort):
+- "Ship your entire landing page in 48 hours"
+- "Record and post 10 videos in one weekend"
+- "Talk to 15 strangers in 2 days"
 
 ═══════════════════════════════════════════════════════════════
 FORMAT:
 ═══════════════════════════════════════════════════════════════
 
-TITLE: "[Duration] [Constraint] → [Specific Deliverable]"
+TITLE: "[Specific challenge with numbers]"
 Examples:
-- "3-Day Ugly First Draft → Ship UPath Landing Without Polish"
-- "5-Day Post Before Ready → 5 Raw Thoughts to LinkedIn"
-- "48h Talk to Strangers → 10 Real Conversations"
+- "3 TikToks a Day for 7 Days"
+- "Make $500 in a Single Day"
+- "200g Protein Daily for 2 Weeks"
+- "48h Phone Blackout — Do Nothing"
+- "Get 20 UPath Signups This Week"
 
 DESCRIPTION: 
-"Your [specific block from their data] keeps you [impact]. 
-This tests: [what capability it builds].
-You'll have: [specific proof/documentation].
+"Here's the deal: [what they'll do, with specific numbers].
 Deadline: [specific day based on today being ${dayOfWeek}].
-If it's too scary: [bailout option or smaller version]."
+You'll have: [what proof/results they'll walk away with]."
 
-STEPS: 2-4 concrete daily actions with times/quantities
+STEPS: 2-4 concrete daily actions with specific numbers and times
 
-IDENTITY_SHIFT_TARGET: "I am someone who [action verb]..." tied to their stated identity
+IDENTITY_SHIFT_TARGET: "I am someone who [specific action verb with number]..." 
+e.g. "I am someone who ships 3 pieces of content daily without hesitation."
 
 Duration: ${sprintConfig.duration}
 Intensity: ${sprintConfig.intensity}
 
-NO EMOJIS. NO THERAPY-SPEAK. DEEPLY PERSONAL. CONCRETE ONLY.`;
+NO EMOJIS. NO THERAPY-SPEAK. SPECIFIC NUMBERS. CONCRETE ONLY.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
