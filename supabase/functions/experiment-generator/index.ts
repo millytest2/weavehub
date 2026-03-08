@@ -776,24 +776,36 @@ The best experiments have:
 GREAT EXAMPLES (the kind of experiments this user loves):
 - "Make 3 TikToks a day for 30 days"
 - "Make $500 in a single day from scratch"
-- "Get 20 people to sign up for UPath this week"
+- "Get 20 signups for [their actual project] this week"
 - "Eat 200g of protein every day for 2 weeks"
 - "Do literally nothing for 24 hours — no phone, no social, no screens"
 - "Cold call 10 potential customers before noon"
 - "Ship one feature per day for 5 days straight"
 - "Wake up at 5am for 7 days and film the process"
+- "Write 1000 words every morning before checking phone for 10 days"
+- "Run 3 miles every day for 2 weeks — no rest days"
 
 Notice the pattern: SPECIFIC + MEASURABLE + SLIGHTLY SCARY + CREATES PROOF
+
+IMPORTANT: VARY THE FOCUS. Don't always focus on the same project or area. 
+The user has MULTIPLE areas of life — rotate between:
+- Their projects and business goals
+- Their body/health/fitness goals  
+- Their content and audience building
+- Their relationships and connections
+- Their learning and skill development
+- Their spiritual/mental/presence goals
 
 ═══════════════════════════════════════════════════════════════
 PERSONALIZATION (USE THEIR DATA):
 ═══════════════════════════════════════════════════════════════
 
-1. Reference their ACTUAL projects (like UPath, or whatever they're building)
+1. Reference their ACTUAL projects (whatever they're building — read from context)
 2. Reference their ACTUAL body/health goals (specific numbers from their identity)
 3. Reference their ACTUAL content platforms
 4. Reference their ACTUAL income/business targets
 5. Make it something ONLY THEY would do — not generic productivity advice
+6. ROTATE FOCUS — don't always suggest the same project. Use the PILLAR to guide which life area to target.
 
 ═══════════════════════════════════════════════════════════════
 CREATES SHAREABLE PROOF:
