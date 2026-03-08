@@ -11,10 +11,12 @@ import {
   Lightbulb, 
   Sparkles,
   RefreshCw,
-  Route
+  Route,
+  Brain
 } from "lucide-react";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { ThreadView } from "@/components/explore/ThreadView";
+import { MindSynthesis } from "@/components/explore/MindSynthesis";
 
 interface IdentityContext {
   yearNote?: string;
