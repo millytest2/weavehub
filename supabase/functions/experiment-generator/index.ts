@@ -906,11 +906,15 @@ FORMAT REQUIRED:
 Sprint: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}.
 
 EXAMPLES OF GOOD PERSONALIZATION:
-- If they mention UPath: "5-Day UPath Sprint → Ship 3 Features + 5 User Interviews"
-- If they mention body goal: "7-Day Creator-Athlete Protocol → 6am Gym + Ship Content Daily"
-- If they mention presence: "48h Phone Blackout → Stay Fully Present + Journal Observations"
+- If they have a product: "5-Day Sprint → Ship 3 Features + 5 User Interviews"  
+- If they have body goals: "7-Day Protocol → 6am Training + Hit [their specific target] Daily"
+- If they want presence: "48h Phone Blackout → Stay Fully Present + Journal Observations"
+- If they want connections: "5-Day Outreach → DM 50 People + Book 5 Calls"
+- If they want content: "7-Day Volume Challenge → 3 Posts/Day Across Platforms"
+- If they want income: "48h Revenue Sprint → Make $[target] From Scratch"
 
-Make it about THEIR specific life. No generic productivity experiments.` }
+IMPORTANT: Use the PILLAR (${forcedPillar}) to pick WHICH area of their life to focus on.
+Don't default to the same project every time. Make it about THEIR specific life. No generic productivity experiments.` }
         ],
         tools: [
           {
