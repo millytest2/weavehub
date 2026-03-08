@@ -525,12 +525,14 @@ async function selectSprintType(
     }
   }
   
-  // LOW MOMENTUM: Less than 2 completed actions → Recovery
+  // LOW MOMENTUM: Less than 2 completed actions → Recovery (but vary duration)
   if (recentCompleted < 2) {
-    console.log("Low momentum detected - suggesting Recovery");
+    const recoveryDurations = ["3 days", "5 days", "5 days", "7 days"];
+    const recoveryDuration = recoveryDurations[Math.floor(Math.random() * recoveryDurations.length)];
+    console.log(`Low momentum detected - suggesting Recovery (${recoveryDuration})`);
     return { 
       type: "recovery", 
-      duration: "3 days", 
+      duration: recoveryDuration, 
       intensity: "chill", 
       reason: "Rebuild momentum gently" 
     };
@@ -673,22 +675,26 @@ Reason: ${sprintConfig.reason}
 ${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
 ` : '';
 
-    // Extract key themes directly from identity seed for explicit use in prompt
+    // Extract key themes dynamically from identity seed (no hardcoded project names)
     const identityThemes: string[] = [];
     const identitySeedText = userContext.identity_seed?.toLowerCase() || '';
     
-    // Extract explicit goals/projects from identity
-    if (identitySeedText.includes('upath')) identityThemes.push('UPath - career clarity platform');
-    if (identitySeedText.includes('creator') && identitySeedText.includes('athlete')) identityThemes.push('Creator-Athlete identity');
-    if (identitySeedText.match(/\d{3}.*lbs|pounds/)) {
-      const weightMatch = identitySeedText.match(/(\d{3})[–-]?(\d{3})?\s*(lbs|pounds)/);
-      if (weightMatch) identityThemes.push(`Body goal: ${weightMatch[0]}`);
+    // Extract dynamic themes from identity text
+    const themePatterns: { pattern: RegExp, label: string }[] = [
+      { pattern: /creator[\s-]*athlete/i, label: 'Creator-Athlete identity' },
+      { pattern: /(\d{3})[–\-]?(\d{3})?\s*(lbs|pounds|kg)/i, label: 'Body/fitness goal' },
+      { pattern: /content|audience|followers/i, label: 'Building audience/content' },
+      { pattern: /presence|grounded|mindful/i, label: 'Presence and groundedness' },
+      { pattern: /experiment/i, label: 'Experiments over pressure' },
+      { pattern: /clarity/i, label: 'Clarity in life and work' },
+      { pattern: /spiritual|faith|god/i, label: 'Spiritual connection' },
+      { pattern: /income|revenue|\$|money|business/i, label: 'Revenue/business growth' },
+      { pattern: /move|relocat|new city/i, label: 'Life transition/relocation' },
+    ];
+    
+    for (const { pattern, label } of themePatterns) {
+      if (pattern.test(identitySeedText)) identityThemes.push(label);
     }
-    if (identitySeedText.includes('content') || identitySeedText.includes('audience')) identityThemes.push('Building authentic audience/content');
-    if (identitySeedText.includes('presence') || identitySeedText.includes('grounded')) identityThemes.push('Presence and groundedness');
-    if (identitySeedText.includes('experiment')) identityThemes.push('Experiments over pressure');
-    if (identitySeedText.includes('clarity')) identityThemes.push('Clarity in life and work');
-    if (identitySeedText.includes('spiritual') || identitySeedText.includes('creator/god')) identityThemes.push('Spiritual connection');
     
     // Get recent topics as areas of interest
     const topicNames = userContext.topics?.map((t: any) => t.name).join(', ') || '';
@@ -770,24 +776,36 @@ The best experiments have:
 GREAT EXAMPLES (the kind of experiments this user loves):
 - "Make 3 TikToks a day for 30 days"
 - "Make $500 in a single day from scratch"
-- "Get 20 people to sign up for UPath this week"
+- "Get 20 signups for [their actual project] this week"
 - "Eat 200g of protein every day for 2 weeks"
 - "Do literally nothing for 24 hours — no phone, no social, no screens"
 - "Cold call 10 potential customers before noon"
 - "Ship one feature per day for 5 days straight"
 - "Wake up at 5am for 7 days and film the process"
+- "Write 1000 words every morning before checking phone for 10 days"
+- "Run 3 miles every day for 2 weeks — no rest days"
 
 Notice the pattern: SPECIFIC + MEASURABLE + SLIGHTLY SCARY + CREATES PROOF
+
+IMPORTANT: VARY THE FOCUS. Don't always focus on the same project or area. 
+The user has MULTIPLE areas of life — rotate between:
+- Their projects and business goals
+- Their body/health/fitness goals  
+- Their content and audience building
+- Their relationships and connections
+- Their learning and skill development
+- Their spiritual/mental/presence goals
 
 ═══════════════════════════════════════════════════════════════
 PERSONALIZATION (USE THEIR DATA):
 ═══════════════════════════════════════════════════════════════
 
-1. Reference their ACTUAL projects (like UPath, or whatever they're building)
+1. Reference their ACTUAL projects (whatever they're building — read from context)
 2. Reference their ACTUAL body/health goals (specific numbers from their identity)
 3. Reference their ACTUAL content platforms
 4. Reference their ACTUAL income/business targets
 5. Make it something ONLY THEY would do — not generic productivity advice
+6. ROTATE FOCUS — don't always suggest the same project. Use the PILLAR to guide which life area to target.
 
 ═══════════════════════════════════════════════════════════════
 CREATES SHAREABLE PROOF:
@@ -888,11 +906,15 @@ FORMAT REQUIRED:
 Sprint: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}.
 
 EXAMPLES OF GOOD PERSONALIZATION:
-- If they mention UPath: "5-Day UPath Sprint → Ship 3 Features + 5 User Interviews"
-- If they mention body goal: "7-Day Creator-Athlete Protocol → 6am Gym + Ship Content Daily"
-- If they mention presence: "48h Phone Blackout → Stay Fully Present + Journal Observations"
+- If they have a product: "5-Day Sprint → Ship 3 Features + 5 User Interviews"  
+- If they have body goals: "7-Day Protocol → 6am Training + Hit [their specific target] Daily"
+- If they want presence: "48h Phone Blackout → Stay Fully Present + Journal Observations"
+- If they want connections: "5-Day Outreach → DM 50 People + Book 5 Calls"
+- If they want content: "7-Day Volume Challenge → 3 Posts/Day Across Platforms"
+- If they want income: "48h Revenue Sprint → Make $[target] From Scratch"
 
-Make it about THEIR specific life. No generic productivity experiments.` }
+IMPORTANT: Use the PILLAR (${forcedPillar}) to pick WHICH area of their life to focus on.
+Don't default to the same project every time. Make it about THEIR specific life. No generic productivity experiments.` }
         ],
         tools: [
           {
