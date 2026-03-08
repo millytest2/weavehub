@@ -30,12 +30,6 @@ const Explore = () => {
   const [expCount, setExpCount] = useState(0);
   const [identityContext, setIdentityContext] = useState<IdentityContext | null>(null);
   const [activeTab, setActiveTab] = useState<"thread" | "weave">("thread");
-  const [isWeaving, setIsWeaving] = useState(false);
-  const [currentWeave, setCurrentWeave] = useState<{
-    insight: { id: string; title: string; content: string; source?: string };
-    connection: string;
-    application: string;
-  } | null>(null);
 
   useEffect(() => {
     if (!user) {
