@@ -7,9 +7,6 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Lightbulb, 
-  Sparkles,
-  RefreshCw,
   Route,
   Brain
 } from "lucide-react";
