@@ -163,8 +163,8 @@ const Explore = () => {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Sparkles className="h-4 w-4 inline mr-1.5 -mt-0.5" />
-            Weave
+            <Brain className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+            Synthesize
           </button>
         </div>
 
