@@ -675,22 +675,26 @@ Reason: ${sprintConfig.reason}
 ${sprintConfig.topicName ? `Focus Topic: ${sprintConfig.topicName}` : ''}
 ` : '';
 
-    // Extract key themes directly from identity seed for explicit use in prompt
+    // Extract key themes dynamically from identity seed (no hardcoded project names)
     const identityThemes: string[] = [];
     const identitySeedText = userContext.identity_seed?.toLowerCase() || '';
     
-    // Extract explicit goals/projects from identity
-    if (identitySeedText.includes('upath')) identityThemes.push('UPath - career clarity platform');
-    if (identitySeedText.includes('creator') && identitySeedText.includes('athlete')) identityThemes.push('Creator-Athlete identity');
-    if (identitySeedText.match(/\d{3}.*lbs|pounds/)) {
-      const weightMatch = identitySeedText.match(/(\d{3})[–-]?(\d{3})?\s*(lbs|pounds)/);
-      if (weightMatch) identityThemes.push(`Body goal: ${weightMatch[0]}`);
+    // Extract dynamic themes from identity text
+    const themePatterns: { pattern: RegExp, label: string }[] = [
+      { pattern: /creator[\s-]*athlete/i, label: 'Creator-Athlete identity' },
+      { pattern: /(\d{3})[–\-]?(\d{3})?\s*(lbs|pounds|kg)/i, label: 'Body/fitness goal' },
+      { pattern: /content|audience|followers/i, label: 'Building audience/content' },
+      { pattern: /presence|grounded|mindful/i, label: 'Presence and groundedness' },
+      { pattern: /experiment/i, label: 'Experiments over pressure' },
+      { pattern: /clarity/i, label: 'Clarity in life and work' },
+      { pattern: /spiritual|faith|god/i, label: 'Spiritual connection' },
+      { pattern: /income|revenue|\$|money|business/i, label: 'Revenue/business growth' },
+      { pattern: /move|relocat|new city/i, label: 'Life transition/relocation' },
+    ];
+    
+    for (const { pattern, label } of themePatterns) {
+      if (pattern.test(identitySeedText)) identityThemes.push(label);
     }
-    if (identitySeedText.includes('content') || identitySeedText.includes('audience')) identityThemes.push('Building authentic audience/content');
-    if (identitySeedText.includes('presence') || identitySeedText.includes('grounded')) identityThemes.push('Presence and groundedness');
-    if (identitySeedText.includes('experiment')) identityThemes.push('Experiments over pressure');
-    if (identitySeedText.includes('clarity')) identityThemes.push('Clarity in life and work');
-    if (identitySeedText.includes('spiritual') || identitySeedText.includes('creator/god')) identityThemes.push('Spiritual connection');
     
     // Get recent topics as areas of interest
     const topicNames = userContext.topics?.map((t: any) => t.name).join(', ') || '';
