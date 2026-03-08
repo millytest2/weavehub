@@ -74,42 +74,6 @@ const Explore = () => {
     }
   };
 
-  const handleWeave = async () => {
-    if (!user) return;
-    setIsWeaving(true);
-    setCurrentWeave(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke("weave-synthesis", {
-        body: { action: "surface_one", includeSynthesis: true }
-      });
-
-      if (!error && data?.insight) {
-        setCurrentWeave({
-          insight: {
-            id: data.insight.id,
-            title: data.insight.title,
-            content: data.insight.content,
-            source: data.insight.source,
-          },
-          connection: data.connection || "Part of your captured wisdom",
-          application: data.application || "How might this inform a decision today?",
-        });
-
-        await supabase.rpc("update_item_access", {
-          table_name: "insights",
-          item_id: data.insight.id
-        });
-      } else {
-        toast.error("Couldn't weave - try again");
-      }
-    } catch (error) {
-      console.error("Weave error:", error);
-      toast.error("Failed to weave");
-    } finally {
-      setIsWeaving(false);
-    }
-  };
 
   if (isLoading) {
     return (
