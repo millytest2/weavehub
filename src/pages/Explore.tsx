@@ -3,18 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Lightbulb, 
-  Sparkles,
-  RefreshCw,
-  Route
+  Route,
+  Brain
 } from "lucide-react";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { ThreadView } from "@/components/explore/ThreadView";
+import { MindSynthesis } from "@/components/explore/MindSynthesis";
 
 interface IdentityContext {
   yearNote?: string;
@@ -32,12 +30,6 @@ const Explore = () => {
   const [expCount, setExpCount] = useState(0);
   const [identityContext, setIdentityContext] = useState<IdentityContext | null>(null);
   const [activeTab, setActiveTab] = useState<"thread" | "weave">("thread");
-  const [isWeaving, setIsWeaving] = useState(false);
-  const [currentWeave, setCurrentWeave] = useState<{
-    insight: { id: string; title: string; content: string; source?: string };
-    connection: string;
-    application: string;
-  } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -82,42 +74,6 @@ const Explore = () => {
     }
   };
 
-  const handleWeave = async () => {
-    if (!user) return;
-    setIsWeaving(true);
-    setCurrentWeave(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke("weave-synthesis", {
-        body: { action: "surface_one", includeSynthesis: true }
-      });
-
-      if (!error && data?.insight) {
-        setCurrentWeave({
-          insight: {
-            id: data.insight.id,
-            title: data.insight.title,
-            content: data.insight.content,
-            source: data.insight.source,
-          },
-          connection: data.connection || "Part of your captured wisdom",
-          application: data.application || "How might this inform a decision today?",
-        });
-
-        await supabase.rpc("update_item_access", {
-          table_name: "insights",
-          item_id: data.insight.id
-        });
-      } else {
-        toast.error("Couldn't weave - try again");
-      }
-    } catch (error) {
-      console.error("Weave error:", error);
-      toast.error("Failed to weave");
-    } finally {
-      setIsWeaving(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -161,8 +117,8 @@ const Explore = () => {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Sparkles className="h-4 w-4 inline mr-1.5 -mt-0.5" />
-            Weave
+            <Brain className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+            Synthesize
           </button>
         </div>
 
@@ -187,91 +143,8 @@ const Explore = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-4"
             >
-              {/* Weave action */}
-              <Card className="p-5 rounded-2xl text-center">
-                <Sparkles className="h-8 w-8 text-primary mx-auto mb-3" />
-                <h3 className="font-display text-lg font-semibold mb-1">
-                  Surface a forgotten gem
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Let the system weave an insight you haven't seen in a while back into your awareness
-                </p>
-                <Button
-                  onClick={handleWeave}
-                  disabled={isWeaving || insightCount === 0}
-                  className="w-full"
-                >
-                  {isWeaving ? (
-                    <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Weaving...</>
-                  ) : (
-                    <><Sparkles className="h-4 w-4 mr-2" /> Weave Something</>
-                  )}
-                </Button>
-              </Card>
-
-              {/* Current weave result */}
-              <AnimatePresence>
-                {currentWeave && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                  >
-                    <Card className="p-4 rounded-2xl space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4 text-primary" />
-                        <span className="text-xs text-muted-foreground">
-                          {currentWeave.insight.source || "Captured insight"}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold">{currentWeave.insight.title}</h3>
-                      
-                      {/* Full insight content - expandable */}
-                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {currentWeave.insight.content}
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
-                        <p className="text-xs text-primary font-medium mb-1">How this connects</p>
-                        <p className="text-sm">{currentWeave.connection}</p>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => {
-                            const source = currentWeave.insight.source;
-                            // If source is a URL, open it directly
-                            if (source && (source.startsWith('http://') || source.startsWith('https://'))) {
-                              window.open(source, '_blank', 'noopener');
-                            } else {
-                              // Otherwise navigate to the insight detail
-                              navigate(`/insights?id=${currentWeave.insight.id}`);
-                            }
-                          }}
-                        >
-                          <Lightbulb className="h-4 w-4 mr-2" />
-                          {currentWeave.insight.source && (currentWeave.insight.source.startsWith('http://') || currentWeave.insight.source.startsWith('https://'))
-                            ? 'Open Source'
-                            : 'View Insight'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={handleWeave}
-                          disabled={isWeaving}
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Weave another
-                        </Button>
-                      </div>
-                    </Card>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <MindSynthesis insightCount={insightCount} />
             </motion.div>
           )}
         </AnimatePresence>
