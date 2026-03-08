@@ -525,12 +525,14 @@ async function selectSprintType(
     }
   }
   
-  // LOW MOMENTUM: Less than 2 completed actions → Recovery
+  // LOW MOMENTUM: Less than 2 completed actions → Recovery (but vary duration)
   if (recentCompleted < 2) {
-    console.log("Low momentum detected - suggesting Recovery");
+    const recoveryDurations = ["3 days", "5 days", "5 days", "7 days"];
+    const recoveryDuration = recoveryDurations[Math.floor(Math.random() * recoveryDurations.length)];
+    console.log(`Low momentum detected - suggesting Recovery (${recoveryDuration})`);
     return { 
       type: "recovery", 
-      duration: "3 days", 
+      duration: recoveryDuration, 
       intensity: "chill", 
       reason: "Rebuild momentum gently" 
     };
