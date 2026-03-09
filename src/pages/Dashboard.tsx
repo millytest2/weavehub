@@ -468,7 +468,7 @@ const Dashboard = () => {
                     ) : (
                       <RefreshCw className="h-3 w-3 mr-1.5" />
                     )}
-                    Not this
+                    Not this{sessionSkipCount > 0 ? ` (${sessionSkipCount})` : ''}
                   </Button>
                 </div>
                 <div className="space-y-3">
