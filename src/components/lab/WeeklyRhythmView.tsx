@@ -1131,56 +1131,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         );
       })()}
 
-      {/* Monthly Focus + AI Insight (compact, replaces old collapsed Compass) */}
-      {isCurrentWeek && identitySeed?.year_note && (
-        <Card className="border-orange-500/20">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Wand2 className="h-3.5 w-3.5 text-orange-500" />
-                Monthly Focus
-              </h3>
-              <span className="text-[10px] text-muted-foreground">
-                {format(new Date(), 'MMMM')} · {differenceInDays(new Date(2026, 11, 31), new Date())} days to 2026
-              </span>
-            </div>
-            
-            {monthlyInsight ? (
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <p className="text-sm text-foreground whitespace-pre-line">{monthlyInsight}</p>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="mt-2 h-7 text-xs"
-                  onClick={generateMonthlyInsight}
-                  disabled={generatingMonthlyInsight}
-                >
-                  {generatingMonthlyInsight ? (
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  ) : (
-                    <Wand2 className="h-3 w-3 mr-1" />
-                  )}
-                  Refresh
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="w-full border-dashed"
-                onClick={generateMonthlyInsight}
-                disabled={generatingMonthlyInsight}
-              >
-                {generatingMonthlyInsight ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> Thinking...</>
-                ) : (
-                  <><Wand2 className="h-3.5 w-3.5 mr-2" /> What should I focus on this month?</>
-                )}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Check-in CTA */}
       {isCurrentWeek && (
