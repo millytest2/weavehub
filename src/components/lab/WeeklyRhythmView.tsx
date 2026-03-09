@@ -692,50 +692,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         </Button>
       </div>
 
-      {/* Always-visible Alignment Cascade: 2026 → Month → This Week */}
-      {isCurrentWeek && identitySeed?.year_note && (
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-orange-500/5 to-transparent overflow-hidden">
-          <CardContent className="p-3 space-y-2">
-            {/* 2026 Vision - compact */}
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-md bg-orange-500/20 flex items-center justify-center shrink-0">
-                <Mountain className="h-3.5 w-3.5 text-orange-500" />
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-1 flex-1">
-                <span className="font-medium text-orange-600 dark:text-orange-400">2026:</span>{" "}
-                {identitySeed.year_note.split('.')[0]}
-              </p>
-            </div>
-            
-            {/* Current month milestone from The Thread */}
-            {currentMilestone && (
-              <div className="flex items-center gap-2 pl-3 border-l-2 border-primary/30">
-                <div className="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
-                  <Target className="h-3 w-3 text-primary" />
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-1 flex-1">
-                  <span className="font-medium text-foreground">{format(new Date(), 'MMM')}:</span>{" "}
-                  {currentMilestone.title}
-                  {currentMilestone.capability_focus && (
-                    <span className="text-primary/70"> · Building: {currentMilestone.capability_focus}</span>
-                  )}
-                </p>
-              </div>
-            )}
-            
-            {/* This week's weave summary */}
-            <div className="flex items-center gap-2 pl-6 border-l-2 border-muted-foreground/20">
-              <div className="h-5 w-5 rounded-md bg-muted flex items-center justify-center shrink-0">
-                <Sparkles className="h-3 w-3 text-muted-foreground" />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">This week:</span>{" "}
-                {weekAnalysis.totalActions} actions · {weekAnalysis.activePillars}/6 pillars · {weekAnalysis.activeDays}/7 days
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Quick Log Input */}
       {isCurrentWeek && (
