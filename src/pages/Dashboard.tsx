@@ -203,7 +203,9 @@ const Dashboard = () => {
       const { data, error } = await supabase.functions.invoke("navigator", {
         body: { 
           timezone,
-          context: contextString || undefined
+          context: contextString || undefined,
+          rejectionCount: sessionSkipCount,
+          openQuestion: recalibrationText || undefined
         }
       });
       if (error) throw error;
