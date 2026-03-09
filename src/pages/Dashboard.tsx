@@ -497,6 +497,35 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="py-8 space-y-5 relative">
+                {showRecalibration ? (
+                  <div className="space-y-4 animate-fade-in text-center">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                      <MessageCircle className="h-6 w-6 text-primary" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Those didn't land. What feels alive right now?
+                    </p>
+                    <Textarea
+                      value={recalibrationText}
+                      onChange={(e) => setRecalibrationText(e.target.value)}
+                      placeholder="What's actually on your mind today..."
+                      className="min-h-[80px] rounded-2xl text-sm resize-none bg-muted/30 border-border/40"
+                    />
+                    <Button
+                      size="lg"
+                      onClick={() => {
+                        setShowRecalibration(false);
+                        handleGenerateTask({});
+                      }}
+                      disabled={!recalibrationText.trim()}
+                      className="w-full h-12 rounded-2xl"
+                    >
+                      Recalibrate
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                <>
                 {isFirstTime && identitySeed && (
                   <div className="p-4 rounded-2xl bg-muted/50 border border-border/30 text-center">
                     <p className="text-xs text-muted-foreground mb-1.5">You're becoming someone who:</p>
