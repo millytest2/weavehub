@@ -326,7 +326,8 @@ serve(async (req) => {
     const { data: userTimePrefs } = await supabase.rpc('get_user_time_preferences', { p_user_id: user.id });
     
     const dateTime = getDateTimeContext(timezone, userTimePrefs);
-    console.log(`Navigator: ${dateTime.fullContext}, learned: ${dateTime.isLearned}, multiple: ${generateMultiple}`);
+    const isDeepContext = rejectionCount >= 2;
+    console.log(`Navigator: ${dateTime.fullContext}, learned: ${dateTime.isLearned}, multiple: ${generateMultiple}, rejections: ${rejectionCount}, deepContext: ${isDeepContext}`);
     
     // Track this request for learning
     await supabase.from('user_activity_patterns').insert({
