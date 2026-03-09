@@ -301,7 +301,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
       const currentMonth = new Date().getMonth() + 1;
-      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, identityResult, milestoneResult] = await Promise.all([
+      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, milestoneResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("*")
@@ -328,11 +328,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           .select("*")
           .eq("user_id", user.id),
         supabase
-          .from("identity_seeds")
-          .select("content, core_values, year_note")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-        supabase
           .from("thread_milestones")
           .select("title, description, capability_focus")
           .eq("user_id", user.id)
@@ -344,7 +339,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       setActions(actionsResult.data || []);
       setWeeklyData(weeklyResult.data);
       setPrevWeekData(prevWeekResult.data);
-      setIdentitySeed(identityResult.data);
       setCurrentMilestone(milestoneResult.data);
       
       // Process pillar targets
