@@ -22,6 +22,8 @@ import { WeeklyExportGenerator } from "@/components/lab/WeeklyExportGenerator";
 import { WeeklyProgressCard } from "@/components/lab/WeeklyProgressCard";
 import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
 import { JourneyFlow } from "@/components/lab/JourneyFlow";
+import { WeeklyIntentions } from "@/components/lab/WeeklyIntentions";
+import { MonthlyPlanView } from "@/components/lab/MonthlyPlanView";
 import { 
   FlaskConical, 
   Plus, 
