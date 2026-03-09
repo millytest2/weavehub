@@ -354,57 +354,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     }
   };
   
-  // Generate monthly insight based on identity and current progress
-  const generateMonthlyInsight = async () => {
-    if (!identitySeed) {
-      toast.error("No identity seed found. Set up your 2026 Direction first.");
-      return;
-    }
-    
-    setGeneratingMonthlyInsight(true);
-    try {
-      const now = new Date();
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-      const weeksIntoMonth = differenceInWeeks(now, monthStart) + 1;
-      const weeksLeft = differenceInWeeks(monthEnd, now);
-      const daysIntoYear = differenceInDays(now, new Date(now.getFullYear(), 0, 1)) + 1;
-      const daysLeftInYear = differenceInDays(new Date(now.getFullYear(), 11, 31), now);
-      
-      const { data, error } = await supabase.functions.invoke('synthesizer', {
-        body: {
-          type: 'monthly_reverse_engineer',
-          context: {
-            identity: identitySeed.content,
-            coreValues: identitySeed.core_values,
-            yearDirection: identitySeed.year_note,
-            currentMonth: format(now, 'MMMM yyyy'),
-            weeksIntoMonth,
-            weeksLeftInMonth: weeksLeft,
-            daysIntoYear,
-            daysLeftInYear,
-            currentWeekNumber,
-            weeklyActions: weekAnalysis.totalActions,
-            pillarDistribution: weekAnalysis.byPillar,
-            activeDays: weekAnalysis.activeDays,
-          }
-        }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.insight) {
-        setMonthlyInsight(data.insight);
-      } else if (data?.content) {
-        setMonthlyInsight(data.content);
-      }
-    } catch (error) {
-      console.error("Error generating monthly insight:", error);
-      toast.error("Failed to generate monthly insight");
-    } finally {
-      setGeneratingMonthlyInsight(false);
-    }
-  };
 
   // Initialize editing targets from current targets
   const openTargetsDialog = () => {
