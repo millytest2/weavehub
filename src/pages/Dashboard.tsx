@@ -415,7 +415,12 @@ const Dashboard = () => {
                   exit={{ opacity: 0 }}
                   className="p-8 py-20 flex flex-col items-center justify-center relative"
                 >
-                  <WeaveLoader size="lg" text="Thinking about your day..." />
+                  <WeaveLoader size="lg" text={
+                    getTimePhase() === 'morning' ? "Thinking about your morning..." :
+                    getTimePhase() === 'afternoon' ? "Checking in on your day..." :
+                    getTimePhase() === 'evening' ? "One more thing before you wind down..." :
+                    "Finding something for right now..."
+                  } />
                 </motion.div>
               ) : showBonusOption ? (
                 <motion.div
