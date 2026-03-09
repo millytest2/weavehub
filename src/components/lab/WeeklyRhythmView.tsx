@@ -124,11 +124,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [parsedItems, setParsedItems] = useState<{ text: string; pillar: string | null }[]>([]);
   const [showParsedPreview, setShowParsedPreview] = useState(false);
   
-  // Monthly/Misogi state
-  const [identitySeed, setIdentitySeed] = useState<{ content: string; core_values: string; year_note: string } | null>(null);
-  const [monthlyInsightsExpanded, setMonthlyInsightsExpanded] = useState(false);
-  const [generatingMonthlyInsight, setGeneratingMonthlyInsight] = useState(false);
-  const [monthlyInsight, setMonthlyInsight] = useState<string | null>(null);
+   
   
   // Parse voice transcript into structured items
   const parseVoiceTranscript = async (transcript: string) => {
