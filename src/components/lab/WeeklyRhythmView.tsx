@@ -67,8 +67,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const { user } = useAuth();
   const [viewDate, setViewDate] = useState(new Date());
   const [actions, setActions] = useState<ActionHistory[]>([]);
-  const [weeklyData, setWeeklyData] = useState<WeeklyIntegration | null>(null);
-  const [prevWeekData, setPrevWeekData] = useState<WeeklyIntegration | null>(null);
   const [loading, setLoading] = useState(true);
   
   // Quick log state
