@@ -38,25 +38,6 @@ interface ActionHistory {
   completed_at: string;
 }
 
-interface WeeklyIntegration {
-  id: string;
-  week_number: number;
-  year: number;
-  business_score: number | null;
-  body_score: number | null;
-  content_score: number | null;
-  relationship_score: number | null;
-  mind_score: number | null;
-  play_score: number | null;
-}
-
-interface PillarTarget {
-  id: string;
-  pillar: string;
-  weekly_target: number;
-  priority: number;
-  notes: string | null;
-}
 
 const PILLAR_CONFIG: Record<string, { label: string; icon: any; color: string; bgColor: string }> = {
   business: { label: 'Business', icon: Briefcase, color: 'text-blue-500', bgColor: 'bg-blue-500' },
