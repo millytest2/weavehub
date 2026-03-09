@@ -510,6 +510,7 @@ ${coreValuesContext}
 
 === THEIR CAPTURED WISDOM (from YouTube, articles, PDFs they've saved) ===
 ${semanticContext || 'No recent insights captured'}
+${docContext}
 
 === WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
 ${recentActionsContext || 'No recent actions tracked'}
