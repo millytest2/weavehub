@@ -10,7 +10,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
-import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
