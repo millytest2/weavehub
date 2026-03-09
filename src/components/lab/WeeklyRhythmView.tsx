@@ -99,19 +99,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [weeklyData, setWeeklyData] = useState<WeeklyIntegration | null>(null);
   const [prevWeekData, setPrevWeekData] = useState<WeeklyIntegration | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pillarScope, setPillarScope] = useState<'day' | 'week'>('day');
-  const [currentMilestone, setCurrentMilestone] = useState<{ title: string; description: string | null; capability_focus: string | null } | null>(null);
-  
-  // Pillar targets state
-  const [pillarTargets, setPillarTargets] = useState<Record<string, PillarTarget>>({});
-  const [showTargetsDialog, setShowTargetsDialog] = useState(false);
-  const [editingTargets, setEditingTargets] = useState<Record<string, { target: number; priority: number; reasoning?: string }>>({});
-  const [savingTargets, setSavingTargets] = useState(false);
-  const [generatingTargets, setGeneratingTargets] = useState(false);
-  const [autoAdjusting, setAutoAdjusting] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [aiAlert, setAiAlert] = useState<string | null>(null);
-  const [adjustmentStats, setAdjustmentStats] = useState<{ pillar: string; target: number; completed: number; completionRate: number }[] | null>(null);
   
   // Quick log state
   const [logInput, setLogInput] = useState("");
