@@ -493,7 +493,7 @@ const Dashboard = () => {
                         disabled={isSkipping}
                         className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
                       >
-                        {isSkipping ? "..." : "not today"}
+                        {isSkipping ? "..." : getTimePhase() === 'evening' || getTimePhase() === 'night' ? "pass" : "not today"}
                       </button>
                     </div>
                     
