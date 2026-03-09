@@ -363,8 +363,6 @@ const Dashboard = () => {
       {user && (
         <>
           <FirstTimeTooltip userId={user.id} isFirstTime={isFirstTime} />
-          <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
-          <EveningLetGo onComplete={() => setEveningComplete(true)} />
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
         </>
       )}
