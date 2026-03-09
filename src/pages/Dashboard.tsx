@@ -590,16 +590,15 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Active Experiment - Compact inline */}
+        {/* Current Chapter */}
         {activeExperiment && (
-          <section className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/80 to-muted/10 p-5">
+          <section className="px-1">
             {(() => {
               const createdDate = new Date(activeExperiment.created_at);
               const now = new Date();
               const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
               const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
               const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-              const currentHour = now.getHours();
               
               const durationStr = activeExperiment.duration?.toLowerCase() || '';
               let totalDays = 7;
@@ -609,48 +608,25 @@ const Dashboard = () => {
               else if (durationStr.includes('5 day')) totalDays = 5;
               else if (durationStr.includes('week')) totalDays = 7;
               else if (durationStr.includes('2 week')) totalDays = 14;
-              
-              const getTimeOfDay = (hour: number) => {
-                if (hour >= 5 && hour < 12) return 'Morning';
-                if (hour >= 12 && hour < 17) return 'Afternoon';
-                if (hour >= 17 && hour < 21) return 'Evening';
-                return 'Night';
-              };
-              const timeOfDay = getTimeOfDay(currentHour);
-              
+
+              // Extract what to notice today from steps
               const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
-              
-              let todayStep = '';
-              const stepsPerDay = Math.ceil(steps.length / 7);
-              
-              if (steps.length <= 7) {
-                todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)] || activeExperiment.description;
-              } else {
-                const baseIndex = (dayNumber - 1) * stepsPerDay;
-                const timeSlot = currentHour < 12 ? 0 : currentHour < 18 ? 1 : 2;
-                const stepIndex = Math.min(baseIndex + Math.min(timeSlot, stepsPerDay - 1), steps.length - 1);
-                todayStep = steps[stepIndex] || activeExperiment.description;
+              let todayFocus = '';
+              if (steps.length > 0) {
+                todayFocus = steps[Math.min(dayNumber - 1, steps.length - 1)] || '';
               }
               
               return (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                      Experiment
-                    </span>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{timeOfDay}</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-muted font-medium">
-                        Day {dayNumber}/{totalDays}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-base font-medium leading-relaxed">
-                    {todayStep}
+                <div className="space-y-2">
+                  <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest pl-1">
+                    Current chapter · day {dayNumber}
                   </p>
-                  {activeExperiment.identity_shift_target && (
-                    <p className="text-xs text-primary/70 italic">
-                      {activeExperiment.identity_shift_target}
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    You're testing: <span className="text-foreground font-medium">{activeExperiment.identity_shift_target || activeExperiment.title}</span>
+                  </p>
+                  {todayFocus && getTimePhase() !== 'evening' && getTimePhase() !== 'night' && (
+                    <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                      {todayFocus}
                     </p>
                   )}
                 </div>
