@@ -696,6 +696,7 @@ ${coreValuesContext}
 
 === THEIR CAPTURED WISDOM ===
 ${semanticContext || 'No recent insights captured'}
+${docContext}
 
 === WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
 ${recentActionsContext || 'No recent actions tracked'}
