@@ -635,28 +635,26 @@ const Dashboard = () => {
           </section>
         )}
 
-        {getTimePhase() !== 'night' && (
-          <button
-            onClick={handleNextRep}
-            disabled={isGettingRep}
-            className="w-full group text-left"
-          >
-            <div className="flex items-center gap-4 p-5 rounded-2xl border border-border/40 bg-gradient-to-r from-card/60 to-muted/20 hover:from-card hover:to-muted/30 hover:border-primary/20 transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-colors shrink-0">
-                <Zap className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-base">
-                  {isGettingRep ? "Finding your next move..." : "Need a reset?"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  One tap. One aligned action.
-                </p>
-              </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+        <button
+          onClick={handleNextRep}
+          disabled={isGettingRep}
+          className="w-full group text-left"
+        >
+          <div className="flex items-center gap-4 p-5 rounded-2xl border border-border/40 bg-gradient-to-r from-card/60 to-muted/20 hover:from-card hover:to-muted/30 hover:border-primary/20 transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-colors shrink-0">
+              <Zap className="h-5 w-5 text-primary" />
             </div>
-          </button>
-        )}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-base">
+                {isGettingRep ? "Finding your next move..." : "Need a reset?"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                One tap. One aligned action.
+              </p>
+            </div>
+            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </div>
+        </button>
       </div>
 
       {/* Next Best Rep Dialog */}
