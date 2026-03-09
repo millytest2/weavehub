@@ -250,36 +250,16 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     try {
       const startDate = format(weekStart, 'yyyy-MM-dd');
       const endDate = format(weekEnd, 'yyyy-MM-dd');
-      const prevWeekNum = currentWeekNumber === 1 ? 52 : currentWeekNumber - 1;
-      const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
-      const [actionsResult, weeklyResult, prevWeekResult] = await Promise.all([
-        supabase
-          .from("action_history")
-          .select("*")
-          .eq("user_id", user.id)
-          .gte("action_date", startDate)
-          .lte("action_date", endDate)
-          .order("completed_at", { ascending: false }),
-        supabase
-          .from("weekly_integrations")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("week_number", currentWeekNumber)
-          .eq("year", currentYear)
-          .maybeSingle(),
-        supabase
-          .from("weekly_integrations")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("week_number", prevWeekNum)
-          .eq("year", prevYear)
-          .maybeSingle(),
-      ]);
+      const { data } = await supabase
+        .from("action_history")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("action_date", startDate)
+        .lte("action_date", endDate)
+        .order("completed_at", { ascending: false });
 
-      setActions(actionsResult.data || []);
-      setWeeklyData(weeklyResult.data);
-      setPrevWeekData(prevWeekResult.data);
+      setActions(data || []);
     } catch (error) {
       console.error("Error fetching week data:", error);
     } finally {
