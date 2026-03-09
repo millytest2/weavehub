@@ -41,6 +41,9 @@ const Dashboard = () => {
   const [selectedEnergy, setSelectedEnergy] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [sessionSkipCount, setSessionSkipCount] = useState(0);
+  const [showRecalibration, setShowRecalibration] = useState(false);
+  const [recalibrationText, setRecalibrationText] = useState('');
 
   const getLocalToday = () => {
     const now = new Date();
