@@ -9,8 +9,6 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
-import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
-import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
@@ -35,8 +33,6 @@ const Dashboard = () => {
   const [userName, setUserName] = useState<string | null>(null);
   const [isFirstTime, setIsFirstTime] = useState(false);
   
-  const [morningComplete, setMorningComplete] = useState(false);
-  const [eveningComplete, setEveningComplete] = useState(false);
   
   // Skip / recalibration
   const [isSkipping, setIsSkipping] = useState(false);
@@ -366,8 +362,6 @@ const Dashboard = () => {
       {user && (
         <>
           <FirstTimeTooltip userId={user.id} isFirstTime={isFirstTime} />
-          <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
-          <EveningLetGo onComplete={() => setEveningComplete(true)} />
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
         </>
       )}
@@ -421,7 +415,12 @@ const Dashboard = () => {
                   exit={{ opacity: 0 }}
                   className="p-8 py-20 flex flex-col items-center justify-center relative"
                 >
-                  <WeaveLoader size="lg" text="Thinking about your day..." />
+                  <WeaveLoader size="lg" text={
+                    getTimePhase() === 'morning' ? "Thinking about your morning..." :
+                    getTimePhase() === 'afternoon' ? "Checking in on your day..." :
+                    getTimePhase() === 'evening' ? "One more thing before you wind down..." :
+                    "Finding something for right now..."
+                  } />
                 </motion.div>
               ) : showBonusOption ? (
                 <motion.div
