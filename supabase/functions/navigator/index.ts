@@ -446,7 +446,15 @@ serve(async (req) => {
 
     const contextPrompt = formatContextForAI(userContextData);
     const semanticContext = semanticInsights.length > 0 
-      ? `\n\nRELEVANT INSIGHTS:\n${semanticInsights.join('\n')}`
+      ? `\n\nRELEVANT INSIGHTS (${semanticInsights.length} found):\n${semanticInsights.join('\n')}`
+      : '';
+    
+    const docContext = semanticDocuments.length > 0
+      ? `\n\nRELEVANT DOCUMENTS (${semanticDocuments.length} found):\n${semanticDocuments.join('\n')}`
+      : '';
+    
+    const rejectionContext = rejectionCount >= 2
+      ? `\n\n=== REJECTION ALERT (${rejectionCount} skips) ===\nThe user has rejected ${rejectionCount} suggestions this session. Previous suggestions did NOT resonate.\n${openQuestion ? `USER SAID: "${openQuestion}" — use this as the PRIMARY signal for what to suggest.` : 'DIG DEEPER into their captured wisdom. Reference SPECIFIC insight titles. Try pillars/topics they\'ve been AVOIDING.'}\n=== END REJECTION ALERT ===`
       : '';
     
     const userMindContext = userContext 
