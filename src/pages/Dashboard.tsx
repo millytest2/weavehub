@@ -327,9 +327,17 @@ const Dashboard = () => {
       
       await supabase.from("daily_tasks").delete().eq("id", todayTask.id);
       
+      const newSkipCount = sessionSkipCount + 1;
+      setSessionSkipCount(newSkipCount);
       setTodayTask(null);
-      toast.info("Finding something better...");
-      await handleGenerateTask();
+      
+      if (newSkipCount >= 2) {
+        setShowRecalibration(true);
+        toast.info("Let's recalibrate");
+      } else {
+        toast.info("Finding something better...");
+        await handleGenerateTask();
+      }
     } catch (error: any) {
       console.error("Skip error:", error);
       toast.error("Failed to skip");
