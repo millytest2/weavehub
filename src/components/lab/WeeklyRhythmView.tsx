@@ -284,8 +284,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       const prevWeekNum = currentWeekNumber === 1 ? 52 : currentWeekNumber - 1;
       const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
-      const currentMonth = new Date().getMonth() + 1;
-      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, milestoneResult] = await Promise.all([
+      const [actionsResult, weeklyResult, prevWeekResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("*")
@@ -307,17 +306,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           .eq("week_number", prevWeekNum)
           .eq("year", prevYear)
           .maybeSingle(),
-        supabase
-          .from("weekly_pillar_targets")
-          .select("*")
-          .eq("user_id", user.id),
-        supabase
-          .from("thread_milestones")
-          .select("title, description, capability_focus")
-          .eq("user_id", user.id)
-          .eq("year", 2026)
-          .eq("month_number", currentMonth)
-          .maybeSingle()
       ]);
 
       setActions(actionsResult.data || []);
