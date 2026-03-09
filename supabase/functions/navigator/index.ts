@@ -356,7 +356,15 @@ serve(async (req) => {
     
     // Fetch MORE semantic insights - expand to 15 for better grounding
     let semanticInsights: string[] = [];
-    if (identityData?.content) {
+    let semanticDocuments: string[] = [];
+    const insightLimit = isDeepContext ? 45 : 15;
+    const docLimit = isDeepContext ? 15 : 5;
+    const similarityThreshold = isDeepContext ? 0.25 : 0.35;
+    
+    // Use openQuestion as embedding signal if provided (recalibration), otherwise identity
+    const embeddingSource = openQuestion || identityData?.content;
+    
+    if (embeddingSource) {
       try {
         const embedResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
           method: 'POST',
@@ -366,7 +374,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             model: 'text-embedding-3-small',
-            input: identityData.content.substring(0, 2000)
+            input: embeddingSource.substring(0, 2000)
           }),
         });
         
@@ -378,14 +386,30 @@ serve(async (req) => {
             const { data: relevantInsights } = await supabase.rpc('search_insights_semantic', {
               user_uuid: user.id,
               query_embedding: `[${embedding.join(',')}]`,
-              match_count: 15,
-              similarity_threshold: 0.35
+              match_count: insightLimit,
+              similarity_threshold: similarityThreshold
             });
             
             if (relevantInsights && relevantInsights.length > 0) {
               semanticInsights = relevantInsights.map((i: any) => 
                 `[${i.source || 'insight'}] "${i.title}": ${i.content.substring(0, 200)}`
               );
+            }
+            
+            // Also fetch semantic documents when in deep context mode
+            if (isDeepContext) {
+              const { data: relevantDocs } = await supabase.rpc('search_documents_semantic', {
+                user_uuid: user.id,
+                query_embedding: `[${embedding.join(',')}]`,
+                match_count: docLimit,
+                similarity_threshold: similarityThreshold
+              });
+              
+              if (relevantDocs && relevantDocs.length > 0) {
+                semanticDocuments = relevantDocs.map((d: any) => 
+                  `[doc] "${d.title}": ${(d.summary || '').substring(0, 200)}`
+                );
+              }
             }
           }
         }
