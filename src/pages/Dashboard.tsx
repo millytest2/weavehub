@@ -68,15 +68,17 @@ const Dashboard = () => {
     return getTimeOfDay(taskCreated.getHours()) !== getTimeOfDay(now.getHours()) && hoursSinceCreation > 4 && !task.completed;
   };
 
-  const getGreeting = () => {
+  const getTimePhase = () => {
     const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'morning';
+    if (hour >= 12 && hour < 17) return 'afternoon';
+    if (hour >= 17 && hour < 21) return 'evening';
+    return 'night';
+  };
+
+  const getGreeting = () => {
     const name = userName?.split(' ')[0];
-    const prefix = name ? `${name}` : '';
-    
-    if (hour >= 5 && hour < 12) return prefix;
-    if (hour >= 12 && hour < 17) return prefix;
-    if (hour >= 17 && hour < 21) return prefix;
-    return prefix;
+    return name || '';
   };
 
   const fetchData = useCallback(async () => {
