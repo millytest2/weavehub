@@ -709,6 +709,7 @@ ${userContextData.current_hurdles?.join(', ') || 'Consistency, showing up authen
 
 TODAY: ${dateTime.fullContext}
 ${timeContextBlock}
+${rejectionContext}
 ${userMindContext}
 
 PILLAR: ${suggestedPillar}
