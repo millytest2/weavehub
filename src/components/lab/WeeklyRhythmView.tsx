@@ -48,14 +48,6 @@ const PILLAR_CONFIG: Record<string, { label: string; icon: any; color: string; b
   play: { label: 'Play', icon: Gamepad2, color: 'text-cyan-500', bgColor: 'bg-cyan-500' },
 };
 
-const DEFAULT_PILLAR_TARGETS: Record<string, { target: number; priority: number }> = {
-  business: { target: 5, priority: 5 },
-  body: { target: 5, priority: 4 },
-  content: { target: 3, priority: 3 },
-  relationship: { target: 3, priority: 3 },
-  mind: { target: 3, priority: 2 },
-  play: { target: 2, priority: 1 },
-};
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
