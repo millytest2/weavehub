@@ -430,9 +430,6 @@ const Dashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="p-8 py-14 text-center space-y-5 relative"
                 >
-                  <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Check className="h-7 w-7 text-primary" />
-                  </div>
                   <div className="space-y-2">
                     <h2 className="text-2xl font-display font-semibold">Three done.</h2>
                     <p className="text-muted-foreground text-sm">You showed up. That compounds.</p>
@@ -443,7 +440,6 @@ const Dashboard = () => {
                     onClick={() => handleGenerateTask({})}
                     className="rounded-2xl h-12 px-6"
                   >
-                    <Zap className="h-4 w-4 mr-2" />
                     One more
                   </Button>
                 </motion.div>
@@ -452,15 +448,21 @@ const Dashboard = () => {
                   key="done"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-8 py-16 text-center space-y-4 relative"
+                  className="p-8 py-16 text-center space-y-3 relative"
                 >
-                  <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Check className="h-7 w-7 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-display font-semibold">Done.</h2>
-                    <p className="text-muted-foreground text-sm">You showed up. That matters.</p>
-                  </div>
+                  {getTimePhase() === 'afternoon' ? (
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      Done for today. Go live it.
+                    </p>
+                  ) : getTimePhase() === 'evening' ? (
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      You moved today. Rest now.
+                    </p>
+                  ) : (
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      Done. That matters.
+                    </p>
+                  )}
                 </motion.div>
               ) : todayTask ? (
                 <motion.div
