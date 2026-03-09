@@ -620,6 +620,45 @@ export type Database = {
           },
         ]
       }
+      monthly_plans: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          event_date: string | null
+          id: string
+          month_number: number
+          plan_type: string
+          sort_order: number | null
+          text: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          month_number: number
+          plan_type?: string
+          sort_order?: number | null
+          text: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          month_number?: number
+          plan_type?: string
+          sort_order?: number | null
+          text?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       observations: {
         Row: {
           content: string
@@ -1138,6 +1177,42 @@ export type Database = {
           user_id?: string
           week_number?: number
           week_start?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      weekly_intentions: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          id: string
+          pillar: string | null
+          sort_order: number | null
+          text: string
+          user_id: string
+          week_number: number
+          year: number
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          pillar?: string | null
+          sort_order?: number | null
+          text: string
+          user_id: string
+          week_number: number
+          year: number
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          pillar?: string | null
+          sort_order?: number | null
+          text?: string
+          user_id?: string
+          week_number?: number
           year?: number
         }
         Relationships: []
