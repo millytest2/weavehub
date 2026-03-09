@@ -68,15 +68,17 @@ const Dashboard = () => {
     return getTimeOfDay(taskCreated.getHours()) !== getTimeOfDay(now.getHours()) && hoursSinceCreation > 4 && !task.completed;
   };
 
-  const getGreeting = () => {
+  const getTimePhase = () => {
     const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'morning';
+    if (hour >= 12 && hour < 17) return 'afternoon';
+    if (hour >= 17 && hour < 21) return 'evening';
+    return 'night';
+  };
+
+  const getGreeting = () => {
     const name = userName?.split(' ')[0];
-    const prefix = name ? `${name}` : '';
-    
-    if (hour >= 5 && hour < 12) return prefix;
-    if (hour >= 12 && hour < 17) return prefix;
-    if (hour >= 17 && hour < 21) return prefix;
-    return prefix;
+    return name || '';
   };
 
   const fetchData = useCallback(async () => {
@@ -428,9 +430,6 @@ const Dashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="p-8 py-14 text-center space-y-5 relative"
                 >
-                  <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Check className="h-7 w-7 text-primary" />
-                  </div>
                   <div className="space-y-2">
                     <h2 className="text-2xl font-display font-semibold">Three done.</h2>
                     <p className="text-muted-foreground text-sm">You showed up. That compounds.</p>
@@ -441,7 +440,6 @@ const Dashboard = () => {
                     onClick={() => handleGenerateTask({})}
                     className="rounded-2xl h-12 px-6"
                   >
-                    <Zap className="h-4 w-4 mr-2" />
                     One more
                   </Button>
                 </motion.div>
@@ -450,15 +448,21 @@ const Dashboard = () => {
                   key="done"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-8 py-16 text-center space-y-4 relative"
+                  className="p-8 py-16 text-center space-y-3 relative"
                 >
-                  <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Check className="h-7 w-7 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-display font-semibold">Done.</h2>
-                    <p className="text-muted-foreground text-sm">You showed up. That matters.</p>
-                  </div>
+                  {getTimePhase() === 'afternoon' ? (
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      Done for today. Go live it.
+                    </p>
+                  ) : getTimePhase() === 'evening' ? (
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      You moved today. Rest now.
+                    </p>
+                  ) : (
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      Done. That matters.
+                    </p>
+                  )}
                 </motion.div>
               ) : todayTask ? (
                 <motion.div
@@ -487,14 +491,9 @@ const Dashboard = () => {
                       <button
                         onClick={handleSkipTask}
                         disabled={isSkipping}
-                        className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors flex items-center gap-1"
+                        className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
                       >
-                        {isSkipping ? (
-                          <RefreshCw className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-3 w-3" />
-                        )}
-                        not this
+                        {isSkipping ? "..." : "not today"}
                       </button>
                     </div>
                     
@@ -591,16 +590,15 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Active Experiment - Compact inline */}
+        {/* Current Chapter */}
         {activeExperiment && (
-          <section className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/80 to-muted/10 p-5">
+          <section className="px-1">
             {(() => {
               const createdDate = new Date(activeExperiment.created_at);
               const now = new Date();
               const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
               const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
               const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-              const currentHour = now.getHours();
               
               const durationStr = activeExperiment.duration?.toLowerCase() || '';
               let totalDays = 7;
@@ -610,48 +608,25 @@ const Dashboard = () => {
               else if (durationStr.includes('5 day')) totalDays = 5;
               else if (durationStr.includes('week')) totalDays = 7;
               else if (durationStr.includes('2 week')) totalDays = 14;
-              
-              const getTimeOfDay = (hour: number) => {
-                if (hour >= 5 && hour < 12) return 'Morning';
-                if (hour >= 12 && hour < 17) return 'Afternoon';
-                if (hour >= 17 && hour < 21) return 'Evening';
-                return 'Night';
-              };
-              const timeOfDay = getTimeOfDay(currentHour);
-              
+
+              // Extract what to notice today from steps
               const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
-              
-              let todayStep = '';
-              const stepsPerDay = Math.ceil(steps.length / 7);
-              
-              if (steps.length <= 7) {
-                todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)] || activeExperiment.description;
-              } else {
-                const baseIndex = (dayNumber - 1) * stepsPerDay;
-                const timeSlot = currentHour < 12 ? 0 : currentHour < 18 ? 1 : 2;
-                const stepIndex = Math.min(baseIndex + Math.min(timeSlot, stepsPerDay - 1), steps.length - 1);
-                todayStep = steps[stepIndex] || activeExperiment.description;
+              let todayFocus = '';
+              if (steps.length > 0) {
+                todayFocus = steps[Math.min(dayNumber - 1, steps.length - 1)] || '';
               }
               
               return (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                      Experiment
-                    </span>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{timeOfDay}</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-muted font-medium">
-                        Day {dayNumber}/{totalDays}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-base font-medium leading-relaxed">
-                    {todayStep}
+                <div className="space-y-2">
+                  <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest pl-1">
+                    Current chapter · day {dayNumber}
                   </p>
-                  {activeExperiment.identity_shift_target && (
-                    <p className="text-xs text-primary/70 italic">
-                      {activeExperiment.identity_shift_target}
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    You're testing: <span className="text-foreground font-medium">{activeExperiment.identity_shift_target || activeExperiment.title}</span>
+                  </p>
+                  {todayFocus && getTimePhase() !== 'evening' && getTimePhase() !== 'night' && (
+                    <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                      {todayFocus}
                     </p>
                   )}
                 </div>
@@ -660,27 +635,28 @@ const Dashboard = () => {
           </section>
         )}
 
-        {/* Next Best Rep */}
-        <button
-          onClick={handleNextRep}
-          disabled={isGettingRep}
-          className="w-full group text-left"
-        >
-          <div className="flex items-center gap-4 p-5 rounded-2xl border border-border/40 bg-gradient-to-r from-card/60 to-muted/20 hover:from-card hover:to-muted/30 hover:border-primary/20 transition-all">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-colors shrink-0">
-              <Zap className="h-5 w-5 text-primary" />
+        {getTimePhase() !== 'night' && (
+          <button
+            onClick={handleNextRep}
+            disabled={isGettingRep}
+            className="w-full group text-left"
+          >
+            <div className="flex items-center gap-4 p-5 rounded-2xl border border-border/40 bg-gradient-to-r from-card/60 to-muted/20 hover:from-card hover:to-muted/30 hover:border-primary/20 transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/10 transition-colors shrink-0">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-base">
+                  {isGettingRep ? "Finding your next move..." : "Need a reset?"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  One tap. One aligned action.
+                </p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-base">
-                {isGettingRep ? "Finding your next move..." : "Feeling off?"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                One tap. One aligned action.
-              </p>
-            </div>
-            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </div>
-        </button>
+          </button>
+        )}
       </div>
 
       {/* Next Best Rep Dialog */}
