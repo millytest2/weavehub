@@ -489,14 +489,9 @@ const Dashboard = () => {
                       <button
                         onClick={handleSkipTask}
                         disabled={isSkipping}
-                        className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors flex items-center gap-1"
+                        className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
                       >
-                        {isSkipping ? (
-                          <RefreshCw className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-3 w-3" />
-                        )}
-                        not this
+                        {isSkipping ? "..." : "not today"}
                       </button>
                     </div>
                     
