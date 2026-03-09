@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium, Sparkles, Target } from "lucide-react";
+import { ArrowRight, Check, Zap, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium, Sparkles, Target, MessageCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
