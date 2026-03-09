@@ -867,8 +867,14 @@ const Lab = () => {
 
           {/* WEEKLY INTEGRATION TAB */}
           <TabsContent value="integration" className="space-y-4">
+            {/* Weekly Plan - what user wants to do this week */}
+            <WeeklyIntentions />
+            
             {/* Week-by-Week Rhythm View */}
             <WeeklyRhythmView onCheckin={() => setShowWeeklyCheckin(true)} />
+            
+            {/* Monthly Plan - goals, events, weekly breakdown */}
+            <MonthlyPlanView />
             
             {/* Journey Flow - Daily → Weekly → Monthly → 2026 (moved to bottom) */}
             <JourneyFlow />
