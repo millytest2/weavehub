@@ -9,8 +9,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
-import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
-import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
+import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
