@@ -289,12 +289,16 @@ serve(async (req) => {
     let timezone: string | undefined;
     let userContext: string | undefined;
     let generateMultiple = false;
+    let rejectionCount = 0;
+    let openQuestion: string | undefined;
     
     try {
       const body = await req.json();
       timezone = body?.timezone;
       userContext = body?.context;
       generateMultiple = body?.generateMultiple === true;
+      rejectionCount = body?.rejectionCount || 0;
+      openQuestion = body?.openQuestion;
     } catch {
       // No body or invalid JSON
     }
