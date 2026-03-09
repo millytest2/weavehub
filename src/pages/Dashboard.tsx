@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium, Sparkles, Target } from "lucide-react";
+import { ArrowRight, Check, Zap, RefreshCw, Clock, Battery, BatteryLow, BatteryMedium, Sparkles, Target, MessageCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -41,6 +42,9 @@ const Dashboard = () => {
   const [selectedEnergy, setSelectedEnergy] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [sessionSkipCount, setSessionSkipCount] = useState(0);
+  const [showRecalibration, setShowRecalibration] = useState(false);
+  const [recalibrationText, setRecalibrationText] = useState('');
 
   const getLocalToday = () => {
     const now = new Date();
@@ -200,7 +204,9 @@ const Dashboard = () => {
       const { data, error } = await supabase.functions.invoke("navigator", {
         body: { 
           timezone,
-          context: contextString || undefined
+          context: contextString || undefined,
+          rejectionCount: sessionSkipCount,
+          openQuestion: recalibrationText || undefined
         }
       });
       if (error) throw error;
@@ -322,9 +328,17 @@ const Dashboard = () => {
       
       await supabase.from("daily_tasks").delete().eq("id", todayTask.id);
       
+      const newSkipCount = sessionSkipCount + 1;
+      setSessionSkipCount(newSkipCount);
       setTodayTask(null);
-      toast.info("Finding something better...");
-      await handleGenerateTask();
+      
+      if (newSkipCount >= 2) {
+        setShowRecalibration(true);
+        toast.info("Let's recalibrate");
+      } else {
+        toast.info("Finding something better...");
+        await handleGenerateTask();
+      }
     } catch (error: any) {
       console.error("Skip error:", error);
       toast.error("Failed to skip");
@@ -454,7 +468,7 @@ const Dashboard = () => {
                     ) : (
                       <RefreshCw className="h-3 w-3 mr-1.5" />
                     )}
-                    Not this
+                    Not this{sessionSkipCount > 0 ? ` (${sessionSkipCount})` : ''}
                   </Button>
                 </div>
                 <div className="space-y-3">
@@ -483,6 +497,35 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="py-8 space-y-5 relative">
+                {showRecalibration ? (
+                  <div className="space-y-4 animate-fade-in text-center">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                      <MessageCircle className="h-6 w-6 text-primary" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Those didn't land. What feels alive right now?
+                    </p>
+                    <Textarea
+                      value={recalibrationText}
+                      onChange={(e) => setRecalibrationText(e.target.value)}
+                      placeholder="What's actually on your mind today..."
+                      className="min-h-[80px] rounded-2xl text-sm resize-none bg-muted/30 border-border/40"
+                    />
+                    <Button
+                      size="lg"
+                      onClick={() => {
+                        setShowRecalibration(false);
+                        handleGenerateTask({});
+                      }}
+                      disabled={!recalibrationText.trim()}
+                      className="w-full h-12 rounded-2xl"
+                    >
+                      Recalibrate
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                <>
                 {isFirstTime && identitySeed && (
                   <div className="p-4 rounded-2xl bg-muted/50 border border-border/30 text-center">
                     <p className="text-xs text-muted-foreground mb-1.5">You're becoming someone who:</p>
@@ -564,6 +607,8 @@ const Dashboard = () => {
                       {isFirstTime ? "Get My First Invitation" : "Start"}
                     </Button>
                   </div>
+                )}
+                </>
                 )}
               </div>
             )}

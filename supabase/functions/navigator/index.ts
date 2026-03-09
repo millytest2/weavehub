@@ -289,12 +289,16 @@ serve(async (req) => {
     let timezone: string | undefined;
     let userContext: string | undefined;
     let generateMultiple = false;
+    let rejectionCount = 0;
+    let openQuestion: string | undefined;
     
     try {
       const body = await req.json();
       timezone = body?.timezone;
       userContext = body?.context;
       generateMultiple = body?.generateMultiple === true;
+      rejectionCount = body?.rejectionCount || 0;
+      openQuestion = body?.openQuestion;
     } catch {
       // No body or invalid JSON
     }
@@ -322,7 +326,8 @@ serve(async (req) => {
     const { data: userTimePrefs } = await supabase.rpc('get_user_time_preferences', { p_user_id: user.id });
     
     const dateTime = getDateTimeContext(timezone, userTimePrefs);
-    console.log(`Navigator: ${dateTime.fullContext}, learned: ${dateTime.isLearned}, multiple: ${generateMultiple}`);
+    const isDeepContext = rejectionCount >= 2;
+    console.log(`Navigator: ${dateTime.fullContext}, learned: ${dateTime.isLearned}, multiple: ${generateMultiple}, rejections: ${rejectionCount}, deepContext: ${isDeepContext}`);
     
     // Track this request for learning
     await supabase.from('user_activity_patterns').insert({
@@ -351,7 +356,15 @@ serve(async (req) => {
     
     // Fetch MORE semantic insights - expand to 15 for better grounding
     let semanticInsights: string[] = [];
-    if (identityData?.content) {
+    let semanticDocuments: string[] = [];
+    const insightLimit = isDeepContext ? 45 : 15;
+    const docLimit = isDeepContext ? 15 : 5;
+    const similarityThreshold = isDeepContext ? 0.25 : 0.35;
+    
+    // Use openQuestion as embedding signal if provided (recalibration), otherwise identity
+    const embeddingSource = openQuestion || identityData?.content;
+    
+    if (embeddingSource) {
       try {
         const embedResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
           method: 'POST',
@@ -361,7 +374,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             model: 'text-embedding-3-small',
-            input: identityData.content.substring(0, 2000)
+            input: embeddingSource.substring(0, 2000)
           }),
         });
         
@@ -373,14 +386,30 @@ serve(async (req) => {
             const { data: relevantInsights } = await supabase.rpc('search_insights_semantic', {
               user_uuid: user.id,
               query_embedding: `[${embedding.join(',')}]`,
-              match_count: 15,
-              similarity_threshold: 0.35
+              match_count: insightLimit,
+              similarity_threshold: similarityThreshold
             });
             
             if (relevantInsights && relevantInsights.length > 0) {
               semanticInsights = relevantInsights.map((i: any) => 
                 `[${i.source || 'insight'}] "${i.title}": ${i.content.substring(0, 200)}`
               );
+            }
+            
+            // Also fetch semantic documents when in deep context mode
+            if (isDeepContext) {
+              const { data: relevantDocs } = await supabase.rpc('search_documents_semantic', {
+                user_uuid: user.id,
+                query_embedding: `[${embedding.join(',')}]`,
+                match_count: docLimit,
+                similarity_threshold: similarityThreshold
+              });
+              
+              if (relevantDocs && relevantDocs.length > 0) {
+                semanticDocuments = relevantDocs.map((d: any) => 
+                  `[doc] "${d.title}": ${(d.summary || '').substring(0, 200)}`
+                );
+              }
             }
           }
         }
@@ -417,7 +446,15 @@ serve(async (req) => {
 
     const contextPrompt = formatContextForAI(userContextData);
     const semanticContext = semanticInsights.length > 0 
-      ? `\n\nRELEVANT INSIGHTS:\n${semanticInsights.join('\n')}`
+      ? `\n\nRELEVANT INSIGHTS (${semanticInsights.length} found):\n${semanticInsights.join('\n')}`
+      : '';
+    
+    const docContext = semanticDocuments.length > 0
+      ? `\n\nRELEVANT DOCUMENTS (${semanticDocuments.length} found):\n${semanticDocuments.join('\n')}`
+      : '';
+    
+    const rejectionContext = rejectionCount >= 2
+      ? `\n\n=== REJECTION ALERT (${rejectionCount} skips) ===\nThe user has rejected ${rejectionCount} suggestions this session. Previous suggestions did NOT resonate.\n${openQuestion ? `USER SAID: "${openQuestion}" — use this as the PRIMARY signal for what to suggest.` : 'DIG DEEPER into their captured wisdom. Reference SPECIFIC insight titles. Try pillars/topics they\'ve been AVOIDING.'}\n=== END REJECTION ALERT ===`
       : '';
     
     const userMindContext = userContext 
@@ -473,6 +510,7 @@ ${coreValuesContext}
 
 === THEIR CAPTURED WISDOM (from YouTube, articles, PDFs they've saved) ===
 ${semanticContext || 'No recent insights captured'}
+${docContext}
 
 === WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
 ${recentActionsContext || 'No recent actions tracked'}
@@ -485,6 +523,7 @@ ${userContextData.current_hurdles?.join(', ') || 'Consistency, showing up authen
 
 TODAY: ${dateTime.fullContext}
 ${timeContextBlock}
+${rejectionContext}
 ${userMindContext}
 
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
@@ -657,6 +696,7 @@ ${coreValuesContext}
 
 === THEIR CAPTURED WISDOM ===
 ${semanticContext || 'No recent insights captured'}
+${docContext}
 
 === WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
 ${recentActionsContext || 'No recent actions tracked'}
@@ -669,6 +709,7 @@ ${userContextData.current_hurdles?.join(', ') || 'Consistency, showing up authen
 
 TODAY: ${dateTime.fullContext}
 ${timeContextBlock}
+${rejectionContext}
 ${userMindContext}
 
 PILLAR: ${suggestedPillar}
