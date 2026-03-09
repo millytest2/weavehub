@@ -15,8 +15,6 @@ import {
   Gamepad2,
   CheckCircle2,
   Circle,
-  TrendingUp,
-  TrendingDown,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -27,12 +25,6 @@ import {
   Send,
   Mic,
   MicOff,
-  Target,
-  Settings,
-  Wand2,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
 import { toast } from "sonner";
