@@ -612,20 +612,13 @@ const Lab = () => {
         </div>
 
         <Tabs defaultValue="freewrite" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 h-11 p-1 bg-card border border-border rounded-xl shadow-sm">
+          <TabsList className="grid w-full grid-cols-4 h-11 p-1 bg-card border border-border rounded-xl shadow-sm">
             <TabsTrigger 
               value="experiments" 
               className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
             >
               <FlaskConical className="h-4 w-4" />
               <span className="hidden sm:inline">Experiments</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="observations" 
-              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Observations</span>
             </TabsTrigger>
             <TabsTrigger 
               value="freewrite" 
@@ -801,66 +794,6 @@ const Lab = () => {
             )}
           </TabsContent>
 
-          {/* OBSERVATIONS TAB */}
-          <TabsContent value="observations" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">Capture moments for content</p>
-              <Button size="sm" onClick={() => setShowNewObservation(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Observation
-              </Button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {observations.map((obs) => (
-                <Card 
-                  key={obs.id} 
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => {
-                    setSelectedObservation(obs);
-                    setGeneratedPost(obs.generated_post || "");
-                    setShowPostGenerator(true);
-                  }}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      {obs.observation_type === "quote" && <Quote className="h-4 w-4 text-blue-500" />}
-                      {obs.observation_type === "decision" && <Target className="h-4 w-4 text-orange-500" />}
-                      {obs.observation_type === "presence" && <Users className="h-4 w-4 text-purple-500" />}
-                      {obs.observation_type === "insight" && <Lightbulb className="h-4 w-4 text-yellow-500" />}
-                      <Badge variant="outline" className="text-xs capitalize">
-                        {obs.observation_type}
-                      </Badge>
-                      {obs.post_drafted && (
-                        <Badge variant="secondary" className="text-xs">
-                          Drafted
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm line-clamp-3">{obs.content}</p>
-                    {obs.source && (
-                      <p className="text-xs text-muted-foreground mt-2">— {obs.source}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {observations.length === 0 && !loading && (
-              <Card className="border-dashed">
-                <CardContent className="py-12 text-center">
-                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground mb-4">No observations yet</p>
-                  <Button onClick={() => setShowNewObservation(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Capture Your First Observation
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
 
           {/* FREEWRITE TAB */}
           <TabsContent value="freewrite" className="space-y-4">
