@@ -17,7 +17,6 @@ import {
   Circle,
   TrendingUp,
   TrendingDown,
-  Minus,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -32,8 +31,6 @@ import {
   Settings,
   Wand2,
   AlertTriangle,
-  Mountain,
-  Compass,
   ChevronDown,
   ChevronUp
 } from "lucide-react";
