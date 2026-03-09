@@ -34,8 +34,6 @@ const Dashboard = () => {
   const [userName, setUserName] = useState<string | null>(null);
   const [isFirstTime, setIsFirstTime] = useState(false);
   
-  const [morningComplete, setMorningComplete] = useState(false);
-  const [eveningComplete, setEveningComplete] = useState(false);
   
   // Skip / recalibration
   const [isSkipping, setIsSkipping] = useState(false);
