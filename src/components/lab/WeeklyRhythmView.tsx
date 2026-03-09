@@ -311,14 +311,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       setActions(actionsResult.data || []);
       setWeeklyData(weeklyResult.data);
       setPrevWeekData(prevWeekResult.data);
-      setCurrentMilestone(milestoneResult.data);
-      
-      // Process pillar targets
-      const targetsMap: Record<string, PillarTarget> = {};
-      (targetsResult.data || []).forEach((t: any) => {
-        targetsMap[t.pillar] = t;
-      });
-      setPillarTargets(targetsMap);
     } catch (error) {
       console.error("Error fetching week data:", error);
     } finally {
