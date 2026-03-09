@@ -375,62 +375,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   }, [actions, weekDays]);
 
 
-  // Analyze today's actions (for day-by-day view)
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const todayAnalysis = useMemo(() => {
-    const todayActions = actions.filter(a => a.action_date === todayStr);
-    const byPillar: Record<string, number> = {};
-
-    todayActions.forEach(action => {
-      // Normalize pillar names to match config keys
-      const rawPillar = (action.pillar || 'other').toLowerCase();
-      const pillarMap: Record<string, string> = {
-        'connection': 'relationship',
-        'skill': 'mind',
-        'learning': 'mind',
-        'presence': 'mind',
-        'stability': 'business',
-      };
-      const pillar = pillarMap[rawPillar] || rawPillar;
-      byPillar[pillar] = (byPillar[pillar] || 0) + 1;
-    });
-
-    const pillars = Object.entries(byPillar).sort((a, b) => b[1] - a[1]);
-    const dominantPillar = pillars[0]?.[0];
-    const activePillars = pillars.filter(([_, count]) => count > 0).length;
-
-    return {
-      byPillar,
-      dominantPillar,
-      activePillars,
-      totalActions: todayActions.length,
-    };
-  }, [actions, todayStr]);
-
-  const effectivePillarScope: 'day' | 'week' = isCurrentWeek ? pillarScope : 'week';
-  const pillarAnalysis = effectivePillarScope === 'day'
-    ? ({ byPillar: todayAnalysis.byPillar, dominantPillar: todayAnalysis.dominantPillar, activePillars: todayAnalysis.activePillars, totalActions: todayAnalysis.totalActions } as const)
-    : ({ byPillar: weekAnalysis.byPillar, dominantPillar: weekAnalysis.dominantPillar, activePillars: weekAnalysis.activePillars, totalActions: weekAnalysis.totalActions } as const);
-
-  // Compare with previous week
-  const weekComparison = useMemo(() => {
-    if (!weeklyData || !prevWeekData) return null;
-
-    const pillars = ['business', 'body', 'content', 'relationship', 'mind', 'play'];
-    const changes: Record<string, { current: number; previous: number; trend: 'up' | 'down' | 'same' }> = {};
-
-    pillars.forEach(pillar => {
-      const currentScore = (weeklyData as any)[`${pillar}_score`] || 0;
-      const prevScore = (prevWeekData as any)[`${pillar}_score`] || 0;
-      changes[pillar] = {
-        current: currentScore,
-        previous: prevScore,
-        trend: currentScore > prevScore ? 'up' : currentScore < prevScore ? 'down' : 'same'
-      };
-    });
-
-    return changes;
-  }, [weeklyData, prevWeekData]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     setViewDate(current => direction === 'prev' ? subWeeks(current, 1) : addWeeks(current, 1));
