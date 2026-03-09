@@ -17,7 +17,6 @@ import {
   Circle,
   TrendingUp,
   TrendingDown,
-  Minus,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -32,12 +31,10 @@ import {
   Settings,
   Wand2,
   AlertTriangle,
-  Mountain,
-  Compass,
   ChevronDown,
   ChevronUp
 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear, startOfMonth, endOfMonth, differenceInWeeks, differenceInDays } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
 import { toast } from "sonner";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -124,11 +121,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const [parsedItems, setParsedItems] = useState<{ text: string; pillar: string | null }[]>([]);
   const [showParsedPreview, setShowParsedPreview] = useState(false);
   
-  // Monthly/Misogi state
-  const [identitySeed, setIdentitySeed] = useState<{ content: string; core_values: string; year_note: string } | null>(null);
-  const [monthlyInsightsExpanded, setMonthlyInsightsExpanded] = useState(false);
-  const [generatingMonthlyInsight, setGeneratingMonthlyInsight] = useState(false);
-  const [monthlyInsight, setMonthlyInsight] = useState<string | null>(null);
+   
   
   // Parse voice transcript into structured items
   const parseVoiceTranscript = async (transcript: string) => {
@@ -305,7 +298,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
       const currentMonth = new Date().getMonth() + 1;
-      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, identityResult, milestoneResult] = await Promise.all([
+      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, milestoneResult] = await Promise.all([
         supabase
           .from("action_history")
           .select("*")
@@ -332,11 +325,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           .select("*")
           .eq("user_id", user.id),
         supabase
-          .from("identity_seeds")
-          .select("content, core_values, year_note")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-        supabase
           .from("thread_milestones")
           .select("title, description, capability_focus")
           .eq("user_id", user.id)
@@ -348,7 +336,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
       setActions(actionsResult.data || []);
       setWeeklyData(weeklyResult.data);
       setPrevWeekData(prevWeekResult.data);
-      setIdentitySeed(identityResult.data);
       setCurrentMilestone(milestoneResult.data);
       
       // Process pillar targets
@@ -364,57 +351,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     }
   };
   
-  // Generate monthly insight based on identity and current progress
-  const generateMonthlyInsight = async () => {
-    if (!identitySeed) {
-      toast.error("No identity seed found. Set up your 2026 Direction first.");
-      return;
-    }
-    
-    setGeneratingMonthlyInsight(true);
-    try {
-      const now = new Date();
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-      const weeksIntoMonth = differenceInWeeks(now, monthStart) + 1;
-      const weeksLeft = differenceInWeeks(monthEnd, now);
-      const daysIntoYear = differenceInDays(now, new Date(now.getFullYear(), 0, 1)) + 1;
-      const daysLeftInYear = differenceInDays(new Date(now.getFullYear(), 11, 31), now);
-      
-      const { data, error } = await supabase.functions.invoke('synthesizer', {
-        body: {
-          type: 'monthly_reverse_engineer',
-          context: {
-            identity: identitySeed.content,
-            coreValues: identitySeed.core_values,
-            yearDirection: identitySeed.year_note,
-            currentMonth: format(now, 'MMMM yyyy'),
-            weeksIntoMonth,
-            weeksLeftInMonth: weeksLeft,
-            daysIntoYear,
-            daysLeftInYear,
-            currentWeekNumber,
-            weeklyActions: weekAnalysis.totalActions,
-            pillarDistribution: weekAnalysis.byPillar,
-            activeDays: weekAnalysis.activeDays,
-          }
-        }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.insight) {
-        setMonthlyInsight(data.insight);
-      } else if (data?.content) {
-        setMonthlyInsight(data.content);
-      }
-    } catch (error) {
-      console.error("Error generating monthly insight:", error);
-      toast.error("Failed to generate monthly insight");
-    } finally {
-      setGeneratingMonthlyInsight(false);
-    }
-  };
 
   // Initialize editing targets from current targets
   const openTargetsDialog = () => {
@@ -692,50 +628,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         </Button>
       </div>
 
-      {/* Always-visible Alignment Cascade: 2026 → Month → This Week */}
-      {isCurrentWeek && identitySeed?.year_note && (
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-orange-500/5 to-transparent overflow-hidden">
-          <CardContent className="p-3 space-y-2">
-            {/* 2026 Vision - compact */}
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-md bg-orange-500/20 flex items-center justify-center shrink-0">
-                <Mountain className="h-3.5 w-3.5 text-orange-500" />
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-1 flex-1">
-                <span className="font-medium text-orange-600 dark:text-orange-400">2026:</span>{" "}
-                {identitySeed.year_note.split('.')[0]}
-              </p>
-            </div>
-            
-            {/* Current month milestone from The Thread */}
-            {currentMilestone && (
-              <div className="flex items-center gap-2 pl-3 border-l-2 border-primary/30">
-                <div className="h-5 w-5 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
-                  <Target className="h-3 w-3 text-primary" />
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-1 flex-1">
-                  <span className="font-medium text-foreground">{format(new Date(), 'MMM')}:</span>{" "}
-                  {currentMilestone.title}
-                  {currentMilestone.capability_focus && (
-                    <span className="text-primary/70"> · Building: {currentMilestone.capability_focus}</span>
-                  )}
-                </p>
-              </div>
-            )}
-            
-            {/* This week's weave summary */}
-            <div className="flex items-center gap-2 pl-6 border-l-2 border-muted-foreground/20">
-              <div className="h-5 w-5 rounded-md bg-muted flex items-center justify-center shrink-0">
-                <Sparkles className="h-3 w-3 text-muted-foreground" />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">This week:</span>{" "}
-                {weekAnalysis.totalActions} actions · {weekAnalysis.activePillars}/6 pillars · {weekAnalysis.activeDays}/7 days
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Quick Log Input */}
       {isCurrentWeek && (
@@ -885,6 +777,55 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Today's Actions List */}
+      {isCurrentWeek && (() => {
+        const todayActions = actions.filter(a => a.action_date === format(new Date(), 'yyyy-MM-dd'));
+        
+        if (todayActions.length === 0) {
+          return (
+            <Card className="border-dashed">
+              <CardContent className="pt-6 pb-6 text-center">
+                <Circle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Nothing logged today yet</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Use voice or type above to log what you did</p>
+              </CardContent>
+            </Card>
+          );
+        }
+        
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                Today
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {todayActions.length} {todayActions.length === 1 ? 'action' : 'actions'}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {todayActions.map((action) => {
+                  const pillarConfig = action.pillar ? PILLAR_CONFIG[action.pillar] : null;
+                  const Icon = pillarConfig?.icon || CheckCircle2;
+                  return (
+                    <div key={action.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50">
+                      <Icon className={`h-4 w-4 mt-0.5 ${pillarConfig?.color || 'text-muted-foreground'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">{action.action_text}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(action.completed_at), 'h:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Week at a Glance - The Weave */}
       <Card className="overflow-hidden">
@@ -1122,109 +1063,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         </CardContent>
       </Card>
 
-      {/* Today's Actions List */}
-      {(() => {
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
-        const todayActions = actions.filter(a => a.action_date === todayStr);
-        
-        if (todayActions.length === 0 && isCurrentWeek) {
-          return (
-            <Card className="border-dashed">
-              <CardContent className="pt-6 pb-6 text-center">
-                <Circle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">Nothing logged today yet</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Use voice or type above to log what you did</p>
-              </CardContent>
-            </Card>
-          );
-        }
-        
-        if (todayActions.length === 0) return null;
-        
-        return (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                What You Did Today
-                <Badge variant="secondary" className="text-xs font-normal">
-                  {todayActions.length} {todayActions.length === 1 ? 'action' : 'actions'}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {todayActions.map((action) => {
-                  const pillarConfig = action.pillar ? PILLAR_CONFIG[action.pillar] : null;
-                  const Icon = pillarConfig?.icon || CheckCircle2;
-                  
-                  return (
-                    <div key={action.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50">
-                      <Icon className={`h-4 w-4 mt-0.5 ${pillarConfig?.color || 'text-muted-foreground'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">{action.action_text}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(action.completed_at), 'h:mm a')}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
 
-      {/* Monthly Focus + AI Insight (compact, replaces old collapsed Compass) */}
-      {isCurrentWeek && identitySeed?.year_note && (
-        <Card className="border-orange-500/20">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Wand2 className="h-3.5 w-3.5 text-orange-500" />
-                Monthly Focus
-              </h3>
-              <span className="text-[10px] text-muted-foreground">
-                {format(new Date(), 'MMMM')} · {differenceInDays(new Date(2026, 11, 31), new Date())} days to 2026
-              </span>
-            </div>
-            
-            {monthlyInsight ? (
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <p className="text-sm text-foreground whitespace-pre-line">{monthlyInsight}</p>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="mt-2 h-7 text-xs"
-                  onClick={generateMonthlyInsight}
-                  disabled={generatingMonthlyInsight}
-                >
-                  {generatingMonthlyInsight ? (
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  ) : (
-                    <Wand2 className="h-3 w-3 mr-1" />
-                  )}
-                  Refresh
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="w-full border-dashed"
-                onClick={generateMonthlyInsight}
-                disabled={generatingMonthlyInsight}
-              >
-                {generatingMonthlyInsight ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> Thinking...</>
-                ) : (
-                  <><Wand2 className="h-3.5 w-3.5 mr-2" /> What should I focus on this month?</>
-                )}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Check-in CTA */}
       {isCurrentWeek && (
