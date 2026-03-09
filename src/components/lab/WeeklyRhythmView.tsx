@@ -15,8 +15,6 @@ import {
   Gamepad2,
   CheckCircle2,
   Circle,
-  TrendingUp,
-  TrendingDown,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -27,18 +25,10 @@ import {
   Send,
   Mic,
   MicOff,
-  Target,
-  Settings,
-  Wand2,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, getWeek, getYear } from "date-fns";
 import { toast } from "sonner";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ActionHistory {
   id: string;
@@ -48,25 +38,6 @@ interface ActionHistory {
   completed_at: string;
 }
 
-interface WeeklyIntegration {
-  id: string;
-  week_number: number;
-  year: number;
-  business_score: number | null;
-  body_score: number | null;
-  content_score: number | null;
-  relationship_score: number | null;
-  mind_score: number | null;
-  play_score: number | null;
-}
-
-interface PillarTarget {
-  id: string;
-  pillar: string;
-  weekly_target: number;
-  priority: number;
-  notes: string | null;
-}
 
 const PILLAR_CONFIG: Record<string, { label: string; icon: any; color: string; bgColor: string }> = {
   business: { label: 'Business', icon: Briefcase, color: 'text-blue-500', bgColor: 'bg-blue-500' },
@@ -77,14 +48,6 @@ const PILLAR_CONFIG: Record<string, { label: string; icon: any; color: string; b
   play: { label: 'Play', icon: Gamepad2, color: 'text-cyan-500', bgColor: 'bg-cyan-500' },
 };
 
-const DEFAULT_PILLAR_TARGETS: Record<string, { target: number; priority: number }> = {
-  business: { target: 5, priority: 5 },
-  body: { target: 5, priority: 4 },
-  content: { target: 3, priority: 3 },
-  relationship: { target: 3, priority: 3 },
-  mind: { target: 3, priority: 2 },
-  play: { target: 2, priority: 1 },
-};
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -96,22 +59,7 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   const { user } = useAuth();
   const [viewDate, setViewDate] = useState(new Date());
   const [actions, setActions] = useState<ActionHistory[]>([]);
-  const [weeklyData, setWeeklyData] = useState<WeeklyIntegration | null>(null);
-  const [prevWeekData, setPrevWeekData] = useState<WeeklyIntegration | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pillarScope, setPillarScope] = useState<'day' | 'week'>('day');
-  const [currentMilestone, setCurrentMilestone] = useState<{ title: string; description: string | null; capability_focus: string | null } | null>(null);
-  
-  // Pillar targets state
-  const [pillarTargets, setPillarTargets] = useState<Record<string, PillarTarget>>({});
-  const [showTargetsDialog, setShowTargetsDialog] = useState(false);
-  const [editingTargets, setEditingTargets] = useState<Record<string, { target: number; priority: number; reasoning?: string }>>({});
-  const [savingTargets, setSavingTargets] = useState(false);
-  const [generatingTargets, setGeneratingTargets] = useState(false);
-  const [autoAdjusting, setAutoAdjusting] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [aiAlert, setAiAlert] = useState<string | null>(null);
-  const [adjustmentStats, setAdjustmentStats] = useState<{ pillar: string; target: number; completed: number; completionRate: number }[] | null>(null);
   
   // Quick log state
   const [logInput, setLogInput] = useState("");
@@ -294,56 +242,16 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
     try {
       const startDate = format(weekStart, 'yyyy-MM-dd');
       const endDate = format(weekEnd, 'yyyy-MM-dd');
-      const prevWeekNum = currentWeekNumber === 1 ? 52 : currentWeekNumber - 1;
-      const prevYear = currentWeekNumber === 1 ? currentYear - 1 : currentYear;
 
-      const currentMonth = new Date().getMonth() + 1;
-      const [actionsResult, weeklyResult, prevWeekResult, targetsResult, milestoneResult] = await Promise.all([
-        supabase
-          .from("action_history")
-          .select("*")
-          .eq("user_id", user.id)
-          .gte("action_date", startDate)
-          .lte("action_date", endDate)
-          .order("completed_at", { ascending: false }),
-        supabase
-          .from("weekly_integrations")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("week_number", currentWeekNumber)
-          .eq("year", currentYear)
-          .maybeSingle(),
-        supabase
-          .from("weekly_integrations")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("week_number", prevWeekNum)
-          .eq("year", prevYear)
-          .maybeSingle(),
-        supabase
-          .from("weekly_pillar_targets")
-          .select("*")
-          .eq("user_id", user.id),
-        supabase
-          .from("thread_milestones")
-          .select("title, description, capability_focus")
-          .eq("user_id", user.id)
-          .eq("year", 2026)
-          .eq("month_number", currentMonth)
-          .maybeSingle()
-      ]);
+      const { data } = await supabase
+        .from("action_history")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("action_date", startDate)
+        .lte("action_date", endDate)
+        .order("completed_at", { ascending: false });
 
-      setActions(actionsResult.data || []);
-      setWeeklyData(weeklyResult.data);
-      setPrevWeekData(prevWeekResult.data);
-      setCurrentMilestone(milestoneResult.data);
-      
-      // Process pillar targets
-      const targetsMap: Record<string, PillarTarget> = {};
-      (targetsResult.data || []).forEach((t: any) => {
-        targetsMap[t.pillar] = t;
-      });
-      setPillarTargets(targetsMap);
+      setActions(data || []);
     } catch (error) {
       console.error("Error fetching week data:", error);
     } finally {
@@ -352,140 +260,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   };
   
 
-  // Initialize editing targets from current targets
-  const openTargetsDialog = () => {
-    const editing: Record<string, { target: number; priority: number; reasoning?: string }> = {};
-    Object.keys(PILLAR_CONFIG).forEach(pillar => {
-      const existing = pillarTargets[pillar];
-      if (existing) {
-        editing[pillar] = { target: existing.weekly_target, priority: existing.priority };
-      } else {
-        editing[pillar] = DEFAULT_PILLAR_TARGETS[pillar] || { target: 3, priority: 2 };
-      }
-    });
-    setEditingTargets(editing);
-    setAiSummary(null);
-    setAiAlert(null);
-    setShowTargetsDialog(true);
-  };
-
-  // Generate smart targets using AI based on identity
-  const generateSmartTargets = async () => {
-    setGeneratingTargets(true);
-    setAiSummary(null);
-    setAiAlert(null);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-pillar-targets');
-      
-      if (error) throw error;
-      
-      if (data.error) {
-        if (data.message) {
-          toast.error(data.message);
-        } else {
-          toast.error(data.error);
-        }
-        return;
-      }
-      
-      if (data.targets) {
-        const newTargets: Record<string, { target: number; priority: number; reasoning?: string }> = {};
-        Object.entries(data.targets).forEach(([pillar, values]: [string, any]) => {
-          newTargets[pillar] = {
-            target: values.weekly_target || 3,
-            priority: values.priority || 2,
-            reasoning: values.reasoning,
-          };
-        });
-        setEditingTargets(newTargets);
-        setAiSummary(data.summary || null);
-        setAiAlert(data.alert || null);
-        toast.success("Smart targets generated from your identity!");
-      }
-    } catch (error) {
-      console.error("Error generating smart targets:", error);
-      toast.error("Failed to generate smart targets");
-    } finally {
-      setGeneratingTargets(false);
-    }
-  };
-
-  // Auto-adjust targets based on completion rate
-  const autoAdjustTargets = async () => {
-    setAutoAdjusting(true);
-    setAdjustmentStats(null);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('auto-adjust-targets');
-      
-      if (error) throw error;
-      
-      if (data.error) {
-        toast.error(data.error);
-        return;
-      }
-      
-      // Update editing targets with new values
-      if (data.adjustments?.length > 0) {
-        const newTargets = { ...editingTargets };
-        data.adjustments.forEach((adj: { pillar: string; newTarget: number; reason: string }) => {
-          if (newTargets[adj.pillar]) {
-            newTargets[adj.pillar].target = adj.newTarget;
-            newTargets[adj.pillar].reasoning = adj.reason;
-          }
-        });
-        setEditingTargets(newTargets);
-        toast.success(`Adjusted ${data.adjustments.length} pillar target(s)`);
-      } else {
-        toast.info("Your targets are well-calibrated!");
-      }
-      
-      setAdjustmentStats(data.pillarStats || null);
-      setAiSummary(data.summary || null);
-      
-      // Refresh data
-      fetchWeekData();
-    } catch (error) {
-      console.error("Error auto-adjusting targets:", error);
-      toast.error("Failed to auto-adjust targets");
-    } finally {
-      setAutoAdjusting(false);
-    }
-  };
-
-  // Save pillar targets
-  const saveTargets = async () => {
-    if (!user) return;
-    setSavingTargets(true);
-    
-    try {
-      // Upsert all targets
-      const upserts = Object.entries(editingTargets).map(([pillar, values]) => ({
-        user_id: user.id,
-        pillar,
-        weekly_target: values.target,
-        priority: values.priority,
-      }));
-      
-      // Delete existing and insert new (simpler than upsert with composite key)
-      await supabase.from("weekly_pillar_targets").delete().eq("user_id", user.id);
-      const { error } = await supabase.from("weekly_pillar_targets").insert(upserts);
-      
-      if (error) throw error;
-      
-      toast.success("Pillar targets saved!");
-      setShowTargetsDialog(false);
-      fetchWeekData();
-    } catch (error) {
-      console.error("Error saving targets:", error);
-      toast.error("Failed to save targets");
-    } finally {
-      setSavingTargets(false);
-    }
-  };
-
-  // Analyze the week's actions
   const weekAnalysis = useMemo(() => {
     const byDay: Record<string, ActionHistory[]> = {};
     const byPillar: Record<string, number> = {};
@@ -542,62 +316,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
   }, [actions, weekDays]);
 
 
-  // Analyze today's actions (for day-by-day view)
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const todayAnalysis = useMemo(() => {
-    const todayActions = actions.filter(a => a.action_date === todayStr);
-    const byPillar: Record<string, number> = {};
-
-    todayActions.forEach(action => {
-      // Normalize pillar names to match config keys
-      const rawPillar = (action.pillar || 'other').toLowerCase();
-      const pillarMap: Record<string, string> = {
-        'connection': 'relationship',
-        'skill': 'mind',
-        'learning': 'mind',
-        'presence': 'mind',
-        'stability': 'business',
-      };
-      const pillar = pillarMap[rawPillar] || rawPillar;
-      byPillar[pillar] = (byPillar[pillar] || 0) + 1;
-    });
-
-    const pillars = Object.entries(byPillar).sort((a, b) => b[1] - a[1]);
-    const dominantPillar = pillars[0]?.[0];
-    const activePillars = pillars.filter(([_, count]) => count > 0).length;
-
-    return {
-      byPillar,
-      dominantPillar,
-      activePillars,
-      totalActions: todayActions.length,
-    };
-  }, [actions, todayStr]);
-
-  const effectivePillarScope: 'day' | 'week' = isCurrentWeek ? pillarScope : 'week';
-  const pillarAnalysis = effectivePillarScope === 'day'
-    ? ({ byPillar: todayAnalysis.byPillar, dominantPillar: todayAnalysis.dominantPillar, activePillars: todayAnalysis.activePillars, totalActions: todayAnalysis.totalActions } as const)
-    : ({ byPillar: weekAnalysis.byPillar, dominantPillar: weekAnalysis.dominantPillar, activePillars: weekAnalysis.activePillars, totalActions: weekAnalysis.totalActions } as const);
-
-  // Compare with previous week
-  const weekComparison = useMemo(() => {
-    if (!weeklyData || !prevWeekData) return null;
-
-    const pillars = ['business', 'body', 'content', 'relationship', 'mind', 'play'];
-    const changes: Record<string, { current: number; previous: number; trend: 'up' | 'down' | 'same' }> = {};
-
-    pillars.forEach(pillar => {
-      const currentScore = (weeklyData as any)[`${pillar}_score`] || 0;
-      const prevScore = (prevWeekData as any)[`${pillar}_score`] || 0;
-      changes[pillar] = {
-        current: currentScore,
-        previous: prevScore,
-        trend: currentScore > prevScore ? 'up' : currentScore < prevScore ? 'down' : 'same'
-      };
-    });
-
-    return changes;
-  }, [weeklyData, prevWeekData]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     setViewDate(current => direction === 'prev' ? subWeeks(current, 1) : addWeeks(current, 1));
@@ -921,147 +639,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         </CardContent>
       </Card>
 
-      {/* Pillar Balance */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                Pillar Balance
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6"
-                  onClick={openTargetsDialog}
-                  title="Set weekly targets"
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                </Button>
-              </CardTitle>
-              <CardDescription>
-                {effectivePillarScope === 'day' ? 'Where your energy went today' : 'Progress toward weekly targets'}
-              </CardDescription>
-            </div>
-
-            {isCurrentWeek && (
-              <div className="flex items-center gap-1 rounded-md bg-muted/50 p-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={effectivePillarScope === 'day' ? 'secondary' : 'ghost'}
-                  className="h-7 px-2 text-xs"
-                  onClick={() => setPillarScope('day')}
-                >
-                  Today
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={effectivePillarScope === 'week' ? 'secondary' : 'ghost'}
-                  className="h-7 px-2 text-xs"
-                  onClick={() => setPillarScope('week')}
-                >
-                  Week
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
-              const count = pillarAnalysis.byPillar[key] || 0;
-              const target = pillarTargets[key]?.weekly_target || DEFAULT_PILLAR_TARGETS[key]?.target || 3;
-              const targetProgress = effectivePillarScope === 'week' ? Math.min(Math.round((count / target) * 100), 100) : null;
-              const Icon = config.icon;
-              const comparison = effectivePillarScope === 'week' ? weekComparison?.[key] : null;
-              const isOnTrack = count >= target;
-              const priority = pillarTargets[key]?.priority || DEFAULT_PILLAR_TARGETS[key]?.priority || 2;
-
-              return (
-                <div key={key} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center relative flex-shrink-0 ${count > 0 ? config.bgColor + '/20' : 'bg-muted'}`}>
-                    <Icon className={`h-4 w-4 ${count > 0 ? config.color : 'text-muted-foreground'}`} />
-                    {effectivePillarScope === 'week' && priority >= 4 && (
-                      <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-orange-500" title="High priority" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{config.label}</span>
-                      <div className="flex items-center gap-2">
-                        {effectivePillarScope === 'week' ? (
-                          <span className={`text-xs ${isOnTrack ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
-                            {count}/{target}
-                            {isOnTrack && <CheckCircle2 className="inline h-3 w-3 ml-0.5" />}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">{count}</span>
-                        )}
-                        {comparison && (
-                          <span className={`flex items-center text-xs ${
-                            comparison.trend === 'up' ? 'text-green-500' :
-                            comparison.trend === 'down' ? 'text-red-500' : 'text-muted-foreground'
-                          }`}>
-                            {comparison.trend === 'up' && <TrendingUp className="h-3 w-3" />}
-                            {comparison.trend === 'down' && <TrendingDown className="h-3 w-3" />}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-500 ${
-                          effectivePillarScope === 'week' && isOnTrack 
-                            ? 'bg-green-500' 
-                            : count > 0 ? config.bgColor : 'bg-muted'
-                        }`}
-                        style={{ width: effectivePillarScope === 'week' ? `${targetProgress}%` : (count > 0 ? `${Math.round((count / Math.max(...Object.values(pillarAnalysis.byPillar), 1)) * 100)}%` : '0%') }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {pillarAnalysis.totalActions === 0 && (
-            <div className="mt-4 p-3 rounded-lg bg-muted/30 text-center">
-              <p className="text-sm text-muted-foreground">
-                {effectivePillarScope === 'day' ? "No actions logged today yet." : "No actions logged this week yet."}
-              </p>
-            </div>
-          )}
-
-          {/* Show weekly context when viewing today */}
-          {effectivePillarScope === 'day' && weekAnalysis.totalActions > 0 && (
-            <div className="mt-4 p-3 rounded-lg bg-muted/30">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Week progress: {weekAnalysis.activeDays}/7 days active</span>
-                <span>{weekAnalysis.activePillars}/6 pillars touched</span>
-              </div>
-              <div className="h-1 bg-muted rounded-full overflow-hidden mt-2">
-                <div 
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
-                  style={{ width: `${weekAnalysis.completionRate}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {pillarAnalysis.dominantPillar && pillarAnalysis.activePillars < 4 && pillarAnalysis.totalActions > 0 && (
-            <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <p className="text-sm text-amber-700 dark:text-amber-400">
-                <span className="font-medium">Notice:</span>{' '}
-                {pillarAnalysis.activePillars === 1
-                  ? `All energy in ${PILLAR_CONFIG[pillarAnalysis.dominantPillar]?.label}. Consider spreading focus.`
-                  : `${6 - pillarAnalysis.activePillars} pillars untouched. Balance creates resilience.`
-                }
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
 
 
@@ -1073,170 +650,6 @@ export function WeeklyRhythmView({ onCheckin }: WeeklyRhythmViewProps) {
         </Button>
       )}
 
-      {/* Pillar Targets Dialog */}
-      <Dialog open={showTargetsDialog} onOpenChange={setShowTargetsDialog}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Weekly Pillar Targets
-            </DialogTitle>
-            <DialogDescription>
-              Set your minimum weekly actions for each pillar. Use AI to generate targets from your identity.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1 border-dashed"
-              onClick={generateSmartTargets}
-              disabled={generatingTargets || autoAdjusting}
-            >
-              {generatingTargets ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span className="hidden sm:inline">Analyzing...</span>
-                </>
-              ) : (
-                <>
-                  <Wand2 className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">From Identity</span>
-                  <span className="sm:hidden">Identity</span>
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex-1 border-dashed"
-              onClick={autoAdjustTargets}
-              disabled={autoAdjusting || generatingTargets}
-            >
-              {autoAdjusting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span className="hidden sm:inline">Adjusting...</span>
-                </>
-              ) : (
-                <>
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Auto-Adjust</span>
-                  <span className="sm:hidden">Adjust</span>
-                </>
-              )}
-            </Button>
-          </div>
-          
-          {/* Completion Stats */}
-          {adjustmentStats && adjustmentStats.length > 0 && (
-            <div className="p-3 rounded-lg bg-muted/50 border border-border/50 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Completion Rates (2 weeks)</p>
-              <div className="grid grid-cols-2 gap-2">
-                {adjustmentStats.map(stat => {
-                  const config = PILLAR_CONFIG[stat.pillar];
-                  if (!config) return null;
-                  return (
-                    <div key={stat.pillar} className="flex items-center gap-2 text-sm">
-                      <div className={`w-2 h-2 rounded-full ${config.bgColor}`} />
-                      <span className="flex-1 truncate">{config.label}</span>
-                      <span className={`font-medium ${stat.completionRate >= 80 ? 'text-green-500' : stat.completionRate >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
-                        {stat.completionRate}%
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          
-          {/* AI Summary */}
-          {aiSummary && (
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <p className="text-sm text-foreground">{aiSummary}</p>
-            </div>
-          )}
-          
-          {/* AI Alert */}
-          {aiAlert && (
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-amber-700 dark:text-amber-400">{aiAlert}</p>
-            </div>
-          )}
-          
-          <div className="space-y-3 py-2">
-            {Object.entries(PILLAR_CONFIG).map(([key, config]) => {
-              const Icon = config.icon;
-              const values = editingTargets[key] || { target: 3, priority: 2 };
-              
-              return (
-                <div key={key} className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor}/20`}>
-                      <Icon className={`h-4 w-4 ${config.color}`} />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-sm font-medium">{config.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] text-muted-foreground mb-0.5">Target</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={20}
-                          value={values.target}
-                          onChange={(e) => setEditingTargets(prev => ({
-                            ...prev,
-                            [key]: { ...prev[key], target: parseInt(e.target.value) || 0 }
-                          }))}
-                          className="w-14 h-8 text-center text-sm"
-                        />
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] text-muted-foreground mb-0.5">Priority</span>
-                        <select
-                          value={values.priority}
-                          onChange={(e) => setEditingTargets(prev => ({
-                            ...prev,
-                            [key]: { ...prev[key], priority: parseInt(e.target.value) }
-                          }))}
-                          className="w-14 h-8 text-sm rounded-md border bg-background px-1"
-                        >
-                          <option value={1}>1</option>
-                          <option value={2}>2</option>
-                          <option value={3}>3</option>
-                          <option value={4}>4</option>
-                          <option value={5}>5</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Show AI reasoning if available */}
-                  {values.reasoning && (
-                    <p className="text-xs text-muted-foreground pl-11 italic">{values.reasoning}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowTargetsDialog(false)}>
-              Cancel
-            </Button>
-            <Button className="flex-1" onClick={saveTargets} disabled={savingTargets}>
-              {savingTargets ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              )}
-              Save Targets
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
