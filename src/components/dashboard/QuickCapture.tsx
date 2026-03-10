@@ -88,7 +88,7 @@ export const QuickCapture = () => {
   const [showRealign, setShowRealign] = useState(false);
   const [realignData, setRealignData] = useState<RealignData | null>(null);
   const [isLoadingRealign, setIsLoadingRealign] = useState(false);
-  const [showApplyThis, setShowApplyThis] = useState(false);
+  
   const [showMoreActions, setShowMoreActions] = useState(false);
   
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
