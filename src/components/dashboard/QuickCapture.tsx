@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, BookCheck, ChevronUp } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
