@@ -113,10 +113,9 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
-          .from("pending_actions")
+          .from("documents")
           .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("status", "pending"),
+          .eq("user_id", user.id),
         supabase
           .from("documents")
           .select("id, title, summary, file_type, created_at")
