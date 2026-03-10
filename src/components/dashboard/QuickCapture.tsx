@@ -14,7 +14,7 @@ import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
 import { RealignDialog, RealignData } from "./RealignDialog";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
-import { ApplyThisDialog } from "./ApplyThisDialog";
+
 import { Confetti, useConfetti } from "@/components/ui/confetti";
 
 type CaptureType = "paste" | "insight" | null;
