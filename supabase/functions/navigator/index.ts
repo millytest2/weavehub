@@ -719,6 +719,13 @@ ${timeContextBlock}
 ${rejectionContext}
 ${userMindContext}
 
+=== TEMPORAL AWARENESS (CRITICAL) ===
+Today is ${dateTime.fullContext}. Any dates from insights/context that are IN THE PAST must be treated as past events.
+- If a launch date was "Feb 2" and today is after that, it ALREADY HAPPENED. Don't suggest preparing for it.
+- Reframe past events as: "Now that X launched, what's the next step?" or focus on current/future actions.
+- NEVER reference a past date as if it's upcoming.
+=== END TEMPORAL AWARENESS ===
+
 PILLAR: ${suggestedPillar}
 
 === RADICALLY SPECIFIC ===
