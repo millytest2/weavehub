@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, BookCheck, ChevronUp } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,7 @@ import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
 import { RealignDialog, RealignData } from "./RealignDialog";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
-import { ApplyThisDialog } from "./ApplyThisDialog";
+
 import { Confetti, useConfetti } from "@/components/ui/confetti";
 
 type CaptureType = "paste" | "insight" | null;
@@ -88,7 +88,7 @@ export const QuickCapture = () => {
   const [showRealign, setShowRealign] = useState(false);
   const [realignData, setRealignData] = useState<RealignData | null>(null);
   const [isLoadingRealign, setIsLoadingRealign] = useState(false);
-  const [showApplyThis, setShowApplyThis] = useState(false);
+  
   const [showMoreActions, setShowMoreActions] = useState(false);
   
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
@@ -328,14 +328,6 @@ export const QuickCapture = () => {
       >
         <Lightbulb className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
         <span className="text-[10px] text-muted-foreground group-hover:text-primary">Insight</span>
-      </button>
-      <button
-        onClick={() => { setIsOpen(false); setShowApplyThis(true); }}
-        className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-primary/5 transition-all group"
-        title="Apply"
-      >
-        <BookCheck className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-        <span className="text-[10px] text-muted-foreground group-hover:text-primary">Apply</span>
       </button>
     </div>
   );
@@ -588,10 +580,6 @@ export const QuickCapture = () => {
         isLoading={isLoadingRealign}
       />
 
-      <ApplyThisDialog
-        open={showApplyThis}
-        onOpenChange={setShowApplyThis}
-      />
 
       <Confetti show={showConfetti} onComplete={handleConfettiComplete} />
     </>

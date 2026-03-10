@@ -71,7 +71,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [insightsThisWeek, setInsightsThisWeek] = useState(0);
   const [pathsActive, setPathsActive] = useState(0);
   const [learningDebt, setLearningDebt] = useState({ saved: 0, applied: 0 });
-  const [pendingActionsCount, setPendingActionsCount] = useState(0);
+  
 
   useEffect(() => {
     if (open && user) {
@@ -113,10 +113,9 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
-          .from("pending_actions")
+          .from("documents")
           .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("status", "pending"),
+          .eq("user_id", user.id),
         supabase
           .from("documents")
           .select("id, title, summary, file_type, created_at")
@@ -140,7 +139,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           applied: (identityResult.data as any).content_applied_count || 0,
         });
       }
-      setPendingActionsCount(pendingResult.count || 0);
+      
       
       // Cluster insights by topic
       const clusters = clusterInsightsByTopic(insightsResult.data as InsightWithTopic[] || []);
@@ -330,15 +329,10 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
               </div>
 
               {/* Learning Debt / Apply Score */}
-              {(learningDebt.saved > 0 || pendingActionsCount > 0) && (
+              {learningDebt.saved > 0 && (
                 <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Apply Score</span>
-                    {pendingActionsCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                        {pendingActionsCount} queued
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
