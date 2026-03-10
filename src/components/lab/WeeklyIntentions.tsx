@@ -27,13 +27,42 @@ interface Intention {
 }
 
 const PILLAR_COLORS: Record<string, string> = {
-  business: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  body: "bg-green-500/15 text-green-600 dark:text-green-400",
-  content: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
-  relationship: "bg-pink-500/15 text-pink-600 dark:text-pink-400",
-  mind: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-  play: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+  Stability: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  Health: "bg-green-500/15 text-green-600 dark:text-green-400",
+  Content: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
+  Connection: "bg-pink-500/15 text-pink-600 dark:text-pink-400",
+  Presence: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+  Skill: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+  Learning: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400",
+  Admin: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
 };
+
+const PILLAR_KEYWORDS: Record<string, string[]> = {
+  Stability: ["money", "income", "rent", "job", "apply", "interview", "salary", "save", "budget", "financial", "pay", "bills", "freelance", "client", "invoice"],
+  Health: ["gym", "workout", "run", "walk", "sleep", "eat", "cook", "meal", "stretch", "yoga", "exercise", "water", "fast", "weight", "body", "meditate"],
+  Content: ["post", "write", "video", "tiktok", "youtube", "tweet", "thread", "newsletter", "substack", "blog", "publish", "edit", "record", "share", "draft", "content"],
+  Connection: ["call", "reach out", "text", "meet", "friend", "family", "network", "dm", "coffee", "hang", "visit", "relationship", "date", "check in"],
+  Presence: ["journal", "reflect", "breathe", "ground", "meditat", "mindful", "gratitude", "pray", "intention", "slow down", "stillness", "awareness"],
+  Skill: ["build", "code", "design", "learn", "course", "practice", "ship", "deploy", "project", "prototype", "develop", "create", "app", "tool"],
+  Learning: ["read", "book", "article", "study", "research", "podcast", "listen", "watch", "notes", "review", "understand", "explore"],
+  Admin: ["clean", "organize", "email", "inbox", "errands", "laundry", "dishes", "appointment", "schedule", "tax", "paperwork", "update", "fix", "cancel"],
+};
+
+function detectPillar(text: string): string | null {
+  const lower = text.toLowerCase();
+  let bestPillar: string | null = null;
+  let bestScore = 0;
+  
+  for (const [pillar, keywords] of Object.entries(PILLAR_KEYWORDS)) {
+    const score = keywords.filter(kw => lower.includes(kw)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestPillar = pillar;
+    }
+  }
+  
+  return bestPillar;
+}
 
 export function WeeklyIntentions() {
   const { user } = useAuth();
