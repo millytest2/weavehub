@@ -71,7 +71,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const [insightsThisWeek, setInsightsThisWeek] = useState(0);
   const [pathsActive, setPathsActive] = useState(0);
   const [learningDebt, setLearningDebt] = useState({ saved: 0, applied: 0 });
-  const [pendingActionsCount, setPendingActionsCount] = useState(0);
+  
 
   useEffect(() => {
     if (open && user) {
