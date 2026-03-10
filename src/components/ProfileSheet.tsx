@@ -139,7 +139,7 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
           applied: (identityResult.data as any).content_applied_count || 0,
         });
       }
-      setPendingActionsCount(pendingResult.count || 0);
+      
       
       // Cluster insights by topic
       const clusters = clusterInsightsByTopic(insightsResult.data as InsightWithTopic[] || []);
