@@ -329,15 +329,10 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
               </div>
 
               {/* Learning Debt / Apply Score */}
-              {(learningDebt.saved > 0 || pendingActionsCount > 0) && (
+              {learningDebt.saved > 0 && (
                 <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Apply Score</span>
-                    {pendingActionsCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                        {pendingActionsCount} queued
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
