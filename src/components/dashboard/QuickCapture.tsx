@@ -329,14 +329,6 @@ export const QuickCapture = () => {
         <Lightbulb className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
         <span className="text-[10px] text-muted-foreground group-hover:text-primary">Insight</span>
       </button>
-      <button
-        onClick={() => { setIsOpen(false); setShowApplyThis(true); }}
-        className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-primary/5 transition-all group"
-        title="Apply"
-      >
-        <BookCheck className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-        <span className="text-[10px] text-muted-foreground group-hover:text-primary">Apply</span>
-      </button>
     </div>
   );
 
