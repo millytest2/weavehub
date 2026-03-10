@@ -580,10 +580,6 @@ export const QuickCapture = () => {
         isLoading={isLoadingRealign}
       />
 
-      <ApplyThisDialog
-        open={showApplyThis}
-        onOpenChange={setShowApplyThis}
-      />
 
       <Confetti show={showConfetti} onComplete={handleConfettiComplete} />
     </>

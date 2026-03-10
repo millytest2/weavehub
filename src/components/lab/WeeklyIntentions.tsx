@@ -109,12 +109,14 @@ export function WeeklyIntentions() {
     if (!user || !newText.trim()) return;
     setAdding(true);
     try {
+      const detectedPillar = detectPillar(newText.trim());
       const { error } = await supabase.from("weekly_intentions").insert({
         user_id: user.id,
         text: newText.trim(),
         week_number: weekNumber,
         year,
         sort_order: intentions.length,
+        pillar: detectedPillar,
       });
       if (error) throw error;
       setNewText("");
