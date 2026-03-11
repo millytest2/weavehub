@@ -64,6 +64,22 @@ function detectPillar(text: string): string | null {
   return bestPillar;
 }
 
+// Split compound entries like "go to gym and post on twitter" into separate items
+function splitCompoundEntry(text: string): string[] {
+  // Split on " and ", ", ", " + " but not within short phrases
+  const parts = text
+    .split(/\s+and\s+|\s*,\s+|\s*\+\s+/i)
+    .map(p => p.trim())
+    .filter(p => p.length > 3); // Filter out tiny fragments
+  
+  // Only split if each part is meaningful (has a verb-like word)
+  if (parts.length > 1 && parts.every(p => p.split(/\s+/).length >= 2)) {
+    return parts;
+  }
+  
+  return [text];
+}
+
 export function WeeklyIntentions() {
   const { user } = useAuth();
   const [intentions, setIntentions] = useState<Intention[]>([]);
