@@ -125,16 +125,21 @@ export function WeeklyIntentions() {
     if (!user || !newText.trim()) return;
     setAdding(true);
     try {
-      const detectedPillar = detectPillar(newText.trim());
-      const { error } = await supabase.from("weekly_intentions").insert({
+      const entries = splitCompoundEntry(newText.trim());
+      const inserts = entries.map((entry, i) => ({
         user_id: user.id,
-        text: newText.trim(),
+        text: entry,
         week_number: weekNumber,
         year,
-        sort_order: intentions.length,
-        pillar: detectedPillar,
-      });
+        sort_order: intentions.length + i,
+        pillar: detectPillar(entry),
+      }));
+      
+      const { error } = await supabase.from("weekly_intentions").insert(inserts);
       if (error) throw error;
+      if (entries.length > 1) {
+        toast.success(`Split into ${entries.length} items`);
+      }
       setNewText("");
       fetchIntentions();
     } catch (err) {
