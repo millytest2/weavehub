@@ -7,6 +7,7 @@ import { ArrowRight, Check, Zap, RefreshCw, Clock, Sparkles, MessageCircle } fro
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { getWeek, getYear } from "date-fns";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
@@ -276,6 +277,38 @@ const Dashboard = () => {
         activity_type: 'complete',
         pillar: todayTask?.priority_for_today
       });
+
+      // Auto-complete matching weekly intentions
+      const taskText = todayTask?.do_this_now?.toLowerCase() || '';
+      if (taskText) {
+        try {
+          const weekNumber = getWeek(now, { weekStartsOn: 1 });
+          const year = getYear(now);
+          const { data: weeklyIntentions } = await supabase
+            .from('weekly_intentions')
+            .select('id, text, completed')
+            .eq('user_id', user.id)
+            .eq('week_number', weekNumber)
+            .eq('year', year)
+            .eq('completed', false);
+          
+          if (weeklyIntentions) {
+            for (const intention of weeklyIntentions) {
+              const intentionWords = intention.text.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+              const matchCount = intentionWords.filter((w: string) => taskText.includes(w)).length;
+              // If 50%+ of meaningful words match, auto-complete it
+              if (intentionWords.length > 0 && matchCount / intentionWords.length >= 0.5) {
+                await supabase
+                  .from('weekly_intentions')
+                  .update({ completed: true })
+                  .eq('id', intention.id);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Auto-complete intentions error:', e);
+        }
+      }
 
       const completedNow = updatedTasks.filter(t => t.completed).length;
       

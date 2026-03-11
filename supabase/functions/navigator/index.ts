@@ -193,6 +193,7 @@ function getDateTimeContext(timezone?: string, userPrefs?: UserTimePreference[])
   const options: Intl.DateTimeFormatOptions = { 
     timeZone: timezone || 'UTC',
     weekday: 'long',
+    year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -205,6 +206,7 @@ function getDateTimeContext(timezone?: string, userPrefs?: UserTimePreference[])
   const dayOfWeek = parts.find(p => p.type === 'weekday')?.value || 'Monday';
   const month = parts.find(p => p.type === 'month')?.value || 'Jan';
   const day = parts.find(p => p.type === 'day')?.value || '1';
+  const year = parts.find(p => p.type === 'year')?.value || '2026';
   const hourStr = parts.find(p => p.type === 'hour')?.value || '12';
   const hour = parseInt(hourStr, 10);
   
@@ -212,7 +214,7 @@ function getDateTimeContext(timezone?: string, userPrefs?: UserTimePreference[])
   const dayMap: { [key: string]: number } = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
   const dayOfWeekNum = dayMap[dayOfWeek] ?? 1;
   
-  const date = `${month} ${day}`;
+  const date = `${month} ${day}, ${year}`;
   const timeOfDay = getTimeOfDayCategory(hour);
   
   // Check if user has learned preferences for this hour
@@ -231,21 +233,18 @@ function getDateTimeContext(timezone?: string, userPrefs?: UserTimePreference[])
     const successRate = hourPref.success_rate;
     
     if (successRate >= 0.7) {
-      // User is highly productive at this hour
       learnedNote = `User completes ${Math.round(successRate * 100)}% of tasks at this hour - they're productive now`;
       energyLevel = 'High (learned from behavior)';
       taskTypes = 'Deep work, creative tasks, building, shipping - user is active at this hour';
       duration = '30-90 minutes';
       avoidTypes = 'Low-value tasks';
     } else if (successRate >= 0.4) {
-      // Moderate productivity
       learnedNote = `User completes ${Math.round(successRate * 100)}% of tasks at this hour - moderate energy`;
       energyLevel = 'Medium (learned from behavior)';
       taskTypes = 'Balanced tasks, execution, light creative work';
       duration = '20-45 minutes';
       avoidTypes = 'Heavy deep work';
     } else {
-      // Low completion rate - user often skips at this hour
       learnedNote = `User skips ${Math.round((1 - successRate) * 100)}% of tasks at this hour - suggest lighter tasks`;
       energyLevel = 'Low (learned from behavior)';
       taskTypes = 'Light reflection, quick wins, journaling, admin';

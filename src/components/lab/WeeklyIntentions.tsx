@@ -64,6 +64,22 @@ function detectPillar(text: string): string | null {
   return bestPillar;
 }
 
+// Split compound entries like "go to gym and post on twitter" into separate items
+function splitCompoundEntry(text: string): string[] {
+  // Split on " and ", ", ", " + " but not within short phrases
+  const parts = text
+    .split(/\s+and\s+|\s*,\s+|\s*\+\s+/i)
+    .map(p => p.trim())
+    .filter(p => p.length > 3); // Filter out tiny fragments
+  
+  // Only split if each part is meaningful (has a verb-like word)
+  if (parts.length > 1 && parts.every(p => p.split(/\s+/).length >= 2)) {
+    return parts;
+  }
+  
+  return [text];
+}
+
 export function WeeklyIntentions() {
   const { user } = useAuth();
   const [intentions, setIntentions] = useState<Intention[]>([]);
@@ -109,16 +125,21 @@ export function WeeklyIntentions() {
     if (!user || !newText.trim()) return;
     setAdding(true);
     try {
-      const detectedPillar = detectPillar(newText.trim());
-      const { error } = await supabase.from("weekly_intentions").insert({
+      const entries = splitCompoundEntry(newText.trim());
+      const inserts = entries.map((entry, i) => ({
         user_id: user.id,
-        text: newText.trim(),
+        text: entry,
         week_number: weekNumber,
         year,
-        sort_order: intentions.length,
-        pillar: detectedPillar,
-      });
+        sort_order: intentions.length + i,
+        pillar: detectPillar(entry),
+      }));
+      
+      const { error } = await supabase.from("weekly_intentions").insert(inserts);
       if (error) throw error;
+      if (entries.length > 1) {
+        toast.success(`Split into ${entries.length} items`);
+      }
       setNewText("");
       fetchIntentions();
     } catch (err) {
