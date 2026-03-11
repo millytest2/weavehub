@@ -7,6 +7,7 @@ import { ArrowRight, Check, Zap, RefreshCw, Clock, Sparkles, MessageCircle } fro
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { getWeek, getYear } from "date-fns";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
