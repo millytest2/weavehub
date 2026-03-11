@@ -45,7 +45,7 @@ export const useVoiceCaptureWebSpeech = (options: UseVoiceCaptureWebSpeechOption
   const [interimTranscript, setInterimTranscript] = useState('');
   
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fullTranscriptRef = useRef<string>('');
   const isStoppingRef = useRef(false);
   
