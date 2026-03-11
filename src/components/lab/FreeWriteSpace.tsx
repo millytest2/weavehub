@@ -74,7 +74,7 @@ export const FreeWriteSpace = () => {
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showMultiPlatform, setShowMultiPlatform] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<EntryType | "all">("all");
