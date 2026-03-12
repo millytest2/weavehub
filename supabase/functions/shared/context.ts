@@ -709,6 +709,60 @@ export function formatContextForAI(context: CompactContext): string {
     formatted += integrationPattern;
   }
 
+  // === DIRECTION: WHERE THEY'RE GOING (Thread + Plans + Intentions) ===
+  
+  // Thread milestones - the monthly roadmap toward 2026
+  if (context.thread_milestones && context.thread_milestones.length > 0) {
+    const milestoneText = context.thread_milestones.map((m: any) => {
+      const status = m.status === 'active' ? ' [ACTIVE NOW]' : '';
+      const capability = m.capability_focus ? ` | Building: ${m.capability_focus}` : '';
+      return `- Month ${m.month_number}: ${m.title}${status}${capability}`;
+    }).join('\n');
+    formatted += `THE THREAD (MONTHLY ROADMAP):\n${milestoneText}\n\n`;
+  }
+
+  // Monthly plans - what they committed to this month
+  if (context.monthly_plans && context.monthly_plans.length > 0) {
+    const incomplete = context.monthly_plans.filter((p: any) => !p.completed);
+    const completed = context.monthly_plans.filter((p: any) => p.completed);
+    if (incomplete.length > 0) {
+      formatted += `THIS MONTH'S PLANS (not done yet):\n${incomplete.map((p: any) => `- ${p.text}`).join('\n')}\n`;
+    }
+    if (completed.length > 0) {
+      formatted += `THIS MONTH (completed): ${completed.map((p: any) => p.text).join(', ')}\n`;
+    }
+    formatted += '\n';
+  }
+
+  // Weekly intentions - what they set for this week
+  if (context.weekly_intentions && context.weekly_intentions.length > 0) {
+    const weekIncomplete = context.weekly_intentions.filter((i: any) => !i.completed);
+    if (weekIncomplete.length > 0) {
+      const intentionText = weekIncomplete.map((i: any) => {
+        const pillar = i.pillar ? ` [${i.pillar}]` : '';
+        return `- ${i.text}${pillar}`;
+      }).join('\n');
+      formatted += `THIS WEEK'S INTENTIONS (set by user):\n${intentionText}\n\n`;
+    }
+  }
+
+  // Active learning paths - what they're studying right now
+  if (context.active_learning_paths && context.active_learning_paths.length > 0) {
+    const pathText = context.active_learning_paths.map((p: any) => {
+      const progress = p.duration_days ? `Day ${p.current_day || 0}/${p.duration_days}` : '';
+      return `- ${p.title}${progress ? ` (${progress})` : ''}`;
+    }).join('\n');
+    formatted += `ACTIVE LEARNING PATHS:\n${pathText}\n\n`;
+  }
+
+  // Recent observations from lab - what they've been noticing
+  if (context.recent_observations && context.recent_observations.length > 0) {
+    const obsText = context.recent_observations.slice(0, 3).map((o: any) => {
+      return `- [${o.observation_type}] ${o.content.substring(0, 150)}`;
+    }).join('\n');
+    formatted += `RECENT OBSERVATIONS (from lab):\n${obsText}\n\n`;
+  }
+
   // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals with FULL content
   if (context.key_insights.length > 0) {
     const insightText = context.key_insights.slice(0, 6).map((i: any) => {
