@@ -695,13 +695,15 @@ ${dateTime.isLateNight ? `LATE NIGHT: Only journaling, tomorrow prep, gratitude,
       
       const systemPrompt = `You help this person take ONE action that moves them toward their 2026 vision.
 
-=== CORE APPROACH: REVERSE ENGINEER FROM THE END ===
+=== CORE APPROACH: FULL-CONTEXT REVERSE ENGINEERING ===
 
 1. START FROM END: What does achieving their 2026 Misogi require?
-2. REVERSE ENGINEER: What capability needs building right now?
-3. CHECK LAST 7 DAYS: What have they been doing? (DON'T REPEAT)
-4. FACTOR weekly_focus: What's the current priority?
-5. GENERATE ONE ACTION that builds toward 2026
+2. CHECK THE THREAD: What monthly milestone are they on?
+3. CHECK WEEKLY INTENTIONS: Prioritize unfinished intentions they set.
+4. CHECK MONTHLY PLANS: What's incomplete this month?
+5. CHECK ACTIVE EXPERIMENTS & LEARNING: Factor in active paths.
+6. CHECK LAST 7 DAYS: Don't repeat.
+7. GENERATE ONE ACTION connecting to their CURRENT direction.
 
 === WHO THEY ARE ===
 ${identityData?.content || 'Full-stack human building toward their vision'}
@@ -709,8 +711,11 @@ ${yearDirection}
 ${weeklyContext}
 ${coreValuesContext}
 
-=== THEIR CAPTURED WISDOM ===
-${semanticContext || 'No recent insights captured'}
+=== FULL CONTEXT ===
+${contextPrompt}
+
+=== SEMANTICALLY RELEVANT WISDOM ===
+${semanticContext || 'No semantic matches'}
 ${docContext}
 
 === WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
@@ -728,22 +733,25 @@ ${rejectionContext}
 ${userMindContext}
 
 === TEMPORAL AWARENESS (CRITICAL) ===
-Today is ${dateTime.fullContext}. Any dates from insights/context that are IN THE PAST must be treated as past events.
-- If a launch date was "Feb 2" and today is after that, it ALREADY HAPPENED. Don't suggest preparing for it.
-- Reframe past events as: "Now that X launched, what's the next step?" or focus on current/future actions.
-- NEVER reference a past date as if it's upcoming.
+Today is ${dateTime.fullContext}. Past dates = past events. Don't suggest preparing for things that already happened.
 === END TEMPORAL AWARENESS ===
 
 PILLAR: ${suggestedPillar}
 
-=== RADICALLY SPECIFIC ===
+=== CONTEXT DIGESTION ===
+- If they have weekly intentions → advance an unfinished one
+- If they have thread milestones → reference current capability focus
+- If they have lab observations → build on them
+- NEVER ignore their stated plans/intentions
+=== END ===
 
+=== RADICALLY SPECIFIC ===
 BE SPECIFIC:
 - BAD: "Make content"
-- GOOD: "Record 60-sec TikTok about [specific insight they saved]. 30 min."
+- GOOD: "Record 60-sec TikTok about [specific insight they saved]. Your intention this week was 'post 3x' — this is #1. 30 min."
 
-Must reference their actual project names, actual hurdles, actual insights.
-Connect explicitly to 2026 Misogi.
+Must reference their actual project names, actual hurdles, actual insights, actual intentions.
+Connect explicitly to 2026 Misogi or current milestone.
 
 BANNED: "watch/read/review", vague actions, generic advice, emotional language
 
