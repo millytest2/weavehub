@@ -216,20 +216,34 @@ export async function fetchUserContext(
   const sixtyDaysAgo = new Date();
   sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-  const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections] = await Promise.all([
+  // Get current month/year and week for fetching direction data
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const startOfYear = new Date(currentYear, 0, 1);
+  const currentWeek = Math.ceil(((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+
+  const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
-    // Fetch ALL past experiments to avoid regenerating similar ones
     supabase.from("experiments").select("title, description, identity_shift_target").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
-    // Fetch ALL learning paths to avoid regenerating similar ones
     supabase.from("learning_paths").select("title, description").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
     supabase.from("daily_tasks").select("pillar, completed, one_thing, why_matters, task_date").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(10),
-    // Fetch completed action history to avoid repetition
     supabase.from("action_history").select("action_text, pillar, action_date").eq("user_id", userId).gte("action_date", thirtyDaysAgo.toISOString().split("T")[0]).order("action_date", { ascending: false }).limit(30),
     supabase.from("topics").select("id, name, description").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
     supabase.from("connections").select("source_type, source_id, target_type, target_id, note").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    // NEW: Thread milestones - the monthly roadmap (current + next 2 months)
+    supabase.from("thread_milestones").select("title, description, capability_focus, month_number, year, status").eq("user_id", userId).gte("month_number", currentMonth).eq("year", currentYear).order("month_number", { ascending: true }).limit(4),
+    // NEW: Monthly plans for current month
+    supabase.from("monthly_plans").select("text, plan_type, completed, event_date").eq("user_id", userId).eq("month_number", currentMonth).eq("year", currentYear).order("sort_order", { ascending: true }).limit(10),
+    // NEW: Weekly intentions for current week
+    supabase.from("weekly_intentions").select("text, pillar, completed").eq("user_id", userId).eq("week_number", currentWeek).eq("year", currentYear).order("sort_order", { ascending: true }).limit(8),
+    // NEW: Active learning paths
+    supabase.from("learning_paths").select("title, description, current_day, duration_days, status, topic_name").eq("user_id", userId).eq("status", "active").order("updated_at", { ascending: false }).limit(3),
+    // NEW: Recent observations from lab
+    supabase.from("observations").select("content, observation_type, source, created_at").eq("user_id", userId).gte("created_at", sevenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(5),
   ]);
 
   const pillarHistory = (dailyTasks.data || [])
