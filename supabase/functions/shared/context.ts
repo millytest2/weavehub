@@ -495,6 +495,12 @@ export async function fetchUserContext(
     // Adaptive value system
     user_archetype: userArchetype,
     value_focus: valueFocus,
+    // Direction-aware context
+    thread_milestones: threadMilestones.data || [],
+    monthly_plans: monthlyPlans.data || [],
+    weekly_intentions: weeklyIntentions.data || [],
+    active_learning_paths: activePaths.data || [],
+    recent_observations: observations.data || [],
   };
 }
 
