@@ -69,6 +69,12 @@ export interface CompactContext {
   // Adaptive value system
   user_archetype: UserArchetype;  // Auto-detected user type for adaptive recommendations
   value_focus: string;  // What value to emphasize based on archetype
+  // Direction-aware context (WHERE they're going)
+  thread_milestones: any[];  // Monthly roadmap milestones
+  monthly_plans: any[];  // Current month's specific plans
+  weekly_intentions: any[];  // This week's intentions
+  active_learning_paths: any[];  // Learning paths currently in progress
+  recent_observations: any[];  // Lab observations and content drafts
 }
 
 export interface DocumentContext {
