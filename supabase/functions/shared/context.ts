@@ -69,6 +69,12 @@ export interface CompactContext {
   // Adaptive value system
   user_archetype: UserArchetype;  // Auto-detected user type for adaptive recommendations
   value_focus: string;  // What value to emphasize based on archetype
+  // Direction-aware context (WHERE they're going)
+  thread_milestones: any[];  // Monthly roadmap milestones
+  monthly_plans: any[];  // Current month's specific plans
+  weekly_intentions: any[];  // This week's intentions
+  active_learning_paths: any[];  // Learning paths currently in progress
+  recent_observations: any[];  // Lab observations and content drafts
 }
 
 export interface DocumentContext {
@@ -210,20 +216,34 @@ export async function fetchUserContext(
   const sixtyDaysAgo = new Date();
   sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-  const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections] = await Promise.all([
+  // Get current month/year and week for fetching direction data
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const startOfYear = new Date(currentYear, 0, 1);
+  const currentWeek = Math.ceil(((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+
+  const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
-    // Fetch ALL past experiments to avoid regenerating similar ones
     supabase.from("experiments").select("title, description, identity_shift_target").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
-    // Fetch ALL learning paths to avoid regenerating similar ones
     supabase.from("learning_paths").select("title, description").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
     supabase.from("daily_tasks").select("pillar, completed, one_thing, why_matters, task_date").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(10),
-    // Fetch completed action history to avoid repetition
     supabase.from("action_history").select("action_text, pillar, action_date").eq("user_id", userId).gte("action_date", thirtyDaysAgo.toISOString().split("T")[0]).order("action_date", { ascending: false }).limit(30),
     supabase.from("topics").select("id, name, description").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
     supabase.from("connections").select("source_type, source_id, target_type, target_id, note").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    // NEW: Thread milestones - the monthly roadmap (current + next 2 months)
+    supabase.from("thread_milestones").select("title, description, capability_focus, month_number, year, status").eq("user_id", userId).gte("month_number", currentMonth).eq("year", currentYear).order("month_number", { ascending: true }).limit(4),
+    // NEW: Monthly plans for current month
+    supabase.from("monthly_plans").select("text, plan_type, completed, event_date").eq("user_id", userId).eq("month_number", currentMonth).eq("year", currentYear).order("sort_order", { ascending: true }).limit(10),
+    // NEW: Weekly intentions for current week
+    supabase.from("weekly_intentions").select("text, pillar, completed").eq("user_id", userId).eq("week_number", currentWeek).eq("year", currentYear).order("sort_order", { ascending: true }).limit(8),
+    // NEW: Active learning paths
+    supabase.from("learning_paths").select("title, description, current_day, duration_days, status, topic_name").eq("user_id", userId).eq("status", "active").order("updated_at", { ascending: false }).limit(3),
+    // NEW: Recent observations from lab
+    supabase.from("observations").select("content, observation_type, source, created_at").eq("user_id", userId).gte("created_at", sevenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(5),
   ]);
 
   const pillarHistory = (dailyTasks.data || [])
@@ -475,6 +495,12 @@ export async function fetchUserContext(
     // Adaptive value system
     user_archetype: userArchetype,
     value_focus: valueFocus,
+    // Direction-aware context
+    thread_milestones: threadMilestones.data || [],
+    monthly_plans: monthlyPlans.data || [],
+    weekly_intentions: weeklyIntentions.data || [],
+    active_learning_paths: activePaths.data || [],
+    recent_observations: observations.data || [],
   };
 }
 
@@ -681,6 +707,60 @@ export function formatContextForAI(context: CompactContext): string {
   const integrationPattern = detectIntegrationPatterns(context);
   if (integrationPattern) {
     formatted += integrationPattern;
+  }
+
+  // === DIRECTION: WHERE THEY'RE GOING (Thread + Plans + Intentions) ===
+  
+  // Thread milestones - the monthly roadmap toward 2026
+  if (context.thread_milestones && context.thread_milestones.length > 0) {
+    const milestoneText = context.thread_milestones.map((m: any) => {
+      const status = m.status === 'active' ? ' [ACTIVE NOW]' : '';
+      const capability = m.capability_focus ? ` | Building: ${m.capability_focus}` : '';
+      return `- Month ${m.month_number}: ${m.title}${status}${capability}`;
+    }).join('\n');
+    formatted += `THE THREAD (MONTHLY ROADMAP):\n${milestoneText}\n\n`;
+  }
+
+  // Monthly plans - what they committed to this month
+  if (context.monthly_plans && context.monthly_plans.length > 0) {
+    const incomplete = context.monthly_plans.filter((p: any) => !p.completed);
+    const completed = context.monthly_plans.filter((p: any) => p.completed);
+    if (incomplete.length > 0) {
+      formatted += `THIS MONTH'S PLANS (not done yet):\n${incomplete.map((p: any) => `- ${p.text}`).join('\n')}\n`;
+    }
+    if (completed.length > 0) {
+      formatted += `THIS MONTH (completed): ${completed.map((p: any) => p.text).join(', ')}\n`;
+    }
+    formatted += '\n';
+  }
+
+  // Weekly intentions - what they set for this week
+  if (context.weekly_intentions && context.weekly_intentions.length > 0) {
+    const weekIncomplete = context.weekly_intentions.filter((i: any) => !i.completed);
+    if (weekIncomplete.length > 0) {
+      const intentionText = weekIncomplete.map((i: any) => {
+        const pillar = i.pillar ? ` [${i.pillar}]` : '';
+        return `- ${i.text}${pillar}`;
+      }).join('\n');
+      formatted += `THIS WEEK'S INTENTIONS (set by user):\n${intentionText}\n\n`;
+    }
+  }
+
+  // Active learning paths - what they're studying right now
+  if (context.active_learning_paths && context.active_learning_paths.length > 0) {
+    const pathText = context.active_learning_paths.map((p: any) => {
+      const progress = p.duration_days ? `Day ${p.current_day || 0}/${p.duration_days}` : '';
+      return `- ${p.title}${progress ? ` (${progress})` : ''}`;
+    }).join('\n');
+    formatted += `ACTIVE LEARNING PATHS:\n${pathText}\n\n`;
+  }
+
+  // Recent observations from lab - what they've been noticing
+  if (context.recent_observations && context.recent_observations.length > 0) {
+    const obsText = context.recent_observations.slice(0, 3).map((o: any) => {
+      return `- [${o.observation_type}] ${o.content.substring(0, 150)}`;
+    }).join('\n');
+    formatted += `RECENT OBSERVATIONS (from lab):\n${obsText}\n\n`;
   }
 
   // PRIORITY 2: KEY INSIGHTS (30%) - behavioral/emotional signals with FULL content
