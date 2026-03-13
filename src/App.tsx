@@ -22,6 +22,7 @@ import Admin from "./pages/Admin";
 import Lab from "./pages/Lab";
 import Explore from "./pages/Explore";
 import Landing from "./pages/Landing";
+import Mind from "./pages/Mind";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
