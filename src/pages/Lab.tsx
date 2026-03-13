@@ -589,9 +589,11 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
     toast.success("Copied to clipboard!");
   };
 
+  const Wrapper = embedded ? ({ children }: { children: React.ReactNode }) => <>{children}</> : MainLayout;
+
   if (authLoading || adminLoading) {
     return (
-      <MainLayout>
+      <Wrapper>
         <div className="p-4 sm:p-6 space-y-6">
           <Skeleton className="h-8 w-48" />
           <div className="grid grid-cols-2 gap-4">
@@ -600,12 +602,12 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
             ))}
           </div>
         </div>
-      </MainLayout>
+      </Wrapper>
     );
   }
 
   return (
-    <MainLayout>
+    <Wrapper>
       <div className="p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-bold">Lab</h1>
