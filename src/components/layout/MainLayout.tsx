@@ -1,4 +1,4 @@
-import { Brain, Home, ListTodo, FlaskConical, Compass, Menu, User, PenLine } from "lucide-react";
+import { Brain, Home, Layers, Menu, User, Plus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -11,21 +11,18 @@ import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
   const navigate = useNavigate();
 
   const navigation = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Daily", href: "/daily", icon: ListTodo },
-    { name: "Identity", href: "/identity", icon: Compass },
-    { name: "Experiments", href: "/experiments", icon: FlaskConical },
-    { name: "Lab", href: "/lab", icon: PenLine },
+    { name: "Today", href: "/", icon: Home },
+    { name: "Mind", href: "/mind", icon: Layers },
   ];
 
-  // Mobile bottom nav: 4 core tabs
+  // Mobile bottom nav: Today / [+] / Mind
   const mobileBottomNav = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Identity", href: "/identity", icon: Compass },
-    { name: "Experiments", href: "/experiments", icon: FlaskConical },
+    { name: "Today", href: "/", icon: Home },
+    { name: "Mind", href: "/mind", icon: Layers },
   ];
 
   return (
