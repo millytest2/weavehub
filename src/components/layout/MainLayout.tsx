@@ -17,11 +17,6 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
     { name: "Mind", href: "/mind", icon: Layers },
   ];
 
-  // Mobile bottom nav: Today / [+] / Mind
-  const mobileBottomNav = [
-    { name: "Today", href: "/", icon: Home },
-    { name: "Mind", href: "/mind", icon: Layers },
-  ];
 
   return (
     <div className="flex min-h-screen bg-background overflow-x-hidden">
