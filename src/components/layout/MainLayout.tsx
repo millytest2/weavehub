@@ -9,9 +9,7 @@ import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [captureOpen, setCaptureOpen] = useState(false);
   const navigate = useNavigate();
 
   const navigation = [
