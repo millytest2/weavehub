@@ -128,7 +128,7 @@ const DOMAINS = [
   { key: 'play', label: 'Play', icon: Gamepad2, color: 'text-cyan-500' },
 ] as const;
 
-const Lab = () => {
+const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
