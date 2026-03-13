@@ -3,7 +3,7 @@ import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
