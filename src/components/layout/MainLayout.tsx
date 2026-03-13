@@ -117,29 +117,41 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </div>
 
-      {/* Mobile Bottom Nav - 4 tabs */}
+      {/* Mobile Bottom Nav - Today / [+] / Mind */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 glass safe-area-bottom">
         <nav className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
-          {mobileBottomNav.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              end={item.href === "/"}
-              className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
-              activeClassName="text-primary"
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium">{item.name}</span>
-            </NavLink>
-          ))}
-          {/* Menu tab - opens full nav */}
-          <button
-            onClick={() => setMenuOpen(true)}
+          <NavLink
+            to="/"
+            end
             className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
+            activeClassName="text-primary"
           >
-            <Menu className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Menu</span>
+            <Home className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Today</span>
+          </NavLink>
+          
+          {/* Center Capture Button */}
+          <button
+            onClick={() => {
+              // Trigger the QuickCapture dialog
+              const event = new CustomEvent('open-capture');
+              window.dispatchEvent(event);
+            }}
+            className="flex flex-col items-center gap-1 py-1.5 px-3 transition-all"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-soft">
+              <Plus className="h-5 w-5 text-primary-foreground" />
+            </div>
           </button>
+
+          <NavLink
+            to="/mind"
+            className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
+            activeClassName="text-primary"
+          >
+            <Layers className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Mind</span>
+          </NavLink>
         </nav>
       </div>
 
