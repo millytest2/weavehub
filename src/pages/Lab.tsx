@@ -1483,7 +1483,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
           connection={selectedConnection}
         />
       </div>
-    </MainLayout>
+    </Wrapper>
   );
 };
 
