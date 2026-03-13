@@ -65,6 +65,13 @@ export const QuickCapture = () => {
   const [isFirstPaste, setIsFirstPaste] = useState(false);
   const { showConfetti, celebrate, handleComplete: handleConfettiComplete } = useConfetti();
 
+  // Listen for open-capture custom event (from nav buttons)
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('open-capture', handler);
+    return () => window.removeEventListener('open-capture', handler);
+  }, []);
+
   // Check if this is user's first paste
   useEffect(() => {
     const checkFirstPaste = async () => {
