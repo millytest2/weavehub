@@ -81,52 +81,15 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             </Button>
           </nav>
 
-          {/* Mobile Menu */}
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-64 p-0 border-l border-border/40">
-              <div className="flex flex-col h-full">
-                <div className="p-5 border-b border-border/40">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary shadow-soft">
-                      <Brain className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                    <span className="text-base font-semibold font-display">Weave</span>
-                  </div>
-                </div>
-                <nav className="flex-1 p-3 space-y-1">
-                  {navigation.map((item) => (
-                    <NavLink
-                      key={item.name}
-                      to={item.href}
-                      end={item.href === "/"}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50"
-                      activeClassName="bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span className="font-medium">{item.name}</span>
-                    </NavLink>
-                  ))}
-                </nav>
-                <div className="p-4 border-t border-border/40">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setMenuOpen(false); setProfileOpen(true); }}
-                    className="w-full justify-start gap-3 rounded-xl text-muted-foreground hover:text-foreground"
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="font-medium">Profile</span>
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+          {/* Mobile Profile Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setProfileOpen(true)}
+            className="md:hidden h-9 w-9 rounded-xl text-muted-foreground"
+          >
+            <User className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
