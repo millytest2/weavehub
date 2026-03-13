@@ -1,32 +1,22 @@
-import { Brain, Home, ListTodo, FlaskConical, Compass, Menu, User, PenLine } from "lucide-react";
+import { Brain, Home, Layers, User, Plus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
 import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const navigate = useNavigate();
 
   const navigation = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Daily", href: "/daily", icon: ListTodo },
-    { name: "Identity", href: "/identity", icon: Compass },
-    { name: "Experiments", href: "/experiments", icon: FlaskConical },
-    { name: "Lab", href: "/lab", icon: PenLine },
+    { name: "Today", href: "/", icon: Home },
+    { name: "Mind", href: "/mind", icon: Layers },
   ];
 
-  // Mobile bottom nav: 4 core tabs
-  const mobileBottomNav = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "Identity", href: "/identity", icon: Compass },
-    { name: "Experiments", href: "/experiments", icon: FlaskConical },
-  ];
 
   return (
     <div className="flex min-h-screen bg-background overflow-x-hidden">
@@ -59,7 +49,22 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
               </NavLink>
             ))}
             
-            <div className="w-px h-6 bg-border/50 mx-2" />
+            <div className="w-px h-6 bg-border/50 mx-1" />
+            
+            {/* Desktop Capture Button */}
+            <Button
+              size="sm"
+              onClick={() => {
+                const event = new CustomEvent('open-capture');
+                window.dispatchEvent(event);
+              }}
+              className="h-9 rounded-xl gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden lg:inline">Capture</span>
+            </Button>
+            
+            <div className="w-px h-6 bg-border/50 mx-1" />
             
             <Button
               variant="ghost"
@@ -71,78 +76,53 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             </Button>
           </nav>
 
-          {/* Mobile Menu */}
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-64 p-0 border-l border-border/40">
-              <div className="flex flex-col h-full">
-                <div className="p-5 border-b border-border/40">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary shadow-soft">
-                      <Brain className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                    <span className="text-base font-semibold font-display">Weave</span>
-                  </div>
-                </div>
-                <nav className="flex-1 p-3 space-y-1">
-                  {navigation.map((item) => (
-                    <NavLink
-                      key={item.name}
-                      to={item.href}
-                      end={item.href === "/"}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50"
-                      activeClassName="bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span className="font-medium">{item.name}</span>
-                    </NavLink>
-                  ))}
-                </nav>
-                <div className="p-4 border-t border-border/40">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setMenuOpen(false); setProfileOpen(true); }}
-                    className="w-full justify-start gap-3 rounded-xl text-muted-foreground hover:text-foreground"
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="font-medium">Profile</span>
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+          {/* Mobile Profile Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setProfileOpen(true)}
+            className="md:hidden h-9 w-9 rounded-xl text-muted-foreground"
+          >
+            <User className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
-      {/* Mobile Bottom Nav - 4 tabs */}
+      {/* Mobile Bottom Nav - Today / [+] / Mind */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 glass safe-area-bottom">
         <nav className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
-          {mobileBottomNav.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              end={item.href === "/"}
-              className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
-              activeClassName="text-primary"
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium">{item.name}</span>
-            </NavLink>
-          ))}
-          {/* Menu tab - opens full nav */}
-          <button
-            onClick={() => setMenuOpen(true)}
+          <NavLink
+            to="/"
+            end
             className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
+            activeClassName="text-primary"
           >
-            <Menu className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Menu</span>
+            <Home className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Today</span>
+          </NavLink>
+          
+          {/* Center Capture Button */}
+          <button
+            onClick={() => {
+              // Trigger the QuickCapture dialog
+              const event = new CustomEvent('open-capture');
+              window.dispatchEvent(event);
+            }}
+            className="flex flex-col items-center gap-1 py-1.5 px-3 transition-all"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-soft">
+              <Plus className="h-5 w-5 text-primary-foreground" />
+            </div>
           </button>
+
+          <NavLink
+            to="/mind"
+            className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
+            activeClassName="text-primary"
+          >
+            <Layers className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Mind</span>
+          </NavLink>
         </nav>
       </div>
 

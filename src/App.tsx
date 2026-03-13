@@ -22,6 +22,7 @@ import Admin from "./pages/Admin";
 import Lab from "./pages/Lab";
 import Explore from "./pages/Explore";
 import Landing from "./pages/Landing";
+import Mind from "./pages/Mind";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,24 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Mind - unified view */}
+            <Route
+              path="/mind"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Mind />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            {/* Redirects from old routes */}
+            <Route path="/identity" element={<Navigate to="/mind" replace />} />
+            <Route path="/experiments" element={<Navigate to="/mind" replace />} />
+            <Route path="/lab" element={<Navigate to="/mind" replace />} />
+            <Route path="/explore" element={<Navigate to="/mind" replace />} />
+            <Route path="/daily" element={<Navigate to="/" replace />} />
+            {/* Keep these for deep links */}
             <Route
               path="/topics"
               element={
@@ -88,36 +107,6 @@ const App = () => (
               }
             />
             <Route
-              path="/experiments"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Experiments />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/daily"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <DailyFocus />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/identity"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <IdentitySeed />
-              </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/learning-paths"
               element={
                 <ProtectedRoute>
@@ -142,22 +131,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Admin />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/lab"
-              element={
-                <ProtectedRoute>
-                  <Lab />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/explore"
-              element={
-                <ProtectedRoute>
-                  <Explore />
                 </ProtectedRoute>
               }
             />

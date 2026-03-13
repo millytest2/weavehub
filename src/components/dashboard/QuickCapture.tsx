@@ -65,6 +65,13 @@ export const QuickCapture = () => {
   const [isFirstPaste, setIsFirstPaste] = useState(false);
   const { showConfetti, celebrate, handleComplete: handleConfettiComplete } = useConfetti();
 
+  // Listen for open-capture custom event (from nav buttons)
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('open-capture', handler);
+    return () => window.removeEventListener('open-capture', handler);
+  }, []);
+
   // Check if this is user's first paste
   useEffect(() => {
     const checkFirstPaste = async () => {
@@ -334,19 +341,7 @@ export const QuickCapture = () => {
 
   return (
     <>
-      {/* Floating Action Button */}
-      <motion.button
-        onClick={handleOpen}
-        className="fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center"
-        aria-label="Weave"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ scale: 1.1, boxShadow: "0 20px 40px -10px hsl(var(--primary) / 0.4)" }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-      >
-        <Sparkles className="h-5 w-5" />
-      </motion.button>
+      {/* Floating Action Button - hidden on mobile (capture is in bottom nav) and desktop (capture is in top nav) */}
 
       {/* Main Dialog - Paste First */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
