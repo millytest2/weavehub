@@ -1,4 +1,4 @@
-import { Brain, Home, Layers, Menu, User, Plus } from "lucide-react";
+import { Brain, Home, Layers, User, Plus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
