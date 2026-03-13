@@ -56,7 +56,22 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
               </NavLink>
             ))}
             
-            <div className="w-px h-6 bg-border/50 mx-2" />
+            <div className="w-px h-6 bg-border/50 mx-1" />
+            
+            {/* Desktop Capture Button */}
+            <Button
+              size="sm"
+              onClick={() => {
+                const event = new CustomEvent('open-capture');
+                window.dispatchEvent(event);
+              }}
+              className="h-9 rounded-xl gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden lg:inline">Capture</span>
+            </Button>
+            
+            <div className="w-px h-6 bg-border/50 mx-1" />
             
             <Button
               variant="ghost"
