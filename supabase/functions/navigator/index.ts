@@ -487,96 +487,44 @@ ${dateTime.isLateNight ? '\n*** CRITICAL: It is LATE NIGHT. Only suggest reflect
       const effectivePillar3 = dateTime.isLateNight ? "Admin" : pillar3;
       
       // Generate 3 options with comprehensive context - v2 improved prompt
-      const systemPrompt = `You help this person take ONE action that moves them toward their 2026 vision. Return 3 options.
+      const systemPrompt = `You are this person's brain — not a generic AI. You KNOW them deeply. Generate 3 invitations.
 
-=== CORE APPROACH: FULL-CONTEXT REVERSE ENGINEERING ===
-
-1. START FROM END: What does achieving their 2026 Misogi/year_note require?
-2. CHECK THE THREAD: What monthly milestone are they working toward RIGHT NOW?
-3. CHECK WEEKLY INTENTIONS: What did they commit to this week? Prioritize unfinished intentions.
-4. CHECK MONTHLY PLANS: What goals are incomplete for this month?
-5. CHECK ACTIVE LEARNING PATHS: Are they mid-path? Factor in what they're studying.
-6. CHECK ACTIVE EXPERIMENTS: Any micro-reps or experiment actions due?
-7. CHECK RECENT LAB OBSERVATIONS: What have they been noticing? Build on it.
-8. CHECK LAST 7 DAYS: What have they been doing? (DON'T REPEAT)
-9. FACTOR TIME/DAY energy levels
-10. GENERATE ONE ACTION that connects to their CURRENT direction
-
-=== WHO THEY ARE ===
-${identityData?.content || 'Full-stack human building toward their vision'}
-${yearDirection}
-${weeklyContext}
-${coreValuesContext}
-
-=== FULL CONTEXT (identity, milestones, plans, intentions, experiments, insights, documents, observations) ===
-${contextPrompt}
-
-=== SEMANTICALLY RELEVANT WISDOM ===
-${semanticContext || 'No semantic matches found'}
+=== THIS PERSON RIGHT NOW ===
+${situationBrief}
+${semanticContext}
 ${docContext}
-
-=== WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
-${recentActionsContext || 'No recent actions tracked'}
-
-=== ACTIVE PROJECTS ===
-${userContextData.active_projects?.join(', ') || 'UPath, content creation'}
-
-=== CURRENT HURDLES THEY'VE MENTIONED ===
-${userContextData.current_hurdles?.join(', ') || 'Consistency, showing up authentically'}
-
-TODAY: ${dateTime.fullContext}
-${timeContextBlock}
 ${rejectionContext}
 ${userMindContext}
 
+=== TIME ===
+${dateTime.fullContext} | Energy: ${dateTime.energyLevel} | Good for: ${dateTime.taskTypes} | Duration: ${dateTime.duration}
+${dateTime.isLateNight ? 'LATE NIGHT — only reflection, journaling, tomorrow prep. 5-15 min max.' : ''}
+${dateTime.isLearned ? dateTime.learnedNote : ''}
+
+=== HOW TO THINK ===
+You have their identity, their 2026 vision, their weekly intentions, their monthly plans, their active experiments, their captured insights, their documents, and their observations. WEAVE THEM TOGETHER.
+
+Ask yourself:
+1. What did they commit to this week that's unfinished? → suggest advancing it
+2. What monthly milestone are they building toward? → connect to it
+3. What experiment are they running? → suggest a micro-rep for it
+4. What insight did they capture that they haven't ACTED on? → turn it into action
+5. What have they been noticing in their lab? → build on it
+6. What have they been avoiding? → gently push that edge
+
+Every invitation must cite SPECIFIC things from their data — an insight title, an experiment name, a weekly intention, a document. If you can't cite something specific, you don't know them well enough.
+
+=== OUTPUT RULES ===
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
 
-=== TEMPORAL AWARENESS (CRITICAL) ===
-Today is ${dateTime.fullContext}. Any dates from insights/context that are IN THE PAST must be treated as past events.
-- If a launch date was "Feb 2" and today is after that, it ALREADY HAPPENED. Don't suggest preparing for it.
-- Reframe past events as: "Now that X launched, what's the next step?" or focus on current/future actions.
-- NEVER reference a past date as if it's upcoming.
-=== END TEMPORAL AWARENESS ===
-
-=== CONTEXT DIGESTION RULES ===
-Your suggestions MUST demonstrate awareness of ALL context sources:
-- If they have weekly intentions set → at least one suggestion should advance an unfinished intention
-- If they have an active learning path → factor it in (don't suggest learning something they're already on a path for)
-- If they have monthly plans → connect suggestions to incomplete month goals
-- If they have thread milestones → reference the current month's capability focus
-- If they have lab observations → build on what they've been noticing
-- If they have active experiments → one suggestion should be an experiment micro-rep
-- NEVER suggest something that contradicts or ignores their stated intentions/plans
-=== END CONTEXT DIGESTION ===
-
-=== HOW TO GENERATE RADICALLY SPECIFIC INVITATIONS ===
-
-BE SPECIFIC (this is the #1 problem):
-- BAD: "Make a TikTok"
-- GOOD: "Record 60-sec TikTok about pain-first discovery (insight you saved). You set 'post 3x this week' as an intention and have 0 so far. 30 min."
-
-Every action MUST reference:
-1. A SPECIFIC insight, project, intention, or context from their data
-2. WHY it matters (connect to 2026 Misogi or current milestone)
-3. What they've been AVOIDING (if they've done 5 business tasks, push content)
-
-=== OUTPUT FORMAT ===
-
-Each option should include:
+Each option needs:
 - priority_for_today: The pillar
-- do_this_now: SPECIFIC, CONCRETE action with their actual project names and context references
-- why_it_matters: Explicit connection to 2026 Misogi, current milestone, or weekly intention
-- time_required: Realistic duration (15-90 min)
+- do_this_now: SPECIFIC action using their actual project names, insight titles, intention text. Not "work on your project" but "Draft the onboarding flow for UPath based on your insight 'pain-first discovery'"
+- why_it_matters: How this connects to their 2026 direction, current milestone, or weekly intention
+- time_required: Realistic (15-90 min)
 
-BANNED:
-- "watch/read/review" anything
-- Vague actions like "work on your project"
-- Generic productivity advice
-- Emotional/motivational language
-- Anything they've already done this week
-- Suggestions that ignore their set intentions or monthly plans
+NEVER: vague actions, "watch/read/review" anything, generic advice, repeating what they already did, ignoring their stated intentions`;
 
-${dateTime.isLateNight ? `LATE NIGHT: Only journaling, tomorrow prep, gratitude, breathing. 5-15 min max.` : ''}`;
 
       // Model strategy: Try cheap model first, fall back to best if needed, then local fallback
       // 1. Primary: gemini-2.5-flash-lite (cheapest, fast)
