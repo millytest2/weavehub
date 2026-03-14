@@ -1193,3 +1193,118 @@ This user's primary value focus: ${context.value_focus}
 
   return formatted.trim();
 }
+
+/**
+ * Pre-synthesize a "situation brief" — a tight, narrative summary of who this person is
+ * and what matters RIGHT NOW. This replaces dumping raw data at the AI.
+ * The AI gets a digested understanding, not a data dump.
+ */
+export function synthesizeSituationBrief(context: CompactContext, dateContext?: string): string {
+  const lines: string[] = [];
+
+  // === WHO THEY ARE (1-2 sentences) ===
+  if (context.identity_seed) {
+    // Take the first 2 meaningful sentences
+    const sentences = context.identity_seed.split(/[.!?]+/).filter(s => s.trim().length > 15).slice(0, 2);
+    lines.push(`WHO: ${sentences.join('. ').trim()}.`);
+  }
+  if (context.core_values) {
+    lines.push(`VALUES: ${context.core_values}`);
+  }
+
+  // === WHERE THEY'RE HEADED (synthesize year + thread + monthly into one narrative) ===
+  const directionParts: string[] = [];
+  if (context.year_note) {
+    directionParts.push(context.year_note.substring(0, 200));
+  }
+  const activeMilestone = context.thread_milestones?.find((m: any) => m.status === 'active');
+  if (activeMilestone) {
+    directionParts.push(`This month's milestone: "${activeMilestone.title}"${activeMilestone.capability_focus ? ` (building: ${activeMilestone.capability_focus})` : ''}`);
+  }
+  if (directionParts.length > 0) {
+    lines.push(`\nDIRECTION: ${directionParts.join('. ')}`);
+  }
+
+  // === WHAT THEY COMMITTED TO THIS WEEK (highest priority — these are THEIR words) ===
+  const unfinishedIntentions = (context.weekly_intentions || []).filter((i: any) => !i.completed);
+  const completedIntentions = (context.weekly_intentions || []).filter((i: any) => i.completed);
+  if (unfinishedIntentions.length > 0) {
+    lines.push(`\nTHIS WEEK (their own commitments, not done yet):\n${unfinishedIntentions.map((i: any) => `- ${i.text}${i.pillar ? ` [${i.pillar}]` : ''}`).join('\n')}`);
+  }
+  if (completedIntentions.length > 0) {
+    lines.push(`DONE THIS WEEK: ${completedIntentions.map((i: any) => i.text).join(', ')}`);
+  }
+
+  // === WHAT'S INCOMPLETE THIS MONTH ===
+  const incompleteMonthly = (context.monthly_plans || []).filter((p: any) => !p.completed);
+  if (incompleteMonthly.length > 0) {
+    lines.push(`\nTHIS MONTH (not done yet): ${incompleteMonthly.map((p: any) => p.text).join('; ')}`);
+  }
+
+  // === WHAT THEY'RE ACTIVELY TESTING / LEARNING ===
+  const activeExps = context.experiments?.in_progress || [];
+  if (activeExps.length > 0) {
+    lines.push(`\nACTIVE EXPERIMENT: ${activeExps.map((e: any) => `"${e.title}"${e.identity_shift_target ? ` — testing: ${e.identity_shift_target}` : ''}`).join(', ')}`);
+  }
+  const activePaths = context.active_learning_paths || [];
+  if (activePaths.length > 0) {
+    lines.push(`LEARNING: ${activePaths.map((p: any) => `${p.title} (day ${p.current_day || 0}/${p.duration_days || '?'})`).join(', ')}`);
+  }
+
+  // === WHAT THEY'VE BEEN NOTICING (lab observations — signal of what's alive) ===
+  if (context.recent_observations && context.recent_observations.length > 0) {
+    lines.push(`\nWHAT THEY'VE BEEN NOTICING:\n${context.recent_observations.slice(0, 3).map((o: any) => `- ${o.content.substring(0, 120)}`).join('\n')}`);
+  }
+
+  // === THEIR CAPTURED WISDOM (insights — the knowledge they've built) ===
+  if (context.key_insights.length > 0) {
+    lines.push(`\nTHEIR CAPTURED WISDOM (${context.key_insights.length} insights):\n${context.key_insights.slice(0, 8).map((i: any) => {
+      const source = i.source ? ` [from ${i.source}]` : '';
+      return `- "${i.title}"${source}: ${i.content.substring(0, 200)}`;
+    }).join('\n')}`);
+  }
+
+  // === THEIR DOCUMENTS (deep knowledge they've ingested) ===
+  if (context.key_documents.length > 0) {
+    lines.push(`\nINGESTED KNOWLEDGE (${context.key_documents.length} documents):\n${context.key_documents.slice(0, 4).map((d: any) => {
+      const content = d.extracted_content ? d.extracted_content.substring(0, 300) : (d.summary || '').substring(0, 150);
+      return `- "${d.title}": ${content}`;
+    }).join('\n')}`);
+  }
+
+  // === THEIR PROJECTS ===
+  if (context.active_projects && context.active_projects.length > 0) {
+    lines.push(`\nPROJECTS: ${context.active_projects.join(', ')}${context.last_project_focus ? ` (last focused on: ${context.last_project_focus})` : ''}`);
+  }
+
+  // === WHAT THEY'VE ALREADY DONE (don't repeat) ===
+  if (context.completed_actions && context.completed_actions.length > 0) {
+    const recentDone = context.completed_actions.slice(0, 10).map((a: any) => a.action_text).filter(Boolean);
+    if (recentDone.length > 0) {
+      lines.push(`\nALREADY DONE (do not repeat):\n${recentDone.join('\n')}`);
+    }
+  }
+
+  // === THEIR FRICTION POINTS ===
+  if (context.current_hurdles && context.current_hurdles.length > 0) {
+    lines.push(`\nEDGES THEY'RE WORKING (friction that matters): ${context.current_hurdles.join(', ')}`);
+  }
+
+  // === INTEGRATION PATTERN ===
+  const integrationPattern = detectIntegrationPatterns(context);
+  if (integrationPattern) {
+    lines.push(integrationPattern);
+  }
+
+  // === PILLAR BALANCE ===
+  if (context.pillar_history.length > 0) {
+    lines.push(`\nRECENT PILLARS: ${context.pillar_history.slice(0, 5).join(' → ')}`);
+  }
+
+  // === TOPICS ===
+  if (context.topics.length > 0) {
+    lines.push(`FOCUS AREAS: ${context.topics.map((t: any) => t.name).join(', ')}`);
+  }
+
+  return lines.join('\n');
+}

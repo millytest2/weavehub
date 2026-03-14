@@ -13,7 +13,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const navigation = [
-    { name: "Today", href: "/", icon: Home },
+    { name: "Now", href: "/", icon: Home },
     { name: "Mind", href: "/mind", icon: Layers },
   ];
 
@@ -98,7 +98,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             activeClassName="text-primary"
           >
             <Home className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Today</span>
+            <span className="text-[10px] font-medium">Now</span>
           </NavLink>
           
           {/* Center Capture Button */}
