@@ -13,7 +13,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const navigation = [
-    { name: "Today", href: "/", icon: Home },
+    { name: "Now", href: "/", icon: Home },
     { name: "Mind", href: "/mind", icon: Layers },
   ];
 
