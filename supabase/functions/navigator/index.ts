@@ -444,12 +444,13 @@ serve(async (req) => {
       : '';
 
     const contextPrompt = formatContextForAI(userContextData);
+    const situationBrief = synthesizeSituationBrief(userContextData, dateTime.fullContext);
     const semanticContext = semanticInsights.length > 0 
-      ? `\n\nRELEVANT INSIGHTS (${semanticInsights.length} found):\n${semanticInsights.join('\n')}`
+      ? `\n\nDEEPER WISDOM (semantically matched to their direction):\n${semanticInsights.join('\n')}`
       : '';
     
     const docContext = semanticDocuments.length > 0
-      ? `\n\nRELEVANT DOCUMENTS (${semanticDocuments.length} found):\n${semanticDocuments.join('\n')}`
+      ? `\n\nRELEVANT DOCUMENTS:\n${semanticDocuments.join('\n')}`
       : '';
     
     const rejectionContext = rejectionCount >= 2
