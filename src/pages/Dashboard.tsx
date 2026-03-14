@@ -449,10 +449,10 @@ const Dashboard = () => {
                   className="p-8 py-20 flex flex-col items-center justify-center relative"
                 >
                   <WeaveLoader size="lg" text={
-                    getTimePhase() === 'morning' ? "Thinking about your morning..." :
-                    getTimePhase() === 'afternoon' ? "Checking in on your day..." :
-                    getTimePhase() === 'evening' ? "One more thing before you wind down..." :
-                    "Finding something for right now..."
+                    getTimePhase() === 'morning' ? "Weaving your morning..." :
+                    getTimePhase() === 'afternoon' ? "Reading your week..." :
+                    getTimePhase() === 'evening' ? "Checking what's unfinished..." :
+                    "Pulling the thread..."
                   } />
                 </motion.div>
               ) : showBonusOption ? (
