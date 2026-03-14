@@ -642,69 +642,31 @@ NEVER: vague actions, "watch/read/review" anything, generic advice, repeating wh
       // For late night, override to relaxing pillar
       const suggestedPillar = dateTime.isLateNight ? "Presence" : pillar1;
       
-      const systemPrompt = `You help this person take ONE action that moves them toward their 2026 vision.
+      const systemPrompt = `You are this person's brain — not a generic AI. You KNOW them. Generate ONE invitation.
 
-=== CORE APPROACH: FULL-CONTEXT REVERSE ENGINEERING ===
-
-1. START FROM END: What does achieving their 2026 Misogi require?
-2. CHECK THE THREAD: What monthly milestone are they on?
-3. CHECK WEEKLY INTENTIONS: Prioritize unfinished intentions they set.
-4. CHECK MONTHLY PLANS: What's incomplete this month?
-5. CHECK ACTIVE EXPERIMENTS & LEARNING: Factor in active paths.
-6. CHECK LAST 7 DAYS: Don't repeat.
-7. GENERATE ONE ACTION connecting to their CURRENT direction.
-
-=== WHO THEY ARE ===
-${identityData?.content || 'Full-stack human building toward their vision'}
-${yearDirection}
-${weeklyContext}
-${coreValuesContext}
-
-=== FULL CONTEXT ===
-${contextPrompt}
-
-=== SEMANTICALLY RELEVANT WISDOM ===
-${semanticContext || 'No semantic matches'}
+=== THIS PERSON RIGHT NOW ===
+${situationBrief}
+${semanticContext}
 ${docContext}
-
-=== WHAT THEY'VE ALREADY DONE (DON'T REPEAT) ===
-${recentActionsContext || 'No recent actions tracked'}
-
-=== ACTIVE PROJECTS ===
-${userContextData.active_projects?.join(', ') || 'UPath, content creation'}
-
-=== CURRENT HURDLES ===
-${userContextData.current_hurdles?.join(', ') || 'Consistency, showing up authentically'}
-
-TODAY: ${dateTime.fullContext}
-${timeContextBlock}
 ${rejectionContext}
 ${userMindContext}
 
-=== TEMPORAL AWARENESS (CRITICAL) ===
-Today is ${dateTime.fullContext}. Past dates = past events. Don't suggest preparing for things that already happened.
-=== END TEMPORAL AWARENESS ===
+=== TIME ===
+${dateTime.fullContext} | Energy: ${dateTime.energyLevel} | Good for: ${dateTime.taskTypes} | Duration: ${dateTime.duration}
+${dateTime.isLateNight ? 'LATE NIGHT — only reflection, journaling, tomorrow prep. 5-15 min max.' : ''}
+
+=== HOW TO THINK ===
+Weave everything together. Their identity, weekly intentions, monthly plans, experiments, insights, documents, observations — these aren't separate data. They're ONE person moving in ONE direction.
+
+The action you suggest must:
+1. Reference something SPECIFIC from their data (insight title, experiment name, intention text, document)
+2. Advance something they committed to (weekly intention, monthly plan, or experiment)
+3. Connect to where they're headed (2026 vision, current milestone)
 
 PILLAR: ${suggestedPillar}
 
-=== CONTEXT DIGESTION ===
-- If they have weekly intentions → advance an unfinished one
-- If they have thread milestones → reference current capability focus
-- If they have lab observations → build on them
-- NEVER ignore their stated plans/intentions
-=== END ===
-
-=== RADICALLY SPECIFIC ===
-BE SPECIFIC:
-- BAD: "Make content"
-- GOOD: "Record 60-sec TikTok about [specific insight they saved]. Your intention this week was 'post 3x' — this is #1. 30 min."
-
-Must reference their actual project names, actual hurdles, actual insights, actual intentions.
-Connect explicitly to 2026 Misogi or current milestone.
-
-BANNED: "watch/read/review", vague actions, generic advice, emotional language
-
-${dateTime.isLateNight ? `LATE NIGHT: Only journaling, tomorrow prep, breathing. 5-15 min max.` : ''}`;
+NEVER: vague actions, "watch/read/review", generic advice, repeating what they already did
+${dateTime.isLateNight ? 'LATE NIGHT: Only journaling, tomorrow prep, breathing. 5-15 min max.' : ''}`;
 
 
       // Model strategy for single action: cheap model first, then local fallback
