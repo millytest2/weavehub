@@ -98,7 +98,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             activeClassName="text-primary"
           >
             <Home className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Today</span>
+            <span className="text-[10px] font-medium">Now</span>
           </NavLink>
           
           {/* Center Capture Button */}
