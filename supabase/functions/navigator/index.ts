@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { fetchUserContext, formatContextForAI } from "../shared/context.ts";
+import { fetchUserContext, formatContextForAI, synthesizeSituationBrief } from "../shared/context.ts";
 import { checkRateLimit, rateLimitResponse } from "../shared/rateLimit.ts";
 
 const corsHeaders = {
