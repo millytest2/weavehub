@@ -1241,10 +1241,35 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
     lines.push(`\nTHIS MONTH (not done yet): ${incompleteMonthly.map((p: any) => p.text).join('; ')}`);
   }
 
-  // === WHAT THEY'RE ACTIVELY TESTING / LEARNING ===
+  // === WHAT THEY'RE ACTIVELY TESTING ===
   const activeExps = context.experiments?.in_progress || [];
   if (activeExps.length > 0) {
-    lines.push(`\nACTIVE EXPERIMENT: ${activeExps.map((e: any) => `"${e.title}"${e.identity_shift_target ? ` — testing: ${e.identity_shift_target}` : ''}`).join(', ')}`);
+    const expDetails = activeExps.map((e: any) => {
+      // Calculate day number if we have created_at
+      let dayInfo = '';
+      if (e.created_at) {
+        const created = new Date(e.created_at);
+        const now = new Date();
+        const dayNumber = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const durationStr = e.duration?.toLowerCase() || '';
+        let totalDays = 7;
+        if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
+        else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
+        else if (durationStr.includes('3 day')) totalDays = 3;
+        else if (durationStr.includes('5 day')) totalDays = 5;
+        else if (durationStr.includes('week')) totalDays = 7;
+        else if (durationStr.includes('2 week')) totalDays = 14;
+        else if (durationStr.includes('10')) totalDays = 10;
+        dayInfo = ` (day ${dayNumber}/${totalDays})`;
+        if (dayNumber >= totalDays) {
+          dayInfo += ' — READY TO COMPLETE. Ask them what shifted.';
+        } else if (dayNumber >= Math.floor(totalDays / 2)) {
+          dayInfo += ' — halfway. Naturally ask what they\'re noticing.';
+        }
+      }
+      return `"${e.title}"${dayInfo}${e.identity_shift_target ? ` — testing: ${e.identity_shift_target}` : ''}`;
+    }).join(', ');
+    lines.push(`\nACTIVE EXPERIMENT: ${expDetails}`);
   }
   const activePaths = context.active_learning_paths || [];
   if (activePaths.length > 0) {
