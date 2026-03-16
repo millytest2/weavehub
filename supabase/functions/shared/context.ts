@@ -227,7 +227,7 @@ export async function fetchUserContext(
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
-    supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
+    supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis, created_at, duration").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
     supabase.from("experiments").select("title, description, identity_shift_target").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
     supabase.from("learning_paths").select("title, description").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
     supabase.from("daily_tasks").select("pillar, completed, one_thing, why_matters, task_date").eq("user_id", userId).gte("task_date", sevenDaysAgo.toISOString().split("T")[0]).order("task_date", { ascending: false }).limit(10),
@@ -1241,18 +1241,60 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
     lines.push(`\nTHIS MONTH (not done yet): ${incompleteMonthly.map((p: any) => p.text).join('; ')}`);
   }
 
-  // === WHAT THEY'RE ACTIVELY TESTING / LEARNING ===
+  // === WHAT THEY'RE ACTIVELY TESTING ===
   const activeExps = context.experiments?.in_progress || [];
   if (activeExps.length > 0) {
-    lines.push(`\nACTIVE EXPERIMENT: ${activeExps.map((e: any) => `"${e.title}"${e.identity_shift_target ? ` — testing: ${e.identity_shift_target}` : ''}`).join(', ')}`);
+    const expDetails = activeExps.map((e: any) => {
+      // Calculate day number if we have created_at
+      let dayInfo = '';
+      if (e.created_at) {
+        const created = new Date(e.created_at);
+        const now = new Date();
+        const dayNumber = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const durationStr = e.duration?.toLowerCase() || '';
+        let totalDays = 7;
+        if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
+        else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
+        else if (durationStr.includes('3 day')) totalDays = 3;
+        else if (durationStr.includes('5 day')) totalDays = 5;
+        else if (durationStr.includes('week')) totalDays = 7;
+        else if (durationStr.includes('2 week')) totalDays = 14;
+        else if (durationStr.includes('10')) totalDays = 10;
+        dayInfo = ` (day ${dayNumber}/${totalDays})`;
+        if (dayNumber >= totalDays) {
+          dayInfo += ' — READY TO COMPLETE. Ask them what shifted.';
+        } else if (dayNumber >= Math.floor(totalDays / 2)) {
+          dayInfo += ' — halfway. Naturally ask what they\'re noticing.';
+        }
+      }
+      return `"${e.title}"${dayInfo}${e.identity_shift_target ? ` — testing: ${e.identity_shift_target}` : ''}`;
+    }).join(', ');
+    lines.push(`\nACTIVE EXPERIMENT: ${expDetails}`);
   }
   const activePaths = context.active_learning_paths || [];
   if (activePaths.length > 0) {
     lines.push(`LEARNING: ${activePaths.map((p: any) => `${p.title} (day ${p.current_day || 0}/${p.duration_days || '?'})`).join(', ')}`);
   }
 
-  // === WHAT THEY'VE BEEN NOTICING (lab observations — signal of what's alive) ===
-  if (context.recent_observations && context.recent_observations.length > 0) {
+  // === WHAT THEY'VE BEEN WRITING ABOUT (themes from lab — what's alive in their mind) ===
+  if (context.recent_observations && context.recent_observations.length >= 3) {
+    // Detect recurring themes from their writing
+    const allObsText = context.recent_observations.map((o: any) => o.content).join(' ').toLowerCase();
+    const obsWords = allObsText.replace(/[^a-z\s]/g, ' ').split(/\s+/)
+      .filter((w: string) => w.length > 4 && !['about', 'their', 'there', 'these', 'those', 'which', 'would', 'could', 'should', 'being', 'having', 'think', 'thing', 'things', 'really', 'something', 'through', 'trying'].includes(w));
+    const wordCounts: Record<string, number> = {};
+    obsWords.forEach((w: string) => { wordCounts[w] = (wordCounts[w] || 0) + 1; });
+    const writingThemes = Object.entries(wordCounts)
+      .filter(([_, count]) => count >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([word]) => word);
+
+    if (writingThemes.length > 0) {
+      lines.push(`\nTHEMES IN THEIR WRITING (recurring in lab journal): ${writingThemes.join(', ')}`);
+    }
+    lines.push(`RECENT OBSERVATIONS:\n${context.recent_observations.slice(0, 3).map((o: any) => `- ${o.content.substring(0, 120)}`).join('\n')}`);
+  } else if (context.recent_observations && context.recent_observations.length > 0) {
     lines.push(`\nWHAT THEY'VE BEEN NOTICING:\n${context.recent_observations.slice(0, 3).map((o: any) => `- ${o.content.substring(0, 120)}`).join('\n')}`);
   }
 
