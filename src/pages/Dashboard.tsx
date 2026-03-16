@@ -622,50 +622,13 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Current Chapter */}
-        {activeExperiment && (
-          <section className="px-1">
-            {(() => {
-              const createdDate = new Date(activeExperiment.created_at);
-              const now = new Date();
-              const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
-              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-              const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-              
-              const durationStr = activeExperiment.duration?.toLowerCase() || '';
-              let totalDays = 7;
-              if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
-              else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
-              else if (durationStr.includes('3 day')) totalDays = 3;
-              else if (durationStr.includes('5 day')) totalDays = 5;
-              else if (durationStr.includes('week')) totalDays = 7;
-              else if (durationStr.includes('2 week')) totalDays = 14;
-
-              // Extract what to notice today from steps
-              const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
-              let todayFocus = '';
-              if (steps.length > 0) {
-                todayFocus = steps[Math.min(dayNumber - 1, steps.length - 1)] || '';
-              }
-              
-              return (
-                <div className="space-y-2">
-                  <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest pl-1">
-                    Current chapter · day {dayNumber}
-                  </p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    You're testing: <span className="text-foreground font-medium">{activeExperiment.identity_shift_target || activeExperiment.title}</span>
-                  </p>
-                  {todayFocus && getTimePhase() !== 'evening' && getTimePhase() !== 'night' && (
-                    <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                      {todayFocus}
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
-          </section>
-        )}
+        {/* Current Chapter — passive experiment context */}
+        <CurrentChapter
+          activeExperiment={activeExperiment}
+          user={user}
+          onExperimentChanged={fetchData}
+          getTimePhase={getTimePhase}
+        />
 
         <button
           onClick={handleNextRep}

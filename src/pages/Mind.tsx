@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, FlaskConical, Route, PenLine } from "lucide-react";
+import { Compass, Route, PenLine } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
-import Experiments from "./Experiments";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "experiments" | "lab";
+type MindTab = "identity" | "thread" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
@@ -38,7 +37,6 @@ const Mind = () => {
   const tabs = [
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
-    { id: "experiments" as MindTab, label: "Experiments", icon: FlaskConical },
     { id: "lab" as MindTab, label: "Lab", icon: PenLine },
   ];
 
@@ -83,7 +81,6 @@ const Mind = () => {
               </div>
             </div>
           )}
-          {activeTab === "experiments" && <Experiments />}
           {activeTab === "lab" && <LabRedirect />}
         </motion.div>
       </AnimatePresence>
