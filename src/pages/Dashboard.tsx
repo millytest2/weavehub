@@ -632,6 +632,9 @@ const Dashboard = () => {
           getTimePhase={getTimePhase}
         />
 
+        {/* Themes from Lab writing */}
+        <LabThemes />
+
         <button
           onClick={handleNextRep}
           disabled={isGettingRep}
