@@ -1251,8 +1251,25 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
     lines.push(`LEARNING: ${activePaths.map((p: any) => `${p.title} (day ${p.current_day || 0}/${p.duration_days || '?'})`).join(', ')}`);
   }
 
-  // === WHAT THEY'VE BEEN NOTICING (lab observations — signal of what's alive) ===
-  if (context.recent_observations && context.recent_observations.length > 0) {
+  // === WHAT THEY'VE BEEN WRITING ABOUT (themes from lab — what's alive in their mind) ===
+  if (context.recent_observations && context.recent_observations.length >= 3) {
+    // Detect recurring themes from their writing
+    const allObsText = context.recent_observations.map((o: any) => o.content).join(' ').toLowerCase();
+    const obsWords = allObsText.replace(/[^a-z\s]/g, ' ').split(/\s+/)
+      .filter((w: string) => w.length > 4 && !['about', 'their', 'there', 'these', 'those', 'which', 'would', 'could', 'should', 'being', 'having', 'think', 'thing', 'things', 'really', 'something', 'through', 'trying'].includes(w));
+    const wordCounts: Record<string, number> = {};
+    obsWords.forEach((w: string) => { wordCounts[w] = (wordCounts[w] || 0) + 1; });
+    const writingThemes = Object.entries(wordCounts)
+      .filter(([_, count]) => count >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([word]) => word);
+
+    if (writingThemes.length > 0) {
+      lines.push(`\nTHEMES IN THEIR WRITING (recurring in lab journal): ${writingThemes.join(', ')}`);
+    }
+    lines.push(`RECENT OBSERVATIONS:\n${context.recent_observations.slice(0, 3).map((o: any) => `- ${o.content.substring(0, 120)}`).join('\n')}`);
+  } else if (context.recent_observations && context.recent_observations.length > 0) {
     lines.push(`\nWHAT THEY'VE BEEN NOTICING:\n${context.recent_observations.slice(0, 3).map((o: any) => `- ${o.content.substring(0, 120)}`).join('\n')}`);
   }
 
