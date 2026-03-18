@@ -36,6 +36,7 @@ export default function IdentitySeed() {
         case "coreValues": setCoreValues(append); break;
         case "yearNote": setYearNote(append); break;
         case "content": setContent(append); break;
+        case "lifeDomains": setLifeDomains(append); break;
       }
     },
     onError: (error) => {
