@@ -21,6 +21,7 @@ export default function IdentitySeed() {
   const [currentReality, setCurrentReality] = useState("");
   const [coreValues, setCoreValues] = useState("");
   const [yearNote, setYearNote] = useState("");
+  const [lifeDomains, setLifeDomains] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
