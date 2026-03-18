@@ -46,6 +46,7 @@ export interface CompactContext {
   current_phase: string | null;
   weekly_focus: string | null;
   year_note: string | null;  // Yearly goals, themes, and direction
+  life_domains: string | null;  // All interests, pursuits, and life areas
   experiments: {
     in_progress: any[];
     planning: any[];
