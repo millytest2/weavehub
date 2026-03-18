@@ -473,6 +473,7 @@ export async function fetchUserContext(
     current_phase: identitySeed.data?.current_phase || "baseline",
     weekly_focus: identitySeed.data?.weekly_focus || null,
     year_note: identitySeed.data?.year_note || null,
+    life_domains: identitySeed.data?.life_domains || null,
     experiments: {
       in_progress: allExperiments.filter((e: any) => e.status === "in_progress"),
       planning: allExperiments.filter((e: any) => e.status === "planning"),
