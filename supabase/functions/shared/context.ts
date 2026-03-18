@@ -704,6 +704,39 @@ export function formatContextForAI(context: CompactContext): string {
   if (context.weekly_focus) {
     formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
   }
+
+  // Life Landscape - all interests and pursuits the user wants the system to know about
+  if (context.life_domains) {
+    // Parse domains and detect which have been touched recently vs neglected
+    const domains = context.life_domains.split(/[,\n]/).map(d => d.trim()).filter(d => d.length > 1);
+    const recentActionText = (context.completed_actions || []).map((a: any) => (a.action_text || '').toLowerCase()).join(' ');
+    const recentIntentionText = (context.weekly_intentions || []).map((i: any) => (i.text || '').toLowerCase()).join(' ');
+    const recentAll = recentActionText + ' ' + recentIntentionText;
+    
+    const touched: string[] = [];
+    const neglected: string[] = [];
+    
+    for (const domain of domains) {
+      const domainLower = domain.toLowerCase();
+      // Check if any word from the domain appears in recent activity
+      const words = domainLower.split(/\s+/).filter(w => w.length > 3);
+      const isTouched = words.some(w => recentAll.includes(w));
+      if (isTouched) {
+        touched.push(domain);
+      } else {
+        neglected.push(domain);
+      }
+    }
+    
+    formatted += `LIFE LANDSCAPE (everything they care about):\n${domains.join(', ')}\n`;
+    if (neglected.length > 0) {
+      formatted += `NEGLECTED RECENTLY (consider rotating toward): ${neglected.slice(0, 8).join(', ')}\n`;
+    }
+    if (touched.length > 0) {
+      formatted += `RECENTLY ACTIVE: ${touched.join(', ')}\n`;
+    }
+    formatted += `ROTATION RULE: Don't over-index on the same domains. Weave across ALL of their life — touch neglected areas when appropriate.\n\n`;
+  }
   
   // Integration pattern detection - reflect the ONE practice across contexts
   const integrationPattern = detectIntegrationPatterns(context);
