@@ -13,7 +13,7 @@ const identitySeedSchema = z.object({
   content: z.string().trim().min(1, "Identity seed content is required").max(50000, "Content must be less than 50,000 characters"),
 });
 
-type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | null;
+type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | "lifeDomains" | null;
 
 export default function IdentitySeed() {
   const { user } = useAuth();
