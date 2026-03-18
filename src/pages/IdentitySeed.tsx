@@ -245,6 +245,26 @@ export default function IdentitySeed() {
           </p>
         </Card>
 
+        {/* Life Landscape - Brain Dump */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-sm font-medium text-muted-foreground">Life Landscape</h2>
+            </div>
+            <VoiceButton field="lifeDomains" />
+          </div>
+          <Textarea
+            value={lifeDomains}
+            onChange={(e) => setLifeDomains(e.target.value)}
+            placeholder="Dump everything you care about: chess, gym, piano, psychology, content creation, building UPath, relationships, poker, spirituality, style, cooking, tennis... Just list it all. The system will naturally rotate across these."
+            className="min-h-[140px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Everything you want the system to be aware of. It learns which ones need attention from your behavior over time.
+          </p>
+        </Card>
+
         {/* Identity Seed Content */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
