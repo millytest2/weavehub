@@ -1,0 +1,1 @@
+ALTER TABLE public.identity_seeds ADD COLUMN life_domains text DEFAULT NULL;

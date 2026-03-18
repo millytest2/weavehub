@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User, Star, Target, Mic, MicOff } from "lucide-react";
+import { Compass, User, Star, Target, Mic, MicOff, Layers } from "lucide-react";
 import { z } from "zod";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
 
@@ -13,7 +13,7 @@ const identitySeedSchema = z.object({
   content: z.string().trim().min(1, "Identity seed content is required").max(50000, "Content must be less than 50,000 characters"),
 });
 
-type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | null;
+type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | "lifeDomains" | null;
 
 export default function IdentitySeed() {
   const { user } = useAuth();
@@ -21,6 +21,7 @@ export default function IdentitySeed() {
   const [currentReality, setCurrentReality] = useState("");
   const [coreValues, setCoreValues] = useState("");
   const [yearNote, setYearNote] = useState("");
+  const [lifeDomains, setLifeDomains] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export default function IdentitySeed() {
         case "coreValues": setCoreValues(append); break;
         case "yearNote": setYearNote(append); break;
         case "content": setContent(append); break;
+        case "lifeDomains": setLifeDomains(append); break;
       }
     },
     onError: (error) => {
@@ -60,6 +62,7 @@ export default function IdentitySeed() {
     setCurrentReality("");
     setCoreValues("");
     setYearNote("");
+    setLifeDomains("");
     setIdentitySeedId(null);
     
     if (user) {
@@ -95,11 +98,13 @@ export default function IdentitySeed() {
         setCurrentReality(data.weekly_focus || "");
         setCoreValues(data.core_values || "");
         setYearNote(data.year_note || "");
+        setLifeDomains((data as any).life_domains || "");
       } else {
         setContent("");
         setCurrentReality("");
         setCoreValues("");
         setYearNote("");
+        setLifeDomains("");
         setIdentitySeedId(null);
       }
     } catch (error) {
@@ -124,6 +129,7 @@ export default function IdentitySeed() {
         weekly_focus: currentReality || null,
         core_values: coreValues || null,
         year_note: yearNote || null,
+        life_domains: lifeDomains || null,
         current_phase: "baseline",
       };
 
@@ -236,6 +242,26 @@ export default function IdentitySeed() {
           />
           <p className="text-xs text-muted-foreground mt-2">
             Experiments and daily actions will align with this direction.
+          </p>
+        </Card>
+
+        {/* Life Landscape - Brain Dump */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-sm font-medium text-muted-foreground">Life Landscape</h2>
+            </div>
+            <VoiceButton field="lifeDomains" />
+          </div>
+          <Textarea
+            value={lifeDomains}
+            onChange={(e) => setLifeDomains(e.target.value)}
+            placeholder="Dump everything you care about: chess, gym, piano, psychology, content creation, building UPath, relationships, poker, spirituality, style, cooking, tennis... Just list it all. The system will naturally rotate across these."
+            className="min-h-[140px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Everything you want the system to be aware of. It learns which ones need attention from your behavior over time.
           </p>
         </Card>
 

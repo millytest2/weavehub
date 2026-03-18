@@ -46,6 +46,7 @@ export interface CompactContext {
   current_phase: string | null;
   weekly_focus: string | null;
   year_note: string | null;  // Yearly goals, themes, and direction
+  life_domains: string | null;  // All interests, pursuits, and life areas
   experiments: {
     in_progress: any[];
     planning: any[];
@@ -224,7 +225,7 @@ export async function fetchUserContext(
   const currentWeek = Math.ceil(((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
 
   const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations] = await Promise.all([
-    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note").eq("user_id", userId).maybeSingle(),
+    supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note, life_domains").eq("user_id", userId).maybeSingle(),
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis, created_at, duration").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
@@ -472,6 +473,7 @@ export async function fetchUserContext(
     current_phase: identitySeed.data?.current_phase || "baseline",
     weekly_focus: identitySeed.data?.weekly_focus || null,
     year_note: identitySeed.data?.year_note || null,
+    life_domains: identitySeed.data?.life_domains || null,
     experiments: {
       in_progress: allExperiments.filter((e: any) => e.status === "in_progress"),
       planning: allExperiments.filter((e: any) => e.status === "planning"),
@@ -701,6 +703,39 @@ export function formatContextForAI(context: CompactContext): string {
   // Current reality - user's situation in natural language
   if (context.weekly_focus) {
     formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
+  }
+
+  // Life Landscape - all interests and pursuits the user wants the system to know about
+  if (context.life_domains) {
+    // Parse domains and detect which have been touched recently vs neglected
+    const domains = context.life_domains.split(/[,\n]/).map(d => d.trim()).filter(d => d.length > 1);
+    const recentActionText = (context.completed_actions || []).map((a: any) => (a.action_text || '').toLowerCase()).join(' ');
+    const recentIntentionText = (context.weekly_intentions || []).map((i: any) => (i.text || '').toLowerCase()).join(' ');
+    const recentAll = recentActionText + ' ' + recentIntentionText;
+    
+    const touched: string[] = [];
+    const neglected: string[] = [];
+    
+    for (const domain of domains) {
+      const domainLower = domain.toLowerCase();
+      // Check if any word from the domain appears in recent activity
+      const words = domainLower.split(/\s+/).filter(w => w.length > 3);
+      const isTouched = words.some(w => recentAll.includes(w));
+      if (isTouched) {
+        touched.push(domain);
+      } else {
+        neglected.push(domain);
+      }
+    }
+    
+    formatted += `LIFE LANDSCAPE (everything they care about):\n${domains.join(', ')}\n`;
+    if (neglected.length > 0) {
+      formatted += `NEGLECTED RECENTLY (consider rotating toward): ${neglected.slice(0, 8).join(', ')}\n`;
+    }
+    if (touched.length > 0) {
+      formatted += `RECENTLY ACTIVE: ${touched.join(', ')}\n`;
+    }
+    formatted += `ROTATION RULE: Don't over-index on the same domains. Weave across ALL of their life — touch neglected areas when appropriate.\n\n`;
   }
   
   // Integration pattern detection - reflect the ONE practice across contexts
@@ -1317,6 +1352,28 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
   // === THEIR PROJECTS ===
   if (context.active_projects && context.active_projects.length > 0) {
     lines.push(`\nPROJECTS: ${context.active_projects.join(', ')}${context.last_project_focus ? ` (last focused on: ${context.last_project_focus})` : ''}`);
+  }
+
+  // === LIFE LANDSCAPE (all interests — rotate across these) ===
+  if (context.life_domains) {
+    const domains = context.life_domains.split(/[,\n]/).map((d: string) => d.trim()).filter((d: string) => d.length > 1);
+    if (domains.length > 0) {
+      const recentAll = [
+        ...(context.completed_actions || []).map((a: any) => (a.action_text || '').toLowerCase()),
+        ...(context.weekly_intentions || []).map((i: any) => (i.text || '').toLowerCase()),
+      ].join(' ');
+      
+      const neglected = domains.filter((d: string) => {
+        const words = d.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+        return !words.some((w: string) => recentAll.includes(w));
+      });
+      
+      lines.push(`\nLIFE LANDSCAPE: ${domains.join(', ')}`);
+      if (neglected.length > 0) {
+        lines.push(`NEGLECTED (haven't been touched recently): ${neglected.slice(0, 8).join(', ')}`);
+        lines.push(`Consider weaving a neglected domain into today's invitation when it fits naturally.`);
+      }
+    }
   }
 
   // === WHAT THEY'VE ALREADY DONE (don't repeat) ===

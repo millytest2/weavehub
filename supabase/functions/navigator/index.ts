@@ -340,7 +340,7 @@ serve(async (req) => {
     
     const { data: identityData } = await supabase
       .from("identity_seeds")
-      .select("last_pillar_used, content, core_values, year_note, weekly_focus")
+      .select("last_pillar_used, content, core_values, year_note, weekly_focus, life_domains")
       .eq("user_id", user.id)
       .maybeSingle();
     
