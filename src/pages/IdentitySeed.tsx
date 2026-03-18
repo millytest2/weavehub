@@ -98,11 +98,13 @@ export default function IdentitySeed() {
         setCurrentReality(data.weekly_focus || "");
         setCoreValues(data.core_values || "");
         setYearNote(data.year_note || "");
+        setLifeDomains((data as any).life_domains || "");
       } else {
         setContent("");
         setCurrentReality("");
         setCoreValues("");
         setYearNote("");
+        setLifeDomains("");
         setIdentitySeedId(null);
       }
     } catch (error) {
