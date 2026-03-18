@@ -1354,6 +1354,28 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
     lines.push(`\nPROJECTS: ${context.active_projects.join(', ')}${context.last_project_focus ? ` (last focused on: ${context.last_project_focus})` : ''}`);
   }
 
+  // === LIFE LANDSCAPE (all interests — rotate across these) ===
+  if (context.life_domains) {
+    const domains = context.life_domains.split(/[,\n]/).map((d: string) => d.trim()).filter((d: string) => d.length > 1);
+    if (domains.length > 0) {
+      const recentAll = [
+        ...(context.completed_actions || []).map((a: any) => (a.action_text || '').toLowerCase()),
+        ...(context.weekly_intentions || []).map((i: any) => (i.text || '').toLowerCase()),
+      ].join(' ');
+      
+      const neglected = domains.filter((d: string) => {
+        const words = d.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+        return !words.some((w: string) => recentAll.includes(w));
+      });
+      
+      lines.push(`\nLIFE LANDSCAPE: ${domains.join(', ')}`);
+      if (neglected.length > 0) {
+        lines.push(`NEGLECTED (haven't been touched recently): ${neglected.slice(0, 8).join(', ')}`);
+        lines.push(`Consider weaving a neglected domain into today's invitation when it fits naturally.`);
+      }
+    }
+  }
+
   // === WHAT THEY'VE ALREADY DONE (don't repeat) ===
   if (context.completed_actions && context.completed_actions.length > 0) {
     const recentDone = context.completed_actions.slice(0, 10).map((a: any) => a.action_text).filter(Boolean);
