@@ -129,6 +129,7 @@ export default function IdentitySeed() {
         weekly_focus: currentReality || null,
         core_values: coreValues || null,
         year_note: yearNote || null,
+        life_domains: lifeDomains || null,
         current_phase: "baseline",
       };
 
