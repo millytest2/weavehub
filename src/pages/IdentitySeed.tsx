@@ -62,6 +62,7 @@ export default function IdentitySeed() {
     setCurrentReality("");
     setCoreValues("");
     setYearNote("");
+    setLifeDomains("");
     setIdentitySeedId(null);
     
     if (user) {
