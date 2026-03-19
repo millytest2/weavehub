@@ -570,9 +570,10 @@ NEVER: vague actions, "watch/read/review" anything, generic advice, repeating wh
                           priority_for_today: { type: "string" },
                           do_this_now: { type: "string" },
                           why_it_matters: { type: "string" },
-                          time_required: { type: "string" }
+                          time_required: { type: "string" },
+                          connected_to: { type: "string", description: "Which value/domain/thread this connects to (under 5 words)" }
                         },
-                        required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required"]
+                        required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required", "connected_to"]
                       },
                       minItems: 3,
                       maxItems: 3
