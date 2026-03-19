@@ -32,7 +32,8 @@ function validateNavigatorOutput(data: any): NavigatorOutput {
     priority_for_today: stripEmojis(data.priority_for_today),
     do_this_now: stripEmojis(data.do_this_now),
     why_it_matters: stripEmojis(data.why_it_matters),
-    time_required: stripEmojis(data.time_required)
+    time_required: stripEmojis(data.time_required),
+    connected_to: data.connected_to ? stripEmojis(data.connected_to) : undefined
   };
 }
 
