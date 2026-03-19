@@ -230,6 +230,7 @@ const Dashboard = () => {
             why_matters: data.why_it_matters,
             description: data.time_required,
             pillar: data.priority_for_today,
+            reflection: data.connected_to || null,
             completed: false,
           });
 
