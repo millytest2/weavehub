@@ -524,6 +524,7 @@ Each option needs:
 - do_this_now: SPECIFIC action using their actual project names, insight titles, intention text. Not "work on your project" but "Draft the onboarding flow for UPath based on your insight 'pain-first discovery'"
 - why_it_matters: How this connects to their 2026 direction, current milestone, or weekly intention
 - time_required: Realistic (15-90 min)
+- connected_to: Which value, domain, or identity thread this connects to (e.g. "Freedom + Building" or "Growth — chess" or "2026: body transformation"). Keep it under 5 words.
 
 NEVER: vague actions, "watch/read/review" anything, generic advice, repeating what they already did, ignoring their stated intentions`;
 
