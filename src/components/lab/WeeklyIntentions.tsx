@@ -12,7 +12,9 @@ import {
   X, 
   ListTodo,
   Mic,
-  MicOff
+  MicOff,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { getWeek, getYear } from "date-fns";
@@ -64,15 +66,12 @@ function detectPillar(text: string): string | null {
   return bestPillar;
 }
 
-// Split compound entries like "go to gym and post on twitter" into separate items
 function splitCompoundEntry(text: string): string[] {
-  // Split on " and ", ", ", " + " but not within short phrases
   const parts = text
     .split(/\s+and\s+|\s*,\s+|\s*\+\s+/i)
     .map(p => p.trim())
-    .filter(p => p.length > 3); // Filter out tiny fragments
+    .filter(p => p.length > 3);
   
-  // Only split if each part is meaningful (has a verb-like word)
   if (parts.length > 1 && parts.every(p => p.split(/\s+/).length >= 2)) {
     return parts;
   }
@@ -86,6 +85,12 @@ export function WeeklyIntentions() {
   const [newText, setNewText] = useState("");
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [identityContext, setIdentityContext] = useState<{
+    coreValues: string | null;
+    yearNote: string | null;
+    lifeDomains: string | null;
+  } | null>(null);
 
   const weekNumber = getWeek(new Date(), { weekStartsOn: 1 });
   const year = getYear(new Date());
@@ -98,8 +103,27 @@ export function WeeklyIntentions() {
   });
 
   useEffect(() => {
-    if (user) fetchIntentions();
+    if (user) {
+      fetchIntentions();
+      fetchIdentityContext();
+    }
   }, [user]);
+
+  const fetchIdentityContext = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("identity_seeds")
+      .select("core_values, year_note, life_domains")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (data) {
+      setIdentityContext({
+        coreValues: data.core_values,
+        yearNote: data.year_note,
+        lifeDomains: data.life_domains,
+      });
+    }
+  };
 
   const fetchIntentions = async () => {
     if (!user) return;
@@ -150,6 +174,38 @@ export function WeeklyIntentions() {
     }
   };
 
+  const handleSuggest = async () => {
+    if (!user || suggesting) return;
+    setSuggesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("daily-suggestions", {
+        body: { type: "weekly-intentions" }
+      });
+      if (error) throw error;
+      
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        const inserts = data.suggestions.map((s: any, i: number) => ({
+          user_id: user.id,
+          text: s.text || s,
+          week_number: weekNumber,
+          year,
+          sort_order: intentions.length + i,
+          pillar: s.pillar || detectPillar(s.text || s),
+        }));
+        
+        const { error: insertError } = await supabase.from("weekly_intentions").insert(inserts);
+        if (insertError) throw insertError;
+        toast.success(`Added ${inserts.length} suggestions`);
+        fetchIntentions();
+      }
+    } catch (err: any) {
+      console.error("Suggest error:", err);
+      toast.error(err.message || "Failed to suggest");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
   const toggleComplete = async (id: string, completed: boolean) => {
     try {
       await supabase
@@ -175,6 +231,13 @@ export function WeeklyIntentions() {
 
   const completedCount = intentions.filter(i => i.completed).length;
 
+  // Extract a short grounding line from identity
+  const groundingLine = identityContext?.coreValues
+    ? identityContext.coreValues.split(/[,\n]/).slice(0, 3).map(v => v.trim()).filter(Boolean).join(' · ')
+    : identityContext?.yearNote
+      ? identityContext.yearNote.substring(0, 60) + (identityContext.yearNote.length > 60 ? '...' : '')
+      : null;
+
   return (
     <Card className="p-4 rounded-2xl space-y-3">
       <div className="flex items-center justify-between">
@@ -188,6 +251,13 @@ export function WeeklyIntentions() {
           </span>
         )}
       </div>
+
+      {/* Identity grounding line */}
+      {groundingLine && (
+        <p className="text-[11px] text-muted-foreground/60 italic px-1">
+          Grounded in: {groundingLine}
+        </p>
+      )}
 
       {/* Input */}
       <div className="flex gap-2">
@@ -217,6 +287,23 @@ export function WeeklyIntentions() {
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      {/* AI Suggest button - only show when identity exists and few/no intentions */}
+      {identityContext && intentions.length < 3 && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSuggest}
+          disabled={suggesting}
+          className="w-full h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+        >
+          {suggesting ? (
+            <><Loader2 className="h-3 w-3 animate-spin" /> Weaving from your identity...</>
+          ) : (
+            <><Sparkles className="h-3 w-3" /> Suggest from my identity</>
+          )}
+        </Button>
+      )}
 
       {/* Intentions list */}
       {intentions.length > 0 && (
