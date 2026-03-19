@@ -15,6 +15,7 @@ interface NavigatorOutput {
   do_this_now: string;
   why_it_matters: string;
   time_required: string;
+  connected_to?: string;
 }
 
 function stripEmojis(text: string): string {
@@ -31,7 +32,8 @@ function validateNavigatorOutput(data: any): NavigatorOutput {
     priority_for_today: stripEmojis(data.priority_for_today),
     do_this_now: stripEmojis(data.do_this_now),
     why_it_matters: stripEmojis(data.why_it_matters),
-    time_required: stripEmojis(data.time_required)
+    time_required: stripEmojis(data.time_required),
+    connected_to: data.connected_to ? stripEmojis(data.connected_to) : undefined
   };
 }
 
@@ -522,6 +524,7 @@ Each option needs:
 - do_this_now: SPECIFIC action using their actual project names, insight titles, intention text. Not "work on your project" but "Draft the onboarding flow for UPath based on your insight 'pain-first discovery'"
 - why_it_matters: How this connects to their 2026 direction, current milestone, or weekly intention
 - time_required: Realistic (15-90 min)
+- connected_to: Which value, domain, or identity thread this connects to (e.g. "Freedom + Building" or "Growth — chess" or "2026: body transformation"). Keep it under 5 words.
 
 NEVER: vague actions, "watch/read/review" anything, generic advice, repeating what they already did, ignoring their stated intentions`;
 
@@ -567,9 +570,10 @@ NEVER: vague actions, "watch/read/review" anything, generic advice, repeating wh
                           priority_for_today: { type: "string" },
                           do_this_now: { type: "string" },
                           why_it_matters: { type: "string" },
-                          time_required: { type: "string" }
+                          time_required: { type: "string" },
+                          connected_to: { type: "string", description: "Which value/domain/thread this connects to (under 5 words)" }
                         },
-                        required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required"]
+                        required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required", "connected_to"]
                       },
                       minItems: 3,
                       maxItems: 3
@@ -621,7 +625,8 @@ NEVER: vague actions, "watch/read/review" anything, generic advice, repeating wh
           priority_for_today: stripEmojis(opt.priority_for_today || "Action"),
           do_this_now: stripEmojis(opt.do_this_now),
           why_it_matters: stripEmojis(opt.why_it_matters),
-          time_required: stripEmojis(opt.time_required)
+          time_required: stripEmojis(opt.time_required),
+          connected_to: opt.connected_to ? stripEmojis(opt.connected_to) : undefined
         }));
         
         return new Response(JSON.stringify({ options: cleanedOptions }), { 
@@ -665,6 +670,8 @@ The action you suggest must:
 
 PILLAR: ${suggestedPillar}
 
+Include connected_to: which value, domain, or identity thread this connects to (under 5 words, e.g. "Freedom + Building" or "Growth — chess").
+
 NEVER: vague actions, "watch/read/review", generic advice, repeating what they already did
 ${dateTime.isLateNight ? 'LATE NIGHT: Only journaling, tomorrow prep, breathing. 5-15 min max.' : ''}`;
 
@@ -698,13 +705,14 @@ ${dateTime.isLateNight ? 'LATE NIGHT: Only journaling, tomorrow prep, breathing.
                 description: "Return one specific action",
                 parameters: {
                   type: "object",
-                  properties: {
-                    priority_for_today: { type: "string", enum: ALL_PILLARS },
-                    do_this_now: { type: "string" },
-                    why_it_matters: { type: "string" },
-                    time_required: { type: "string" }
-                  },
-                  required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required"]
+                    properties: {
+                     priority_for_today: { type: "string", enum: ALL_PILLARS },
+                     do_this_now: { type: "string" },
+                     why_it_matters: { type: "string" },
+                     time_required: { type: "string" },
+                     connected_to: { type: "string", description: "Which value/domain/thread this connects to (under 5 words)" }
+                   },
+                   required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required", "connected_to"]
                 }
               }
             }

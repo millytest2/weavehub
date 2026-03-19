@@ -203,6 +203,9 @@ export default function IdentitySeed() {
           <p className="text-xs text-muted-foreground mt-2">
             Just write or speak naturally. The system extracts what it needs.
           </p>
+          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
+            → Feeds into: daily invitations, experiment generation, decision mirror
+          </p>
         </Card>
 
         {/* Core Values */}
@@ -222,6 +225,9 @@ export default function IdentitySeed() {
           />
           <p className="text-xs text-muted-foreground mt-2">
             3-5 values that define how you want to live.
+          </p>
+          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
+            → Grounds: weekly intentions, "why it matters" in every invitation
           </p>
         </Card>
 
@@ -243,6 +249,9 @@ export default function IdentitySeed() {
           <p className="text-xs text-muted-foreground mt-2">
             Experiments and daily actions will align with this direction.
           </p>
+          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
+            → Shapes: Thread roadmap, monthly milestones, experiment themes
+          </p>
         </Card>
 
         {/* Life Landscape - Brain Dump */}
@@ -263,6 +272,9 @@ export default function IdentitySeed() {
           <p className="text-xs text-muted-foreground mt-2">
             Everything you want the system to be aware of. It learns which ones need attention from your behavior over time.
           </p>
+          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
+            → Drives: domain rotation in invitations, weekly intention suggestions
+          </p>
         </Card>
 
         {/* Identity Seed Content */}
@@ -282,6 +294,9 @@ export default function IdentitySeed() {
           />
           <p className="text-xs text-muted-foreground mt-2">
             This guides your experiments, daily actions, and recommendations.
+          </p>
+          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
+            → The core thread: everything in the system aligns with this
           </p>
         </Card>
 
