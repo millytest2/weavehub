@@ -625,7 +625,8 @@ NEVER: vague actions, "watch/read/review" anything, generic advice, repeating wh
           priority_for_today: stripEmojis(opt.priority_for_today || "Action"),
           do_this_now: stripEmojis(opt.do_this_now),
           why_it_matters: stripEmojis(opt.why_it_matters),
-          time_required: stripEmojis(opt.time_required)
+          time_required: stripEmojis(opt.time_required),
+          connected_to: opt.connected_to ? stripEmojis(opt.connected_to) : undefined
         }));
         
         return new Response(JSON.stringify({ options: cleanedOptions }), { 
