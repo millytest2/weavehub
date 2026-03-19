@@ -15,6 +15,7 @@ interface NavigatorOutput {
   do_this_now: string;
   why_it_matters: string;
   time_required: string;
+  connected_to?: string;
 }
 
 function stripEmojis(text: string): string {
