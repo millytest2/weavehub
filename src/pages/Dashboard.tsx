@@ -537,10 +537,18 @@ const Dashboard = () => {
                     
                     {/* The why — the knowing part */}
                     {todayTask.why_matters && (
-                      <p className="text-sm text-muted-foreground/80 leading-relaxed mb-5">
+                      <p className="text-sm text-muted-foreground/80 leading-relaxed mb-3">
                         {todayTask.why_matters}
                       </p>
                     )}
+                    
+                    {/* Connected to identity thread */}
+                    {todayTask.reflection && (
+                      <p className="text-[11px] text-primary/60 italic mb-5">
+                        ↗ {todayTask.reflection}
+                      </p>
+                    )}
+                    {!todayTask.reflection && todayTask.why_matters && <div className="mb-5" />}
                   </div>
                   
                   {/* Single action */}
