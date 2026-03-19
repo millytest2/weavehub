@@ -703,13 +703,14 @@ ${dateTime.isLateNight ? 'LATE NIGHT: Only journaling, tomorrow prep, breathing.
                 description: "Return one specific action",
                 parameters: {
                   type: "object",
-                  properties: {
-                    priority_for_today: { type: "string", enum: ALL_PILLARS },
-                    do_this_now: { type: "string" },
-                    why_it_matters: { type: "string" },
-                    time_required: { type: "string" }
-                  },
-                  required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required"]
+                    properties: {
+                     priority_for_today: { type: "string", enum: ALL_PILLARS },
+                     do_this_now: { type: "string" },
+                     why_it_matters: { type: "string" },
+                     time_required: { type: "string" },
+                     connected_to: { type: "string", description: "Which value/domain/thread this connects to (under 5 words)" }
+                   },
+                   required: ["priority_for_today", "do_this_now", "why_it_matters", "time_required", "connected_to"]
                 }
               }
             }
