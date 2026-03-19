@@ -506,9 +506,9 @@ const Dashboard = () => {
                   className="relative"
                 >
                   {/* The nudge — like a text from someone who knows you */}
-                  <div className="p-6 pb-0">
+                   <div className="p-6 pb-0">
                     <div className="flex items-start justify-between mb-5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {todayTask.pillar && (
                           <span className="inline-block px-2.5 py-1 rounded-lg text-[11px] font-medium bg-primary/8 text-primary/80">
                             {todayTask.pillar}
