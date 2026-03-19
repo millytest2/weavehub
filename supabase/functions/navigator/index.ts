@@ -670,6 +670,8 @@ The action you suggest must:
 
 PILLAR: ${suggestedPillar}
 
+Include connected_to: which value, domain, or identity thread this connects to (under 5 words, e.g. "Freedom + Building" or "Growth — chess").
+
 NEVER: vague actions, "watch/read/review", generic advice, repeating what they already did
 ${dateTime.isLateNight ? 'LATE NIGHT: Only journaling, tomorrow prep, breathing. 5-15 min max.' : ''}`;
 
