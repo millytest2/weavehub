@@ -32,6 +32,7 @@ async function fetchUserContext(supabase: any, userId: string): Promise<UserCont
       .from("insights")
       .select("title, content")
       .eq("user_id", userId)
+      .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
       .limit(10),
     supabase

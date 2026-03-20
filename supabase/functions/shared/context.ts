@@ -224,9 +224,15 @@ export async function fetchUserContext(
   const startOfYear = new Date(currentYear, 0, 1);
   const currentWeek = Math.ceil(((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
 
-  const [identitySeed, insights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations] = await Promise.all([
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+  const [identitySeed, recentInsights, olderInsights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note, life_domains").eq("user_id", userId).maybeSingle(),
-    supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
+    // RECENT insights (last 14 days) — highest priority
+    supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).gte("created_at", fourteenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(10),
+    // OLDER insights — fill remaining slots, sorted by relevance
+    supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).lt("created_at", fourteenDaysAgo.toISOString()).order("relevance_score", { ascending: false, nullsFirst: false }).limit(8),
     supabase.from("documents").select("id, title, summary, extracted_content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("experiments").select("id, title, description, status, identity_shift_target, hypothesis, created_at, duration").eq("user_id", userId).in("status", ["in_progress", "planning"]).order("created_at", { ascending: false }).limit(5),
     supabase.from("experiments").select("title, description, identity_shift_target").eq("user_id", userId).gte("created_at", sixtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(20),
@@ -235,24 +241,25 @@ export async function fetchUserContext(
     supabase.from("action_history").select("action_text, pillar, action_date").eq("user_id", userId).gte("action_date", thirtyDaysAgo.toISOString().split("T")[0]).order("action_date", { ascending: false }).limit(30),
     supabase.from("topics").select("id, name, description").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
     supabase.from("connections").select("source_type, source_id, target_type, target_id, note").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
-    // NEW: Thread milestones - the monthly roadmap (current + next 2 months)
     supabase.from("thread_milestones").select("title, description, capability_focus, month_number, year, status").eq("user_id", userId).gte("month_number", currentMonth).eq("year", currentYear).order("month_number", { ascending: true }).limit(4),
-    // NEW: Monthly plans for current month
     supabase.from("monthly_plans").select("text, plan_type, completed, event_date").eq("user_id", userId).eq("month_number", currentMonth).eq("year", currentYear).order("sort_order", { ascending: true }).limit(10),
-    // NEW: Weekly intentions for current week
     supabase.from("weekly_intentions").select("text, pillar, completed").eq("user_id", userId).eq("week_number", currentWeek).eq("year", currentYear).order("sort_order", { ascending: true }).limit(8),
-    // NEW: Active learning paths
     supabase.from("learning_paths").select("title, description, current_day, duration_days, status, topic_name").eq("user_id", userId).eq("status", "active").order("updated_at", { ascending: false }).limit(3),
-    // NEW: Recent observations from lab
     supabase.from("observations").select("content, observation_type, source, created_at").eq("user_id", userId).gte("created_at", sevenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(5),
   ]);
+
+  // Merge insights: recent first, then older to fill up to 15 total
+  const allInsightData = [
+    ...(recentInsights.data || []),
+    ...(olderInsights.data || []).slice(0, 15 - (recentInsights.data?.length || 0)),
+  ];
 
   const pillarHistory = (dailyTasks.data || [])
     .map((t: any) => t.pillar)
     .filter(Boolean);
 
   // Filter high-quality insights (longer content = more signal)
-  const keyInsights = (insights.data || [])
+  const keyInsights = allInsightData
     .filter((i: any) => i.content && i.content.length > 30)
     .slice(0, 10);
 
@@ -1246,6 +1253,11 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
   if (context.core_values) {
     lines.push(`VALUES: ${context.core_values}`);
   }
+  
+  // === THEIR CURRENT REALITY (what they've told us about RIGHT NOW — highest signal) ===
+  if (context.weekly_focus) {
+    lines.push(`\nCURRENT REALITY (in their words): ${context.weekly_focus}`);
+  }
 
   // === WHERE THEY'RE HEADED (synthesize year + thread + monthly into one narrative) ===
   const directionParts: string[] = [];
@@ -1335,9 +1347,12 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
 
   // === THEIR CAPTURED WISDOM (insights — the knowledge they've built) ===
   if (context.key_insights.length > 0) {
+    const now = new Date();
     lines.push(`\nTHEIR CAPTURED WISDOM (${context.key_insights.length} insights):\n${context.key_insights.slice(0, 8).map((i: any) => {
       const source = i.source ? ` [from ${i.source}]` : '';
-      return `- "${i.title}"${source}: ${i.content.substring(0, 200)}`;
+      const daysAgo = i.created_at ? Math.floor((now.getTime() - new Date(i.created_at).getTime()) / (1000 * 60 * 60 * 24)) : null;
+      const age = daysAgo !== null ? (daysAgo === 0 ? ' (today)' : daysAgo <= 1 ? ' (yesterday)' : daysAgo <= 7 ? ` (${daysAgo}d ago)` : daysAgo <= 30 ? ` (${Math.floor(daysAgo / 7)}w ago)` : ` (${Math.floor(daysAgo / 30)}mo ago)`) : '';
+      return `- "${i.title}"${source}${age}: ${i.content.substring(0, 200)}`;
     }).join('\n')}`);
   }
 
