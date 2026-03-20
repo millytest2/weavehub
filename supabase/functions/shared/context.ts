@@ -1342,9 +1342,12 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
 
   // === THEIR CAPTURED WISDOM (insights — the knowledge they've built) ===
   if (context.key_insights.length > 0) {
+    const now = new Date();
     lines.push(`\nTHEIR CAPTURED WISDOM (${context.key_insights.length} insights):\n${context.key_insights.slice(0, 8).map((i: any) => {
       const source = i.source ? ` [from ${i.source}]` : '';
-      return `- "${i.title}"${source}: ${i.content.substring(0, 200)}`;
+      const daysAgo = i.created_at ? Math.floor((now.getTime() - new Date(i.created_at).getTime()) / (1000 * 60 * 60 * 24)) : null;
+      const age = daysAgo !== null ? (daysAgo === 0 ? ' (today)' : daysAgo <= 1 ? ' (yesterday)' : daysAgo <= 7 ? ` (${daysAgo}d ago)` : daysAgo <= 30 ? ` (${Math.floor(daysAgo / 7)}w ago)` : ` (${Math.floor(daysAgo / 30)}mo ago)`) : '';
+      return `- "${i.title}"${source}${age}: ${i.content.substring(0, 200)}`;
     }).join('\n')}`);
   }
 

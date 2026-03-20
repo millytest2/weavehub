@@ -506,15 +506,22 @@ ${dateTime.isLearned ? dateTime.learnedNote : ''}
 === HOW TO THINK ===
 You have their identity, their 2026 vision, their weekly intentions, their monthly plans, their active experiments, their captured insights, their documents, and their observations. WEAVE THEM TOGETHER.
 
+TEMPORAL PRIORITY (CRITICAL):
+- MOST IMPORTANT: What they committed to THIS WEEK (weekly intentions) and what they wrote in the last 7 days
+- IMPORTANT: This month's plans and active experiments
+- CONTEXT: Older insights and documents — use as background wisdom, NOT as the primary driver
+- STALE: Anything from 30+ days ago should only be referenced if it's still clearly relevant to their current direction
+- NEVER suggest actions based on outdated context (old launches, past deadlines, resolved situations)
+
 Ask yourself:
 1. What did they commit to this week that's unfinished? → suggest advancing it
 2. What monthly milestone are they building toward? → connect to it
 3. What experiment are they running? → suggest a micro-rep for it
-4. What insight did they capture that they haven't ACTED on? → turn it into action
+4. What insight did they capture RECENTLY that they haven't ACTED on? → turn it into action
 5. What have they been noticing in their lab? → build on it
 6. What have they been avoiding? → gently push that edge
 
-Every invitation must cite SPECIFIC things from their data — an insight title, an experiment name, a weekly intention, a document. If you can't cite something specific, you don't know them well enough.
+Every invitation must cite SPECIFIC things from their data — an insight title, an experiment name, a weekly intention, a document. If you can't cite something specific, you don't know them well enough. PREFER RECENT captures over old ones.
 
 === OUTPUT RULES ===
 PILLARS TO USE: ${effectivePillar1}, ${effectivePillar2}, ${effectivePillar3}
@@ -526,7 +533,7 @@ Each option needs:
 - time_required: Realistic (15-90 min)
 - connected_to: Which value, domain, or identity thread this connects to (e.g. "Freedom + Building" or "Growth — chess" or "2026: body transformation"). Keep it under 5 words.
 
-NEVER: vague actions, "watch/read/review" anything, generic advice, repeating what they already did, ignoring their stated intentions`;
+NEVER: vague actions, "watch/read/review" anything, generic advice, repeating what they already did, ignoring their stated intentions, basing suggestions primarily on old/stale data`;
 
 
       // Model strategy: Try cheap model first, fall back to best if needed, then local fallback
