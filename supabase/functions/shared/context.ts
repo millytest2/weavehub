@@ -259,7 +259,7 @@ export async function fetchUserContext(
     .filter(Boolean);
 
   // Filter high-quality insights (longer content = more signal)
-  const keyInsights = (insights.data || [])
+  const keyInsights = allInsightData
     .filter((i: any) => i.content && i.content.length > 30)
     .slice(0, 10);
 
