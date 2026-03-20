@@ -1253,6 +1253,11 @@ export function synthesizeSituationBrief(context: CompactContext, dateContext?: 
   if (context.core_values) {
     lines.push(`VALUES: ${context.core_values}`);
   }
+  
+  // === THEIR CURRENT REALITY (what they've told us about RIGHT NOW — highest signal) ===
+  if (context.weekly_focus) {
+    lines.push(`\nCURRENT REALITY (in their words): ${context.weekly_focus}`);
+  }
 
   // === WHERE THEY'RE HEADED (synthesize year + thread + monthly into one narrative) ===
   const directionParts: string[] = [];
