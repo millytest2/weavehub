@@ -619,15 +619,6 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Current Chapter — passive experiment context */}
-        <CurrentChapter
-          activeExperiment={activeExperiment}
-          user={user}
-          onExperimentChanged={fetchData}
-          getTimePhase={getTimePhase}
-        />
-
-
         <button
           onClick={handleNextRep}
           disabled={isGettingRep}
