@@ -11,6 +11,8 @@ import { getWeek, getYear } from "date-fns";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
+import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
+import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -26,13 +28,20 @@ const Dashboard = () => {
   const [showRepDialog, setShowRepDialog] = useState(false);
   
   
+  // Morning / evening ritual
+  const [morningComplete, setMorningComplete] = useState(false);
+  const [eveningComplete, setEveningComplete] = useState(false);
+
+  // Active experiment state
+  const [activeExperiment, setActiveExperiment] = useState<any>(null);
+
   // Identity state
   const [identitySeed, setIdentitySeed] = useState<string | null>(null);
   const [yearNote, setYearNote] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isFirstTime, setIsFirstTime] = useState(false);
-  
-  
+
+
   // Skip / recalibration
   const [isSkipping, setIsSkipping] = useState(false);
   const [sessionSkipCount, setSessionSkipCount] = useState(0);
@@ -132,6 +141,16 @@ const Dashboard = () => {
       setIsFirstTime(count === 0);
     }
 
+    const { data: expRes } = await supabase
+      .from("experiments")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "in_progress")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    setActiveExperiment(expRes);
   }, [user]);
 
   useEffect(() => {
@@ -385,6 +404,8 @@ const Dashboard = () => {
         <>
           <FirstTimeTooltip userId={user.id} isFirstTime={isFirstTime} />
           <DayCompleteRecommendations userId={user.id} isComplete={allDone} />
+          <MorningRitualPrompt onComplete={() => setMorningComplete(true)} />
+          <EveningLetGo onComplete={() => setEveningComplete(true)} />
         </>
       )}
 
@@ -514,7 +535,7 @@ const Dashboard = () => {
                         disabled={isSkipping}
                         className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
                       >
-                        {isSkipping ? "..." : getTimePhase() === 'evening' || getTimePhase() === 'night' ? "pass" : "not today"}
+                        {isSkipping ? "..." : "not this"}
                       </button>
                     </div>
                     
@@ -619,6 +640,55 @@ const Dashboard = () => {
           </div>
         </section>
 
+        {/* Active Experiment — compact inline */}
+        {activeExperiment && (
+          <section className="rounded-2xl border border-border/40 bg-gradient-to-r from-card/60 to-muted/20 p-5 space-y-2">
+            {(() => {
+              const createdDate = new Date(activeExperiment.created_at);
+              const now = new Date();
+              const startDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+              const dayNumber = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+              const durationStr = activeExperiment.duration?.toLowerCase() || '';
+              let totalDays = 7;
+              if (durationStr.includes('48h') || durationStr.includes('2 day')) totalDays = 2;
+              else if (durationStr.includes('24h') || durationStr.includes('1 day')) totalDays = 1;
+              else if (durationStr.includes('3 day')) totalDays = 3;
+              else if (durationStr.includes('5 day')) totalDays = 5;
+              else if (durationStr.includes('week') && !durationStr.includes('2 week')) totalDays = 7;
+              else if (durationStr.includes('2 week')) totalDays = 14;
+
+              const steps = activeExperiment.steps?.split('\n').filter((s: string) => s.trim()) || [];
+              const stepsPerDay = Math.ceil(steps.length / 7);
+              let todayStep = '';
+              if (steps.length <= 7) {
+                todayStep = steps[Math.min(dayNumber - 1, steps.length - 1)] || activeExperiment.description;
+              } else {
+                const baseIndex = (dayNumber - 1) * stepsPerDay;
+                const timeSlot = now.getHours() < 12 ? 0 : now.getHours() < 18 ? 1 : 2;
+                const stepIndex = Math.min(baseIndex + Math.min(timeSlot, stepsPerDay - 1), steps.length - 1);
+                todayStep = steps[stepIndex] || activeExperiment.description;
+              }
+
+              return (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-primary/70 uppercase tracking-wider">Experiment</span>
+                    <span className="text-[11px] text-muted-foreground/60">
+                      Day {dayNumber}/{totalDays}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium leading-snug">{todayStep}</p>
+                  {activeExperiment.identity_shift_target && (
+                    <p className="text-[11px] text-muted-foreground/60 italic">{activeExperiment.identity_shift_target}</p>
+                  )}
+                </>
+              );
+            })()}
+          </section>
+        )}
+
         <button
           onClick={handleNextRep}
           disabled={isGettingRep}
@@ -630,7 +700,7 @@ const Dashboard = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-base">
-                {isGettingRep ? "Finding your next move..." : "Need a reset?"}
+                {isGettingRep ? "Finding your next move..." : "Feeling off?"}
               </p>
               <p className="text-sm text-muted-foreground">
                 One tap. One aligned action.
