@@ -25,8 +25,6 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
   
-  // Active experiment state
-  const [activeExperiment, setActiveExperiment] = useState<any>(null);
   
   // Identity state
   const [identitySeed, setIdentitySeed] = useState<string | null>(null);
