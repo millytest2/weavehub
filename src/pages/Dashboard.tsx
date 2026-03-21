@@ -11,7 +11,6 @@ import { getWeek, getYear } from "date-fns";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
-import { CurrentChapter } from "@/components/dashboard/CurrentChapter";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -26,8 +25,6 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
   
-  // Active experiment state
-  const [activeExperiment, setActiveExperiment] = useState<any>(null);
   
   // Identity state
   const [identitySeed, setIdentitySeed] = useState<string | null>(null);
@@ -135,16 +132,6 @@ const Dashboard = () => {
       setIsFirstTime(count === 0);
     }
 
-    const { data: expRes } = await supabase
-      .from("experiments")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "in_progress")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    setActiveExperiment(expRes);
   }, [user]);
 
   useEffect(() => {
@@ -631,15 +618,6 @@ const Dashboard = () => {
             </AnimatePresence>
           </div>
         </section>
-
-        {/* Current Chapter — passive experiment context */}
-        <CurrentChapter
-          activeExperiment={activeExperiment}
-          user={user}
-          onExperimentChanged={fetchData}
-          getTimePhase={getTimePhase}
-        />
-
 
         <button
           onClick={handleNextRep}
