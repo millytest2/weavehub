@@ -132,16 +132,6 @@ const Dashboard = () => {
       setIsFirstTime(count === 0);
     }
 
-    const { data: expRes } = await supabase
-      .from("experiments")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "in_progress")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    setActiveExperiment(expRes);
   }, [user]);
 
   useEffect(() => {
