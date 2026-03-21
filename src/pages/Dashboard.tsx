@@ -11,7 +11,6 @@ import { getWeek, getYear } from "date-fns";
 
 import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRecommendations";
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
-import { CurrentChapter } from "@/components/dashboard/CurrentChapter";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
