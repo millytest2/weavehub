@@ -36,8 +36,23 @@ const Dashboard = () => {
   const [yearNote, setYearNote] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isFirstTime, setIsFirstTime] = useState(false);
-  
-  
+
+  const handleBrainSubmit = async () => {
+    if (!user || !brainInput.trim() || isBrainThinking) return;
+    setIsBrainThinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("brain", {
+        body: { input: brainInput },
+      });
+      if (error) throw error;
+      setBrainResponse(data?.result || "No response");
+    } catch (error: any) {
+      toast.error(error.message || "Couldn't reach your brain");
+    } finally {
+      setIsBrainThinking(false);
+    }
+  };
+
   // Skip / recalibration
   const [isSkipping, setIsSkipping] = useState(false);
   const [sessionSkipCount, setSessionSkipCount] = useState(0);
