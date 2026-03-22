@@ -25,7 +25,12 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
   
-  
+  // Identity state
+  const [identitySeed, setIdentitySeed] = useState<string | null>(null);
+  const [yearNote, setYearNote] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [isFirstTime, setIsFirstTime] = useState(false);
+
 
   // Skip / recalibration
   const [isSkipping, setIsSkipping] = useState(false);
