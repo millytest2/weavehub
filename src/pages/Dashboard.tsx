@@ -13,6 +13,7 @@ import { DayCompleteRecommendations } from "@/components/dashboard/DayCompleteRe
 import { FirstTimeTooltip } from "@/components/dashboard/FirstTimeTooltip";
 import { MorningRitualPrompt } from "@/components/dashboard/MorningRitualPrompt";
 import { EveningLetGo } from "@/components/dashboard/EveningLetGo";
+import { UPathBridge } from "@/components/dashboard/UPathBridge";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 
 const Dashboard = () => {
@@ -688,6 +689,9 @@ const Dashboard = () => {
             })()}
           </section>
         )}
+
+        {/* upath.ai bridge — surfaces once enough signal exists */}
+        {user && <UPathBridge userId={user.id} />}
 
         <button
           onClick={handleNextRep}
