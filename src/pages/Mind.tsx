@@ -40,6 +40,7 @@ const Mind = () => {
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
     { id: "lab" as MindTab, label: "Lab", icon: PenLine },
+    { id: "mirror" as MindTab, label: "Mirror", icon: Scale },
   ];
 
   return (
