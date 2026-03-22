@@ -25,33 +25,7 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
   
-  // Brain chat state
-  const [brainInput, setBrainInput] = useState("");
-  const [brainResponse, setBrainResponse] = useState("");
-  const [isBrainThinking, setIsBrainThinking] = useState(false);
   
-  
-  // Identity state
-  const [identitySeed, setIdentitySeed] = useState<string | null>(null);
-  const [yearNote, setYearNote] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [isFirstTime, setIsFirstTime] = useState(false);
-
-  const handleBrainSubmit = async () => {
-    if (!user || !brainInput.trim() || isBrainThinking) return;
-    setIsBrainThinking(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("brain", {
-        body: { input: brainInput },
-      });
-      if (error) throw error;
-      setBrainResponse(data?.result || "No response");
-    } catch (error: any) {
-      toast.error(error.message || "Couldn't reach your brain");
-    } finally {
-      setIsBrainThinking(false);
-    }
-  };
 
   // Skip / recalibration
   const [isSkipping, setIsSkipping] = useState(false);
