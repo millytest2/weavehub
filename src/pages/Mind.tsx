@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, PenLine } from "lucide-react";
+import { Compass, Route, PenLine, Scale } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
+import { MindSynthesis } from "@/components/explore/MindSynthesis";
+import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useEffect } from "react";
