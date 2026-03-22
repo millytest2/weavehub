@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
-import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [profileOpen, setProfileOpen] = useState(false);
