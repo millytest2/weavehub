@@ -64,17 +64,76 @@ export const DecisionMirror = ({ embedded = false }: { embedded?: boolean }) => 
     executeSubmit();
   };
 
+  if (embedded) {
+    return (
+      <div className="max-w-lg mx-auto space-y-4">
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-display font-semibold flex items-center justify-center gap-2">
+            <Scale className="h-5 w-5 text-primary" />
+            Decision Mirror
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Reflect on a decision through your values
+          </p>
+        </div>
+
+        {showMirrorResponse ? (
+          <div className="space-y-4">
+            <div className="p-5 rounded-2xl border border-border/40 bg-card">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{mirrorText}</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowMirrorResponse(false);
+                setContent("");
+                setMirrorText("");
+              }}
+              className="w-full rounded-2xl"
+            >
+              New decision
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Textarea
+              placeholder="What are you about to do?"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="min-h-[120px] text-base rounded-2xl"
+              style={{ fontSize: '16px' }}
+            />
+            <Button
+              onClick={handleSubmit}
+              disabled={!content.trim() || isSubmitting}
+              className="w-full h-12 rounded-2xl"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Reflecting...
+                </>
+              ) : (
+                "Mirror"
+              )}
+            </Button>
+          </div>
+        )}
+
+        <CareerRedirectPrompt
+          open={showCareerPrompt}
+          onOpenChange={(open) => {
+            setShowCareerPrompt(open);
+            if (!open && !pendingSubmit) setPendingSubmit(false);
+          }}
+          onContinue={handleCareerPromptContinue}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* Floating Decision Mirror Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 md:bottom-6 right-[5.5rem] z-50 w-10 h-10 rounded-full bg-muted/80 backdrop-blur text-muted-foreground border border-border shadow-md hover:shadow-lg hover:bg-muted hover:text-foreground transition-all flex items-center justify-center"
-        aria-label="Decision mirror"
-      >
-        <Scale className="h-4 w-4" />
-      </button>
-
       {/* Decision Mirror Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-xl p-4 sm:p-6">
