@@ -639,6 +639,44 @@ const Dashboard = () => {
           </div>
         </section>
 
+        {/* Think with Weave */}
+        <section className="space-y-3">
+          {brainResponse && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl border border-border/40 bg-card/80 space-y-3"
+            >
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{brainResponse}</p>
+              <button
+                onClick={() => { setBrainResponse(""); setBrainInput(""); }}
+                className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                clear
+              </button>
+            </motion.div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={brainInput}
+              onChange={(e) => setBrainInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleBrainSubmit()}
+              placeholder="Think with Weave..."
+              className="flex-1 h-11 px-4 rounded-2xl bg-muted/30 border border-border/40 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/30 transition-colors"
+              style={{ fontSize: '16px' }}
+            />
+            <Button
+              size="icon"
+              onClick={handleBrainSubmit}
+              disabled={!brainInput.trim() || isBrainThinking}
+              className="h-11 w-11 rounded-2xl shrink-0"
+            >
+              {isBrainThinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
+        </section>
+
         <button
           onClick={handleNextRep}
           disabled={isGettingRep}
