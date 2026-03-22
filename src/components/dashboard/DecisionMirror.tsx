@@ -10,7 +10,7 @@ import { detectCareerKeywords } from "@/lib/careerDetection";
 import { CareerRedirectPrompt } from "@/components/CareerRedirectPrompt";
 import { DecisionMirrorResponse } from "./DecisionMirrorResponse";
 
-export const DecisionMirror = () => {
+export const DecisionMirror = ({ embedded = false }: { embedded?: boolean }) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState("");

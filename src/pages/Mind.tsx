@@ -5,7 +5,6 @@ import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
-import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
