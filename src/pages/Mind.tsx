@@ -10,7 +10,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "lab";
+type MindTab = "identity" | "thread" | "lab" | "mirror";
 
 const Mind = () => {
   const { user } = useAuth();
