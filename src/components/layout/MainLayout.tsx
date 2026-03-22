@@ -130,7 +130,6 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Global Quick Capture FAB */}
       <QuickCapture />
-      <DecisionMirror />
 
       {/* Main Content */}
       <main className="flex-1 pt-14 pb-20 md:pb-6 overflow-x-hidden w-full">
