@@ -25,6 +25,11 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
   
+  // Brain chat state
+  const [brainInput, setBrainInput] = useState("");
+  const [brainResponse, setBrainResponse] = useState("");
+  const [isBrainThinking, setIsBrainThinking] = useState(false);
+  
   
   // Identity state
   const [identitySeed, setIdentitySeed] = useState<string | null>(null);
