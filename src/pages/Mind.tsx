@@ -85,6 +85,7 @@ const Mind = () => {
             </div>
           )}
           {activeTab === "lab" && <LabRedirect />}
+          {activeTab === "mirror" && <DecisionMirror embedded />}
         </motion.div>
       </AnimatePresence>
     </div>
