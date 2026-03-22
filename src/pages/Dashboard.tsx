@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Check, Zap, RefreshCw, Clock, Sparkles, MessageCircle } from "lucide-react";
+import { ArrowRight, Check, Zap, RefreshCw, Clock, Sparkles, MessageCircle, Send, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,14 +25,34 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
   
+  // Brain chat state
+  const [brainInput, setBrainInput] = useState("");
+  const [brainResponse, setBrainResponse] = useState("");
+  const [isBrainThinking, setIsBrainThinking] = useState(false);
+  
   
   // Identity state
   const [identitySeed, setIdentitySeed] = useState<string | null>(null);
   const [yearNote, setYearNote] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isFirstTime, setIsFirstTime] = useState(false);
-  
-  
+
+  const handleBrainSubmit = async () => {
+    if (!user || !brainInput.trim() || isBrainThinking) return;
+    setIsBrainThinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("brain", {
+        body: { input: brainInput },
+      });
+      if (error) throw error;
+      setBrainResponse(data?.result || "No response");
+    } catch (error: any) {
+      toast.error(error.message || "Couldn't reach your brain");
+    } finally {
+      setIsBrainThinking(false);
+    }
+  };
+
   // Skip / recalibration
   const [isSkipping, setIsSkipping] = useState(false);
   const [sessionSkipCount, setSessionSkipCount] = useState(0);
@@ -616,6 +636,44 @@ const Dashboard = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+        </section>
+
+        {/* Think with Weave */}
+        <section className="space-y-3">
+          {brainResponse && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl border border-border/40 bg-card/80 space-y-3"
+            >
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{brainResponse}</p>
+              <button
+                onClick={() => { setBrainResponse(""); setBrainInput(""); }}
+                className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                clear
+              </button>
+            </motion.div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={brainInput}
+              onChange={(e) => setBrainInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleBrainSubmit()}
+              placeholder="Think with Weave..."
+              className="flex-1 h-11 px-4 rounded-2xl bg-muted/30 border border-border/40 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/30 transition-colors"
+              style={{ fontSize: '16px' }}
+            />
+            <Button
+              size="icon"
+              onClick={handleBrainSubmit}
+              disabled={!brainInput.trim() || isBrainThinking}
+              className="h-11 w-11 rounded-2xl shrink-0"
+            >
+              {isBrainThinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
           </div>
         </section>
 

@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { QuickCapture } from "@/components/dashboard/QuickCapture";
-import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const [profileOpen, setProfileOpen] = useState(false);
@@ -131,7 +130,6 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Global Quick Capture FAB */}
       <QuickCapture />
-      <DecisionMirror />
 
       {/* Main Content */}
       <main className="flex-1 pt-14 pb-20 md:pb-6 overflow-x-hidden w-full">
