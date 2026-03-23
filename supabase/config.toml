@@ -94,5 +94,8 @@ verify_jwt = true
 [functions.parse-voice-log]
 verify_jwt = true
 
+[functions.morning-brief]
+verify_jwt = true
+
 [functions.generate-pillar-targets]
 verify_jwt = true
