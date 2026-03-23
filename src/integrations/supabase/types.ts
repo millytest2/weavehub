@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_completions: {
+        Row: {
+          completion_date: string
+          created_at: string | null
+          daily_task_id: string | null
+          id: string
+          status: string
+          user_id: string
+          what_happened: string | null
+        }
+        Insert: {
+          completion_date?: string
+          created_at?: string | null
+          daily_task_id?: string | null
+          id?: string
+          status?: string
+          user_id: string
+          what_happened?: string | null
+        }
+        Update: {
+          completion_date?: string
+          created_at?: string | null
+          daily_task_id?: string | null
+          id?: string
+          status?: string
+          user_id?: string
+          what_happened?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_completions_daily_task_id_fkey"
+            columns: ["daily_task_id"]
+            isOneToOne: false
+            referencedRelation: "daily_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       action_history: {
         Row: {
           action_date: string
@@ -130,14 +168,124 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_briefs: {
+        Row: {
+          brief_date: string
+          created_at: string | null
+          forgotten_gem_context: string | null
+          forgotten_gem_id: string | null
+          generated_at: string | null
+          id: string
+          recommended_actions: Json | null
+          user_id: string
+          what_shifted: string | null
+        }
+        Insert: {
+          brief_date: string
+          created_at?: string | null
+          forgotten_gem_context?: string | null
+          forgotten_gem_id?: string | null
+          generated_at?: string | null
+          id?: string
+          recommended_actions?: Json | null
+          user_id: string
+          what_shifted?: string | null
+        }
+        Update: {
+          brief_date?: string
+          created_at?: string | null
+          forgotten_gem_context?: string | null
+          forgotten_gem_id?: string | null
+          generated_at?: string | null
+          id?: string
+          recommended_actions?: Json | null
+          user_id?: string
+          what_shifted?: string | null
+        }
+        Relationships: []
+      }
+      daily_closes: {
+        Row: {
+          close_date: string
+          created_at: string | null
+          daily_brief_id: string | null
+          id: string
+          journal_entry: string | null
+          patterns_noticed: string | null
+          user_id: string
+        }
+        Insert: {
+          close_date: string
+          created_at?: string | null
+          daily_brief_id?: string | null
+          id?: string
+          journal_entry?: string | null
+          patterns_noticed?: string | null
+          user_id: string
+        }
+        Update: {
+          close_date?: string
+          created_at?: string | null
+          daily_brief_id?: string | null
+          id?: string
+          journal_entry?: string | null
+          patterns_noticed?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_closes_daily_brief_id_fkey"
+            columns: ["daily_brief_id"]
+            isOneToOne: false
+            referencedRelation: "daily_briefs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_credits: {
+        Row: {
+          actions_committed: string[] | null
+          created_at: string | null
+          credit_date: string
+          credits_spent: number | null
+          id: string
+          total_credits: number | null
+          user_id: string
+        }
+        Insert: {
+          actions_committed?: string[] | null
+          created_at?: string | null
+          credit_date: string
+          credits_spent?: number | null
+          id?: string
+          total_credits?: number | null
+          user_id: string
+        }
+        Update: {
+          actions_committed?: string[] | null
+          created_at?: string | null
+          credit_date?: string
+          credits_spent?: number | null
+          id?: string
+          total_credits?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_tasks: {
         Row: {
+          action_type: string | null
+          cited_sources: Json | null
           completed: boolean | null
           created_at: string
+          credit_cost: number | null
+          daily_brief_id: string | null
           description: string | null
           id: string
+          impact_description: string | null
           one_thing: string | null
           pillar: string | null
+          priority: string | null
           reflection: string | null
           task_date: string
           task_sequence: number | null
@@ -146,12 +294,18 @@ export type Database = {
           why_matters: string | null
         }
         Insert: {
+          action_type?: string | null
+          cited_sources?: Json | null
           completed?: boolean | null
           created_at?: string
+          credit_cost?: number | null
+          daily_brief_id?: string | null
           description?: string | null
           id?: string
+          impact_description?: string | null
           one_thing?: string | null
           pillar?: string | null
+          priority?: string | null
           reflection?: string | null
           task_date?: string
           task_sequence?: number | null
@@ -160,12 +314,18 @@ export type Database = {
           why_matters?: string | null
         }
         Update: {
+          action_type?: string | null
+          cited_sources?: Json | null
           completed?: boolean | null
           created_at?: string
+          credit_cost?: number | null
+          daily_brief_id?: string | null
           description?: string | null
           id?: string
+          impact_description?: string | null
           one_thing?: string | null
           pillar?: string | null
+          priority?: string | null
           reflection?: string | null
           task_date?: string
           task_sequence?: number | null
@@ -173,7 +333,15 @@ export type Database = {
           user_id?: string
           why_matters?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "daily_tasks_daily_brief_id_fkey"
+            columns: ["daily_brief_id"]
+            isOneToOne: false
+            referencedRelation: "daily_briefs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       documents: {
         Row: {
@@ -513,6 +681,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      learned_patterns: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          id: string
+          last_observed: string | null
+          outcome: string
+          pattern_type: string
+          times_observed: number | null
+          trigger_condition: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          last_observed?: string | null
+          outcome: string
+          pattern_type: string
+          times_observed?: number | null
+          trigger_condition: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          last_observed?: string | null
+          outcome?: string
+          pattern_type?: string
+          times_observed?: number | null
+          trigger_condition?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       learning_paths: {
         Row: {
