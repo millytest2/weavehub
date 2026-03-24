@@ -47,7 +47,6 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const hasLoaded = useRef(false);
 
-  // Next Best Rep
   const [isGettingRep, setIsGettingRep] = useState(false);
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
@@ -73,15 +72,12 @@ const Dashboard = () => {
   const fetchBrief = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
-
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke("morning-brief", {
         body: { timezone }
       });
-
       if (error) throw error;
-
       if (data) {
         setBrief(data.brief);
         setActions(data.actions || []);
@@ -104,26 +100,14 @@ const Dashboard = () => {
 
   const handleCompleteAction = async (action: BriefAction) => {
     if (!user || !action.id) return;
-
     try {
-      await supabase
-        .from("daily_tasks")
-        .update({ completed: true })
-        .eq("id", action.id);
-
-      setActions(prev => prev.map(a =>
-        a.id === action.id ? { ...a, completed: true } : a
-      ));
-
+      await supabase.from("daily_tasks").update({ completed: true }).eq("id", action.id);
+      setActions(prev => prev.map(a => a.id === action.id ? { ...a, completed: true } : a));
       const now = new Date();
       await supabase.from('user_activity_patterns').insert({
-        user_id: user.id,
-        hour_of_day: now.getHours(),
-        day_of_week: now.getDay(),
-        activity_type: 'complete',
-        pillar: action.pillar
+        user_id: user.id, hour_of_day: now.getHours(), day_of_week: now.getDay(),
+        activity_type: 'complete', pillar: action.pillar
       });
-
       toast.success("Done!");
     } catch (error: any) {
       console.error("Complete error:", error);
@@ -133,18 +117,13 @@ const Dashboard = () => {
 
   const handleSkipAction = async (action: BriefAction) => {
     if (!user || !action.id) return;
-
     try {
       await supabase.from("daily_tasks").delete().eq("id", action.id);
       setActions(prev => prev.filter(a => a.id !== action.id));
-
       const now = new Date();
       await supabase.from('user_activity_patterns').insert({
-        user_id: user.id,
-        hour_of_day: now.getHours(),
-        day_of_week: now.getDay(),
-        activity_type: 'skip',
-        pillar: action.pillar
+        user_id: user.id, hour_of_day: now.getHours(), day_of_week: now.getDay(),
+        activity_type: 'skip', pillar: action.pillar
       });
     } catch (error: any) {
       console.error("Skip error:", error);
@@ -155,14 +134,9 @@ const Dashboard = () => {
     setIsGettingRep(true);
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const { data, error } = await supabase.functions.invoke("next-rep", {
-        body: { timezone }
-      });
+      const { data, error } = await supabase.functions.invoke("next-rep", { body: { timezone } });
       if (error) throw error;
-      if (data) {
-        setNextRep(data);
-        setShowRepDialog(true);
-      }
+      if (data) { setNextRep(data); setShowRepDialog(true); }
     } catch (error: any) {
       toast.error(error.message || "Failed to get rep");
     } finally {
@@ -172,7 +146,7 @@ const Dashboard = () => {
 
   const completedCount = actions.filter(a => a.completed).length;
   const totalActions = actions.length;
-  const committedActions = actions; // all actions are "committed" now — no credit gate
+  const committedActions = actions;
 
   const getActionIcon = (type?: string) => {
     switch (type) {
@@ -203,26 +177,15 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-4 py-6 animate-fade-in overflow-x-hidden w-full">
-      {/* Evening Close */}
+    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-5 py-8 animate-fade-in overflow-x-hidden w-full">
       {user && isEvening() && committedActions.length > 0 && (
-        <EveningClose
-          userId={user.id}
-          committedActions={committedActions}
-          briefId={brief?.id}
-        />
+        <EveningClose userId={user.id} committedActions={committedActions} briefId={brief?.id} />
       )}
 
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-8">
         <AnimatePresence mode="wait">
           {isLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="py-20"
-            >
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-20">
               <WeaveLoader size="lg" text={
                 getTimePhase() === 'morning' ? "Preparing your morning brief..." :
                 getTimePhase() === 'afternoon' ? "Loading your brief..." :
@@ -230,15 +193,11 @@ const Dashboard = () => {
               } />
             </motion.div>
           ) : (
-            <motion.div
-              key="brief"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
+            <motion.div key="brief" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+
               {/* ===== HEADER ===== */}
               <div>
-                <h1 className="text-3xl font-display font-semibold tracking-tight">
+                <h1 className="text-2xl font-display font-semibold tracking-tight">
                   {greeting()}
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -246,121 +205,113 @@ const Dashboard = () => {
                 </p>
               </div>
 
-              {/* ===== WHAT SHIFTED ===== */}
+              {/* ===== WHAT SHIFTED — flowing prose ===== */}
               {brief?.what_shifted && (
-                <section className="space-y-2">
-                  <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">
+                <section>
+                  <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-3">
                     What shifted
                   </h2>
-                  <div className="text-sm text-foreground/85 leading-relaxed whitespace-pre-line">
+                  <p className="text-[15px] text-foreground/80 leading-relaxed">
                     {brief.what_shifted}
-                  </div>
+                  </p>
                 </section>
               )}
 
-              {/* ===== DIVIDER ===== */}
-              {brief?.what_shifted && actions.length > 0 && (
-                <div className="h-px bg-border/40" />
-              )}
-
-              {/* ===== TODAY'S ACTIONS ===== */}
+              {/* ===== TODAY'S ACTIONS — flowing list, no card borders ===== */}
               {actions.length > 0 && (
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/50">
                       Today's actions
                     </h2>
                     {completedCount > 0 && (
-                      <span className="text-xs text-primary/70 font-medium">
-                        {completedCount}/{totalActions} done
+                      <span className="text-[11px] text-primary/60 font-medium">
+                        {completedCount}/{totalActions}
                       </span>
                     )}
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-0">
                     {actions.map((action, idx) => {
                       const isDone = action.completed;
+                      const isLast = idx === actions.length - 1;
 
                       return (
                         <motion.div
                           key={action.id || idx}
                           initial={{ opacity: 0, y: 6 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.08 }}
-                          className={`group rounded-2xl border transition-all ${
-                            isDone
-                              ? 'border-primary/20 bg-primary/[0.03]'
-                              : 'border-border/40 bg-card hover:border-border/60'
-                          }`}
+                          transition={{ delay: idx * 0.06 }}
+                          className={`relative py-5 ${!isLast ? 'border-b border-border/30' : ''}`}
                         >
-                          <div className="p-4 space-y-2.5">
-                            {/* Type + time row */}
-                            <div className="flex items-center justify-between">
-                              <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
-                                {getActionIcon(action.action_type)}
-                                {getActionLabel(action.action_type)}
-                                {action.pillar && (
-                                  <>
-                                    <span className="text-border">·</span>
-                                    {action.pillar}
-                                  </>
-                                )}
-                              </span>
+                          {/* Sequence indicator */}
+                          <div className="flex gap-4">
+                            <div className="flex flex-col items-center pt-0.5">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-medium ${
+                                isDone
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-muted/60 text-muted-foreground/50'
+                              }`}>
+                                {isDone ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+                              </div>
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                              {/* Meta line */}
                               <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+                                  {getActionIcon(action.action_type)}
+                                  {getActionLabel(action.action_type)}
+                                </span>
+                                {action.pillar && (
+                                  <span className="text-[10px] text-muted-foreground/30">
+                                    · {action.pillar}
+                                  </span>
+                                )}
                                 {action.description && (
-                                  <span className="text-[10px] text-muted-foreground/40 flex items-center gap-1">
+                                  <span className="text-[10px] text-muted-foreground/30 flex items-center gap-0.5 ml-auto">
                                     <Clock className="h-2.5 w-2.5" />
                                     {action.description}
                                   </span>
                                 )}
                               </div>
+
+                              {/* Action text */}
+                              <p className={`text-[15px] leading-snug ${isDone ? 'line-through text-muted-foreground/50' : 'text-foreground font-medium'}`}>
+                                {action.one_thing}
+                              </p>
+
+                              {/* Why + Impact */}
+                              {!isDone && action.why_matters && (
+                                <p className="text-[13px] text-muted-foreground/60 leading-relaxed">
+                                  {action.why_matters}
+                                </p>
+                              )}
+                              {!isDone && action.impact_description && (
+                                <p className="text-[13px] text-primary/40">
+                                  → {action.impact_description}
+                                </p>
+                              )}
+
+                              {/* Action buttons */}
+                              {!isDone && (
+                                <div className="flex items-center gap-3 pt-1">
+                                  <button
+                                    onClick={() => handleCompleteAction(action)}
+                                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-primary hover:text-primary/80 transition-colors"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                    Done
+                                  </button>
+                                  <button
+                                    onClick={() => handleSkipAction(action)}
+                                    className="text-[12px] text-muted-foreground/25 hover:text-muted-foreground/50 transition-colors"
+                                  >
+                                    skip
+                                  </button>
+                                </div>
+                              )}
                             </div>
-
-                            {/* Action text */}
-                            <p className={`text-[15px] font-medium leading-snug ${isDone ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                              {action.one_thing}
-                            </p>
-
-                            {/* Why */}
-                            {action.why_matters && !isDone && (
-                              <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                                {action.why_matters}
-                              </p>
-                            )}
-
-                            {/* Impact */}
-                            {action.impact_description && !isDone && (
-                              <p className="text-xs text-primary/50 leading-relaxed">
-                                → {action.impact_description}
-                              </p>
-                            )}
-
-                            {/* Actions row */}
-                            {!isDone && (
-                              <div className="flex items-center gap-2 pt-1">
-                                <Button
-                                  onClick={() => handleCompleteAction(action)}
-                                  size="sm"
-                                  className="h-8 rounded-xl text-xs font-medium px-4"
-                                >
-                                  <Check className="mr-1.5 h-3 w-3" />
-                                  Done
-                                </Button>
-                                <button
-                                  onClick={() => handleSkipAction(action)}
-                                  className="text-[11px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors px-2 py-1"
-                                >
-                                  skip
-                                </button>
-                              </div>
-                            )}
-
-                            {isDone && (
-                              <div className="flex items-center gap-1.5 text-xs text-primary/60">
-                                <Check className="h-3 w-3" />
-                                Completed
-                              </div>
-                            )}
                           </div>
                         </motion.div>
                       );
@@ -371,74 +322,60 @@ const Dashboard = () => {
 
               {/* ===== FORGOTTEN GEM ===== */}
               {forgottenGem && (
-                <>
-                  <div className="h-px bg-border/40" />
-                  <section className="space-y-2">
-                    <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
-                      <Gift className="h-3 w-3 text-amber-500/60" />
-                      Forgotten gem
-                      <span className="text-muted-foreground/30 ml-auto font-normal normal-case tracking-normal">
-                        {forgottenGem.age_days}d ago
-                      </span>
-                    </h2>
-                    <div className="rounded-2xl border border-border/30 bg-card p-4 space-y-2">
-                      <p className="text-sm font-medium text-foreground/90">
-                        {forgottenGem.title}
+                <section>
+                  <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-3 flex items-center gap-1.5">
+                    <Gift className="h-3 w-3 text-amber-500/50" />
+                    Forgotten gem
+                    <span className="ml-auto text-muted-foreground/25 font-normal normal-case tracking-normal">
+                      {forgottenGem.age_days}d ago
+                    </span>
+                  </h2>
+                  <div className="space-y-1.5">
+                    <p className="text-[15px] font-medium text-foreground/85">
+                      {forgottenGem.title}
+                    </p>
+                    <p className="text-[13px] text-muted-foreground/60 leading-relaxed line-clamp-3">
+                      {forgottenGem.content}
+                    </p>
+                    {forgottenGem.why_now && (
+                      <p className="text-[13px] text-amber-600/50 dark:text-amber-400/50 italic">
+                        {forgottenGem.why_now}
                       </p>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                        {forgottenGem.content}
-                      </p>
-                      {forgottenGem.why_now && (
-                        <p className="text-xs text-amber-600/60 dark:text-amber-400/60 italic">
-                          {forgottenGem.why_now}
-                        </p>
-                      )}
-                    </div>
-                  </section>
-                </>
+                    )}
+                  </div>
+                </section>
               )}
 
-              {/* ===== DIVIDER ===== */}
-              <div className="h-px bg-border/40" />
-
-              {/* ===== STUCK? ===== */}
-              <button
-                onClick={handleNextRep}
-                disabled={isGettingRep}
-                className="w-full group text-left"
-              >
-                <div className="flex items-center gap-4 py-3 hover:opacity-80 transition-opacity">
-                  <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
-                    <Zap className="h-4 w-4 text-primary/70" />
+              {/* ===== STUCK ===== */}
+              <div className="border-t border-border/30 pt-6">
+                <button onClick={handleNextRep} disabled={isGettingRep} className="w-full group text-left">
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
+                      <Zap className="h-4 w-4 text-primary/60" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        {isGettingRep ? "Finding your next move..." : "Stuck? Next Rep"}
+                      </p>
+                      <p className="text-xs text-muted-foreground/40">One aligned action, right now</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary/40 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
-                      {isGettingRep ? "Finding your next move..." : "Stuck? Next Rep"}
-                    </p>
-                    <p className="text-xs text-muted-foreground/50">
-                      One aligned action, right now
-                    </p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/50 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                </div>
-              </button>
+                </button>
+              </div>
 
               {/* Regenerate */}
-              <div className="flex justify-center pt-2 pb-6">
+              <div className="flex justify-center pb-6">
                 <button
                   onClick={() => {
                     hasLoaded.current = false;
                     if (brief?.id) {
                       supabase.from("daily_briefs").delete().eq("id", brief.id).then(() => {
-                        supabase.from("daily_tasks").delete().eq("daily_brief_id", brief.id).then(() => {
-                          fetchBrief();
-                        });
+                        supabase.from("daily_tasks").delete().eq("daily_brief_id", brief.id).then(() => fetchBrief());
                       });
-                    } else {
-                      fetchBrief();
-                    }
+                    } else { fetchBrief(); }
                   }}
-                  className="text-[11px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors flex items-center gap-1"
+                  className="text-[11px] text-muted-foreground/25 hover:text-muted-foreground/50 transition-colors flex items-center gap-1"
                 >
                   <RefreshCw className="h-3 w-3" />
                   Regenerate
@@ -467,9 +404,7 @@ const Dashboard = () => {
                 <span>{nextRep.time}</span>
                 <span className="px-2 py-1 rounded-lg bg-muted font-medium">{nextRep.bucket}</span>
               </div>
-              <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">
-                Got it
-              </Button>
+              <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">Got it</Button>
             </div>
           )}
         </DialogContent>

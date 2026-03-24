@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Compass, Route, PenLine, Scale } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
@@ -6,7 +6,6 @@ import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 type MindTab = "identity" | "thread" | "lab" | "mirror";
@@ -43,44 +42,52 @@ const Mind = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-muted/50 rounded-2xl overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <tab.icon className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      {/* Tab navigation — underline style */}
+      <div className="flex items-center border-b border-border/40">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${
+                isActive
+                  ? "text-foreground"
+                  : "text-muted-foreground/50 hover:text-muted-foreground"
+              }`}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+              {isActive && (
+                <motion.div
+                  layoutId="mind-tab-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.15 }}
         >
           {activeTab === "identity" && <IdentitySeed />}
           {activeTab === "thread" && (
-            <div className="max-w-lg mx-auto space-y-4">
+            <div className="max-w-lg mx-auto space-y-5">
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-display font-semibold">The Thread</h1>
                 <p className="text-sm text-muted-foreground">{insightCount} insights woven</p>
               </div>
-              <div className="flex gap-2 p-1 bg-muted/50 rounded-2xl">
-                <ThreadTabSwitcher insightCount={insightCount} identityContext={identityContext} userId={user?.id || ""} />
-              </div>
+              <ThreadSubTabs insightCount={insightCount} identityContext={identityContext} userId={user?.id || ""} />
             </div>
           )}
           {activeTab === "lab" && <LabRedirect />}
@@ -91,36 +98,33 @@ const Mind = () => {
   );
 };
 
-// Thread sub-tabs
-const ThreadTabSwitcher = ({ insightCount, identityContext, userId }: { insightCount: number; identityContext: any; userId: string }) => {
+// Thread sub-tabs with matching underline style
+const ThreadSubTabs = ({ insightCount, identityContext, userId }: { insightCount: number; identityContext: any; userId: string }) => {
   const [sub, setSub] = useState<"roadmap" | "synthesize">("roadmap");
   return (
-    <div className="w-full space-y-4">
-      <div className="flex gap-2 p-1 bg-muted/30 rounded-xl">
-        <button
-          onClick={() => setSub("roadmap")}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-            sub === "roadmap" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-          }`}
-        >
-          Roadmap
-        </button>
-        <button
-          onClick={() => setSub("synthesize")}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-            sub === "synthesize" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-          }`}
-        >
-          Synthesize
-        </button>
+    <div className="space-y-5">
+      <div className="flex justify-center gap-6 border-b border-border/30">
+        {(["roadmap", "synthesize"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setSub(tab)}
+            className={`relative pb-2.5 text-sm font-medium transition-colors capitalize ${
+              sub === tab ? "text-foreground" : "text-muted-foreground/40 hover:text-muted-foreground"
+            }`}
+          >
+            {tab}
+            {sub === tab && (
+              <motion.div
+                layoutId="thread-sub-indicator"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+          </button>
+        ))}
       </div>
       {sub === "roadmap" ? (
-        <ThreadView
-          userId={userId}
-          yearNote={identityContext?.yearNote}
-          weeklyFocus={identityContext?.weeklyFocus}
-          insightCount={insightCount}
-        />
+        <ThreadView userId={userId} yearNote={identityContext?.yearNote} weeklyFocus={identityContext?.weeklyFocus} insightCount={insightCount} />
       ) : (
         <MindSynthesis insightCount={insightCount} />
       )}
@@ -128,7 +132,6 @@ const ThreadTabSwitcher = ({ insightCount, identityContext, userId }: { insightC
   );
 };
 
-// Lab redirect - imports Lab content directly
 import Lab from "./Lab";
 const LabRedirect = () => <Lab embedded />;
 
