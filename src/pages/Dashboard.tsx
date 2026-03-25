@@ -38,6 +38,12 @@ interface MorningBrief {
   forgotten_gem_context: string | null;
 }
 
+// All weavable items unified into one stream
+type WeaveNode =
+  | { type: 'narrative'; text: string }
+  | { type: 'action'; action: BriefAction; index: number }
+  | { type: 'gem'; gem: ForgottenGem };
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [brief, setBrief] = useState<MorningBrief | null>(null);
@@ -140,10 +146,26 @@ const Dashboard = () => {
   };
 
   const committedActions = actions;
-  const completedCount = actions.filter(a => a.completed).length;
+
+  // Build the unified weave stream
+  const weaveNodes: WeaveNode[] = [];
+  if (brief?.what_shifted) {
+    weaveNodes.push({ type: 'narrative', text: brief.what_shifted });
+  }
+  actions.forEach((action, i) => {
+    weaveNodes.push({ type: 'action', action, index: i });
+    // Interleave the gem after the 2nd action (or last if fewer)
+    if (forgottenGem && i === Math.min(1, actions.length - 1)) {
+      weaveNodes.push({ type: 'gem', gem: forgottenGem });
+    }
+  });
+  // If no actions but gem exists
+  if (actions.length === 0 && forgottenGem) {
+    weaveNodes.push({ type: 'gem', gem: forgottenGem });
+  }
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-5 py-8 animate-fade-in overflow-x-hidden w-full">
+    <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-8 animate-fade-in overflow-x-hidden w-full">
       {user && isEvening() && committedActions.length > 0 && (
         <EveningClose userId={user.id} committedActions={committedActions} briefId={brief?.id} />
       )}
@@ -152,169 +174,105 @@ const Dashboard = () => {
         {isLoading ? (
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex items-center justify-center py-20">
             <WeaveLoader size="lg" text={
-              getTimePhase() === 'morning' ? "Preparing your morning brief..." :
-              getTimePhase() === 'afternoon' ? "Loading your brief..." :
-              "Pulling today together..."
+              getTimePhase() === 'morning' ? "Weaving your morning..." :
+              getTimePhase() === 'afternoon' ? "Weaving your afternoon..." :
+              "Weaving today together..."
             } />
           </motion.div>
         ) : (
           <motion.div key="brief" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1">
 
-            {/* Date — small, quiet anchor */}
-            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/40 mb-10">
+            {/* Date anchor */}
+            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/40 mb-8 text-center">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
 
-            {/* ===== THE WEAVE — one continuous narrative ===== */}
-            <div className="space-y-0">
+            {/* ===== THE WEAVE — zigzag flowing nodes ===== */}
+            <div className="relative">
+              {/* SVG weave line connecting all nodes */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                style={{ zIndex: 0 }}
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="weave-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.08" />
+                    <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="0.15" />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.03" />
+                  </linearGradient>
+                </defs>
+              </svg>
 
-              {/* What Shifted — opens the narrative */}
-              {brief?.what_shifted && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="pb-10"
-                >
-                  <p className="text-[15px] text-foreground/70 leading-[1.8] font-light">
-                    {brief.what_shifted}
-                  </p>
-                </motion.div>
-              )}
+              <div className="relative" style={{ zIndex: 1 }}>
+                {weaveNodes.map((node, idx) => {
+                  // Alternate: even = left-aligned, odd = right-aligned
+                  const isRight = idx % 2 === 1;
+                  const delay = 0.1 + idx * 0.1;
 
-              {/* Actions — woven as a continuous thread */}
-              {actions.length > 0 && (
-                <div className="relative">
-                  {/* The thread line connecting actions */}
-                  <div className="absolute left-[11px] top-3 bottom-3 w-px bg-gradient-to-b from-primary/20 via-primary/10 to-transparent" />
-
-                  <div className="space-y-0">
-                    {actions.map((action, idx) => {
-                      const isDone = action.completed;
-
-                      return (
-                        <motion.div
-                          key={action.id || idx}
-                          initial={{ opacity: 0, x: -4 }}
-                          animate={{ opacity: isDone ? 0.5 : 1, x: 0 }}
-                          transition={{ delay: 0.15 + idx * 0.08 }}
-                          className="relative pl-9 py-4 group"
+                  return (
+                    <div key={idx} className="relative">
+                      {/* Connecting curve between nodes */}
+                      {idx > 0 && (
+                        <svg
+                          className="w-full pointer-events-none"
+                          height="40"
+                          viewBox="0 0 400 40"
+                          preserveAspectRatio="none"
+                          style={{ display: 'block', marginTop: '-4px', marginBottom: '-4px' }}
                         >
-                          {/* Thread node */}
-                          <div className={`absolute left-0 top-[22px] w-[23px] h-[23px] rounded-full flex items-center justify-center transition-all duration-300 ${
-                            isDone
-                              ? 'bg-primary/15 text-primary'
-                              : 'bg-background border border-border/60 text-muted-foreground/40 group-hover:border-primary/30 group-hover:text-primary/60'
-                          }`}>
-                            {isDone ? (
-                              <Check className="h-3 w-3" />
-                            ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-current" />
-                            )}
-                          </div>
+                          <path
+                            d={isRight
+                              ? "M 100 0 C 100 20, 300 20, 300 40"
+                              : "M 300 0 C 300 20, 100 20, 100 40"
+                            }
+                            fill="none"
+                            stroke="hsl(var(--primary))"
+                            strokeOpacity="0.1"
+                            strokeWidth="1.5"
+                            strokeDasharray="4 4"
+                          />
+                        </svg>
+                      )}
 
-                          {/* Action content */}
-                          <div className="space-y-1">
-                            {action.pillar && (
-                              <span className="text-[10px] font-medium text-muted-foreground/30 uppercase tracking-wider">
-                                {action.pillar}
-                                {action.description && <span className="ml-2 normal-case tracking-normal">· {action.description}</span>}
-                              </span>
-                            )}
-
-                            <p className={`text-[15px] leading-relaxed ${
-                              isDone
-                                ? 'line-through text-muted-foreground/40'
-                                : 'text-foreground/90'
-                            }`}>
-                              {action.one_thing}
-                            </p>
-
-                            {!isDone && action.why_matters && (
-                              <p className="text-[13px] text-muted-foreground/45 leading-relaxed">
-                                {action.why_matters}
-                              </p>
-                            )}
-
-                            {!isDone && action.impact_description && (
-                              <p className="text-[12px] text-primary/35 leading-relaxed">
-                                → {action.impact_description}
-                              </p>
-                            )}
-
-                            {!isDone && (
-                              <div className="flex items-center gap-3 pt-0.5">
-                                <button
-                                  onClick={() => handleCompleteAction(action)}
-                                  className="text-[12px] font-medium text-primary/60 hover:text-primary transition-colors"
-                                >
-                                  done
-                                </button>
-                                <button
-                                  onClick={() => handleSkipAction(action)}
-                                  className="text-[12px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
-                                >
-                                  skip
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Completion whisper */}
-                  {completedCount > 0 && completedCount === actions.length && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="pl-9 pt-2 text-[12px] text-primary/40 italic"
-                    >
-                      All done for today.
-                    </motion.p>
-                  )}
-                </div>
-              )}
-
-              {/* Forgotten Gem — woven into the thread naturally */}
-              {forgottenGem && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="pt-10 pb-6"
-                >
-                  <div className="pl-4 border-l-2 border-amber-500/15 space-y-1.5">
-                    <p className="text-[11px] text-amber-500/40 font-medium flex items-center gap-1.5">
-                      <Gift className="h-3 w-3" />
-                      {forgottenGem.age_days} days ago
-                    </p>
-                    <p className="text-[14px] text-foreground/70 leading-relaxed">
-                      {forgottenGem.title}
-                    </p>
-                    <p className="text-[13px] text-muted-foreground/40 leading-relaxed line-clamp-2">
-                      {forgottenGem.content}
-                    </p>
-                    {forgottenGem.why_now && (
-                      <p className="text-[12px] text-amber-600/35 dark:text-amber-400/35 italic pt-0.5">
-                        {forgottenGem.why_now}
-                      </p>
-                    )}
-                  </div>
-                </motion.div>
-              )}
+                      {/* Node content */}
+                      <motion.div
+                        initial={{ opacity: 0, x: isRight ? 20 : -20, y: 10 }}
+                        animate={{ opacity: 1, x: 0, y: 0 }}
+                        transition={{ delay, type: "spring", stiffness: 200, damping: 25 }}
+                        className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-[85%] ${isRight ? 'mr-2' : 'ml-2'}`}>
+                          {node.type === 'narrative' && (
+                            <NarrativeNode text={node.text} />
+                          )}
+                          {node.type === 'action' && (
+                            <ActionNode
+                              action={node.action}
+                              onComplete={handleCompleteAction}
+                              onSkip={handleSkipAction}
+                            />
+                          )}
+                          {node.type === 'gem' && (
+                            <GemNode gem={node.gem} />
+                          )}
+                        </div>
+                      </motion.div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ===== BOTTOM — quiet utilities ===== */}
-            <div className="mt-12 space-y-4 pb-8">
-              <button onClick={handleNextRep} disabled={isGettingRep} className="w-full group text-left">
-                <div className="flex items-center gap-3">
+            <div className="mt-14 space-y-4 pb-8 flex flex-col items-center">
+              <button onClick={handleNextRep} disabled={isGettingRep} className="group text-left">
+                <div className="flex items-center gap-2.5">
                   <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
                   <span className="text-[13px] text-muted-foreground/35 group-hover:text-muted-foreground/60 transition-colors">
                     {isGettingRep ? "Finding your next move..." : "Stuck? Next rep"}
                   </span>
-                  <ArrowRight className="h-3 w-3 text-muted-foreground/15 group-hover:text-primary/30 group-hover:translate-x-0.5 transition-all ml-auto" />
+                  <ArrowRight className="h-3 w-3 text-muted-foreground/15 group-hover:text-primary/30 group-hover:translate-x-0.5 transition-all" />
                 </div>
               </button>
 
@@ -327,7 +285,7 @@ const Dashboard = () => {
                     });
                   } else { fetchBrief(); }
                 }}
-                className="flex items-center gap-2 text-[11px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+                className="flex items-center gap-1.5 text-[11px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
               >
                 <RefreshCw className="h-2.5 w-2.5" />
                 Regenerate
@@ -363,5 +321,115 @@ const Dashboard = () => {
     </div>
   );
 };
+
+/* ===== WEAVE NODE COMPONENTS ===== */
+
+const NarrativeNode = ({ text }: { text: string }) => (
+  <div className="rounded-2xl bg-card/80 backdrop-blur-sm border border-border/40 p-5 shadow-sm">
+    <p className="text-[14px] text-foreground/70 leading-[1.75] font-light">
+      {text}
+    </p>
+  </div>
+);
+
+const ActionNode = ({
+  action,
+  onComplete,
+  onSkip,
+}: {
+  action: BriefAction;
+  onComplete: (a: BriefAction) => void;
+  onSkip: (a: BriefAction) => void;
+}) => {
+  const isDone = action.completed;
+
+  return (
+    <div className={`rounded-2xl border p-5 transition-all duration-300 ${
+      isDone
+        ? 'bg-primary/5 border-primary/10 opacity-60'
+        : 'bg-card/80 backdrop-blur-sm border-border/40 shadow-sm hover:shadow-md hover:border-primary/20'
+    }`}>
+      <div className="space-y-2">
+        {action.pillar && (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+              {action.pillar}
+            </span>
+            {action.description && (
+              <span className="text-[10px] text-muted-foreground/30">
+                {action.description}
+              </span>
+            )}
+          </div>
+        )}
+
+        <p className={`text-[15px] leading-relaxed ${
+          isDone ? 'line-through text-muted-foreground/40' : 'text-foreground/90 font-medium'
+        }`}>
+          {action.one_thing}
+        </p>
+
+        {!isDone && action.why_matters && (
+          <p className="text-[13px] text-muted-foreground/50 leading-relaxed">
+            {action.why_matters}
+          </p>
+        )}
+
+        {!isDone && action.impact_description && (
+          <p className="text-[12px] text-primary/40">
+            → {action.impact_description}
+          </p>
+        )}
+
+        {!isDone ? (
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={() => onComplete(action)}
+              className="text-[12px] font-medium text-primary/60 hover:text-primary transition-colors flex items-center gap-1"
+            >
+              <Check className="h-3 w-3" />
+              done
+            </button>
+            <button
+              onClick={() => onSkip(action)}
+              className="text-[12px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+            >
+              skip
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 pt-1">
+            <Check className="h-3 w-3 text-primary/50" />
+            <span className="text-[11px] text-primary/50">completed</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const GemNode = ({ gem }: { gem: ForgottenGem }) => (
+  <div className="rounded-2xl bg-amber-500/5 border border-amber-500/15 p-5">
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Gift className="h-3 w-3 text-amber-500/50" />
+        <span className="text-[10px] font-medium text-amber-500/50 uppercase tracking-wider">
+          {gem.age_days} days ago
+        </span>
+      </div>
+      <p className="text-[14px] text-foreground/75 font-medium leading-relaxed">
+        {gem.title}
+      </p>
+      <p className="text-[13px] text-muted-foreground/45 leading-relaxed line-clamp-2">
+        {gem.content}
+      </p>
+      {gem.why_now && (
+        <p className="text-[12px] text-amber-600/40 dark:text-amber-400/40 italic">
+          {gem.why_now}
+        </p>
+      )}
+    </div>
+  </div>
+);
 
 export default Dashboard;
