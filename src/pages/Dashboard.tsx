@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Zap, RefreshCw, Clock, Sparkles, ArrowRight, Gift, Target, TrendingUp, BarChart3 } from "lucide-react";
+import { Check, Zap, RefreshCw, Gift, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
@@ -50,11 +50,6 @@ const Dashboard = () => {
   const [isGettingRep, setIsGettingRep] = useState(false);
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
-
-  const getLocalToday = () => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  };
 
   const getTimePhase = () => {
     const hour = new Date().getHours();
@@ -144,37 +139,8 @@ const Dashboard = () => {
     }
   };
 
-  const completedCount = actions.filter(a => a.completed).length;
-  const totalActions = actions.length;
   const committedActions = actions;
-
-  const getActionIcon = (type?: string) => {
-    switch (type) {
-      case 'goal_gap': return <Target className="h-3.5 w-3.5" />;
-      case 'domain_balance': return <BarChart3 className="h-3.5 w-3.5" />;
-      case 'capture_test': return <TrendingUp className="h-3.5 w-3.5" />;
-      default: return <Sparkles className="h-3.5 w-3.5" />;
-    }
-  };
-
-  const getActionLabel = (type?: string) => {
-    switch (type) {
-      case 'goal_gap': return 'Goal gap';
-      case 'domain_balance': return 'Balance';
-      case 'capture_test': return 'Apply learning';
-      case 'bonus': return 'Bonus';
-      default: return 'Action';
-    }
-  };
-
-  const greeting = () => {
-    const phase = getTimePhase();
-    const name = userName ? `, ${userName.split(' ')[0]}` : '';
-    if (phase === 'morning') return `Good morning${name}`;
-    if (phase === 'afternoon') return `Good afternoon${name}`;
-    if (phase === 'evening') return `Good evening${name}`;
-    return `Hey${name}`;
-  };
+  const completedCount = actions.filter(a => a.completed).length;
 
   return (
     <div className="min-h-screen flex flex-col max-w-lg mx-auto px-5 py-8 animate-fade-in overflow-x-hidden w-full">
@@ -182,209 +148,194 @@ const Dashboard = () => {
         <EveningClose userId={user.id} committedActions={committedActions} briefId={brief?.id} />
       )}
 
-      <div className="flex-1 space-y-8">
-        <AnimatePresence mode="wait">
-          {isLoading ? (
-            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-20">
-              <WeaveLoader size="lg" text={
-                getTimePhase() === 'morning' ? "Preparing your morning brief..." :
-                getTimePhase() === 'afternoon' ? "Loading your brief..." :
-                "Pulling today together..."
-              } />
-            </motion.div>
-          ) : (
-            <motion.div key="brief" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+      <AnimatePresence mode="wait">
+        {isLoading ? (
+          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex items-center justify-center py-20">
+            <WeaveLoader size="lg" text={
+              getTimePhase() === 'morning' ? "Preparing your morning brief..." :
+              getTimePhase() === 'afternoon' ? "Loading your brief..." :
+              "Pulling today together..."
+            } />
+          </motion.div>
+        ) : (
+          <motion.div key="brief" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1">
 
-              {/* ===== HEADER ===== */}
-              <div>
-                <h1 className="text-2xl font-display font-semibold tracking-tight">
-                  {greeting()}
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                </p>
-              </div>
+            {/* Date — small, quiet anchor */}
+            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/40 mb-10">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
 
-              {/* ===== WHAT SHIFTED — flowing prose ===== */}
+            {/* ===== THE WEAVE — one continuous narrative ===== */}
+            <div className="space-y-0">
+
+              {/* What Shifted — opens the narrative */}
               {brief?.what_shifted && (
-                <section>
-                  <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-3">
-                    What shifted
-                  </h2>
-                  <p className="text-[15px] text-foreground/80 leading-relaxed">
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="pb-10"
+                >
+                  <p className="text-[15px] text-foreground/70 leading-[1.8] font-light">
                     {brief.what_shifted}
                   </p>
-                </section>
+                </motion.div>
               )}
 
-              {/* ===== TODAY'S ACTIONS — flowing list, no card borders ===== */}
+              {/* Actions — woven as a continuous thread */}
               {actions.length > 0 && (
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/50">
-                      Today's actions
-                    </h2>
-                    {completedCount > 0 && (
-                      <span className="text-[11px] text-primary/60 font-medium">
-                        {completedCount}/{totalActions}
-                      </span>
-                    )}
-                  </div>
+                <div className="relative">
+                  {/* The thread line connecting actions */}
+                  <div className="absolute left-[11px] top-3 bottom-3 w-px bg-gradient-to-b from-primary/20 via-primary/10 to-transparent" />
 
                   <div className="space-y-0">
                     {actions.map((action, idx) => {
                       const isDone = action.completed;
-                      const isLast = idx === actions.length - 1;
 
                       return (
                         <motion.div
                           key={action.id || idx}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.06 }}
-                          className={`relative py-5 ${!isLast ? 'border-b border-border/30' : ''}`}
+                          initial={{ opacity: 0, x: -4 }}
+                          animate={{ opacity: isDone ? 0.5 : 1, x: 0 }}
+                          transition={{ delay: 0.15 + idx * 0.08 }}
+                          className="relative pl-9 py-4 group"
                         >
-                          {/* Sequence indicator */}
-                          <div className="flex gap-4">
-                            <div className="flex flex-col items-center pt-0.5">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-medium ${
-                                isDone
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'bg-muted/60 text-muted-foreground/50'
-                              }`}>
-                                {isDone ? <Check className="h-3.5 w-3.5" /> : idx + 1}
-                              </div>
-                            </div>
+                          {/* Thread node */}
+                          <div className={`absolute left-0 top-[22px] w-[23px] h-[23px] rounded-full flex items-center justify-center transition-all duration-300 ${
+                            isDone
+                              ? 'bg-primary/15 text-primary'
+                              : 'bg-background border border-border/60 text-muted-foreground/40 group-hover:border-primary/30 group-hover:text-primary/60'
+                          }`}>
+                            {isDone ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                            )}
+                          </div>
 
-                            <div className="flex-1 min-w-0 space-y-1.5">
-                              {/* Meta line */}
-                              <div className="flex items-center gap-2">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-                                  {getActionIcon(action.action_type)}
-                                  {getActionLabel(action.action_type)}
-                                </span>
-                                {action.pillar && (
-                                  <span className="text-[10px] text-muted-foreground/30">
-                                    · {action.pillar}
-                                  </span>
-                                )}
-                                {action.description && (
-                                  <span className="text-[10px] text-muted-foreground/30 flex items-center gap-0.5 ml-auto">
-                                    <Clock className="h-2.5 w-2.5" />
-                                    {action.description}
-                                  </span>
-                                )}
-                              </div>
+                          {/* Action content */}
+                          <div className="space-y-1">
+                            {action.pillar && (
+                              <span className="text-[10px] font-medium text-muted-foreground/30 uppercase tracking-wider">
+                                {action.pillar}
+                                {action.description && <span className="ml-2 normal-case tracking-normal">· {action.description}</span>}
+                              </span>
+                            )}
 
-                              {/* Action text */}
-                              <p className={`text-[15px] leading-snug ${isDone ? 'line-through text-muted-foreground/50' : 'text-foreground font-medium'}`}>
-                                {action.one_thing}
+                            <p className={`text-[15px] leading-relaxed ${
+                              isDone
+                                ? 'line-through text-muted-foreground/40'
+                                : 'text-foreground/90'
+                            }`}>
+                              {action.one_thing}
+                            </p>
+
+                            {!isDone && action.why_matters && (
+                              <p className="text-[13px] text-muted-foreground/45 leading-relaxed">
+                                {action.why_matters}
                               </p>
+                            )}
 
-                              {/* Why + Impact */}
-                              {!isDone && action.why_matters && (
-                                <p className="text-[13px] text-muted-foreground/60 leading-relaxed">
-                                  {action.why_matters}
-                                </p>
-                              )}
-                              {!isDone && action.impact_description && (
-                                <p className="text-[13px] text-primary/40">
-                                  → {action.impact_description}
-                                </p>
-                              )}
+                            {!isDone && action.impact_description && (
+                              <p className="text-[12px] text-primary/35 leading-relaxed">
+                                → {action.impact_description}
+                              </p>
+                            )}
 
-                              {/* Action buttons */}
-                              {!isDone && (
-                                <div className="flex items-center gap-3 pt-1">
-                                  <button
-                                    onClick={() => handleCompleteAction(action)}
-                                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-primary hover:text-primary/80 transition-colors"
-                                  >
-                                    <Check className="h-3 w-3" />
-                                    Done
-                                  </button>
-                                  <button
-                                    onClick={() => handleSkipAction(action)}
-                                    className="text-[12px] text-muted-foreground/25 hover:text-muted-foreground/50 transition-colors"
-                                  >
-                                    skip
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            {!isDone && (
+                              <div className="flex items-center gap-3 pt-0.5">
+                                <button
+                                  onClick={() => handleCompleteAction(action)}
+                                  className="text-[12px] font-medium text-primary/60 hover:text-primary transition-colors"
+                                >
+                                  done
+                                </button>
+                                <button
+                                  onClick={() => handleSkipAction(action)}
+                                  className="text-[12px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+                                >
+                                  skip
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       );
                     })}
                   </div>
-                </section>
+
+                  {/* Completion whisper */}
+                  {completedCount > 0 && completedCount === actions.length && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="pl-9 pt-2 text-[12px] text-primary/40 italic"
+                    >
+                      All done for today.
+                    </motion.p>
+                  )}
+                </div>
               )}
 
-              {/* ===== FORGOTTEN GEM ===== */}
+              {/* Forgotten Gem — woven into the thread naturally */}
               {forgottenGem && (
-                <section>
-                  <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-3 flex items-center gap-1.5">
-                    <Gift className="h-3 w-3 text-amber-500/50" />
-                    Forgotten gem
-                    <span className="ml-auto text-muted-foreground/25 font-normal normal-case tracking-normal">
-                      {forgottenGem.age_days}d ago
-                    </span>
-                  </h2>
-                  <div className="space-y-1.5">
-                    <p className="text-[15px] font-medium text-foreground/85">
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="pt-10 pb-6"
+                >
+                  <div className="pl-4 border-l-2 border-amber-500/15 space-y-1.5">
+                    <p className="text-[11px] text-amber-500/40 font-medium flex items-center gap-1.5">
+                      <Gift className="h-3 w-3" />
+                      {forgottenGem.age_days} days ago
+                    </p>
+                    <p className="text-[14px] text-foreground/70 leading-relaxed">
                       {forgottenGem.title}
                     </p>
-                    <p className="text-[13px] text-muted-foreground/60 leading-relaxed line-clamp-3">
+                    <p className="text-[13px] text-muted-foreground/40 leading-relaxed line-clamp-2">
                       {forgottenGem.content}
                     </p>
                     {forgottenGem.why_now && (
-                      <p className="text-[13px] text-amber-600/50 dark:text-amber-400/50 italic">
+                      <p className="text-[12px] text-amber-600/35 dark:text-amber-400/35 italic pt-0.5">
                         {forgottenGem.why_now}
                       </p>
                     )}
                   </div>
-                </section>
+                </motion.div>
               )}
+            </div>
 
-              {/* ===== STUCK ===== */}
-              <div className="border-t border-border/30 pt-6">
-                <button onClick={handleNextRep} disabled={isGettingRep} className="w-full group text-left">
-                  <div className="flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
-                      <Zap className="h-4 w-4 text-primary/60" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {isGettingRep ? "Finding your next move..." : "Stuck? Next Rep"}
-                      </p>
-                      <p className="text-xs text-muted-foreground/40">One aligned action, right now</p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary/40 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                  </div>
-                </button>
-              </div>
+            {/* ===== BOTTOM — quiet utilities ===== */}
+            <div className="mt-12 space-y-4 pb-8">
+              <button onClick={handleNextRep} disabled={isGettingRep} className="w-full group text-left">
+                <div className="flex items-center gap-3">
+                  <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
+                  <span className="text-[13px] text-muted-foreground/35 group-hover:text-muted-foreground/60 transition-colors">
+                    {isGettingRep ? "Finding your next move..." : "Stuck? Next rep"}
+                  </span>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground/15 group-hover:text-primary/30 group-hover:translate-x-0.5 transition-all ml-auto" />
+                </div>
+              </button>
 
-              {/* Regenerate */}
-              <div className="flex justify-center pb-6">
-                <button
-                  onClick={() => {
-                    hasLoaded.current = false;
-                    if (brief?.id) {
-                      supabase.from("daily_briefs").delete().eq("id", brief.id).then(() => {
-                        supabase.from("daily_tasks").delete().eq("daily_brief_id", brief.id).then(() => fetchBrief());
-                      });
-                    } else { fetchBrief(); }
-                  }}
-                  className="text-[11px] text-muted-foreground/25 hover:text-muted-foreground/50 transition-colors flex items-center gap-1"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Regenerate
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              <button
+                onClick={() => {
+                  hasLoaded.current = false;
+                  if (brief?.id) {
+                    supabase.from("daily_briefs").delete().eq("id", brief.id).then(() => {
+                      supabase.from("daily_tasks").delete().eq("daily_brief_id", brief.id).then(() => fetchBrief());
+                    });
+                  } else { fetchBrief(); }
+                }}
+                className="flex items-center gap-2 text-[11px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+              >
+                <RefreshCw className="h-2.5 w-2.5" />
+                Regenerate
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Next Best Rep Dialog */}
       <Dialog open={showRepDialog} onOpenChange={setShowRepDialog}>
