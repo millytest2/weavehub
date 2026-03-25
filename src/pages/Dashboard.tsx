@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Zap, RefreshCw, Gift, ArrowRight } from "lucide-react";
+import { Check, Zap, RefreshCw, Gift, ArrowRight, ArrowLeft, ChevronRight, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { EveningClose } from "@/components/dashboard/EveningClose";
 
@@ -38,11 +38,12 @@ interface MorningBrief {
   forgotten_gem_context: string | null;
 }
 
-// All weavable items unified into one stream
 type WeaveNode =
   | { type: 'narrative'; text: string }
   | { type: 'action'; action: BriefAction; index: number }
   | { type: 'gem'; gem: ForgottenGem };
+
+const SWIPE_THRESHOLD = 50;
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -52,6 +53,9 @@ const Dashboard = () => {
   const [userName, setUserName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const hasLoaded = useRef(false);
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(0); // -1 left, 1 right
 
   const [isGettingRep, setIsGettingRep] = useState(false);
   const [nextRep, setNextRep] = useState<any>(null);
@@ -110,6 +114,10 @@ const Dashboard = () => {
         activity_type: 'complete', pillar: action.pillar
       });
       toast.success("Done!");
+      // Auto-advance to next node after completing
+      if (activeIndex < weaveNodes.length - 1) {
+        setTimeout(() => navigate(1), 600);
+      }
     } catch (error: any) {
       console.error("Complete error:", error);
       toast.error("Failed to complete");
@@ -147,138 +155,193 @@ const Dashboard = () => {
 
   const committedActions = actions;
 
-  // Build the unified weave stream
+  // Build weave stream
   const weaveNodes: WeaveNode[] = [];
   if (brief?.what_shifted) {
     weaveNodes.push({ type: 'narrative', text: brief.what_shifted });
   }
   actions.forEach((action, i) => {
     weaveNodes.push({ type: 'action', action, index: i });
-    // Interleave the gem after the 2nd action (or last if fewer)
-    if (forgottenGem && i === Math.min(1, actions.length - 1)) {
-      weaveNodes.push({ type: 'gem', gem: forgottenGem });
-    }
   });
-  // If no actions but gem exists
-  if (actions.length === 0 && forgottenGem) {
-    weaveNodes.push({ type: 'gem', gem: forgottenGem });
+  if (forgottenGem) {
+    // Insert gem after 2nd action or at end
+    const gemPos = Math.min(3, weaveNodes.length);
+    weaveNodes.splice(gemPos, 0, { type: 'gem', gem: forgottenGem });
   }
 
+  const navigate = (dir: number) => {
+    const next = activeIndex + dir;
+    if (next < 0 || next >= weaveNodes.length) return;
+    setDirection(dir);
+    setActiveIndex(next);
+  };
+
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    if (info.offset.x < -SWIPE_THRESHOLD && activeIndex < weaveNodes.length - 1) {
+      navigate(1);
+    } else if (info.offset.x > SWIPE_THRESHOLD && activeIndex > 0) {
+      navigate(-1);
+    }
+  };
+
+  // Keyboard nav
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigate(-1);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [activeIndex, weaveNodes.length]);
+
+  const currentNode = weaveNodes[activeIndex];
+
+  const slideVariants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.92,
+      rotateY: dir > 0 ? 8 : -8,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      rotateY: 0,
+    },
+    exit: (dir: number) => ({
+      x: dir > 0 ? -300 : 300,
+      opacity: 0,
+      scale: 0.92,
+      rotateY: dir > 0 ? -8 : 8,
+    }),
+  };
+
   return (
-    <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-8 animate-fade-in overflow-x-hidden w-full">
+    <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-6 animate-fade-in overflow-hidden w-full">
       {user && isEvening() && committedActions.length > 0 && (
         <EveningClose userId={user.id} committedActions={committedActions} briefId={brief?.id} />
       )}
 
       <AnimatePresence mode="wait">
         {isLoading ? (
-          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex items-center justify-center py-20">
+          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex items-center justify-center">
             <WeaveLoader size="lg" text={
               getTimePhase() === 'morning' ? "Weaving your morning..." :
               getTimePhase() === 'afternoon' ? "Weaving your afternoon..." :
               "Weaving today together..."
             } />
           </motion.div>
-        ) : (
-          <motion.div key="brief" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1">
-
-            {/* Date anchor */}
-            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/40 mb-8 text-center">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-
-            {/* ===== THE WEAVE — zigzag flowing nodes ===== */}
-            <div className="relative">
-              {/* SVG weave line connecting all nodes */}
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                style={{ zIndex: 0 }}
-                preserveAspectRatio="none"
+        ) : weaveNodes.length === 0 ? (
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-3">
+              <p className="text-muted-foreground/50 text-sm">Nothing woven yet today.</p>
+              <button
+                onClick={() => { hasLoaded.current = false; fetchBrief(); }}
+                className="text-sm text-primary/60 hover:text-primary transition-colors"
               >
-                <defs>
-                  <linearGradient id="weave-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.08" />
-                    <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.03" />
-                  </linearGradient>
-                </defs>
-              </svg>
+                Generate brief
+              </button>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div key="weave" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col">
 
-              <div className="relative" style={{ zIndex: 1 }}>
-                {weaveNodes.map((node, idx) => {
-                  // Alternate: even = left-aligned, odd = right-aligned
-                  const isRight = idx % 2 === 1;
-                  const delay = 0.1 + idx * 0.1;
+            {/* Date + progress */}
+            <div className="text-center mb-6">
+              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/35 mb-4">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
 
-                  return (
-                    <div key={idx} className="relative">
-                      {/* Connecting curve between nodes */}
-                      {idx > 0 && (
-                        <svg
-                          className="w-full pointer-events-none"
-                          height="40"
-                          viewBox="0 0 400 40"
-                          preserveAspectRatio="none"
-                          style={{ display: 'block', marginTop: '-4px', marginBottom: '-4px' }}
-                        >
-                          <path
-                            d={isRight
-                              ? "M 100 0 C 100 20, 300 20, 300 40"
-                              : "M 300 0 C 300 20, 100 20, 100 40"
-                            }
-                            fill="none"
-                            stroke="hsl(var(--primary))"
-                            strokeOpacity="0.1"
-                            strokeWidth="1.5"
-                            strokeDasharray="4 4"
-                          />
-                        </svg>
-                      )}
-
-                      {/* Node content */}
-                      <motion.div
-                        initial={{ opacity: 0, x: isRight ? 20 : -20, y: 10 }}
-                        animate={{ opacity: 1, x: 0, y: 0 }}
-                        transition={{ delay, type: "spring", stiffness: 200, damping: 25 }}
-                        className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-[85%] ${isRight ? 'mr-2' : 'ml-2'}`}>
-                          {node.type === 'narrative' && (
-                            <NarrativeNode text={node.text} />
-                          )}
-                          {node.type === 'action' && (
-                            <ActionNode
-                              action={node.action}
-                              onComplete={handleCompleteAction}
-                              onSkip={handleSkipAction}
-                            />
-                          )}
-                          {node.type === 'gem' && (
-                            <GemNode gem={node.gem} />
-                          )}
-                        </div>
-                      </motion.div>
-                    </div>
-                  );
-                })}
+              {/* Weave progress dots */}
+              <div className="flex items-center justify-center gap-1.5">
+                {weaveNodes.map((node, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setDirection(i > activeIndex ? 1 : -1); setActiveIndex(i); }}
+                    className="group relative"
+                  >
+                    <div className={`h-1.5 rounded-full transition-all duration-500 ${
+                      i === activeIndex
+                        ? 'w-8 bg-primary/60'
+                        : i < activeIndex
+                          ? 'w-1.5 bg-primary/25'
+                          : 'w-1.5 bg-muted-foreground/15'
+                    }`} />
+                    {/* Type hint on hover */}
+                    <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      {node.type === 'narrative' ? 'brief' : node.type === 'gem' ? 'gem' : `action ${(node as any).index + 1}`}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* ===== BOTTOM — quiet utilities ===== */}
-            <div className="mt-14 space-y-4 pb-8 flex flex-col items-center">
-              <button onClick={handleNextRep} disabled={isGettingRep} className="group text-left">
-                <div className="flex items-center gap-2.5">
-                  <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
-                  <span className="text-[13px] text-muted-foreground/35 group-hover:text-muted-foreground/60 transition-colors">
-                    {isGettingRep ? "Finding your next move..." : "Stuck? Next rep"}
-                  </span>
-                  <ArrowRight className="h-3 w-3 text-muted-foreground/15 group-hover:text-primary/30 group-hover:translate-x-0.5 transition-all" />
-                </div>
+            {/* ===== THE WEAVE CARD — one at a time, swipeable ===== */}
+            <div className="flex-1 flex items-center justify-center relative" style={{ perspective: '1200px' }}>
+              <AnimatePresence mode="wait" custom={direction}>
+                <motion.div
+                  key={activeIndex}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.15}
+                  onDragEnd={handleDragEnd}
+                  className="w-full cursor-grab active:cursor-grabbing"
+                >
+                  {currentNode?.type === 'narrative' && (
+                    <NarrativeCard text={currentNode.text} />
+                  )}
+                  {currentNode?.type === 'action' && (
+                    <ActionCard
+                      action={currentNode.action}
+                      onComplete={handleCompleteAction}
+                      onSkip={handleSkipAction}
+                    />
+                  )}
+                  {currentNode?.type === 'gem' && (
+                    <GemCard gem={currentNode.gem} />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Nav arrows — sides */}
+              {activeIndex > 0 && (
+                <button
+                  onClick={() => navigate(-1)}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-muted-foreground/50 hover:bg-muted/30 transition-all"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              )}
+              {activeIndex < weaveNodes.length - 1 && (
+                <button
+                  onClick={() => navigate(1)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 -mr-1 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-muted-foreground/50 hover:bg-muted/30 transition-all"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Bottom utilities */}
+            <div className="mt-6 flex items-center justify-between pb-4">
+              <button onClick={handleNextRep} disabled={isGettingRep} className="group flex items-center gap-2">
+                <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
+                <span className="text-[12px] text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
+                  {isGettingRep ? "Finding..." : "Next rep"}
+                </span>
               </button>
 
               <button
                 onClick={() => {
                   hasLoaded.current = false;
+                  setActiveIndex(0);
                   if (brief?.id) {
                     supabase.from("daily_briefs").delete().eq("id", brief.id).then(() => {
                       supabase.from("daily_tasks").delete().eq("daily_brief_id", brief.id).then(() => fetchBrief());
@@ -322,17 +385,17 @@ const Dashboard = () => {
   );
 };
 
-/* ===== WEAVE NODE COMPONENTS ===== */
+/* ===== WEAVE CARD COMPONENTS ===== */
 
-const NarrativeNode = ({ text }: { text: string }) => (
-  <div className="rounded-2xl bg-card/80 backdrop-blur-sm border border-border/40 p-5 shadow-sm">
-    <p className="text-[14px] text-foreground/70 leading-[1.75] font-light">
+const NarrativeCard = ({ text }: { text: string }) => (
+  <div className="rounded-2xl bg-card/90 backdrop-blur-sm border border-border/40 p-7 shadow-lg min-h-[200px] flex items-center">
+    <p className="text-[15px] text-foreground/70 leading-[1.85] font-light">
       {text}
     </p>
   </div>
 );
 
-const ActionNode = ({
+const ActionCard = ({
   action,
   onComplete,
   onSkip,
@@ -344,26 +407,26 @@ const ActionNode = ({
   const isDone = action.completed;
 
   return (
-    <div className={`rounded-2xl border p-5 transition-all duration-300 ${
+    <div className={`rounded-2xl border p-7 min-h-[200px] flex flex-col justify-between transition-all duration-300 ${
       isDone
-        ? 'bg-primary/5 border-primary/10 opacity-60'
-        : 'bg-card/80 backdrop-blur-sm border-border/40 shadow-sm hover:shadow-md hover:border-primary/20'
+        ? 'bg-primary/5 border-primary/15'
+        : 'bg-card/90 backdrop-blur-sm border-border/40 shadow-lg'
     }`}>
-      <div className="space-y-2">
-        {action.pillar && (
-          <div className="flex items-center justify-between">
+      <div className="space-y-3 flex-1">
+        <div className="flex items-center justify-between">
+          {action.pillar && (
             <span className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
               {action.pillar}
             </span>
-            {action.description && (
-              <span className="text-[10px] text-muted-foreground/30">
-                {action.description}
-              </span>
-            )}
-          </div>
-        )}
+          )}
+          {action.description && (
+            <span className="text-[11px] text-muted-foreground/30">
+              {action.description}
+            </span>
+          )}
+        </div>
 
-        <p className={`text-[15px] leading-relaxed ${
+        <p className={`text-[17px] leading-relaxed ${
           isDone ? 'line-through text-muted-foreground/40' : 'text-foreground/90 font-medium'
         }`}>
           {action.one_thing}
@@ -376,31 +439,33 @@ const ActionNode = ({
         )}
 
         {!isDone && action.impact_description && (
-          <p className="text-[12px] text-primary/40">
+          <p className="text-[12px] text-primary/35 leading-relaxed">
             → {action.impact_description}
           </p>
         )}
+      </div>
 
+      <div className="pt-5">
         {!isDone ? (
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => onComplete(action)}
-              className="text-[12px] font-medium text-primary/60 hover:text-primary transition-colors flex items-center gap-1"
+              onClick={(e) => { e.stopPropagation(); onComplete(action); }}
+              className="flex-1 h-11 rounded-xl bg-primary/10 text-primary text-[13px] font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
             >
-              <Check className="h-3 w-3" />
-              done
+              <Check className="h-3.5 w-3.5" />
+              Done
             </button>
             <button
-              onClick={() => onSkip(action)}
-              className="text-[12px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onSkip(action); }}
+              className="h-11 px-5 rounded-xl text-[13px] text-muted-foreground/30 hover:text-muted-foreground/50 hover:bg-muted/30 transition-colors"
             >
               skip
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1 pt-1">
-            <Check className="h-3 w-3 text-primary/50" />
-            <span className="text-[11px] text-primary/50">completed</span>
+          <div className="flex items-center gap-1.5 justify-center text-primary/50">
+            <Check className="h-4 w-4" />
+            <span className="text-[13px] font-medium">Completed</span>
           </div>
         )}
       </div>
@@ -408,23 +473,23 @@ const ActionNode = ({
   );
 };
 
-const GemNode = ({ gem }: { gem: ForgottenGem }) => (
-  <div className="rounded-2xl bg-amber-500/5 border border-amber-500/15 p-5">
-    <div className="space-y-2">
+const GemCard = ({ gem }: { gem: ForgottenGem }) => (
+  <div className="rounded-2xl bg-amber-500/[0.04] border border-amber-500/15 p-7 min-h-[200px] flex flex-col justify-center">
+    <div className="space-y-3">
       <div className="flex items-center gap-1.5">
-        <Gift className="h-3 w-3 text-amber-500/50" />
-        <span className="text-[10px] font-medium text-amber-500/50 uppercase tracking-wider">
-          {gem.age_days} days ago
+        <Gift className="h-3.5 w-3.5 text-amber-500/50" />
+        <span className="text-[11px] font-medium text-amber-500/50 uppercase tracking-wider">
+          Forgotten gem · {gem.age_days}d ago
         </span>
       </div>
-      <p className="text-[14px] text-foreground/75 font-medium leading-relaxed">
+      <p className="text-[17px] text-foreground/75 font-medium leading-relaxed">
         {gem.title}
       </p>
-      <p className="text-[13px] text-muted-foreground/45 leading-relaxed line-clamp-2">
+      <p className="text-[13px] text-muted-foreground/45 leading-relaxed">
         {gem.content}
       </p>
       {gem.why_now && (
-        <p className="text-[12px] text-amber-600/40 dark:text-amber-400/40 italic">
+        <p className="text-[12px] text-amber-600/40 dark:text-amber-400/40 italic pt-1">
           {gem.why_now}
         </p>
       )}
