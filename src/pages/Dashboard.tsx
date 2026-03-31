@@ -3,11 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Zap, RefreshCw, Gift, ArrowRight, ArrowLeft, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from "framer-motion";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { EveningClose } from "@/components/dashboard/EveningClose";
+
+interface WeaveSource {
+  label: string;
+  type: 'capture' | 'pattern' | 'goal' | 'journal' | 'gem' | 'experiment' | 'gap';
+  detail: string;
+}
 
 interface BriefAction {
   id?: string;
@@ -20,6 +26,7 @@ interface BriefAction {
   priority?: string;
   completed?: boolean;
   task_sequence?: number;
+  cited_sources?: WeaveSource[];
 }
 
 interface ForgottenGem {
@@ -38,24 +45,29 @@ interface MorningBrief {
   forgotten_gem_context: string | null;
 }
 
-type WeaveNode =
-  | { type: 'narrative'; text: string }
-  | { type: 'action'; action: BriefAction; index: number }
-  | { type: 'gem'; gem: ForgottenGem };
-
 const SWIPE_THRESHOLD = 50;
+
+// Source type styling
+const sourceStyles: Record<string, { color: string; bg: string; icon: string }> = {
+  capture: { color: 'text-blue-500/70', bg: 'bg-blue-500/8 border-blue-500/15', icon: '◆' },
+  pattern: { color: 'text-violet-500/70', bg: 'bg-violet-500/8 border-violet-500/15', icon: '◎' },
+  goal: { color: 'text-emerald-500/70', bg: 'bg-emerald-500/8 border-emerald-500/15', icon: '▲' },
+  journal: { color: 'text-amber-500/70', bg: 'bg-amber-500/8 border-amber-500/15', icon: '●' },
+  gem: { color: 'text-amber-500/70', bg: 'bg-amber-500/8 border-amber-500/15', icon: '✦' },
+  experiment: { color: 'text-rose-500/70', bg: 'bg-rose-500/8 border-rose-500/15', icon: '◇' },
+  gap: { color: 'text-orange-500/70', bg: 'bg-orange-500/8 border-orange-500/15', icon: '○' },
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [brief, setBrief] = useState<MorningBrief | null>(null);
   const [actions, setActions] = useState<BriefAction[]>([]);
   const [forgottenGem, setForgottenGem] = useState<ForgottenGem | null>(null);
-  const [userName, setUserName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const hasLoaded = useRef(false);
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [direction, setDirection] = useState(0); // -1 left, 1 right
+  const [direction, setDirection] = useState(0);
 
   const [isGettingRep, setIsGettingRep] = useState(false);
   const [nextRep, setNextRep] = useState<any>(null);
@@ -85,9 +97,13 @@ const Dashboard = () => {
       if (error) throw error;
       if (data) {
         setBrief(data.brief);
-        setActions(data.actions || []);
+        // Parse cited_sources from JSON if needed
+        const parsedActions = (data.actions || []).map((a: any) => ({
+          ...a,
+          cited_sources: typeof a.cited_sources === 'string' ? JSON.parse(a.cited_sources) : a.cited_sources,
+        }));
+        setActions(parsedActions);
         setForgottenGem(data.forgotten_gem || null);
-        setUserName(data.user_name || '');
       }
     } catch (error: any) {
       console.error("Brief error:", error);
@@ -114,8 +130,8 @@ const Dashboard = () => {
         activity_type: 'complete', pillar: action.pillar
       });
       toast.success("Done!");
-      // Auto-advance to next node after completing
-      if (activeIndex < weaveNodes.length - 1) {
+      // Auto-advance
+      if (activeIndex < totalNodes - 1) {
         setTimeout(() => navigate(1), 600);
       }
     } catch (error: any) {
@@ -153,38 +169,31 @@ const Dashboard = () => {
     }
   };
 
-  const committedActions = actions;
-
-  // Build weave stream
-  const weaveNodes: WeaveNode[] = [];
-  if (brief?.what_shifted) {
-    weaveNodes.push({ type: 'narrative', text: brief.what_shifted });
-  }
-  actions.forEach((action, i) => {
-    weaveNodes.push({ type: 'action', action, index: i });
+  // Build nodes: actions + gem interleaved
+  const nodes: Array<{ type: 'action'; action: BriefAction } | { type: 'gem'; gem: ForgottenGem }> = [];
+  actions.forEach((action) => {
+    nodes.push({ type: 'action', action });
   });
   if (forgottenGem) {
-    // Insert gem after 2nd action or at end
-    const gemPos = Math.min(3, weaveNodes.length);
-    weaveNodes.splice(gemPos, 0, { type: 'gem', gem: forgottenGem });
+    const gemPos = Math.min(2, nodes.length);
+    nodes.splice(gemPos, 0, { type: 'gem', gem: forgottenGem });
   }
+
+  const totalNodes = nodes.length;
+  const currentNode = nodes[activeIndex];
 
   const navigate = (dir: number) => {
     const next = activeIndex + dir;
-    if (next < 0 || next >= weaveNodes.length) return;
+    if (next < 0 || next >= totalNodes) return;
     setDirection(dir);
     setActiveIndex(next);
   };
 
   const handleDragEnd = (_: any, info: PanInfo) => {
-    if (info.offset.x < -SWIPE_THRESHOLD && activeIndex < weaveNodes.length - 1) {
-      navigate(1);
-    } else if (info.offset.x > SWIPE_THRESHOLD && activeIndex > 0) {
-      navigate(-1);
-    }
+    if (info.offset.x < -SWIPE_THRESHOLD && activeIndex < totalNodes - 1) navigate(1);
+    else if (info.offset.x > SWIPE_THRESHOLD && activeIndex > 0) navigate(-1);
   };
 
-  // Keyboard nav
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
@@ -192,30 +201,15 @@ const Dashboard = () => {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [activeIndex, weaveNodes.length]);
-
-  const currentNode = weaveNodes[activeIndex];
+  }, [activeIndex, totalNodes]);
 
   const slideVariants = {
-    enter: (dir: number) => ({
-      x: dir > 0 ? 300 : -300,
-      opacity: 0,
-      scale: 0.92,
-      rotateY: dir > 0 ? 8 : -8,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
-      rotateY: 0,
-    },
-    exit: (dir: number) => ({
-      x: dir > 0 ? -300 : 300,
-      opacity: 0,
-      scale: 0.92,
-      rotateY: dir > 0 ? -8 : 8,
-    }),
+    enter: (dir: number) => ({ x: dir > 0 ? 280 : -280, opacity: 0, scale: 0.95 }),
+    center: { x: 0, opacity: 1, scale: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? -280 : 280, opacity: 0, scale: 0.95 }),
   };
+
+  const committedActions = actions;
 
   return (
     <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-6 animate-fade-in overflow-hidden w-full">
@@ -232,7 +226,7 @@ const Dashboard = () => {
               "Weaving today together..."
             } />
           </motion.div>
-        ) : weaveNodes.length === 0 ? (
+        ) : totalNodes === 0 ? (
           <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex items-center justify-center">
             <div className="text-center space-y-3">
               <p className="text-muted-foreground/50 text-sm">Nothing woven yet today.</p>
@@ -247,38 +241,40 @@ const Dashboard = () => {
         ) : (
           <motion.div key="weave" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col">
 
-            {/* Date + progress */}
-            <div className="text-center mb-6">
-              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/35 mb-4">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-              </p>
+            {/* What shifted — compact context bar */}
+            {brief?.what_shifted && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-5"
+              >
+                <p className="text-[11px] text-muted-foreground/40 leading-relaxed text-center px-4">
+                  {brief.what_shifted.replace(/^[•\-\s]+/gm, '').split('\n').filter(Boolean).slice(0, 2).join(' · ')}
+                </p>
+              </motion.div>
+            )}
 
-              {/* Weave progress dots */}
-              <div className="flex items-center justify-center gap-1.5">
-                {weaveNodes.map((node, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setDirection(i > activeIndex ? 1 : -1); setActiveIndex(i); }}
-                    className="group relative"
-                  >
-                    <div className={`h-1.5 rounded-full transition-all duration-500 ${
-                      i === activeIndex
-                        ? 'w-8 bg-primary/60'
-                        : i < activeIndex
-                          ? 'w-1.5 bg-primary/25'
-                          : 'w-1.5 bg-muted-foreground/15'
-                    }`} />
-                    {/* Type hint on hover */}
-                    <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      {node.type === 'narrative' ? 'brief' : node.type === 'gem' ? 'gem' : `action ${(node as any).index + 1}`}
-                    </span>
-                  </button>
-                ))}
-              </div>
+            {/* Progress — which node you're on */}
+            <div className="flex items-center justify-center gap-2 mb-6">
+              {nodes.map((node, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setDirection(i > activeIndex ? 1 : -1); setActiveIndex(i); }}
+                  className="relative"
+                >
+                  <div className={`rounded-full transition-all duration-500 ${
+                    i === activeIndex
+                      ? 'w-7 h-2 bg-primary/50'
+                      : i < activeIndex
+                        ? 'w-2 h-2 bg-primary/20'
+                        : 'w-2 h-2 bg-muted-foreground/10'
+                  }`} />
+                </button>
+              ))}
             </div>
 
-            {/* ===== THE WEAVE CARD — one at a time, swipeable ===== */}
-            <div className="flex-1 flex items-center justify-center relative" style={{ perspective: '1200px' }}>
+            {/* ===== THE CARD ===== */}
+            <div className="flex-1 flex items-center justify-center relative">
               <AnimatePresence mode="wait" custom={direction}>
                 <motion.div
                   key={activeIndex}
@@ -287,43 +283,33 @@ const Dashboard = () => {
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 32 }}
                   drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.15}
+                  dragElastic={0.12}
                   onDragEnd={handleDragEnd}
                   className="w-full cursor-grab active:cursor-grabbing"
                 >
-                  {currentNode?.type === 'narrative' && (
-                    <NarrativeCard text={currentNode.text} />
-                  )}
                   {currentNode?.type === 'action' && (
-                    <ActionCard
+                    <WeaveActionCard
                       action={currentNode.action}
                       onComplete={handleCompleteAction}
                       onSkip={handleSkipAction}
                     />
                   )}
                   {currentNode?.type === 'gem' && (
-                    <GemCard gem={currentNode.gem} />
+                    <WeaveGemCard gem={currentNode.gem} context={brief?.forgotten_gem_context} />
                   )}
                 </motion.div>
               </AnimatePresence>
 
-              {/* Nav arrows — sides */}
               {activeIndex > 0 && (
-                <button
-                  onClick={() => navigate(-1)}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-muted-foreground/50 hover:bg-muted/30 transition-all"
-                >
+                <button onClick={() => navigate(-1)} className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-muted-foreground/50 transition-all">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
               )}
-              {activeIndex < weaveNodes.length - 1 && (
-                <button
-                  onClick={() => navigate(1)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 -mr-1 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-muted-foreground/50 hover:bg-muted/30 transition-all"
-                >
+              {activeIndex < totalNodes - 1 && (
+                <button onClick={() => navigate(1)} className="absolute right-0 top-1/2 -translate-y-1/2 -mr-1 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-muted-foreground/50 transition-all">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               )}
@@ -385,17 +371,9 @@ const Dashboard = () => {
   );
 };
 
-/* ===== WEAVE CARD COMPONENTS ===== */
+/* ===== WEAVE ACTION CARD — shows the action + visual source threads ===== */
 
-const NarrativeCard = ({ text }: { text: string }) => (
-  <div className="rounded-2xl bg-card/90 backdrop-blur-sm border border-border/40 p-7 shadow-lg min-h-[200px] flex items-center">
-    <p className="text-[15px] text-foreground/70 leading-[1.85] font-light">
-      {text}
-    </p>
-  </div>
-);
-
-const ActionCard = ({
+const WeaveActionCard = ({
   action,
   onComplete,
   onSkip,
@@ -405,24 +383,25 @@ const ActionCard = ({
   onSkip: (a: BriefAction) => void;
 }) => {
   const isDone = action.completed;
+  const [expandedSource, setExpandedSource] = useState<number | null>(null);
+  const sources: WeaveSource[] = action.cited_sources || [];
 
   return (
-    <div className={`rounded-2xl border p-7 min-h-[200px] flex flex-col justify-between transition-all duration-300 ${
+    <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
       isDone
         ? 'bg-primary/5 border-primary/15'
-        : 'bg-card/90 backdrop-blur-sm border-border/40 shadow-lg'
+        : 'bg-card/95 backdrop-blur-sm border-border/40 shadow-lg'
     }`}>
-      <div className="space-y-3 flex-1">
-        <div className="flex items-center justify-between">
+      {/* The action */}
+      <div className="p-6 pb-4">
+        <div className="flex items-center justify-between mb-3">
           {action.pillar && (
             <span className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
               {action.pillar}
             </span>
           )}
           {action.description && (
-            <span className="text-[11px] text-muted-foreground/30">
-              {action.description}
-            </span>
+            <span className="text-[11px] text-muted-foreground/30">{action.description}</span>
           )}
         </div>
 
@@ -431,35 +410,89 @@ const ActionCard = ({
         }`}>
           {action.one_thing}
         </p>
-
-        {!isDone && action.why_matters && (
-          <p className="text-[13px] text-muted-foreground/50 leading-relaxed">
-            {action.why_matters}
-          </p>
-        )}
-
-        {!isDone && action.impact_description && (
-          <p className="text-[12px] text-primary/35 leading-relaxed">
-            → {action.impact_description}
-          </p>
-        )}
       </div>
 
-      <div className="pt-5">
+      {/* Weave threads — the WHY, shown visually */}
+      {!isDone && sources.length > 0 && (
+        <div className="px-6 pb-4">
+          {/* Visual connection line */}
+          <div className="relative pl-4 border-l border-dashed border-primary/10 space-y-2">
+            <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground/25 mb-2 -ml-4 pl-4">
+              woven from
+            </p>
+            {sources.map((source, i) => {
+              const style = sourceStyles[source.type] || sourceStyles.capture;
+              const isExpanded = expandedSource === i;
+              return (
+                <motion.button
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.08 }}
+                  onClick={() => setExpandedSource(isExpanded ? null : i)}
+                  className="block w-full text-left"
+                >
+                  {/* The thread node */}
+                  <div className="relative">
+                    {/* Connector dot on the dashed line */}
+                    <div className={`absolute -left-[21px] top-2.5 w-[9px] h-[9px] rounded-full border ${style.bg}`} />
+                    
+                    <div className={`rounded-lg border px-3 py-2 transition-all ${style.bg} ${
+                      isExpanded ? 'ring-1 ring-primary/10' : ''
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] ${style.color}`}>{style.icon}</span>
+                        <span className={`text-[12px] font-medium ${style.color}`}>
+                          {source.label}
+                        </span>
+                      </div>
+                      
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.p
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="text-[11px] text-muted-foreground/50 mt-1.5 leading-relaxed overflow-hidden"
+                          >
+                            {source.detail}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Impact line */}
+      {!isDone && action.impact_description && (
+        <div className="px-6 pb-4">
+          <p className="text-[11px] text-primary/35 leading-relaxed">
+            → {action.impact_description}
+          </p>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="px-6 pb-5">
         {!isDone ? (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={(e) => { e.stopPropagation(); onComplete(action); }}
-              className="flex-1 h-11 rounded-xl bg-primary/10 text-primary text-[13px] font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 h-10 rounded-xl bg-primary/10 text-primary text-[13px] font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
             >
               <Check className="h-3.5 w-3.5" />
               Done
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onSkip(action); }}
-              className="h-11 px-5 rounded-xl text-[13px] text-muted-foreground/30 hover:text-muted-foreground/50 hover:bg-muted/30 transition-colors"
+              className="h-10 px-5 rounded-xl text-[13px] text-muted-foreground/30 hover:text-muted-foreground/50 hover:bg-muted/30 transition-colors"
             >
-              skip
+              pass
             </button>
           </div>
         ) : (
@@ -473,13 +506,15 @@ const ActionCard = ({
   );
 };
 
-const GemCard = ({ gem }: { gem: ForgottenGem }) => (
-  <div className="rounded-2xl bg-amber-500/[0.04] border border-amber-500/15 p-7 min-h-[200px] flex flex-col justify-center">
+/* ===== GEM CARD ===== */
+
+const WeaveGemCard = ({ gem, context }: { gem: ForgottenGem; context?: string | null }) => (
+  <div className="rounded-2xl bg-amber-500/[0.04] border border-amber-500/15 p-6">
     <div className="space-y-3">
       <div className="flex items-center gap-1.5">
         <Gift className="h-3.5 w-3.5 text-amber-500/50" />
         <span className="text-[11px] font-medium text-amber-500/50 uppercase tracking-wider">
-          Forgotten gem · {gem.age_days}d ago
+          {gem.age_days}d ago
         </span>
       </div>
       <p className="text-[17px] text-foreground/75 font-medium leading-relaxed">
@@ -488,10 +523,12 @@ const GemCard = ({ gem }: { gem: ForgottenGem }) => (
       <p className="text-[13px] text-muted-foreground/45 leading-relaxed">
         {gem.content}
       </p>
-      {gem.why_now && (
-        <p className="text-[12px] text-amber-600/40 dark:text-amber-400/40 italic pt-1">
-          {gem.why_now}
-        </p>
+      {context && (
+        <div className="pt-2 mt-2 border-t border-amber-500/10">
+          <p className="text-[11px] text-amber-600/40 dark:text-amber-400/40 leading-relaxed">
+            {context}
+          </p>
+        </div>
       )}
     </div>
   </div>
