@@ -321,7 +321,7 @@ CRITICAL RULES:
               type: "object",
               properties: {
                 what_shifted: { type: "string", description: "2-3 bullet points about last 48 hours" },
-                actions: {
+                    actions: {
                   type: "array",
                   items: {
                     type: "object",
@@ -332,9 +332,24 @@ CRITICAL RULES:
                       time_estimate: { type: "string" },
                       pillar: { type: "string" },
                       action_type: { type: "string", enum: ["goal_gap", "domain_balance", "capture_test", "bonus"] },
-                      priority: { type: "string", enum: ["HIGH", "NICE_TO_HAVE"] }
+                      priority: { type: "string", enum: ["HIGH", "NICE_TO_HAVE"] },
+                      sources: {
+                        type: "array",
+                        description: "The 2-4 specific data points that wove together to produce this action. Each source is a thread in the weave.",
+                        items: {
+                          type: "object",
+                          properties: {
+                            label: { type: "string", description: "Short label (3-6 words) e.g. 'Chess insight Mar 28', 'Health gap 4 days', 'June milestone'" },
+                            type: { type: "string", enum: ["capture", "pattern", "goal", "journal", "gem", "experiment", "gap"] },
+                            detail: { type: "string", description: "One sentence explaining this thread's connection" }
+                          },
+                          required: ["label", "type", "detail"]
+                        },
+                        minItems: 2,
+                        maxItems: 4
+                      }
                     },
-                    required: ["action_text", "why", "impact", "time_estimate", "pillar", "action_type", "priority"]
+                    required: ["action_text", "why", "impact", "time_estimate", "pillar", "action_type", "priority", "sources"]
                   },
                   minItems: 3,
                   maxItems: 4
