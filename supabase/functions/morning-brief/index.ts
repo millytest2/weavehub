@@ -484,6 +484,7 @@ CRITICAL RULES:
       credit_cost: 1,
       daily_brief_id: savedBrief.id,
       completed: false,
+      cited_sources: action.sources || [],
     }));
 
     const { data: savedTasks } = await supabase
