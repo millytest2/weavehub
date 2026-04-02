@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, PenLine, Scale } from "lucide-react";
+import { Compass, Route, Scale } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
@@ -8,7 +8,7 @@ import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "lab" | "mirror";
+type MindTab = "identity" | "thread" | "mirror";
 
 const Mind = () => {
   const { user } = useAuth();
@@ -37,14 +37,13 @@ const Mind = () => {
   const tabs = [
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
-    { id: "lab" as MindTab, label: "Lab", icon: PenLine },
     { id: "mirror" as MindTab, label: "Mirror", icon: Scale },
   ];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
       {/* Tab navigation — underline style */}
-      <div className="flex items-center border-b border-border/40">
+      <div className="flex items-center border-b border-border/30">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -54,10 +53,10 @@ const Mind = () => {
               className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${
                 isActive
                   ? "text-foreground"
-                  : "text-muted-foreground/50 hover:text-muted-foreground"
+                  : "text-muted-foreground/40 hover:text-muted-foreground"
               }`}
             >
-              <tab.icon className="h-4 w-4" />
+              <tab.icon className="h-3.5 w-3.5" />
               {tab.label}
               {isActive && (
                 <motion.div
@@ -85,12 +84,11 @@ const Mind = () => {
             <div className="max-w-lg mx-auto space-y-5">
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-display font-semibold">The Thread</h1>
-                <p className="text-sm text-muted-foreground">{insightCount} insights woven</p>
+                <p className="text-sm text-muted-foreground/40">{insightCount} insights woven</p>
               </div>
               <ThreadSubTabs insightCount={insightCount} identityContext={identityContext} userId={user?.id || ""} />
             </div>
           )}
-          {activeTab === "lab" && <LabRedirect />}
           {activeTab === "mirror" && <DecisionMirror embedded />}
         </motion.div>
       </AnimatePresence>
@@ -98,18 +96,18 @@ const Mind = () => {
   );
 };
 
-// Thread sub-tabs with matching underline style
+// Thread sub-tabs
 const ThreadSubTabs = ({ insightCount, identityContext, userId }: { insightCount: number; identityContext: any; userId: string }) => {
   const [sub, setSub] = useState<"roadmap" | "synthesize">("roadmap");
   return (
     <div className="space-y-5">
-      <div className="flex justify-center gap-6 border-b border-border/30">
+      <div className="flex justify-center gap-6 border-b border-border/20">
         {(["roadmap", "synthesize"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setSub(tab)}
             className={`relative pb-2.5 text-sm font-medium transition-colors capitalize ${
-              sub === tab ? "text-foreground" : "text-muted-foreground/40 hover:text-muted-foreground"
+              sub === tab ? "text-foreground" : "text-muted-foreground/30 hover:text-muted-foreground"
             }`}
           >
             {tab}
@@ -131,8 +129,5 @@ const ThreadSubTabs = ({ insightCount, identityContext, userId }: { insightCount
     </div>
   );
 };
-
-import Lab from "./Lab";
-const LabRedirect = () => <Lab embedded />;
 
 export default Mind;
