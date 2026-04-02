@@ -371,7 +371,7 @@ const Dashboard = () => {
   );
 };
 
-/* ===== WEAVE ACTION CARD — shows the action + visual source threads ===== */
+/* ===== WEAVE ACTION CARD ===== */
 
 const WeaveActionCard = ({
   action,
@@ -383,122 +383,122 @@ const WeaveActionCard = ({
   onSkip: (a: BriefAction) => void;
 }) => {
   const isDone = action.completed;
-  const [expandedSource, setExpandedSource] = useState<number | null>(null);
+  const [showSources, setShowSources] = useState(false);
   const sources: WeaveSource[] = action.cited_sources || [];
 
   return (
-    <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
+    <div className={`rounded-2xl border transition-all duration-300 ${
       isDone
         ? 'bg-primary/5 border-primary/15'
-        : 'bg-card/95 backdrop-blur-sm border-border/40 shadow-lg'
+        : 'bg-card/95 backdrop-blur-sm border-border/30'
     }`}>
-      {/* The action */}
-      <div className="p-6 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          {action.pillar && (
-            <span className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-              {action.pillar}
-            </span>
-          )}
-          {action.description && (
-            <span className="text-[11px] text-muted-foreground/30">{action.description}</span>
-          )}
-        </div>
+      <div className="p-7">
+        {/* Pillar label */}
+        {action.pillar && (
+          <span className="text-[10px] font-medium text-muted-foreground/35 uppercase tracking-widest">
+            {action.pillar}
+          </span>
+        )}
 
-        <p className={`text-[17px] leading-relaxed ${
-          isDone ? 'line-through text-muted-foreground/40' : 'text-foreground/90 font-medium'
+        {/* The action text */}
+        <p className={`mt-3 text-lg leading-relaxed ${
+          isDone ? 'line-through text-muted-foreground/30' : 'text-foreground/85 font-medium'
         }`}>
           {action.one_thing}
         </p>
+
+        {/* Impact — one subtle line */}
+        {!isDone && action.impact_description && (
+          <p className="mt-3 text-[12px] text-muted-foreground/30 leading-relaxed">
+            {action.impact_description}
+          </p>
+        )}
+
+        {/* Source threads — collapsed by default */}
+        {!isDone && sources.length > 0 && (
+          <div className="mt-5">
+            <button
+              onClick={() => setShowSources(!showSources)}
+              className="flex items-center gap-2 group"
+            >
+              {/* Inline source dots */}
+              <div className="flex items-center -space-x-1">
+                {sources.map((s, i) => {
+                  const style = sourceStyles[s.type] || sourceStyles.capture;
+                  return (
+                    <div
+                      key={i}
+                      className={`w-4 h-4 rounded-full border-2 border-card flex items-center justify-center text-[7px] ${style.bg} ${style.color}`}
+                    >
+                      {style.icon}
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="text-[11px] text-muted-foreground/25 group-hover:text-muted-foreground/45 transition-colors">
+                {showSources ? 'hide' : `${sources.length} threads`}
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {showSources && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-3 space-y-1.5">
+                    {sources.map((source, i) => {
+                      const style = sourceStyles[source.type] || sourceStyles.capture;
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className={`rounded-lg px-3 py-2 ${style.bg}`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[9px] ${style.color}`}>{style.icon}</span>
+                            <span className={`text-[11px] font-medium ${style.color}`}>{source.label}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground/35 mt-0.5 leading-relaxed">
+                            {source.detail}
+                          </p>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
 
-      {/* Weave threads — the WHY, shown visually */}
-      {!isDone && sources.length > 0 && (
-        <div className="px-6 pb-4">
-          {/* Visual connection line */}
-          <div className="relative pl-4 border-l border-dashed border-primary/10 space-y-2">
-            <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground/25 mb-2 -ml-4 pl-4">
-              woven from
-            </p>
-            {sources.map((source, i) => {
-              const style = sourceStyles[source.type] || sourceStyles.capture;
-              const isExpanded = expandedSource === i;
-              return (
-                <motion.button
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 + i * 0.08 }}
-                  onClick={() => setExpandedSource(isExpanded ? null : i)}
-                  className="block w-full text-left"
-                >
-                  {/* The thread node */}
-                  <div className="relative">
-                    {/* Connector dot on the dashed line */}
-                    <div className={`absolute -left-[21px] top-2.5 w-[9px] h-[9px] rounded-full border ${style.bg}`} />
-                    
-                    <div className={`rounded-lg border px-3 py-2 transition-all ${style.bg} ${
-                      isExpanded ? 'ring-1 ring-primary/10' : ''
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] ${style.color}`}>{style.icon}</span>
-                        <span className={`text-[12px] font-medium ${style.color}`}>
-                          {source.label}
-                        </span>
-                      </div>
-                      
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.p
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="text-[11px] text-muted-foreground/50 mt-1.5 leading-relaxed overflow-hidden"
-                          >
-                            {source.detail}
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Impact line */}
-      {!isDone && action.impact_description && (
-        <div className="px-6 pb-4">
-          <p className="text-[11px] text-primary/35 leading-relaxed">
-            → {action.impact_description}
-          </p>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="px-6 pb-5">
+      {/* Actions — clean bottom bar */}
+      <div className="px-7 pb-6">
         {!isDone ? (
           <div className="flex items-center gap-3">
             <button
               onClick={(e) => { e.stopPropagation(); onComplete(action); }}
-              className="flex-1 h-10 rounded-xl bg-primary/10 text-primary text-[13px] font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 h-11 rounded-xl bg-primary/8 text-primary text-[13px] font-medium hover:bg-primary/15 transition-colors flex items-center justify-center gap-1.5"
             >
               <Check className="h-3.5 w-3.5" />
               Done
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onSkip(action); }}
-              className="h-10 px-5 rounded-xl text-[13px] text-muted-foreground/30 hover:text-muted-foreground/50 hover:bg-muted/30 transition-colors"
+              className="h-11 px-5 rounded-xl text-[13px] text-muted-foreground/25 hover:text-muted-foreground/50 transition-colors"
             >
               pass
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 justify-center text-primary/50">
+          <div className="flex items-center gap-1.5 justify-center text-primary/40">
             <Check className="h-4 w-4" />
-            <span className="text-[13px] font-medium">Completed</span>
+            <span className="text-[13px]">Done</span>
           </div>
         )}
       </div>
@@ -509,26 +509,24 @@ const WeaveActionCard = ({
 /* ===== GEM CARD ===== */
 
 const WeaveGemCard = ({ gem, context }: { gem: ForgottenGem; context?: string | null }) => (
-  <div className="rounded-2xl bg-amber-500/[0.04] border border-amber-500/15 p-6">
+  <div className="rounded-2xl border border-amber-500/10 p-7">
     <div className="space-y-3">
       <div className="flex items-center gap-1.5">
-        <Gift className="h-3.5 w-3.5 text-amber-500/50" />
-        <span className="text-[11px] font-medium text-amber-500/50 uppercase tracking-wider">
+        <Gift className="h-3.5 w-3.5 text-amber-500/40" />
+        <span className="text-[10px] font-medium text-amber-500/40 uppercase tracking-widest">
           {gem.age_days}d ago
         </span>
       </div>
-      <p className="text-[17px] text-foreground/75 font-medium leading-relaxed">
+      <p className="text-lg text-foreground/70 font-medium leading-relaxed">
         {gem.title}
       </p>
-      <p className="text-[13px] text-muted-foreground/45 leading-relaxed">
+      <p className="text-[13px] text-muted-foreground/35 leading-relaxed">
         {gem.content}
       </p>
       {context && (
-        <div className="pt-2 mt-2 border-t border-amber-500/10">
-          <p className="text-[11px] text-amber-600/40 dark:text-amber-400/40 leading-relaxed">
-            {context}
-          </p>
-        </div>
+        <p className="text-[11px] text-amber-500/25 leading-relaxed pt-2 border-t border-amber-500/8">
+          {context}
+        </p>
       )}
     </div>
   </div>
