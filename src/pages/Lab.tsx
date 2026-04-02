@@ -1,61 +1,28 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { format, differenceInDays } from "date-fns";
-import { Slider } from "@/components/ui/slider";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { WeeklyMetricsCheckin } from "@/components/lab/WeeklyMetricsCheckin";
-import { WeeklyExportGenerator } from "@/components/lab/WeeklyExportGenerator";
-import { WeeklyProgressCard } from "@/components/lab/WeeklyProgressCard";
-import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
-import { JourneyFlow } from "@/components/lab/JourneyFlow";
+import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FlaskConical, Plus, Calendar, TrendingUp, Zap,
+  Check, Network, PenLine, RefreshCw
+} from "lucide-react";
 import { WeeklyIntentions } from "@/components/lab/WeeklyIntentions";
 import { MonthlyPlanView } from "@/components/lab/MonthlyPlanView";
-import { 
-  FlaskConical, 
-  Plus, 
-  Calendar, 
-  TrendingUp, 
-  Zap, 
-  Clock, 
-  Target,
-  BarChart3,
-  MessageSquare,
-  Quote,
-  Lightbulb,
-  Users,
-  Sparkles,
-  Copy,
-  Check,
-  Activity,
-  Brain,
-  Heart,
-  Gamepad2,
-  FileText,
-  Briefcase,
-  Download,
-  Network,
-  Atom,
-  ArrowRight,
-  RefreshCw,
-  Layers,
-  PenLine
-} from "lucide-react";
-import { MultiPlatformPostDialog } from "@/components/lab/MultiPlatformPostDialog";
+import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
+import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
+
+type LabTab = "write" | "weekly" | "experiments" | "patterns";
 
 interface Experiment {
   id: string;
@@ -72,1416 +39,327 @@ interface Experiment {
   created_at: string;
 }
 
-interface ExperimentLog {
-  id: string;
-  experiment_id: string;
-  day_number: number;
-  metrics_data: Record<string, any>;
-  observations: string | null;
-  energy_level: number | null;
-  created_at: string;
-}
-
-interface Observation {
-  id: string;
-  observation_type: string;
-  content: string;
-  source: string | null;
-  your_data: string | null;
-  post_drafted: boolean;
-  posted_at: string | null;
-  platform: string | null;
-  generated_post: string | null;
-  experiment_id: string | null;
-  created_at: string;
-}
-
-interface WeeklyIntegration {
-  id: string;
-  week_start: string;
-  week_number: number;
-  year: number;
-  business_score: number | null;
-  body_score: number | null;
-  content_score: number | null;
-  relationship_score: number | null;
-  mind_score: number | null;
-  play_score: number | null;
-  business_notes: string | null;
-  body_notes: string | null;
-  content_notes: string | null;
-  relationship_notes: string | null;
-  mind_notes: string | null;
-  play_notes: string | null;
-  pattern_detected: string | null;
-  cross_domain_insights: any[];
-  export_generated: boolean;
-  created_at: string;
-}
-
-const DOMAINS = [
-  { key: 'business', label: 'Business', icon: Briefcase, color: 'text-blue-500' },
-  { key: 'body', label: 'Body', icon: Activity, color: 'text-green-500' },
-  { key: 'content', label: 'Content', icon: FileText, color: 'text-purple-500' },
-  { key: 'relationship', label: 'Relationship', icon: Heart, color: 'text-pink-500' },
-  { key: 'mind', label: 'Mind', icon: Brain, color: 'text-orange-500' },
-  { key: 'play', label: 'Play', icon: Gamepad2, color: 'text-cyan-500' },
-] as const;
-
 const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { isAdmin, loading: adminLoading } = useAdmin();
-  const [loading, setLoading] = useState(true);
-  
-  // Experiments state
+  const [activeTab, setActiveTab] = useState<LabTab>("write");
   const [experiments, setExperiments] = useState<Experiment[]>([]);
-  const [experimentLogs, setExperimentLogs] = useState<ExperimentLog[]>([]);
-  const [observations, setObservations] = useState<Observation[]>([]);
-  const [weeklyIntegrations, setWeeklyIntegrations] = useState<WeeklyIntegration[]>([]);
-  
-  // Dialogs
+  const [loading, setLoading] = useState(true);
+
+  // Experiment dialogs
   const [showNewExperiment, setShowNewExperiment] = useState(false);
   const [showDailyLog, setShowDailyLog] = useState(false);
-  const [showNewObservation, setShowNewObservation] = useState(false);
-  const [showPostGenerator, setShowPostGenerator] = useState(false);
-  const [showWeeklyCheckin, setShowWeeklyCheckin] = useState(false);
-  const [showWeeklyExport, setShowWeeklyExport] = useState(false);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
-  const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
-  const [selectedWeekly, setSelectedWeekly] = useState<WeeklyIntegration | null>(null);
-  
-  // Form state
-  const [newExperiment, setNewExperiment] = useState({
-    title: "",
-    hypothesis: "",
-    duration_days: 14,
-    experiment_type: "personal",
-    metrics: ""
-  });
-  const [dailyLog, setDailyLog] = useState({
-    observations: "",
-    energy_level: 7,
-    metrics: {} as Record<string, string>
-  });
-  const [newObservation, setNewObservation] = useState({
-    type: "quote",
-    content: "",
-    source: "",
-    your_data: ""
-  });
-  const [generatedPost, setGeneratedPost] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [weeklyScores, setWeeklyScores] = useState({
-    business: 5, body: 5, content: 5, relationship: 5, mind: 5, play: 5
-  });
-  const [weeklyNotes, setWeeklyNotes] = useState({
-    business: "", body: "", content: "", relationship: "", mind: "", play: ""
-  });
-  const [weeklyExportText, setWeeklyExportText] = useState("");
-  
-  // Pattern Analyzer state
-  const [insights, setInsights] = useState<any[]>([]);
+  const [newExperiment, setNewExperiment] = useState({ title: "", hypothesis: "", duration_days: 14, experiment_type: "personal", metrics: "" });
+  const [dailyLog, setDailyLog] = useState({ observations: "", energy_level: 7, metrics: {} as Record<string, string> });
+
+  // Pattern state
   const [patternConnections, setPatternConnections] = useState<any[]>([]);
-  const [selectedConnection, setSelectedConnection] = useState<any | null>(null);
-  const [connectionPost, setConnectionPost] = useState("");
-  const [showConnectionPost, setShowConnectionPost] = useState(false);
-  const [showMultiPlatformPost, setShowMultiPlatformPost] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-      return;
-    }
+    if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
+    if (user) fetchExperiments();
   }, [user]);
 
-  const fetchData = async () => {
+  const fetchExperiments = async () => {
     if (!user) return;
-    
-    try {
-      const [expResult, logsResult, obsResult, weeklyResult, insightsResult] = await Promise.all([
-        supabase
-          .from("experiments")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("experiment_logs")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("observations")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("weekly_integrations")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("week_start", { ascending: false }),
-        supabase
-          .from("insights")
-          .select("*, topics(id, name)")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(500)
-      ]);
-
-      if (expResult.data) setExperiments(expResult.data as any);
-      if (logsResult.data) setExperimentLogs(logsResult.data as any);
-      if (obsResult.data) setObservations(obsResult.data as any);
-      if (weeklyResult.data) setWeeklyIntegrations(weeklyResult.data as any);
-      if (insightsResult.data) setInsights(insightsResult.data as any);
-    } catch (error) {
-      console.error("Error fetching lab data:", error);
-    } finally {
-      setLoading(false);
-    }
+    const { data } = await supabase.from("experiments").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    if (data) setExperiments(data as any);
+    setLoading(false);
   };
 
   const handleCreateExperiment = async () => {
     if (!user || !newExperiment.title.trim()) return;
-    
-    try {
-      const metrics = newExperiment.metrics.split(",").map(m => m.trim()).filter(Boolean);
-      
-      const { error } = await supabase.from("experiments").insert({
-        user_id: user.id,
-        title: newExperiment.title,
-        hypothesis: newExperiment.hypothesis || null,
-        duration_days: newExperiment.duration_days,
-        experiment_type: newExperiment.experiment_type,
-        metrics_tracked: metrics,
-        status: "in_progress",
-        current_day: 1,
-        started_at: new Date().toISOString()
-      });
-
-      if (error) throw error;
-      
-      toast.success("Experiment started!");
-      setShowNewExperiment(false);
-      setNewExperiment({ title: "", hypothesis: "", duration_days: 14, experiment_type: "personal", metrics: "" });
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
+    const metrics = newExperiment.metrics.split(",").map(m => m.trim()).filter(Boolean);
+    const { error } = await supabase.from("experiments").insert({
+      user_id: user.id, title: newExperiment.title, hypothesis: newExperiment.hypothesis || null,
+      duration_days: newExperiment.duration_days, experiment_type: newExperiment.experiment_type,
+      metrics_tracked: metrics, status: "in_progress", current_day: 1, started_at: new Date().toISOString()
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Experiment started!");
+    setShowNewExperiment(false);
+    setNewExperiment({ title: "", hypothesis: "", duration_days: 14, experiment_type: "personal", metrics: "" });
+    fetchExperiments();
   };
 
   const handleLogDay = async () => {
     if (!user || !selectedExperiment) return;
-    
-    try {
-      const currentDay = selectedExperiment.current_day || 1;
-      
-      await supabase.from("experiment_logs").insert({
-        user_id: user.id,
-        experiment_id: selectedExperiment.id,
-        day_number: currentDay,
-        observations: dailyLog.observations || null,
-        energy_level: dailyLog.energy_level,
-        metrics_data: dailyLog.metrics
-      });
-
-      // Update experiment current day
-      const newDay = currentDay + 1;
-      const isComplete = newDay > selectedExperiment.duration_days;
-      
-      await supabase.from("experiments").update({
-        current_day: newDay,
-        status: isComplete ? "completed" : "in_progress",
-        completed_at: isComplete ? new Date().toISOString() : null
-      }).eq("id", selectedExperiment.id);
-
-      toast.success(isComplete ? "Experiment completed!" : `Day ${currentDay} logged!`);
-      setShowDailyLog(false);
-      setDailyLog({ observations: "", energy_level: 7, metrics: {} });
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
+    const currentDay = selectedExperiment.current_day || 1;
+    await supabase.from("experiment_logs").insert({
+      user_id: user.id, experiment_id: selectedExperiment.id, day_number: currentDay,
+      observations: dailyLog.observations || null, energy_level: dailyLog.energy_level, metrics_data: dailyLog.metrics
+    });
+    const newDay = currentDay + 1;
+    const isComplete = newDay > selectedExperiment.duration_days;
+    await supabase.from("experiments").update({
+      current_day: newDay, status: isComplete ? "completed" : "in_progress",
+      completed_at: isComplete ? new Date().toISOString() : null
+    }).eq("id", selectedExperiment.id);
+    toast.success(isComplete ? "Experiment completed!" : `Day ${currentDay} logged!`);
+    setShowDailyLog(false);
+    setDailyLog({ observations: "", energy_level: 7, metrics: {} });
+    fetchExperiments();
   };
 
-  const handleCreateObservation = async () => {
-    if (!user || !newObservation.content.trim()) return;
-    
-    try {
-      const { error } = await supabase.from("observations").insert({
-        user_id: user.id,
-        observation_type: newObservation.type,
-        content: newObservation.content,
-        source: newObservation.source || null,
-        your_data: newObservation.your_data || null
-      });
-
-      if (error) throw error;
-      
-      toast.success("Observation captured!");
-      setShowNewObservation(false);
-      setNewObservation({ type: "quote", content: "", source: "", your_data: "" });
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
-  const handleGeneratePost = async () => {
-    if (!selectedObservation) return;
-    
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("synthesizer", {
-        body: {
-          mode: "post_generator",
-          observation: {
-            type: selectedObservation.observation_type,
-            content: selectedObservation.content,
-            source: selectedObservation.source,
-            your_data: selectedObservation.your_data
-          }
-        }
-      });
-
-      if (error) throw error;
-      
-      setGeneratedPost(data.post || "Could not generate post");
-      
-      // Save to observation
-      await supabase.from("observations").update({
-        generated_post: data.post,
-        post_drafted: true
-      }).eq("id", selectedObservation.id);
-      
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to generate post");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleCopyPost = () => {
-    navigator.clipboard.writeText(generatedPost);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Copied to clipboard!");
-  };
-
-  const activeExperiments = experiments.filter(e => e.status === "in_progress");
-  const completedExperiments = experiments.filter(e => e.status === "completed");
-
-  // Get current week info
-  const getWeekInfo = () => {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const weekNum = Math.ceil(((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    return { weekNum, year: now.getFullYear(), weekStart: startOfWeek.toISOString().split('T')[0] };
-  };
-
-  const currentWeekInfo = getWeekInfo();
-  const hasCurrentWeekCheckin = weeklyIntegrations.some(
-    w => w.week_start === currentWeekInfo.weekStart
-  );
-
-  const handleWeeklyCheckin = async () => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase.from("weekly_integrations").insert({
-        user_id: user.id,
-        week_start: currentWeekInfo.weekStart,
-        week_number: currentWeekInfo.weekNum,
-        year: currentWeekInfo.year,
-        business_score: weeklyScores.business,
-        body_score: weeklyScores.body,
-        content_score: weeklyScores.content,
-        relationship_score: weeklyScores.relationship,
-        mind_score: weeklyScores.mind,
-        play_score: weeklyScores.play,
-        business_notes: weeklyNotes.business || null,
-        body_notes: weeklyNotes.body || null,
-        content_notes: weeklyNotes.content || null,
-        relationship_notes: weeklyNotes.relationship || null,
-        mind_notes: weeklyNotes.mind || null,
-        play_notes: weeklyNotes.play || null,
-      });
-
-      if (error) throw error;
-      
-      toast.success("Weekly check-in saved!");
-      setShowWeeklyCheckin(false);
-      setWeeklyScores({ business: 5, body: 5, content: 5, relationship: 5, mind: 5, play: 5 });
-      setWeeklyNotes({ business: "", body: "", content: "", relationship: "", mind: "", play: "" });
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
-  const handleGenerateWeeklyPattern = async (weekly: WeeklyIntegration) => {
-    setSelectedWeekly(weekly);
-    setIsGenerating(true);
-    setShowWeeklyExport(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("synthesizer", {
-        body: {
-          mode: "weekly_integration",
-          weekly: {
-            business: weekly.business_score,
-            body: weekly.body_score,
-            content: weekly.content_score,
-            relationship: weekly.relationship_score,
-            mind: weekly.mind_score,
-            play: weekly.play_score,
-            business_notes: weekly.business_notes,
-            body_notes: weekly.body_notes,
-            content_notes: weekly.content_notes,
-            relationship_notes: weekly.relationship_notes,
-            mind_notes: weekly.mind_notes,
-            play_notes: weekly.play_notes,
-            week_number: weekly.week_number,
-          }
-        }
-      });
-
-      if (error) throw error;
-      
-      setWeeklyExportText(data.post || "Could not generate export");
-      
-      // Update the weekly integration with pattern detected
-      await supabase.from("weekly_integrations").update({
-        pattern_detected: data.pattern || null,
-        export_generated: true
-      }).eq("id", weekly.id);
-      
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to generate weekly export");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleCopyWeeklyExport = () => {
-    navigator.clipboard.writeText(weeklyExportText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Copied to clipboard!");
-  };
-
-  // Pattern Analyzer functions
   const handleAnalyzePatterns = async () => {
     if (!user) return;
-    
     setIsAnalyzing(true);
     try {
-      // Fetch fresh data before analyzing to ensure we have the latest insights
-      const [insightsResult, obsResult, expResult] = await Promise.all([
-        supabase
-          .from("insights")
-          .select("*, topics(id, name)")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("observations")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(100),
-        supabase
-          .from("experiments")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(50)
+      const [insightsRes, obsRes, expRes] = await Promise.all([
+        supabase.from("insights").select("*, topics(id, name)").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100),
+        supabase.from("observations").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100),
+        supabase.from("experiments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
       ]);
-
-      // Update state with fresh data
-      const freshInsights = insightsResult.data || [];
-      const freshObservations = obsResult.data || [];
-      const freshExperiments = expResult.data || [];
-      
-      if (insightsResult.data) setInsights(freshInsights);
-      if (obsResult.data) setObservations(freshObservations as any);
-      if (expResult.data) setExperiments(freshExperiments as any);
-
-      // Gather all content for analysis - use more insights for richer pattern detection
       const allContent = {
-        insights: freshInsights.slice(0, 100).map((i: any) => ({
-          title: i.title,
-          content: i.content?.slice(0, 300), // Truncate content to fit more insights
-          source: i.source,
-          topic: i.topics?.name
-        })),
-        observations: freshObservations.slice(0, 30).map((o: any) => ({
-          type: o.observation_type,
-          content: o.content?.slice(0, 200),
-          source: o.source,
-          your_data: o.your_data
-        })),
-        experiments: freshExperiments.slice(0, 15).map((e: any) => ({
-          title: e.title,
-          hypothesis: e.hypothesis,
-          type: e.experiment_type
-        }))
+        insights: (insightsRes.data || []).slice(0, 100).map((i: any) => ({ title: i.title, content: i.content?.slice(0, 300), source: i.source, topic: i.topics?.name })),
+        observations: (obsRes.data || []).slice(0, 30).map((o: any) => ({ type: o.observation_type, content: o.content?.slice(0, 200), source: o.source })),
+        experiments: (expRes.data || []).slice(0, 15).map((e: any) => ({ title: e.title, hypothesis: e.hypothesis, type: e.experiment_type }))
       };
-
-      const { data, error } = await supabase.functions.invoke("synthesizer", {
-        body: {
-          mode: "pattern_analyzer",
-          content: allContent
-        }
-      });
-
+      const { data, error } = await supabase.functions.invoke("synthesizer", { body: { mode: "pattern_analyzer", content: allContent } });
       if (error) throw error;
-      
       if (data.connections) {
         setPatternConnections(data.connections);
-        toast.success(`Found ${data.connections.length} cross-domain connections!`);
+        toast.success(`Found ${data.connections.length} connections`);
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to analyze patterns");
+      toast.error(error.message || "Failed to analyze");
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleGenerateConnectionPost = async (connection: any) => {
-    setSelectedConnection(connection);
-    setIsGenerating(true);
-    setShowConnectionPost(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("synthesizer", {
-        body: {
-          mode: "polymath_post",
-          connection
-        }
-      });
+  const activeExperiments = experiments.filter(e => e.status === "in_progress");
+  const completedExperiments = experiments.filter(e => e.status === "completed");
 
-      if (error) throw error;
-      
-      setConnectionPost(data.post || "Could not generate post");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to generate post");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleCopyConnectionPost = () => {
-    navigator.clipboard.writeText(connectionPost);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Copied to clipboard!");
-  };
+  const tabs = [
+    { id: "write" as LabTab, label: "Write", icon: PenLine },
+    { id: "weekly" as LabTab, label: "Weekly", icon: TrendingUp },
+    { id: "experiments" as LabTab, label: "Experiments", icon: FlaskConical },
+    { id: "patterns" as LabTab, label: "Patterns", icon: Network },
+  ];
 
   const Wrapper = embedded ? ({ children }: { children: React.ReactNode }) => <>{children}</> : MainLayout;
 
-  if (authLoading || adminLoading) {
-    return (
-      <Wrapper>
-        <div className="p-4 sm:p-6 space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <div className="grid grid-cols-2 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-28" />
-            ))}
-          </div>
-        </div>
-      </Wrapper>
-    );
-  }
-
   return (
     <Wrapper>
-      <div className="p-4 sm:p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold">Lab</h1>
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Tab navigation — underline style matching Mind */}
+        <div className="flex items-center border-b border-border/30">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                  isActive ? "text-foreground" : "text-muted-foreground/40 hover:text-muted-foreground"
+                }`}
+              >
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
+                {isActive && (
+                  <motion.div
+                    layoutId="lab-tab-indicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <Tabs defaultValue="freewrite" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-11 p-1 bg-card border border-border rounded-xl shadow-sm">
-            <TabsTrigger 
-              value="experiments" 
-              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
-            >
-              <FlaskConical className="h-4 w-4" />
-              <span className="hidden sm:inline">Experiments</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="freewrite" 
-              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
-            >
-              <PenLine className="h-4 w-4" />
-              <span className="hidden sm:inline">Write</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="integration" 
-              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
-            >
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Weekly</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="patterns" 
-              className="gap-1.5 rounded-lg text-sm font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50"
-            >
-              <Network className="h-4 w-4" />
-              <span className="hidden sm:inline">Patterns</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* Tab content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+          >
+            {/* WRITE */}
+            {activeTab === "write" && <FreeWriteSpace />}
 
-          {/* EXPERIMENTS TAB */}
-          <TabsContent value="experiments" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">Track experiments with daily logs and metrics</p>
-              <Button size="sm" onClick={() => setShowNewExperiment(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Experiment
-              </Button>
-            </div>
+            {/* WEEKLY */}
+            {activeTab === "weekly" && (
+              <div className="space-y-8">
+                <WeeklyIntentions />
+                <WeeklyRhythmView onCheckin={() => {}} />
+                <MonthlyPlanView />
+                <JourneyFlow />
+              </div>
+            )}
 
-            {/* Active Experiments */}
-            {activeExperiments.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-orange-500" />
-                  Active ({activeExperiments.length})
-                </h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {activeExperiments.map((exp) => {
-                    const progress = Math.round((exp.current_day / exp.duration_days) * 100);
-                    const logsForExp = experimentLogs.filter(l => l.experiment_id === exp.id);
-                    
-                    return (
-                      <Card key={exp.id} className="border-primary/30 bg-primary/5">
-                        <CardHeader className="pb-2">
+            {/* EXPERIMENTS */}
+            {activeTab === "experiments" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground/50">Track what you're testing</p>
+                  <button
+                    onClick={() => setShowNewExperiment(true)}
+                    className="text-sm text-primary/60 hover:text-primary transition-colors flex items-center gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    New
+                  </button>
+                </div>
+
+                {activeExperiments.length > 0 && (
+                  <div className="space-y-3">
+                    {activeExperiments.map((exp) => {
+                      const progress = Math.round((exp.current_day / exp.duration_days) * 100);
+                      return (
+                        <div key={exp.id} className="rounded-xl border border-primary/15 bg-primary/[0.03] p-5 space-y-3">
                           <div className="flex items-start justify-between">
                             <div>
-                              <Badge variant="outline" className="mb-2 text-xs">
-                                {exp.experiment_type}
-                              </Badge>
-                              <CardTitle className="text-lg">{exp.title}</CardTitle>
+                              <span className="text-[10px] uppercase tracking-widest text-muted-foreground/35">{exp.experiment_type}</span>
+                              <p className="text-base font-medium mt-0.5">{exp.title}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-primary">
-                                Day {exp.current_day}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                of {exp.duration_days}
-                              </p>
+                              <p className="text-xl font-semibold text-primary/70">Day {exp.current_day}</p>
+                              <p className="text-[11px] text-muted-foreground/30">of {exp.duration_days}</p>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
                           {exp.hypothesis && (
-                            <p className="text-sm text-muted-foreground italic">
-                              "{exp.hypothesis}"
-                            </p>
+                            <p className="text-[13px] text-muted-foreground/40 italic leading-relaxed">"{exp.hypothesis}"</p>
                           )}
-                          
-                          {/* Progress bar */}
-                          <div className="space-y-1">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-primary transition-all" 
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {progress}% complete • {logsForExp.length} logs recorded
-                            </p>
+                          <div className="h-1 bg-muted/50 rounded-full overflow-hidden">
+                            <div className="h-full bg-primary/30 rounded-full transition-all" style={{ width: `${progress}%` }} />
                           </div>
-
-                          {/* Metrics tracked */}
-                          {exp.metrics_tracked && exp.metrics_tracked.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {(exp.metrics_tracked as string[]).map((m, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {m}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-
-                          <Button 
-                            className="w-full" 
-                            onClick={() => {
-                              setSelectedExperiment(exp);
-                              setShowDailyLog(true);
-                            }}
+                          <button
+                            onClick={() => { setSelectedExperiment(exp); setShowDailyLog(true); }}
+                            className="text-[13px] text-primary/50 hover:text-primary transition-colors"
                           >
-                            <Calendar className="h-4 w-4 mr-2" />
-                            Log Day {exp.current_day}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                            Log day {exp.current_day} →
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-            {/* Completed Experiments */}
-            {completedExperiments.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-500" />
-                  Completed ({completedExperiments.length})
-                </h3>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {completedExperiments.map((exp) => {
-                    const logsForExp = experimentLogs.filter(l => l.experiment_id === exp.id);
-                    const avgEnergy = logsForExp.length > 0 
-                      ? (logsForExp.reduce((sum, l) => sum + (l.energy_level || 0), 0) / logsForExp.length).toFixed(1)
-                      : "N/A";
-                    
-                    return (
-                      <Card key={exp.id}>
-                        <CardHeader className="pb-2">
-                          <Badge variant="outline" className="w-fit mb-2 text-xs bg-green-500/10 text-green-500">
-                            Completed
-                          </Badge>
-                          <CardTitle className="text-base">{exp.title}</CardTitle>
-                          <CardDescription>
-                            {exp.duration_days} days • {logsForExp.length} logs
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Avg Energy</p>
-                              <p className="font-medium">{avgEnergy}/10</p>
-                            </div>
-                            {exp.completed_at && (
-                              <div>
-                                <p className="text-muted-foreground">Completed</p>
-                                <p className="font-medium">{format(new Date(exp.completed_at), "MMM d")}</p>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {experiments.length === 0 && !loading && (
-              <Card className="border-dashed">
-                <CardContent className="py-12 text-center">
-                  <FlaskConical className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground mb-4">No experiments yet</p>
-                  <Button onClick={() => setShowNewExperiment(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Start Your First Experiment
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-
-          {/* FREEWRITE TAB */}
-          <TabsContent value="freewrite" className="space-y-4">
-            <FreeWriteSpace />
-          </TabsContent>
-
-          {/* WEEKLY INTEGRATION TAB */}
-          <TabsContent value="integration" className="space-y-4">
-            {/* Weekly Plan - what user wants to do this week */}
-            <WeeklyIntentions />
-            
-            {/* Week-by-Week Rhythm View */}
-            <WeeklyRhythmView onCheckin={() => setShowWeeklyCheckin(true)} />
-            
-            {/* Monthly Plan - goals, events, weekly breakdown */}
-            <MonthlyPlanView />
-            
-            {/* Journey Flow - Daily → Weekly → Monthly → 2026 (moved to bottom) */}
-            <JourneyFlow />
-            
-            {/* Goals Progress (Collapsible) */}
-            <details className="group">
-              <summary className="cursor-pointer text-sm font-medium text-muted-foreground flex items-center gap-2 py-2">
-                <TrendingUp className="h-4 w-4" />
-                Year Goals Progress
-                <span className="text-xs">(click to expand)</span>
-              </summary>
-              <div className="pt-4 space-y-4">
-                <WeeklyProgressCard 
-                  weekNumber={currentWeekInfo.weekNum}
-                  year={currentWeekInfo.year}
-                  onExport={() => setShowWeeklyExport(true)}
-                />
-                
-                {/* Previous weeks from old system (legacy view) */}
-                {weeklyIntegrations.length > 0 && (
+                {completedExperiments.length > 0 && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">Previous Weeks (Legacy Scoring)</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {weeklyIntegrations.slice(0, 4).map((weekly) => {
-                        const scores = [
-                          { key: 'business', score: weekly.business_score, icon: Briefcase, color: 'text-blue-500' },
-                          { key: 'body', score: weekly.body_score, icon: Activity, color: 'text-green-500' },
-                          { key: 'content', score: weekly.content_score, icon: FileText, color: 'text-purple-500' },
-                          { key: 'relationship', score: weekly.relationship_score, icon: Heart, color: 'text-pink-500' },
-                          { key: 'mind', score: weekly.mind_score, icon: Brain, color: 'text-orange-500' },
-                          { key: 'play', score: weekly.play_score, icon: Gamepad2, color: 'text-cyan-500' },
-                        ];
-                        const avgScore = scores.reduce((sum, s) => sum + (s.score || 0), 0) / 6;
-                        
-                        return (
-                          <Card key={weekly.id} className="opacity-70">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <Badge variant="outline" className="mb-2">
-                                    Week {weekly.week_number}, {weekly.year}
-                                  </Badge>
-                                  <CardTitle className="text-lg flex items-center gap-2">
-                                    <span className="text-2xl font-bold">{avgScore.toFixed(1)}</span>
-                                    <span className="text-sm font-normal text-muted-foreground">/10 avg</span>
-                                  </CardTitle>
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="grid grid-cols-3 gap-2">
-                                {scores.map(({ key, score, icon: Icon, color }) => (
-                                  <div key={key} className="flex items-center gap-1.5 text-sm">
-                                    <Icon className={`h-3.5 w-3.5 ${color}`} />
-                                    <span className="capitalize">{key.slice(0, 3)}</span>
-                                    <span className="font-medium ml-auto">
-                                      {score || 0}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
+                    <p className="text-[11px] uppercase tracking-widest text-muted-foreground/25">Completed</p>
+                    {completedExperiments.map((exp) => (
+                      <div key={exp.id} className="rounded-xl border border-border/20 p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-foreground/60">{exp.title}</p>
+                          <p className="text-[11px] text-muted-foreground/30">{exp.duration_days} days</p>
+                        </div>
+                        <Check className="h-4 w-4 text-primary/30" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {experiments.length === 0 && !loading && (
+                  <div className="text-center py-16 space-y-3">
+                    <FlaskConical className="h-8 w-8 mx-auto text-muted-foreground/15" />
+                    <p className="text-sm text-muted-foreground/30">No experiments yet</p>
+                    <button onClick={() => setShowNewExperiment(true)} className="text-sm text-primary/50 hover:text-primary transition-colors">
+                      Start one →
+                    </button>
                   </div>
                 )}
               </div>
-            </details>
-          </TabsContent>
+            )}
 
-          {/* CROSS-DOMAIN PATTERN ANALYZER TAB */}
-          <TabsContent value="patterns" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm text-muted-foreground">Find non-obvious connections across domains</p>
-                <p className="text-xs text-muted-foreground/70">Physics → Business → Life synthesis</p>
-              </div>
-              <Button 
-                size="sm" 
-                onClick={handleAnalyzePatterns}
-                disabled={isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Network className="h-4 w-4 mr-2" />
-                    Analyze Patterns
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Info card about the analyzer */}
-            <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
-              <CardContent className="py-4">
-                <div className="flex items-start gap-3">
-                  <Atom className="h-5 w-5 text-purple-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Cross-Domain Pattern Analyzer</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      This AI scans your insights, observations, and experiments to find unexpected connections. 
-                      It generates polymath synthesis posts that specialists can't replicate.
-                    </p>
-                  </div>
+            {/* PATTERNS */}
+            {activeTab === "patterns" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground/50">Cross-domain connections</p>
+                  <button
+                    onClick={handleAnalyzePatterns}
+                    disabled={isAnalyzing}
+                    className="text-sm text-primary/60 hover:text-primary transition-colors flex items-center gap-1.5"
+                  >
+                    {isAnalyzing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Network className="h-3.5 w-3.5" />}
+                    {isAnalyzing ? "Analyzing..." : "Analyze"}
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Stats about content available */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="py-4 text-center">
-                  <p className="text-2xl font-bold">{insights.length}</p>
-                  <p className="text-xs text-muted-foreground">Insights</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="py-4 text-center">
-                  <p className="text-2xl font-bold">{observations.length}</p>
-                  <p className="text-xs text-muted-foreground">Observations</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="py-4 text-center">
-                  <p className="text-2xl font-bold">{experiments.length}</p>
-                  <p className="text-xs text-muted-foreground">Experiments</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Pattern connections */}
-            {patternConnections.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-500" />
-                  Cross-Domain Connections ({patternConnections.length})
-                </h3>
-                <div className="grid gap-4">
-                  {patternConnections.map((connection, i) => (
-                    <Card 
-                      key={i} 
-                      className="hover:border-purple-500/50 transition-colors"
-                    >
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center gap-2 mb-2">
+                {patternConnections.length > 0 ? (
+                  <div className="space-y-3">
+                    {patternConnections.map((connection, i) => (
+                      <div key={i} className="rounded-xl border border-border/20 p-5 space-y-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {connection.domains?.map((domain: string, j: number) => (
-                            <Badge 
-                              key={j} 
-                              variant="outline" 
-                              className={`text-xs ${
-                                domain === 'physics' ? 'border-blue-500 text-blue-500' :
-                                domain === 'business' ? 'border-green-500 text-green-500' :
-                                domain === 'life' ? 'border-pink-500 text-pink-500' :
-                                domain === 'mind' ? 'border-orange-500 text-orange-500' :
-                                'border-purple-500 text-purple-500'
-                              }`}
-                            >
-                              {domain}
-                            </Badge>
+                            <span key={j} className="text-[10px] uppercase tracking-widest text-muted-foreground/35">
+                              {domain}{j < connection.domains.length - 1 ? ' ·' : ''}
+                            </span>
                           ))}
                         </div>
-                        <CardTitle className="text-base">{connection.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">{connection.insight}</p>
-                        {connection.sources && connection.sources.length > 0 && (
-                          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>Sources:</span>
-                            {connection.sources.slice(0, 3).map((src: string, j: number) => (
-                              <Badge key={j} variant="secondary" className="text-xs">
-                                {src.length > 20 ? src.slice(0, 20) + '...' : src}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        <div className="mt-4 flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleGenerateConnectionPost(connection)}
-                            className="flex-1"
-                          >
-                            <Sparkles className="h-3 w-3 mr-1" />
-                            Synthesize Insight
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            onClick={() => {
-                              setSelectedConnection(connection);
-                              setShowMultiPlatformPost(true);
-                            }}
-                            className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                          >
-                            <Layers className="h-3 w-3 mr-1" />
-                            Deep Weave
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        <p className="text-base font-medium text-foreground/80">{connection.title}</p>
+                        <p className="text-[13px] text-muted-foreground/40 leading-relaxed">{connection.insight}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : !isAnalyzing ? (
+                  <div className="text-center py-16 space-y-3">
+                    <Network className="h-8 w-8 mx-auto text-muted-foreground/15" />
+                    <p className="text-sm text-muted-foreground/30">No patterns analyzed yet</p>
+                    <p className="text-[12px] text-muted-foreground/20 max-w-xs mx-auto">
+                      Find unexpected connections across your insights, experiments, and observations
+                    </p>
+                  </div>
+                ) : null}
               </div>
             )}
-
-            {/* Example templates */}
-            {patternConnections.length === 0 && !isAnalyzing && (
-              <Card className="border-dashed">
-                <CardContent className="py-8 text-center">
-                  <Network className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground mb-2">No patterns analyzed yet</p>
-                  <p className="text-sm text-muted-foreground/70 mb-4">
-                    Click "Analyze Patterns" to find connections like:
-                  </p>
-                  <div className="space-y-2 text-sm">
-                    <p className="italic text-muted-foreground">"How thermodynamics improved my pricing strategy"</p>
-                    <p className="italic text-muted-foreground">"System thinking from physics → relationship communication"</p>
-                    <p className="italic text-muted-foreground">"What entropy taught me about startup chaos"</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+          </motion.div>
+        </AnimatePresence>
 
         {/* NEW EXPERIMENT DIALOG */}
         <Dialog open={showNewExperiment} onOpenChange={setShowNewExperiment}>
-          <DialogContent>
+          <DialogContent className="rounded-2xl border-border/30">
             <DialogHeader>
-              <DialogTitle>New Experiment</DialogTitle>
-              <DialogDescription>
-                What do you want to test?
-              </DialogDescription>
+              <DialogTitle className="text-lg font-display">New Experiment</DialogTitle>
+              <DialogDescription>What do you want to test?</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label>Title</Label>
-                <Input 
-                  placeholder="e.g., 4-hour deep work vs 12-hour days"
-                  value={newExperiment.title}
-                  onChange={(e) => setNewExperiment(p => ({ ...p, title: e.target.value }))}
-                />
+              <div><Label className="text-xs text-muted-foreground/50">Title</Label><Input placeholder="e.g., 4-hour deep work blocks" value={newExperiment.title} onChange={(e) => setNewExperiment(p => ({ ...p, title: e.target.value }))} /></div>
+              <div><Label className="text-xs text-muted-foreground/50">Hypothesis</Label><Textarea placeholder="What do you expect?" value={newExperiment.hypothesis} onChange={(e) => setNewExperiment(p => ({ ...p, hypothesis: e.target.value }))} rows={2} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs text-muted-foreground/50">Days</Label><Input type="number" value={newExperiment.duration_days} onChange={(e) => setNewExperiment(p => ({ ...p, duration_days: parseInt(e.target.value) || 7 }))} /></div>
+                <div><Label className="text-xs text-muted-foreground/50">Type</Label><select className="w-full h-10 rounded-lg border border-border/30 bg-background px-3 text-sm" value={newExperiment.experiment_type} onChange={(e) => setNewExperiment(p => ({ ...p, experiment_type: e.target.value }))}><option value="personal">Personal</option><option value="upath">UPath</option><option value="integration">Integration</option></select></div>
               </div>
-              <div>
-                <Label>Hypothesis</Label>
-                <Textarea 
-                  placeholder="What do you expect to happen?"
-                  value={newExperiment.hypothesis}
-                  onChange={(e) => setNewExperiment(p => ({ ...p, hypothesis: e.target.value }))}
-                  rows={2}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Duration (days)</Label>
-                  <Input 
-                    type="number"
-                    value={newExperiment.duration_days}
-                    onChange={(e) => setNewExperiment(p => ({ ...p, duration_days: parseInt(e.target.value) || 7 }))}
-                  />
-                </div>
-                <div>
-                  <Label>Type</Label>
-                  <select 
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    value={newExperiment.experiment_type}
-                    onChange={(e) => setNewExperiment(p => ({ ...p, experiment_type: e.target.value }))}
-                  >
-                    <option value="personal">Personal</option>
-                    <option value="upath">UPath</option>
-                    <option value="integration">Integration</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <Label>Metrics to track (comma-separated)</Label>
-                <Input 
-                  placeholder="e.g., Features shipped, Energy level, Hours worked"
-                  value={newExperiment.metrics}
-                  onChange={(e) => setNewExperiment(p => ({ ...p, metrics: e.target.value }))}
-                />
-              </div>
-              <Button className="w-full" onClick={handleCreateExperiment}>
-                <FlaskConical className="h-4 w-4 mr-2" />
-                Start Experiment
-              </Button>
+              <div><Label className="text-xs text-muted-foreground/50">Metrics (comma-separated)</Label><Input placeholder="Energy, Output, Focus" value={newExperiment.metrics} onChange={(e) => setNewExperiment(p => ({ ...p, metrics: e.target.value }))} /></div>
+              <Button className="w-full h-11 rounded-xl" onClick={handleCreateExperiment}>Start Experiment</Button>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* DAILY LOG DIALOG */}
         <Dialog open={showDailyLog} onOpenChange={setShowDailyLog}>
-          <DialogContent>
+          <DialogContent className="rounded-2xl border-border/30">
             <DialogHeader>
-              <DialogTitle>
-                Day {selectedExperiment?.current_day} Log
-              </DialogTitle>
-              <DialogDescription>
-                {selectedExperiment?.title}
-              </DialogDescription>
+              <DialogTitle className="text-lg font-display">Day {selectedExperiment?.current_day}</DialogTitle>
+              <DialogDescription>{selectedExperiment?.title}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              <div><Label className="text-xs text-muted-foreground/50">Observations</Label><Textarea placeholder="What did you notice?" value={dailyLog.observations} onChange={(e) => setDailyLog(p => ({ ...p, observations: e.target.value }))} rows={3} /></div>
               <div>
-                <Label>Observations</Label>
-                <Textarea 
-                  placeholder="What did you notice today?"
-                  value={dailyLog.observations}
-                  onChange={(e) => setDailyLog(p => ({ ...p, observations: e.target.value }))}
-                  rows={3}
-                />
+                <Label className="text-xs text-muted-foreground/50">Energy: {dailyLog.energy_level}/10</Label>
+                <input type="range" min="1" max="10" value={dailyLog.energy_level} onChange={(e) => setDailyLog(p => ({ ...p, energy_level: parseInt(e.target.value) }))} className="w-full mt-1" />
               </div>
-              <div>
-                <Label>Energy Level (1-10): {dailyLog.energy_level}</Label>
-                <input 
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={dailyLog.energy_level}
-                  onChange={(e) => setDailyLog(p => ({ ...p, energy_level: parseInt(e.target.value) }))}
-                  className="w-full"
-                />
-              </div>
-              
-              {/* Dynamic metric inputs */}
               {selectedExperiment?.metrics_tracked && (selectedExperiment.metrics_tracked as string[]).length > 0 && (
-                <div className="space-y-3">
-                  <Label>Metrics</Label>
+                <div className="space-y-2">
                   {(selectedExperiment.metrics_tracked as string[]).map((metric, i) => (
-                    <div key={i}>
-                      <Label className="text-xs text-muted-foreground">{metric}</Label>
-                      <Input 
-                        placeholder={`Value for ${metric}`}
-                        value={dailyLog.metrics[metric] || ""}
-                        onChange={(e) => setDailyLog(p => ({
-                          ...p,
-                          metrics: { ...p.metrics, [metric]: e.target.value }
-                        }))}
-                      />
-                    </div>
+                    <div key={i}><Label className="text-xs text-muted-foreground/50">{metric}</Label><Input placeholder={`Value`} value={dailyLog.metrics[metric] || ""} onChange={(e) => setDailyLog(p => ({ ...p, metrics: { ...p.metrics, [metric]: e.target.value } }))} /></div>
                   ))}
                 </div>
               )}
-
-              <Button className="w-full" onClick={handleLogDay}>
-                <Check className="h-4 w-4 mr-2" />
-                Log Day {selectedExperiment?.current_day}
-              </Button>
+              <Button className="w-full h-11 rounded-xl" onClick={handleLogDay}>Log Day {selectedExperiment?.current_day}</Button>
             </div>
           </DialogContent>
         </Dialog>
-
-        {/* NEW OBSERVATION DIALOG */}
-        <Dialog open={showNewObservation} onOpenChange={setShowNewObservation}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>New Observation</DialogTitle>
-              <DialogDescription>
-                Capture a moment for content
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Type</Label>
-                <div className="grid grid-cols-4 gap-2 mt-1">
-                  {[
-                    { id: "quote", icon: Quote, label: "Quote" },
-                    { id: "decision", icon: Target, label: "Decision" },
-                    { id: "presence", icon: Users, label: "Presence" },
-                    { id: "insight", icon: Lightbulb, label: "Insight" },
-                  ].map(({ id, icon: Icon, label }) => (
-                    <button
-                      key={id}
-                      onClick={() => setNewObservation(p => ({ ...p, type: id }))}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-all ${
-                        newObservation.type === id 
-                          ? "border-primary bg-primary/10" 
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span className="text-xs">{label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Label>Content</Label>
-                <Textarea 
-                  placeholder="What did you observe?"
-                  value={newObservation.content}
-                  onChange={(e) => setNewObservation(p => ({ ...p, content: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label>Source (optional)</Label>
-                <Input 
-                  placeholder="e.g., Hormozi podcast, meeting with X"
-                  value={newObservation.source}
-                  onChange={(e) => setNewObservation(p => ({ ...p, source: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>Your data / how you applied it (optional)</Label>
-                <Textarea 
-                  placeholder="How did you test this? What were your results?"
-                  value={newObservation.your_data}
-                  onChange={(e) => setNewObservation(p => ({ ...p, your_data: e.target.value }))}
-                  rows={2}
-                />
-              </div>
-              <Button className="w-full" onClick={handleCreateObservation}>
-                <Plus className="h-4 w-4 mr-2" />
-                Save Observation
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* POST GENERATOR DIALOG */}
-        <Dialog open={showPostGenerator} onOpenChange={setShowPostGenerator}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Post Generator</DialogTitle>
-              <DialogDescription>
-                Turn this observation into content
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {/* Original observation */}
-              <Card className="bg-muted/50">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="capitalize text-xs">
-                      {selectedObservation?.observation_type}
-                    </Badge>
-                    {selectedObservation?.source && (
-                      <span className="text-xs text-muted-foreground">
-                        — {selectedObservation.source}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm">{selectedObservation?.content}</p>
-                  {selectedObservation?.your_data && (
-                    <p className="text-sm text-muted-foreground mt-2 italic">
-                      Your data: {selectedObservation.your_data}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Generate button */}
-              {!generatedPost && (
-                <Button 
-                  className="w-full" 
-                  onClick={handleGeneratePost}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Generate Post
-                    </>
-                  )}
-                </Button>
-              )}
-
-              {/* Generated post */}
-              {generatedPost && (
-                <div className="space-y-3">
-                  <Label>Generated Post</Label>
-                  <Textarea 
-                    value={generatedPost}
-                    onChange={(e) => setGeneratedPost(e.target.value)}
-                    rows={8}
-                    className="font-mono text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={handleCopyPost} variant="outline" className="flex-1">
-                      {copied ? (
-                        <>
-                          <Check className="h-4 w-4 mr-2" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      onClick={handleGeneratePost} 
-                      variant="outline"
-                      disabled={isGenerating}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Regenerate
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* WEEKLY METRICS CHECK-IN (NEW SYSTEM) */}
-        <WeeklyMetricsCheckin
-          open={showWeeklyCheckin}
-          onOpenChange={setShowWeeklyCheckin}
-          weekNumber={currentWeekInfo.weekNum}
-          year={currentWeekInfo.year}
-          weekStart={currentWeekInfo.weekStart}
-          onComplete={fetchData}
-        />
-
-        {/* WEEKLY EXPORT GENERATOR (NEW SYSTEM) */}
-        <WeeklyExportGenerator
-          open={showWeeklyExport}
-          onOpenChange={setShowWeeklyExport}
-          weekNumber={currentWeekInfo.weekNum}
-          year={currentWeekInfo.year}
-        />
-        <Dialog open={showWeeklyExport} onOpenChange={setShowWeeklyExport}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Export Week {selectedWeekly?.week_number}</DialogTitle>
-              <DialogDescription>
-                AI-generated post ready for social media
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {isGenerating ? (
-                <div className="py-12 text-center">
-                  <Sparkles className="h-8 w-8 mx-auto animate-spin text-primary mb-4" />
-                  <p className="text-muted-foreground">Analyzing patterns and generating export...</p>
-                </div>
-              ) : (
-                <>
-                  <Textarea 
-                    value={weeklyExportText}
-                    onChange={(e) => setWeeklyExportText(e.target.value)}
-                    rows={12}
-                    className="font-mono text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={handleCopyWeeklyExport} variant="outline" className="flex-1">
-                      {copied ? (
-                        <>
-                          <Check className="h-4 w-4 mr-2" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      onClick={() => selectedWeekly && handleGenerateWeeklyPattern(selectedWeekly)} 
-                      variant="outline"
-                      disabled={isGenerating}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Regenerate
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* CONNECTION POST DIALOG */}
-        <Dialog open={showConnectionPost} onOpenChange={setShowConnectionPost}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Network className="h-5 w-5 text-purple-500" />
-                Polymath Synthesis Post
-              </DialogTitle>
-              <DialogDescription>
-                Cross-domain connection ready for social media
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {/* Connection info */}
-              {selectedConnection && (
-                <Card className="bg-muted/50">
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      {selectedConnection.domains?.map((domain: string, i: number) => (
-                        <Badge 
-                          key={i} 
-                          variant="outline" 
-                          className={`text-xs ${
-                            domain === 'physics' ? 'border-blue-500 text-blue-500' :
-                            domain === 'business' ? 'border-green-500 text-green-500' :
-                            'border-purple-500 text-purple-500'
-                          }`}
-                        >
-                          {domain}
-                        </Badge>
-                      ))}
-                    </div>
-                    <p className="font-medium">{selectedConnection.title}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{selectedConnection.insight}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {isGenerating ? (
-                <div className="py-12 text-center">
-                  <Sparkles className="h-8 w-8 mx-auto animate-spin text-purple-500 mb-4" />
-                  <p className="text-muted-foreground">Crafting your polymath synthesis...</p>
-                </div>
-              ) : (
-                <>
-                  <Textarea 
-                    value={connectionPost}
-                    onChange={(e) => setConnectionPost(e.target.value)}
-                    rows={10}
-                    className="font-mono text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={handleCopyConnectionPost} variant="outline" className="flex-1">
-                      {copied ? (
-                        <>
-                          <Check className="h-4 w-4 mr-2" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      onClick={() => selectedConnection && handleGenerateConnectionPost(selectedConnection)} 
-                      variant="outline"
-                      disabled={isGenerating}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Regenerate
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* MULTI-PLATFORM POST DIALOG */}
-        <MultiPlatformPostDialog
-          open={showMultiPlatformPost}
-          onOpenChange={setShowMultiPlatformPost}
-          connection={selectedConnection}
-        />
       </div>
     </Wrapper>
   );
