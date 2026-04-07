@@ -1,4 +1,4 @@
-import { Brain, Home, Layers, User, Plus } from "lucide-react";
+import { Brain, Home, Layers, FlaskConical, User, Plus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -14,6 +14,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const navigation = [
     { name: "Now", href: "/", icon: Home },
     { name: "Mind", href: "/mind", icon: Layers },
+    { name: "Lab", href: "/lab", icon: FlaskConical },
   ];
 
 
@@ -121,6 +122,15 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
           >
             <Layers className="h-5 w-5" />
             <span className="text-[10px] font-medium">Mind</span>
+          </NavLink>
+
+          <NavLink
+            to="/lab"
+            className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
+            activeClassName="text-primary"
+          >
+            <FlaskConical className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Lab</span>
           </NavLink>
         </nav>
       </div>
