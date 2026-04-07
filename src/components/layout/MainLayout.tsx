@@ -123,14 +123,6 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             <span className="text-[10px] font-medium">Mind</span>
           </NavLink>
 
-          <NavLink
-            to="/lab"
-            className="flex flex-col items-center gap-1 py-2 px-3 text-muted-foreground transition-all rounded-xl"
-            activeClassName="text-primary"
-          >
-            <FlaskConical className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Lab</span>
-          </NavLink>
         </nav>
       </div>
 
