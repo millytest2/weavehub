@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, Scale } from "lucide-react";
+import { Compass, Route, Scale, FlaskConical } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
+import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "mirror";
+type MindTab = "identity" | "thread" | "mirror" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ const Mind = () => {
   const tabs = [
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
+    { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
     { id: "mirror" as MindTab, label: "Mirror", icon: Scale },
   ];
 
@@ -89,6 +91,7 @@ const Mind = () => {
               <ThreadSubTabs insightCount={insightCount} identityContext={identityContext} userId={user?.id || ""} />
             </div>
           )}
+          {activeTab === "lab" && <Lab embedded />}
           {activeTab === "mirror" && <DecisionMirror embedded />}
         </motion.div>
       </AnimatePresence>
