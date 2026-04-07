@@ -44,6 +44,7 @@ export const ThreadView = ({ userId, yearNote, weeklyFocus, insightCount }: Thre
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
+  const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export const ThreadView = ({ userId, yearNote, weeklyFocus, insightCount }: Thre
         .from("thread_milestones")
         .select("*")
         .eq("user_id", userId)
-        .eq("year", 2026)
+        .eq("year", currentYear)
         .order("month_number", { ascending: true });
 
       if (data && data.length >= 10) {
@@ -105,7 +106,7 @@ export const ThreadView = ({ userId, yearNote, weeklyFocus, insightCount }: Thre
       .from("thread_milestones")
       .delete()
       .eq("user_id", userId)
-      .eq("year", 2026);
+      .eq("year", currentYear);
     
     setMilestones([]);
     await generateMilestones();
@@ -115,7 +116,7 @@ export const ThreadView = ({ userId, yearNote, weeklyFocus, insightCount }: Thre
     return (
       <Card className="p-6 rounded-2xl text-center space-y-3">
         <Target className="h-10 w-10 text-muted-foreground mx-auto" />
-        <h3 className="font-display text-lg font-semibold">Set Your 2026 Direction</h3>
+        <h3 className="font-display text-lg font-semibold">Set Your {currentYear} Direction</h3>
         <p className="text-sm text-muted-foreground">
           Define your Misogi in Identity Seed to generate The Thread — your reverse-engineered roadmap from 2026 to today.
         </p>
@@ -172,7 +173,7 @@ export const ThreadView = ({ userId, yearNote, weeklyFocus, insightCount }: Thre
             <Target className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-primary font-medium mb-0.5">2026 Misogi</p>
+            <p className="text-xs text-primary font-medium mb-0.5">{currentYear} Misogi</p>
             <p className="text-sm font-medium line-clamp-2">{yearNote}</p>
           </div>
         </div>
