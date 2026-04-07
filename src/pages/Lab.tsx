@@ -7,14 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FlaskConical, Plus, Calendar, TrendingUp, Zap,
-  Check, Network, PenLine, RefreshCw
+  FlaskConical, Plus, TrendingUp, Zap,
+  Check, Network, PenLine, RefreshCw, Sparkles
 } from "lucide-react";
 import { WeeklyIntentions } from "@/components/lab/WeeklyIntentions";
 import { MonthlyPlanView } from "@/components/lab/MonthlyPlanView";
@@ -52,6 +50,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [newExperiment, setNewExperiment] = useState({ title: "", hypothesis: "", duration_days: 14, experiment_type: "personal", metrics: "" });
   const [dailyLog, setDailyLog] = useState({ observations: "", energy_level: 7, metrics: {} as Record<string, string> });
+  const [isGeneratingExperiment, setIsGeneratingExperiment] = useState(false);
 
   // Pattern state
   const [patternConnections, setPatternConnections] = useState<any[]>([]);
@@ -85,6 +84,33 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
     setShowNewExperiment(false);
     setNewExperiment({ title: "", hypothesis: "", duration_days: 14, experiment_type: "personal", metrics: "" });
     fetchExperiments();
+  };
+
+  const handleWeaveGenerate = async () => {
+    if (!user) return;
+    setIsGeneratingExperiment(true);
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { data, error } = await supabase.functions.invoke("experiment-generator", {
+        body: { timezone }
+      });
+      if (error) throw error;
+      if (data) {
+        // Auto-fill the form with generated experiment
+        setNewExperiment({
+          title: data.title || "",
+          hypothesis: data.identity_shift_target || data.description || "",
+          duration_days: parseInt(data.duration?.replace(/\D/g, '') || "7") || 7,
+          experiment_type: data.pillar?.toLowerCase() || "personal",
+          metrics: ""
+        });
+        toast.success("Experiment woven from your patterns");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Couldn't generate experiment");
+    } finally {
+      setIsGeneratingExperiment(false);
+    }
   };
 
   const handleLogDay = async () => {
@@ -324,6 +350,25 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
               <DialogDescription>What do you want to test?</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Weave Generate button */}
+              <button
+                onClick={handleWeaveGenerate}
+                disabled={isGeneratingExperiment}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-primary/20 text-sm text-primary/60 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all"
+              >
+                {isGeneratingExperiment ? (
+                  <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Weaving from your patterns...</>
+                ) : (
+                  <><Sparkles className="h-3.5 w-3.5" /> Weave Generate — let the system suggest</>
+                )}
+              </button>
+
+              <div className="relative flex items-center gap-3">
+                <div className="flex-1 h-px bg-border/30" />
+                <span className="text-[10px] text-muted-foreground/30 uppercase tracking-widest">or manual</span>
+                <div className="flex-1 h-px bg-border/30" />
+              </div>
+
               <div><Label className="text-xs text-muted-foreground/50">Title</Label><Input placeholder="e.g., 4-hour deep work blocks" value={newExperiment.title} onChange={(e) => setNewExperiment(p => ({ ...p, title: e.target.value }))} /></div>
               <div><Label className="text-xs text-muted-foreground/50">Hypothesis</Label><Textarea placeholder="What do you expect?" value={newExperiment.hypothesis} onChange={(e) => setNewExperiment(p => ({ ...p, hypothesis: e.target.value }))} rows={2} /></div>
               <div className="grid grid-cols-2 gap-3">

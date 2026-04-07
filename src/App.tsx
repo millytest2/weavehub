@@ -59,16 +59,7 @@ const App = () => (
             {/* Redirects from old routes */}
             <Route path="/identity" element={<Navigate to="/mind" replace />} />
             <Route path="/experiments" element={<Navigate to="/mind" replace />} />
-            <Route
-              path="/lab"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Lab />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/lab" element={<Navigate to="/mind" replace />} />
             <Route path="/explore" element={<Navigate to="/mind" replace />} />
             <Route path="/daily" element={<Navigate to="/" replace />} />
             {/* Keep these for deep links */}
