@@ -241,18 +241,7 @@ const Dashboard = () => {
         ) : (
           <motion.div key="weave" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col">
 
-            {/* What shifted — compact context bar */}
-            {brief?.what_shifted && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }} 
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-5"
-              >
-                <p className="text-[11px] text-muted-foreground/40 leading-relaxed text-center px-4">
-                  {brief.what_shifted.replace(/^[•\-\s]+/gm, '').split('\n').filter(Boolean).slice(0, 2).join(' · ')}
-                </p>
-              </motion.div>
-            )}
+            {/* Removed the what_shifted text wall — the weave threads on each card tell the story */}
 
             {/* Progress — which node you're on */}
             <div className="flex items-center justify-center gap-2 mb-6">

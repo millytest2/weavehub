@@ -133,8 +133,10 @@ Be direct. No fluff. No generic advice.`;
       });
     }
 
-    // Handle "generate_milestones" action - reverse-engineer 2026 Misogi into monthly milestones
+    // Handle "generate_milestones" action - reverse-engineer yearly Misogi into monthly milestones
     if (action === "generate_milestones") {
+      const currentYear = new Date().getFullYear();
+      
       const { data: identityData } = await supabase
         .from("identity_seeds")
         .select("content, year_note, core_values, weekly_focus")
@@ -143,8 +145,8 @@ Be direct. No fluff. No generic advice.`;
 
       if (!identityData?.year_note) {
         return new Response(JSON.stringify({ 
-          error: "No 2026 direction set",
-          message: "Set your 2026 Misogi in Identity Seed first"
+          error: "No direction set",
+          message: "Set your Misogi in Identity Seed first"
         }), { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
         });
@@ -155,7 +157,7 @@ Be direct. No fluff. No generic advice.`;
         .from("thread_milestones")
         .select("*")
         .eq("user_id", userId)
-        .eq("year", 2026)
+        .eq("year", currentYear)
         .order("month_number", { ascending: true });
 
       if (existingMilestones && existingMilestones.length >= 10) {
@@ -199,7 +201,7 @@ Be direct. No fluff. No generic advice.`;
 
       const milestonePrompt = `Reverse-engineer this yearly goal into 12 monthly milestones.
 
-2026 DIRECTION: ${yearNote}
+${currentYear} DIRECTION: ${yearNote}
 
 WHO THEY'RE BECOMING: ${identityContent}
 
@@ -210,9 +212,9 @@ WEEKLY FOCUS: ${weeklyFocus}
 INSIGHTS CAPTURED: ${insightCounts?.length || 0}
 RECENT ACTIONS: ${recentActionsSummary}
 
-CURRENT MONTH: ${currentMonth} (${new Date().toLocaleDateString('en-US', { month: 'long' })})
+CURRENT MONTH: ${currentMonth} (${new Date().toLocaleDateString('en-US', { month: 'long' })}) of ${currentYear}
 
-Generate 12 milestones (months 1-12). Months before ${currentMonth} = "completed", month ${currentMonth} = "current", after = "upcoming". Each needs: title, description, capability_focus.`;
+Generate 12 milestones (months 1-12). Months before ${currentMonth} = "completed", month ${currentMonth} = "current", after = "upcoming". Each needs: month_number, title, description, capability_focus, status.`;
 
       try {
         console.log("Generating milestones for user:", userId);
@@ -253,7 +255,7 @@ Generate 12 milestones (months 1-12). Months before ${currentMonth} = "completed
             .upsert({
               user_id: userId,
               month_number: m.month_number,
-              year: 2026,
+              year: currentYear,
               title: m.title,
               description: m.description,
               capability_focus: m.capability_focus,
