@@ -94,9 +94,14 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
       const { data, error } = await supabase.functions.invoke("experiment-generator", {
         body: { timezone }
       });
+      // Edge function returns 4xx as data (not thrown), check for active experiment block
+      if (data?.error && data?.active_experiment) {
+        toast.error(`Pause or complete "${data.active_experiment.title}" first`, { duration: 4000 });
+        setIsGeneratingExperiment(false);
+        return;
+      }
       if (error) throw error;
       if (data) {
-        // Auto-fill the form with generated experiment
         setNewExperiment({
           title: data.title || "",
           hypothesis: data.identity_shift_target || data.description || "",
@@ -107,7 +112,12 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
         toast.success("Experiment woven from your patterns");
       }
     } catch (error: any) {
-      toast.error(error.message || "Couldn't generate experiment");
+      const msg = error?.message || "Couldn't generate experiment";
+      if (msg.includes("active experiment") || msg.includes("Complete or pause")) {
+        toast.error("You have an active experiment — complete or pause it first", { duration: 4000 });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsGeneratingExperiment(false);
     }
