@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft, Plus, X, Flame, Send } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { EveningClose } from "@/components/dashboard/EveningClose";
+import { Confetti, useConfetti } from "@/components/ui/confetti";
 
 interface WeaveSource {
   label: string;
@@ -47,7 +48,6 @@ interface MorningBrief {
 
 const SWIPE_THRESHOLD = 50;
 
-// Source type styling
 const sourceStyles: Record<string, { color: string; bg: string; icon: string }> = {
   capture: { color: 'text-blue-500/70', bg: 'bg-blue-500/8 border-blue-500/15', icon: '◆' },
   pattern: { color: 'text-violet-500/70', bg: 'bg-violet-500/8 border-violet-500/15', icon: '◎' },
@@ -56,6 +56,24 @@ const sourceStyles: Record<string, { color: string; bg: string; icon: string }> 
   gem: { color: 'text-amber-500/70', bg: 'bg-amber-500/8 border-amber-500/15', icon: '✦' },
   experiment: { color: 'text-rose-500/70', bg: 'bg-rose-500/8 border-rose-500/15', icon: '◇' },
   gap: { color: 'text-orange-500/70', bg: 'bg-orange-500/8 border-orange-500/15', icon: '○' },
+};
+
+// Auto-detect pillar from text
+const detectPillar = (text: string): string => {
+  const lower = text.toLowerCase();
+  if (/push.?up|squat|meal|eat|gym|run|walk|exercise|health|sleep|water/i.test(lower)) return 'Health';
+  if (/apply|job|interview|resume|career|linkedin|follow.?up/i.test(lower)) return 'Stability';
+  if (/post|content|write|blog|linkedin|twitter|brand|upath/i.test(lower)) return 'Content';
+  if (/learn|read|book|course|study|script|episode/i.test(lower)) return 'Skill';
+  if (/clean|organize|laundry|dishes|errands|admin|sheets|sweep/i.test(lower)) return 'Admin';
+  if (/meditat|journal|reflect|present|breath|ground/i.test(lower)) return 'Presence';
+  if (/friend|family|call|meet|connect|relationship/i.test(lower)) return 'Connection';
+  return 'Admin';
+};
+
+const getLocalToday = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
 const Dashboard = () => {
@@ -73,6 +91,18 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
 
+  // Propulsion state
+  const [streak, setStreak] = useState(0);
+  const [todayCompleted, setTodayCompleted] = useState(0);
+  const [todayTotal, setTodayTotal] = useState(0);
+
+  // Quick add state
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddText, setQuickAddText] = useState("");
+  const [isAddingTasks, setIsAddingTasks] = useState(false);
+
+  const { showConfetti, celebrate, handleComplete: handleConfettiComplete } = useConfetti();
+
   const getTimePhase = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'morning';
@@ -86,6 +116,57 @@ const Dashboard = () => {
     return hour >= 18 && hour < 23;
   };
 
+  const fetchPropulsionData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const today = getLocalToday();
+      
+      // Get today's tasks for progress
+      const { data: todayTasks } = await supabase
+        .from("daily_tasks")
+        .select("completed")
+        .eq("user_id", user.id)
+        .eq("task_date", today);
+
+      if (todayTasks) {
+        setTodayTotal(todayTasks.length);
+        setTodayCompleted(todayTasks.filter(t => t.completed).length);
+      }
+
+      // Calculate streak from action_history
+      const { data: recentDays } = await supabase
+        .from("action_history")
+        .select("action_date")
+        .eq("user_id", user.id)
+        .order("action_date", { ascending: false })
+        .limit(60);
+
+      if (recentDays) {
+        const uniqueDates = [...new Set(recentDays.map(d => d.action_date))].sort().reverse();
+        let s = 0;
+        const todayDate = new Date();
+        for (let i = 0; i < uniqueDates.length; i++) {
+          const expected = new Date(todayDate);
+          expected.setDate(expected.getDate() - i);
+          const expectedStr = `${expected.getFullYear()}-${String(expected.getMonth() + 1).padStart(2, '0')}-${String(expected.getDate()).padStart(2, '0')}`;
+          if (uniqueDates[i] === expectedStr) {
+            s++;
+          } else if (i === 0 && uniqueDates[0] !== expectedStr) {
+            // Today hasn't been completed yet, check from yesterday
+            expected.setDate(expected.getDate() - 1);
+            const yesterdayStr = `${expected.getFullYear()}-${String(expected.getMonth() + 1).padStart(2, '0')}-${String(expected.getDate()).padStart(2, '0')}`;
+            if (uniqueDates[0] === yesterdayStr) {
+              s++;
+            } else break;
+          } else break;
+        }
+        setStreak(s);
+      }
+    } catch (e) {
+      console.error("Propulsion fetch error:", e);
+    }
+  }, [user]);
+
   const fetchBrief = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
@@ -97,7 +178,6 @@ const Dashboard = () => {
       if (error) throw error;
       if (data) {
         setBrief(data.brief);
-        // Parse cited_sources from JSON if needed
         const parsedActions = (data.actions || []).map((a: any) => ({
           ...a,
           cited_sources: typeof a.cited_sources === 'string' ? JSON.parse(a.cited_sources) : a.cited_sources,
@@ -117,7 +197,8 @@ const Dashboard = () => {
     if (!user || hasLoaded.current) return;
     hasLoaded.current = true;
     fetchBrief();
-  }, [user, fetchBrief]);
+    fetchPropulsionData();
+  }, [user, fetchBrief, fetchPropulsionData]);
 
   const handleCompleteAction = async (action: BriefAction) => {
     if (!user || !action.id) return;
@@ -129,7 +210,19 @@ const Dashboard = () => {
         user_id: user.id, hour_of_day: now.getHours(), day_of_week: now.getDay(),
         activity_type: 'complete', pillar: action.pillar
       });
-      toast.success("Done!");
+      
+      // Update propulsion
+      setTodayCompleted(prev => prev + 1);
+      
+      // Check if all done → celebrate
+      const newCompleted = todayCompleted + 1;
+      if (newCompleted >= todayTotal && todayTotal > 0) {
+        celebrate();
+        toast.success("All done! 🎯");
+      } else {
+        toast.success("Done!");
+      }
+      
       // Auto-advance
       if (activeIndex < totalNodes - 1) {
         setTimeout(() => navigate(1), 600);
@@ -145,6 +238,7 @@ const Dashboard = () => {
     try {
       await supabase.from("daily_tasks").delete().eq("id", action.id);
       setActions(prev => prev.filter(a => a.id !== action.id));
+      setTodayTotal(prev => Math.max(0, prev - 1));
       const now = new Date();
       await supabase.from('user_activity_patterns').insert({
         user_id: user.id, hour_of_day: now.getHours(), day_of_week: now.getDay(),
@@ -169,7 +263,63 @@ const Dashboard = () => {
     }
   };
 
-  // Build nodes: actions + gem interleaved
+  // Quick add: parse multi-line or numbered input into tasks
+  const handleQuickAdd = async () => {
+    if (!user || !quickAddText.trim()) return;
+    setIsAddingTasks(true);
+    try {
+      const today = getLocalToday();
+      // Split by newlines, numbered items, or semicolons
+      const lines = quickAddText
+        .split(/\n|(?:\d+[\.\)]\s*)/)
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+      const newTasks: BriefAction[] = [];
+      const currentSeq = actions.length;
+
+      for (let i = 0; i < lines.length; i++) {
+        const pillar = detectPillar(lines[i]);
+        const { data, error } = await supabase.from("daily_tasks").insert({
+          user_id: user.id,
+          title: lines[i],
+          one_thing: lines[i],
+          task_date: today,
+          completed: false,
+          pillar,
+          task_sequence: currentSeq + i + 1,
+          priority: 'HIGH',
+        } as any).select().single();
+
+        if (!error && data) {
+          newTasks.push({
+            id: data.id,
+            one_thing: lines[i],
+            why_matters: '',
+            pillar,
+            description: '',
+            completed: false,
+            task_sequence: currentSeq + i + 1,
+          });
+        }
+      }
+
+      if (newTasks.length > 0) {
+        setActions(prev => [...prev, ...newTasks]);
+        setTodayTotal(prev => prev + newTasks.length);
+        toast.success(`Added ${newTasks.length} task${newTasks.length > 1 ? 's' : ''}`);
+        setQuickAddText("");
+        setShowQuickAdd(false);
+      }
+    } catch (error: any) {
+      toast.error("Failed to add tasks");
+      console.error(error);
+    } finally {
+      setIsAddingTasks(false);
+    }
+  };
+
+  // Build nodes
   const nodes: Array<{ type: 'action'; action: BriefAction } | { type: 'gem'; gem: ForgottenGem }> = [];
   actions.forEach((action) => {
     nodes.push({ type: 'action', action });
@@ -210,12 +360,105 @@ const Dashboard = () => {
   };
 
   const committedActions = actions;
+  const todayProgress = todayTotal > 0 ? (todayCompleted / todayTotal) * 100 : 0;
 
   return (
     <div className="min-h-screen flex flex-col max-w-xl mx-auto px-4 py-6 animate-fade-in overflow-hidden w-full">
+      <Confetti show={showConfetti} onComplete={handleConfettiComplete} />
+      
       {user && isEvening() && committedActions.length > 0 && (
         <EveningClose userId={user.id} committedActions={committedActions} briefId={brief?.id} />
       )}
+
+      {/* ===== PROPULSION STRIP ===== */}
+      {!isLoading && todayTotal > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5"
+        >
+          <div className="flex items-center gap-3">
+            {/* Streak */}
+            {streak > 0 && (
+              <div className="flex items-center gap-1">
+                <Flame className="h-3 w-3 text-orange-400/60" />
+                <span className="text-[11px] font-medium text-muted-foreground/40">{streak}</span>
+              </div>
+            )}
+
+            {/* Progress bar */}
+            <div className="flex-1 relative">
+              <div className="h-1 rounded-full bg-muted/30 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-primary/40"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${todayProgress}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+              </div>
+            </div>
+
+            {/* Count */}
+            <span className="text-[11px] text-muted-foreground/30 tabular-nums">
+              {todayCompleted}/{todayTotal}
+            </span>
+
+            {/* Quick add button */}
+            <button
+              onClick={() => setShowQuickAdd(true)}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground/25 hover:text-primary/50 hover:bg-primary/5 transition-all"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ===== QUICK ADD PANEL ===== */}
+      <AnimatePresence>
+        {showQuickAdd && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="rounded-xl border border-border/30 bg-card/80 backdrop-blur-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[12px] text-muted-foreground/50">
+                  Add tasks — one per line or numbered
+                </span>
+                <button
+                  onClick={() => setShowQuickAdd(false)}
+                  className="text-muted-foreground/25 hover:text-muted-foreground/50"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <textarea
+                value={quickAddText}
+                onChange={(e) => setQuickAddText(e.target.value)}
+                placeholder={`1. Complete project report\n2. Go for a 30min walk\n3. Read 20 pages`}
+                className="w-full bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/20 resize-none outline-none min-h-[100px] leading-relaxed"
+                autoFocus
+              />
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-[10px] text-muted-foreground/25">
+                  {quickAddText.split(/\n|(?:\d+[\.\)]\s*)/).filter(l => l.trim()).length} task(s) detected
+                </span>
+                <button
+                  onClick={handleQuickAdd}
+                  disabled={isAddingTasks || !quickAddText.trim()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-medium hover:bg-primary/20 transition-colors disabled:opacity-30"
+                >
+                  <Send className="h-3 w-3" />
+                  {isAddingTasks ? "Adding..." : "Add to today"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         {isLoading ? (
@@ -228,38 +471,53 @@ const Dashboard = () => {
           </motion.div>
         ) : totalNodes === 0 ? (
           <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-3">
+            <div className="text-center space-y-4">
               <p className="text-muted-foreground/50 text-sm">Nothing woven yet today.</p>
-              <button
-                onClick={() => { hasLoaded.current = false; fetchBrief(); }}
-                className="text-sm text-primary/60 hover:text-primary transition-colors"
-              >
-                Generate brief
-              </button>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={() => { hasLoaded.current = false; fetchBrief(); }}
+                  className="text-sm text-primary/60 hover:text-primary transition-colors"
+                >
+                  Generate brief
+                </button>
+                <button
+                  onClick={() => setShowQuickAdd(true)}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add your own tasks
+                </button>
+              </div>
             </div>
           </motion.div>
         ) : (
           <motion.div key="weave" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col">
 
-            {/* Removed the what_shifted text wall — the weave threads on each card tell the story */}
-
-            {/* Progress — which node you're on */}
+            {/* Progress dots */}
             <div className="flex items-center justify-center gap-2 mb-6">
-              {nodes.map((node, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setDirection(i > activeIndex ? 1 : -1); setActiveIndex(i); }}
-                  className="relative"
-                >
-                  <div className={`rounded-full transition-all duration-500 ${
-                    i === activeIndex
-                      ? 'w-7 h-2 bg-primary/50'
-                      : i < activeIndex
-                        ? 'w-2 h-2 bg-primary/20'
-                        : 'w-2 h-2 bg-muted-foreground/10'
-                  }`} />
-                </button>
-              ))}
+              {nodes.map((node, i) => {
+                const isDone = node.type === 'action' && node.action.completed;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => { setDirection(i > activeIndex ? 1 : -1); setActiveIndex(i); }}
+                    className="relative"
+                  >
+                    <div className={`rounded-full transition-all duration-500 ${
+                      i === activeIndex
+                        ? 'w-7 h-2 bg-primary/50'
+                        : isDone
+                          ? 'w-2 h-2 bg-primary/35'
+                          : i < activeIndex
+                            ? 'w-2 h-2 bg-primary/20'
+                            : 'w-2 h-2 bg-muted-foreground/10'
+                    }`} />
+                    {isDone && i !== activeIndex && (
+                      <Check className="absolute -top-1 -right-1 h-2 w-2 text-primary/50" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* ===== THE CARD ===== */}
@@ -396,21 +654,20 @@ const WeaveActionCard = ({
           {action.one_thing}
         </p>
 
-        {/* Impact — one subtle line */}
+        {/* Impact */}
         {!isDone && action.impact_description && (
           <p className="mt-3 text-[12px] text-muted-foreground/30 leading-relaxed">
             {action.impact_description}
           </p>
         )}
 
-        {/* Source threads — collapsed by default */}
+        {/* Source threads */}
         {!isDone && sources.length > 0 && (
           <div className="mt-5">
             <button
               onClick={() => setShowSources(!showSources)}
               className="flex items-center gap-2 group"
             >
-              {/* Inline source dots */}
               <div className="flex items-center -space-x-1">
                 {sources.map((s, i) => {
                   const style = sourceStyles[s.type] || sourceStyles.capture;
@@ -466,7 +723,7 @@ const WeaveActionCard = ({
         )}
       </div>
 
-      {/* Actions — clean bottom bar */}
+      {/* Actions */}
       <div className="px-7 pb-6">
         {!isDone ? (
           <div className="flex items-center gap-3">
