@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft, Plus, X, Flame, Send } from "lucide-react";
+import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft, Plus, X, Send } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
@@ -380,10 +380,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             {/* Streak */}
             {streak > 0 && (
-              <div className="flex items-center gap-1">
-                <Flame className="h-3 w-3 text-orange-400/60" />
-                <span className="text-[11px] font-medium text-muted-foreground/40">{streak}</span>
-              </div>
+              <span className="text-[11px] font-medium text-muted-foreground/40 tabular-nums">{streak}d</span>
             )}
 
             {/* Progress bar */}
