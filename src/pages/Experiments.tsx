@@ -117,9 +117,13 @@ const Experiments = () => {
         },
       });
 
+      if (data?.error && data?.active_experiment) {
+        toast.error(`Pause or complete "${data.active_experiment.title}" first`, { duration: 4000 });
+        setGenerating(false);
+        return;
+      }
       if (error) throw error;
-
-      if (data.error) {
+      if (data?.error) {
         toast.error(data.error);
         return;
       }
