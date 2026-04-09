@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft, Plus, X, Flame, Send } from "lucide-react";
+import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft, Plus, X, Send } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
