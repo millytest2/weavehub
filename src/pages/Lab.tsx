@@ -102,11 +102,13 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
       }
       if (error) throw error;
       if (data) {
+        // Edge function returns { experiments: [...], sprint: {...} }
+        const exp = data.experiments?.[0] || data;
         setNewExperiment({
-          title: data.title || "",
-          hypothesis: data.identity_shift_target || data.description || "",
-          duration_days: parseInt(data.duration?.replace(/\D/g, '') || "7") || 7,
-          experiment_type: data.pillar?.toLowerCase() || "personal",
+          title: exp.title || "",
+          hypothesis: exp.identity_shift_target || exp.description || "",
+          duration_days: parseInt(String(exp.duration || "7").replace(/\D/g, '') || "7") || 7,
+          experiment_type: exp.pillar?.toLowerCase() || "personal",
           metrics: ""
         });
         toast.success("Experiment woven from your patterns");
