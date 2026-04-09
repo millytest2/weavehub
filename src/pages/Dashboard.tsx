@@ -62,8 +62,8 @@ const sourceStyles: Record<string, { color: string; bg: string; icon: string }> 
 const detectPillar = (text: string): string => {
   const lower = text.toLowerCase();
   if (/push.?up|squat|meal|eat|gym|run|walk|exercise|health|sleep|water/i.test(lower)) return 'Health';
-  if (/apply|job|interview|resume|career|linkedin|follow.?up/i.test(lower)) return 'Stability';
-  if (/post|content|write|blog|linkedin|twitter|brand|upath/i.test(lower)) return 'Content';
+  if (/apply|job|interview|resume|career|linkedin|follow.?up|handshake|trader|gig/i.test(lower)) return 'Stability';
+  if (/post|content|write|blog|twitter|brand|upath|tiktok|instagram/i.test(lower)) return 'Content';
   if (/learn|read|book|course|study|script|episode/i.test(lower)) return 'Skill';
   if (/clean|organize|laundry|dishes|errands|admin|sheets|sweep/i.test(lower)) return 'Admin';
   if (/meditat|journal|reflect|present|breath|ground/i.test(lower)) return 'Presence';
