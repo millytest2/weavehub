@@ -625,7 +625,7 @@ serve(async (req) => {
           error: "Complete or pause your active experiment first.",
           active_experiment: activeExperiments[0]
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
