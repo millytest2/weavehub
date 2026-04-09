@@ -56,6 +56,10 @@ export const CurrentChapter = ({ activeExperiment, user, onExperimentChanged, ge
       const { data, error } = await supabase.functions.invoke("experiment-generator", {
         body: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
       });
+      if (data?.error && data?.active_experiment) {
+        toast.error(`Pause or complete "${data.active_experiment.title}" first`, { duration: 4000 });
+        return;
+      }
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
 
