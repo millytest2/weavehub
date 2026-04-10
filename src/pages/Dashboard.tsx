@@ -61,13 +61,13 @@ const sourceStyles: Record<string, { color: string; bg: string; icon: string }> 
 // Auto-detect pillar from text
 const detectPillar = (text: string): string => {
   const lower = text.toLowerCase();
-  if (/push.?up|squat|meal|eat|gym|run|walk|exercise|health|sleep|water|lift|weight|chest|arm|leg|protein|grocer/i.test(lower)) return 'Health';
-  if (/apply|job|interview|resume|career|linkedin|follow.?up|handshake|trader|gig|hire/i.test(lower)) return 'Stability';
-  if (/post|content|write|blog|twitter|brand|upath|tiktok|instagram|x\.com/i.test(lower)) return 'Content';
-  if (/learn|read|book|course|study|script|episode|sales|finder|figure out/i.test(lower)) return 'Skill';
-  if (/clean|organize|laundry|dishes|errands|admin|sheets|sweep|phone/i.test(lower)) return 'Admin';
-  if (/meditat|journal|reflect|present|breath|ground|chess|fun|play/i.test(lower)) return 'Presence';
-  if (/friend|family|call|meet|connect|relationship|lunch|dinner|mom|dad/i.test(lower)) return 'Connection';
+  if (/push.?up|squat|meal|eat|gym|run|walk|exercise|health|sleep|water|lift|weight|chest|arm|leg|protein|grocer|workout/i.test(lower)) return 'Health';
+  if (/apply|job|interview|resume|career|linkedin|follow.?up|handshake|trader|gig|hire|sales|client|invoice|contract|dilata|uptat|upath/i.test(lower)) return 'Stability';
+  if (/post|content|write|blog|twitter|brand|tiktok|instagram|x\.com|comment|respond.*comment/i.test(lower)) return 'Content';
+  if (/learn|read|book|course|study|script|episode|figure out|opportunity|finder|experiment/i.test(lower)) return 'Skill';
+  if (/clean|organize|laundry|dishes|errands|admin|sheets|sweep|url|update.*for.*dad|update.*site/i.test(lower)) return 'Admin';
+  if (/meditat|journal|reflect|present|breath|ground|chess|fun|play|movie|film/i.test(lower)) return 'Presence';
+  if (/friend|family|call|meet|connect|relationship|lunch|dinner|mom|dad|hang|arley|augie/i.test(lower)) return 'Connection';
   return 'Admin';
 };
 
@@ -305,8 +305,10 @@ const Dashboard = () => {
       }
 
       if (newTasks.length > 0) {
-        setActions(prev => [...prev, ...newTasks]);
+        // Prepend user tasks so they appear first in the deck
+        setActions(prev => [...newTasks, ...prev]);
         setTodayTotal(prev => prev + newTasks.length);
+        setActiveIndex(0); // Jump to first new task
         toast.success(`Added ${newTasks.length} task${newTasks.length > 1 ? 's' : ''}`);
         setQuickAddText("");
         setShowQuickAdd(false);
@@ -319,13 +321,22 @@ const Dashboard = () => {
     }
   };
 
-  // Build nodes
+  // Build nodes — user-added tasks first, then AI-generated
+  const sortedActions = [...actions].sort((a, b) => {
+    const aIsUser = !a.action_type;
+    const bIsUser = !b.action_type;
+    if (aIsUser && !bIsUser) return -1;
+    if (!aIsUser && bIsUser) return 1;
+    return (a.task_sequence || 0) - (b.task_sequence || 0);
+  });
   const nodes: Array<{ type: 'action'; action: BriefAction } | { type: 'gem'; gem: ForgottenGem }> = [];
-  actions.forEach((action) => {
+  sortedActions.forEach((action) => {
     nodes.push({ type: 'action', action });
   });
   if (forgottenGem) {
-    const gemPos = Math.min(2, nodes.length);
+    // Place gem after user tasks but before AI tasks
+    const firstAiIndex = sortedActions.findIndex(a => !!a.action_type);
+    const gemPos = firstAiIndex >= 0 ? firstAiIndex : nodes.length;
     nodes.splice(gemPos, 0, { type: 'gem', gem: forgottenGem });
   }
 
