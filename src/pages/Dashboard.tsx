@@ -305,8 +305,10 @@ const Dashboard = () => {
       }
 
       if (newTasks.length > 0) {
-        setActions(prev => [...prev, ...newTasks]);
+        // Prepend user tasks so they appear first in the deck
+        setActions(prev => [...newTasks, ...prev]);
         setTodayTotal(prev => prev + newTasks.length);
+        setActiveIndex(0); // Jump to first new task
         toast.success(`Added ${newTasks.length} task${newTasks.length > 1 ? 's' : ''}`);
         setQuickAddText("");
         setShowQuickAdd(false);
@@ -319,13 +321,22 @@ const Dashboard = () => {
     }
   };
 
-  // Build nodes
+  // Build nodes — user-added tasks first, then AI-generated
+  const sortedActions = [...actions].sort((a, b) => {
+    const aIsUser = !a.action_type;
+    const bIsUser = !b.action_type;
+    if (aIsUser && !bIsUser) return -1;
+    if (!aIsUser && bIsUser) return 1;
+    return (a.task_sequence || 0) - (b.task_sequence || 0);
+  });
   const nodes: Array<{ type: 'action'; action: BriefAction } | { type: 'gem'; gem: ForgottenGem }> = [];
-  actions.forEach((action) => {
+  sortedActions.forEach((action) => {
     nodes.push({ type: 'action', action });
   });
   if (forgottenGem) {
-    const gemPos = Math.min(2, nodes.length);
+    // Place gem after user tasks but before AI tasks
+    const firstAiIndex = sortedActions.findIndex(a => !!a.action_type);
+    const gemPos = firstAiIndex >= 0 ? firstAiIndex : nodes.length;
     nodes.splice(gemPos, 0, { type: 'gem', gem: forgottenGem });
   }
 
