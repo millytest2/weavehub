@@ -295,6 +295,30 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
                   </div>
                 )}
 
+                {pausedExperiments.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] uppercase tracking-widest text-muted-foreground/25">Paused</p>
+                    {pausedExperiments.map((exp) => (
+                      <div key={exp.id} className="rounded-xl border border-border/20 p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-foreground/60">{exp.title}</p>
+                          <p className="text-[11px] text-muted-foreground/30">Day {exp.current_day} of {exp.duration_days}</p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            await supabase.from("experiments").update({ status: "in_progress" }).eq("id", exp.id);
+                            setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: "in_progress" } : e));
+                            toast.success("Experiment resumed");
+                          }}
+                          className="text-[12px] text-primary/40 hover:text-primary transition-colors"
+                        >
+                          Resume
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {completedExperiments.length > 0 && (
                   <div className="space-y-3">
                     <p className="text-[11px] uppercase tracking-widest text-muted-foreground/25">Completed</p>
