@@ -172,6 +172,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
   };
 
   const activeExperiments = experiments.filter(e => e.status === "in_progress");
+  const pausedExperiments = experiments.filter(e => e.status === "paused");
   const completedExperiments = experiments.filter(e => e.status === "completed");
 
   const tabs = [
