@@ -172,6 +172,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
   };
 
   const activeExperiments = experiments.filter(e => e.status === "in_progress");
+  const pausedExperiments = experiments.filter(e => e.status === "paused");
   const completedExperiments = experiments.filter(e => e.status === "completed");
 
   const tabs = [
@@ -270,15 +271,51 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
                           <div className="h-1 bg-muted/50 rounded-full overflow-hidden">
                             <div className="h-full bg-primary/30 rounded-full transition-all" style={{ width: `${progress}%` }} />
                           </div>
-                          <button
-                            onClick={() => { setSelectedExperiment(exp); setShowDailyLog(true); }}
-                            className="text-[13px] text-primary/50 hover:text-primary transition-colors"
-                          >
-                            Log day {exp.current_day} →
-                          </button>
+                          <div className="flex items-center gap-4">
+                            <button
+                              onClick={() => { setSelectedExperiment(exp); setShowDailyLog(true); }}
+                              className="text-[13px] text-primary/50 hover:text-primary transition-colors"
+                            >
+                              Log day {exp.current_day} →
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await supabase.from("experiments").update({ status: "paused" }).eq("id", exp.id);
+                                setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: "paused" } : e));
+                                toast.success("Experiment paused");
+                              }}
+                              className="text-[13px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
+                            >
+                              Pause
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {pausedExperiments.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] uppercase tracking-widest text-muted-foreground/25">Paused</p>
+                    {pausedExperiments.map((exp) => (
+                      <div key={exp.id} className="rounded-xl border border-border/20 p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-foreground/60">{exp.title}</p>
+                          <p className="text-[11px] text-muted-foreground/30">Day {exp.current_day} of {exp.duration_days}</p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            await supabase.from("experiments").update({ status: "in_progress" }).eq("id", exp.id);
+                            setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: "in_progress" } : e));
+                            toast.success("Experiment resumed");
+                          }}
+                          className="text-[12px] text-primary/40 hover:text-primary transition-colors"
+                        >
+                          Resume
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
