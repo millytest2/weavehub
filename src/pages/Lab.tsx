@@ -239,6 +239,9 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
             {/* EXPERIMENTS */}
             {activeTab === "experiments" && (
               <div className="space-y-6">
+                {/* Focus Lock — appears when too many experiments */}
+                <FocusLock experimentCount={experiments.length} />
+
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground/50">Track what you're testing</p>
                   <button
