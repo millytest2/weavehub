@@ -19,6 +19,7 @@ import { MonthlyPlanView } from "@/components/lab/MonthlyPlanView";
 import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
 import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
+import { FocusLock } from "@/components/lab/FocusLock";
 
 type LabTab = "write" | "weekly" | "experiments" | "patterns";
 
