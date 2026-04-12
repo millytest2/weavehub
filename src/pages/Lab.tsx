@@ -289,7 +289,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
                                 setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: "paused" } : e));
                                 toast.success("Experiment paused — you can now generate a new one");
                               }}
-                              className="text-[13px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
+                              className="text-[13px] text-amber-500/60 hover:text-amber-500 transition-colors flex items-center gap-1"
                             >
                               Pause
                             </button>
