@@ -1,0 +1,2 @@
+ALTER TABLE public.experiments DROP CONSTRAINT experiments_status_check;
+ALTER TABLE public.experiments ADD CONSTRAINT experiments_status_check CHECK (status = ANY (ARRAY['planning'::text, 'in_progress'::text, 'running'::text, 'completed'::text, 'failed'::text, 'paused'::text]));
