@@ -280,9 +280,14 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
                             </button>
                             <button
                               onClick={async () => {
-                                await supabase.from("experiments").update({ status: "paused" }).eq("id", exp.id);
+                                const { error } = await supabase.from("experiments").update({ status: "paused" }).eq("id", exp.id);
+                                if (error) {
+                                  console.error("Pause error:", error);
+                                  toast.error("Failed to pause experiment");
+                                  return;
+                                }
                                 setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: "paused" } : e));
-                                toast.success("Experiment paused");
+                                toast.success("Experiment paused — you can now generate a new one");
                               }}
                               className="text-[13px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
                             >
