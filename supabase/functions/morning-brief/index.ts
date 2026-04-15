@@ -31,8 +31,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Check if brief already exists for today
-    const today = new Date().toISOString().split('T')[0];
+    // Check if brief already exists for today (use user's timezone)
+    const getLocalDate = (tz?: string) => {
+      try {
+        if (tz) {
+          return new Date().toLocaleDateString('en-CA', { timeZone: tz });
+        }
+      } catch { /* fallback */ }
+      return new Date().toISOString().split('T')[0];
+    };
+    const today = getLocalDate(timezone);
     const { data: existingBrief } = await supabase
       .from("daily_briefs")
       .select("*")
