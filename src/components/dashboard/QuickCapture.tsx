@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,6 +97,8 @@ export const QuickCapture = () => {
   const [isLoadingRealign, setIsLoadingRealign] = useState(false);
   
   const [showMoreActions, setShowMoreActions] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
     onTranscript: (text) => {
@@ -104,6 +106,48 @@ export const QuickCapture = () => {
       toast.success("Voice captured");
     },
   });
+
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (e.target) e.target.value = ''; // reset so same file can be picked again
+    
+    // 25MB safety cap (Whisper limit)
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("Audio file too large (max 25MB)");
+      return;
+    }
+    
+    setIsUploadingAudio(true);
+    toast.info("Transcribing audio...");
+    
+    try {
+      // Convert file to base64
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
+      }
+      const base64Audio = btoa(binary);
+      
+      const { data, error } = await supabase.functions.invoke('voice-transcribe', {
+        body: { audio: base64Audio, mimeType: file.type || 'audio/mpeg' },
+      });
+      
+      if (error) throw error;
+      if (!data?.text) throw new Error('No transcription returned');
+      
+      setContent(prev => prev ? `${prev}\n\n${data.text}` : data.text);
+      toast.success("Audio transcribed — review and tap Save & Extract");
+    } catch (err: any) {
+      console.error('Audio upload error:', err);
+      toast.error(err.message || 'Failed to transcribe audio');
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -455,28 +499,57 @@ export const QuickCapture = () => {
                 <Textarea
                   placeholder={
                     captureType === "paste"
-                      ? "YouTube link, article URL, tweet, or any thought..."
+                      ? "YouTube link, article URL, tweet, voice memo, or any thought..."
                       : "What did you learn or realize?"
                   }
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[100px] text-base pr-12"
+                  className="min-h-[100px] text-base pr-24"
                   style={{ fontSize: '16px' }}
                   autoFocus
                 />
+                
+                {/* Hidden file input for audio upload */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.mp4"
+                  onChange={handleAudioFileUpload}
+                  className="hidden"
+                />
+                
+                {/* Audio upload button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingAudio || isRecording || isTranscribing}
+                  className={`absolute right-14 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    isUploadingAudio
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  } disabled:opacity-50`}
+                  aria-label="Upload audio file"
+                  title="Upload voice memo (mp3, m4a, wav)"
+                >
+                  {isUploadingAudio ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Upload className="h-5 w-5" />
+                  )}
+                </button>
                 
                 {/* Voice button inside textarea */}
                 <button
                   type="button"
                   onClick={toggleRecording}
-                  disabled={isTranscribing}
+                  disabled={isTranscribing || isUploadingAudio}
                   className={`absolute right-2 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     isRecording 
                       ? 'bg-destructive text-destructive-foreground animate-pulse' 
                       : isTranscribing
                       ? 'bg-muted text-muted-foreground'
                       : 'bg-primary/10 text-primary hover:bg-primary/20'
-                  }`}
+                  } disabled:opacity-50`}
                   aria-label={isRecording ? "Stop recording" : "Start voice input"}
                 >
                   {isTranscribing ? (
@@ -497,6 +570,10 @@ export const QuickCapture = () => {
                 <p className="text-xs text-muted-foreground animate-pulse">Transcribing...</p>
               )}
               
+              {isUploadingAudio && (
+                <p className="text-xs text-muted-foreground animate-pulse">Transcribing audio file...</p>
+              )}
+              
               {isProcessing && (
                 <p className="text-xs text-muted-foreground animate-pulse">
                   {captureType === "paste" ? "Detecting content and extracting..." : "Processing..."}
@@ -505,7 +582,7 @@ export const QuickCapture = () => {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing}
+                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing || isUploadingAudio}
                 className="w-full h-10"
               >
                 {isSubmitting ? "Processing..." : captureType === "paste" ? "Save & Extract" : "Capture Insight"}
