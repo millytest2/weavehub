@@ -36,10 +36,10 @@ export function CareerRedirectPrompt({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-lg">Career clarity on your mind?</AlertDialogTitle>
+          <AlertDialogTitle className="text-lg">Career clarity for overthinkers</AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-relaxed">
-            Weave is for daily alignment. UPath is designed specifically for career exploration, 
-            finding your path, and mapping your next move.
+            Weave is for daily alignment. UPath is built for overthinkers who need career clarity — 
+            data-driven paths, dispelled myths, and actionable next moves.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col sm:flex-row gap-2">
