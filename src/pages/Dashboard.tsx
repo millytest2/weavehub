@@ -3,12 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft, Plus, X, Send } from "lucide-react";
+import { Check, Zap, RefreshCw, Gift, ChevronRight, ChevronLeft, Plus, X, Send, Mic, MicOff, Loader2, Target } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { EveningClose } from "@/components/dashboard/EveningClose";
 import { Confetti, useConfetti } from "@/components/ui/confetti";
+import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 
 interface WeaveSource {
   label: string;
@@ -91,6 +92,11 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
 
+  // Big Move state
+  const [isGettingBigMove, setIsGettingBigMove] = useState(false);
+  const [bigMove, setBigMove] = useState<any>(null);
+  const [showBigMoveDialog, setShowBigMoveDialog] = useState(false);
+
   // Propulsion state
   const [streak, setStreak] = useState(0);
   const [todayCompleted, setTodayCompleted] = useState(0);
@@ -100,6 +106,14 @@ const Dashboard = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddText, setQuickAddText] = useState("");
   const [isAddingTasks, setIsAddingTasks] = useState(false);
+
+  // Voice capture for quick add
+  const { isRecording: qaRecording, isTranscribing: qaTranscribing, toggleRecording: qaToggleRecording } = useVoiceCapture({
+    onTranscript: (text) => {
+      setQuickAddText(prev => prev ? `${prev}\n${text}` : text);
+      toast.success("Voice captured");
+    },
+  });
 
   const { showConfetti, celebrate, handleComplete: handleConfettiComplete } = useConfetti();
 
@@ -260,6 +274,19 @@ const Dashboard = () => {
       toast.error(error.message || "Failed to get rep");
     } finally {
       setIsGettingRep(false);
+    }
+  };
+
+  const handleBigMove = async () => {
+    setIsGettingBigMove(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("big-move", { body: {} });
+      if (error) throw error;
+      if (data) { setBigMove(data); setShowBigMoveDialog(true); }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to find your big move");
+    } finally {
+      setIsGettingBigMove(false);
     }
   };
 
@@ -443,20 +470,47 @@ const Dashboard = () => {
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <textarea
-                value={quickAddText}
-                onChange={(e) => setQuickAddText(e.target.value)}
-                placeholder={`1. Complete project report\n2. Go for a 30min walk\n3. Read 20 pages`}
-                className="w-full bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/20 resize-none outline-none min-h-[100px] leading-relaxed"
-                autoFocus
-              />
+              <div className="relative">
+                <textarea
+                  value={quickAddText}
+                  onChange={(e) => setQuickAddText(e.target.value)}
+                  placeholder={`1. Complete project report\n2. Go for a 30min walk\n3. Read 20 pages`}
+                  className="w-full bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/20 resize-none outline-none min-h-[100px] leading-relaxed pr-12"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={qaToggleRecording}
+                  disabled={qaTranscribing}
+                  className={`absolute right-0 bottom-0 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                    qaRecording
+                      ? 'bg-destructive text-destructive-foreground animate-pulse'
+                      : qaTranscribing
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                  aria-label={qaRecording ? "Stop recording" : "Voice add tasks"}
+                  title={qaRecording ? "Stop recording" : "Speak your tasks"}
+                >
+                  {qaTranscribing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : qaRecording ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {qaRecording && (
+                <p className="text-[10px] text-destructive animate-pulse mt-1">Recording... tap mic to stop</p>
+              )}
               <div className="flex items-center justify-between mt-3">
                 <span className="text-[10px] text-muted-foreground/25">
                   {quickAddText.split(/\n|(?:\d+[\.\)]\s*)/).filter(l => l.trim()).length} task(s) detected
                 </span>
                 <button
                   onClick={handleQuickAdd}
-                  disabled={isAddingTasks || !quickAddText.trim()}
+                  disabled={isAddingTasks || !quickAddText.trim() || qaRecording || qaTranscribing}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-medium hover:bg-primary/20 transition-colors disabled:opacity-30"
                 >
                   <Send className="h-3 w-3" />
@@ -571,13 +625,22 @@ const Dashboard = () => {
             </div>
 
             {/* Bottom utilities */}
-            <div className="mt-6 flex items-center justify-between pb-4">
-              <button onClick={handleNextRep} disabled={isGettingRep} className="group flex items-center gap-2">
-                <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
-                <span className="text-[12px] text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
-                  {isGettingRep ? "Finding..." : "Next rep"}
-                </span>
-              </button>
+            <div className="mt-6 flex items-center justify-between pb-4 gap-3">
+              <div className="flex items-center gap-4">
+                <button onClick={handleNextRep} disabled={isGettingRep} className="group flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
+                  <span className="text-[12px] text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
+                    {isGettingRep ? "Finding..." : "Next rep"}
+                  </span>
+                </button>
+
+                <button onClick={handleBigMove} disabled={isGettingBigMove} className="group flex items-center gap-2">
+                  <Target className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
+                  <span className="text-[12px] text-primary/50 group-hover:text-primary font-medium transition-colors">
+                    {isGettingBigMove ? "Aligning..." : "Big Move"}
+                  </span>
+                </button>
+              </div>
 
               <button
                 onClick={() => {
@@ -618,6 +681,66 @@ const Dashboard = () => {
                 <span className="px-2 py-1 rounded-lg bg-muted font-medium">{nextRep.bucket}</span>
               </div>
               <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">Got it</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Big Move Dialog — the ONE thing toward Misogi/2026 */}
+      <Dialog open={showBigMoveDialog} onOpenChange={setShowBigMoveDialog}>
+        <DialogContent className="max-w-sm rounded-3xl border-primary/30 bg-gradient-to-br from-card via-card to-primary/5">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-display">
+              <Target className="h-4 w-4 text-primary" />
+              Big Move
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              The ONE thing toward your 2026
+            </DialogDescription>
+          </DialogHeader>
+          {bigMove && (
+            <div className="space-y-4 pt-2">
+              <p className="text-base font-display font-semibold leading-snug text-primary">
+                {bigMove.headline}
+              </p>
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-[10px] uppercase tracking-wider text-primary/60 mb-1">The move</p>
+                <p className="text-sm leading-relaxed">{bigMove.the_move}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Why this</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{bigMove.why_this}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Vision link</p>
+                <p className="text-sm italic text-foreground/80">{bigMove.vision_link}</p>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/50">
+                <span>{bigMove.time}</span>
+                <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary font-medium">Consistency</span>
+              </div>
+              <p className="text-xs text-muted-foreground italic">{bigMove.consistency}</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowBigMoveDialog(false)}
+                  className="flex-1 h-11 rounded-2xl"
+                >
+                  Later
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!user || !bigMove?.the_move) { setShowBigMoveDialog(false); return; }
+                    setShowBigMoveDialog(false);
+                    setQuickAddText(prev => prev ? `${prev}\n${bigMove.the_move}` : bigMove.the_move);
+                    setShowQuickAdd(true);
+                    toast.success("Added to today's tasks — review and tap Add");
+                  }}
+                  className="flex-1 h-11 rounded-2xl"
+                >
+                  I'll do this
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
