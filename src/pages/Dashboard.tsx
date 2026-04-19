@@ -627,17 +627,27 @@ const Dashboard = () => {
             {/* Bottom utilities */}
             <div className="mt-6 flex items-center justify-between pb-4 gap-3">
               <div className="flex items-center gap-4">
-                <button onClick={handleNextRep} disabled={isGettingRep} className="group flex items-center gap-2">
+                <button
+                  onClick={handleNextRep}
+                  disabled={isGettingRep}
+                  className="group flex items-center gap-2"
+                  title="Drifting, bored, or numb? Get a small rep to return to center."
+                >
                   <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
                   <span className="text-[12px] text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
-                    {isGettingRep ? "Finding..." : "Next rep"}
+                    {isGettingRep ? "Finding..." : "Next rep · drift"}
                   </span>
                 </button>
 
-                <button onClick={handleBigMove} disabled={isGettingBigMove} className="group flex items-center gap-2">
+                <button
+                  onClick={handleBigMove}
+                  disabled={isGettingBigMove}
+                  className="group flex items-center gap-2"
+                  title="Aligned and ready? Get the ONE high-leverage move toward your 2026."
+                >
                   <Target className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
                   <span className="text-[12px] text-primary/50 group-hover:text-primary font-medium transition-colors">
-                    {isGettingBigMove ? "Aligning..." : "Big Move"}
+                    {isGettingBigMove ? "Aligning..." : "Big Move · aligned"}
                   </span>
                 </button>
               </div>
