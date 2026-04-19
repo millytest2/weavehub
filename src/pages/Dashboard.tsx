@@ -92,6 +92,11 @@ const Dashboard = () => {
   const [nextRep, setNextRep] = useState<any>(null);
   const [showRepDialog, setShowRepDialog] = useState(false);
 
+  // Big Move state
+  const [isGettingBigMove, setIsGettingBigMove] = useState(false);
+  const [bigMove, setBigMove] = useState<any>(null);
+  const [showBigMoveDialog, setShowBigMoveDialog] = useState(false);
+
   // Propulsion state
   const [streak, setStreak] = useState(0);
   const [todayCompleted, setTodayCompleted] = useState(0);
@@ -101,6 +106,14 @@ const Dashboard = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddText, setQuickAddText] = useState("");
   const [isAddingTasks, setIsAddingTasks] = useState(false);
+
+  // Voice capture for quick add
+  const { isRecording: qaRecording, isTranscribing: qaTranscribing, toggleRecording: qaToggleRecording } = useVoiceCapture({
+    onTranscript: (text) => {
+      setQuickAddText(prev => prev ? `${prev}\n${text}` : text);
+      toast.success("Voice captured");
+    },
+  });
 
   const { showConfetti, celebrate, handleComplete: handleConfettiComplete } = useConfetti();
 
