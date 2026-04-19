@@ -625,13 +625,22 @@ const Dashboard = () => {
             </div>
 
             {/* Bottom utilities */}
-            <div className="mt-6 flex items-center justify-between pb-4">
-              <button onClick={handleNextRep} disabled={isGettingRep} className="group flex items-center gap-2">
-                <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
-                <span className="text-[12px] text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
-                  {isGettingRep ? "Finding..." : "Next rep"}
-                </span>
-              </button>
+            <div className="mt-6 flex items-center justify-between pb-4 gap-3">
+              <div className="flex items-center gap-4">
+                <button onClick={handleNextRep} disabled={isGettingRep} className="group flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-muted-foreground/25 group-hover:text-primary/50 transition-colors" />
+                  <span className="text-[12px] text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
+                    {isGettingRep ? "Finding..." : "Next rep"}
+                  </span>
+                </button>
+
+                <button onClick={handleBigMove} disabled={isGettingBigMove} className="group flex items-center gap-2">
+                  <Target className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
+                  <span className="text-[12px] text-primary/50 group-hover:text-primary font-medium transition-colors">
+                    {isGettingBigMove ? "Aligning..." : "Big Move"}
+                  </span>
+                </button>
+              </div>
 
               <button
                 onClick={() => {
@@ -672,6 +681,66 @@ const Dashboard = () => {
                 <span className="px-2 py-1 rounded-lg bg-muted font-medium">{nextRep.bucket}</span>
               </div>
               <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">Got it</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Big Move Dialog — the ONE thing toward Misogi/2026 */}
+      <Dialog open={showBigMoveDialog} onOpenChange={setShowBigMoveDialog}>
+        <DialogContent className="max-w-sm rounded-3xl border-primary/30 bg-gradient-to-br from-card via-card to-primary/5">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-display">
+              <Target className="h-4 w-4 text-primary" />
+              Big Move
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              The ONE thing toward your 2026
+            </DialogDescription>
+          </DialogHeader>
+          {bigMove && (
+            <div className="space-y-4 pt-2">
+              <p className="text-base font-display font-semibold leading-snug text-primary">
+                {bigMove.headline}
+              </p>
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-[10px] uppercase tracking-wider text-primary/60 mb-1">The move</p>
+                <p className="text-sm leading-relaxed">{bigMove.the_move}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Why this</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{bigMove.why_this}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Vision link</p>
+                <p className="text-sm italic text-foreground/80">{bigMove.vision_link}</p>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/50">
+                <span>{bigMove.time}</span>
+                <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary font-medium">Consistency</span>
+              </div>
+              <p className="text-xs text-muted-foreground italic">{bigMove.consistency}</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowBigMoveDialog(false)}
+                  className="flex-1 h-11 rounded-2xl"
+                >
+                  Later
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!user || !bigMove?.the_move) { setShowBigMoveDialog(false); return; }
+                    setShowBigMoveDialog(false);
+                    setQuickAddText(prev => prev ? `${prev}\n${bigMove.the_move}` : bigMove.the_move);
+                    setShowQuickAdd(true);
+                    toast.success("Added to today's tasks — review and tap Add");
+                  }}
+                  className="flex-1 h-11 rounded-2xl"
+                >
+                  I'll do this
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
