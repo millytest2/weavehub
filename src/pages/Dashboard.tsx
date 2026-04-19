@@ -470,20 +470,47 @@ const Dashboard = () => {
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <textarea
-                value={quickAddText}
-                onChange={(e) => setQuickAddText(e.target.value)}
-                placeholder={`1. Complete project report\n2. Go for a 30min walk\n3. Read 20 pages`}
-                className="w-full bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/20 resize-none outline-none min-h-[100px] leading-relaxed"
-                autoFocus
-              />
+              <div className="relative">
+                <textarea
+                  value={quickAddText}
+                  onChange={(e) => setQuickAddText(e.target.value)}
+                  placeholder={`1. Complete project report\n2. Go for a 30min walk\n3. Read 20 pages`}
+                  className="w-full bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/20 resize-none outline-none min-h-[100px] leading-relaxed pr-12"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={qaToggleRecording}
+                  disabled={qaTranscribing}
+                  className={`absolute right-0 bottom-0 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                    qaRecording
+                      ? 'bg-destructive text-destructive-foreground animate-pulse'
+                      : qaTranscribing
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                  aria-label={qaRecording ? "Stop recording" : "Voice add tasks"}
+                  title={qaRecording ? "Stop recording" : "Speak your tasks"}
+                >
+                  {qaTranscribing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : qaRecording ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {qaRecording && (
+                <p className="text-[10px] text-destructive animate-pulse mt-1">Recording... tap mic to stop</p>
+              )}
               <div className="flex items-center justify-between mt-3">
                 <span className="text-[10px] text-muted-foreground/25">
                   {quickAddText.split(/\n|(?:\d+[\.\)]\s*)/).filter(l => l.trim()).length} task(s) detected
                 </span>
                 <button
                   onClick={handleQuickAdd}
-                  disabled={isAddingTasks || !quickAddText.trim()}
+                  disabled={isAddingTasks || !quickAddText.trim() || qaRecording || qaTranscribing}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-medium hover:bg-primary/20 transition-colors disabled:opacity-30"
                 >
                   <Send className="h-3 w-3" />
