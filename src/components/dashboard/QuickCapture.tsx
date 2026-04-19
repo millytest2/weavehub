@@ -499,28 +499,57 @@ export const QuickCapture = () => {
                 <Textarea
                   placeholder={
                     captureType === "paste"
-                      ? "YouTube link, article URL, tweet, or any thought..."
+                      ? "YouTube link, article URL, tweet, voice memo, or any thought..."
                       : "What did you learn or realize?"
                   }
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[100px] text-base pr-12"
+                  className="min-h-[100px] text-base pr-24"
                   style={{ fontSize: '16px' }}
                   autoFocus
                 />
+                
+                {/* Hidden file input for audio upload */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.mp4"
+                  onChange={handleAudioFileUpload}
+                  className="hidden"
+                />
+                
+                {/* Audio upload button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingAudio || isRecording || isTranscribing}
+                  className={`absolute right-14 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    isUploadingAudio
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  } disabled:opacity-50`}
+                  aria-label="Upload audio file"
+                  title="Upload voice memo (mp3, m4a, wav)"
+                >
+                  {isUploadingAudio ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Upload className="h-5 w-5" />
+                  )}
+                </button>
                 
                 {/* Voice button inside textarea */}
                 <button
                   type="button"
                   onClick={toggleRecording}
-                  disabled={isTranscribing}
+                  disabled={isTranscribing || isUploadingAudio}
                   className={`absolute right-2 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     isRecording 
                       ? 'bg-destructive text-destructive-foreground animate-pulse' 
                       : isTranscribing
                       ? 'bg-muted text-muted-foreground'
                       : 'bg-primary/10 text-primary hover:bg-primary/20'
-                  }`}
+                  } disabled:opacity-50`}
                   aria-label={isRecording ? "Stop recording" : "Start voice input"}
                 >
                   {isTranscribing ? (
@@ -541,6 +570,10 @@ export const QuickCapture = () => {
                 <p className="text-xs text-muted-foreground animate-pulse">Transcribing...</p>
               )}
               
+              {isUploadingAudio && (
+                <p className="text-xs text-muted-foreground animate-pulse">Transcribing audio file...</p>
+              )}
+              
               {isProcessing && (
                 <p className="text-xs text-muted-foreground animate-pulse">
                   {captureType === "paste" ? "Detecting content and extracting..." : "Processing..."}
@@ -549,7 +582,7 @@ export const QuickCapture = () => {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing}
+                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing || isUploadingAudio}
                 className="w-full h-10"
               >
                 {isSubmitting ? "Processing..." : captureType === "paste" ? "Save & Extract" : "Capture Insight"}
