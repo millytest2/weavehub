@@ -277,6 +277,19 @@ const Dashboard = () => {
     }
   };
 
+  const handleBigMove = async () => {
+    setIsGettingBigMove(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("big-move", { body: {} });
+      if (error) throw error;
+      if (data) { setBigMove(data); setShowBigMoveDialog(true); }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to find your big move");
+    } finally {
+      setIsGettingBigMove(false);
+    }
+  };
+
   // Quick add: parse multi-line or numbered input into tasks
   const handleQuickAdd = async () => {
     if (!user || !quickAddText.trim()) return;
