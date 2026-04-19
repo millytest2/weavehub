@@ -97,6 +97,8 @@ export const QuickCapture = () => {
   const [isLoadingRealign, setIsLoadingRealign] = useState(false);
   
   const [showMoreActions, setShowMoreActions] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
     onTranscript: (text) => {
@@ -104,6 +106,48 @@ export const QuickCapture = () => {
       toast.success("Voice captured");
     },
   });
+
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (e.target) e.target.value = ''; // reset so same file can be picked again
+    
+    // 25MB safety cap (Whisper limit)
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("Audio file too large (max 25MB)");
+      return;
+    }
+    
+    setIsUploadingAudio(true);
+    toast.info("Transcribing audio...");
+    
+    try {
+      // Convert file to base64
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
+      }
+      const base64Audio = btoa(binary);
+      
+      const { data, error } = await supabase.functions.invoke('voice-transcribe', {
+        body: { audio: base64Audio, mimeType: file.type || 'audio/mpeg' },
+      });
+      
+      if (error) throw error;
+      if (!data?.text) throw new Error('No transcription returned');
+      
+      setContent(prev => prev ? `${prev}\n\n${data.text}` : data.text);
+      toast.success("Audio transcribed — review and tap Save & Extract");
+    } catch (err: any) {
+      console.error('Audio upload error:', err);
+      toast.error(err.message || 'Failed to transcribe audio');
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
 
   const handleOpen = () => {
     setIsOpen(true);
