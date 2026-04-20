@@ -39,7 +39,7 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [seenTitles, setSeenTitles] = useState<string[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const drawQuest = async (cat: Category = category, diff: Difficulty = difficulty) => {
     if (!user || loading) return;
