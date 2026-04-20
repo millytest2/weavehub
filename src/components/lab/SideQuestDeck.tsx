@@ -141,7 +141,7 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
           </div>
           <div className="text-left">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50">Side Quest</p>
-            <p className="text-sm font-medium text-foreground/80">Break the loop. Try something novel.</p>
+            <p className="text-sm font-medium text-foreground/80">Break the loop</p>
           </div>
         </div>
         <span className="text-xs text-muted-foreground/40">{expanded ? "−" : "+"}</span>
