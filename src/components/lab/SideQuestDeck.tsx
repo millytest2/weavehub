@@ -39,7 +39,7 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [seenTitles, setSeenTitles] = useState<string[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const drawQuest = async (cat: Category = category, diff: Difficulty = difficulty) => {
     if (!user || loading) return;
@@ -61,9 +61,9 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   };
 
   useEffect(() => {
-    if (user && !quest) drawQuest("Bold", "easy");
+    if (user && expanded && !quest) drawQuest("Bold", "easy");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, expanded]);
 
   const handleCategory = (cat: Category) => {
     setCategory(cat);
@@ -141,7 +141,7 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
           </div>
           <div className="text-left">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50">Side Quest</p>
-            <p className="text-sm font-medium text-foreground/80">Break the loop. Try something novel.</p>
+            <p className="text-sm font-medium text-foreground/80">Break the loop</p>
           </div>
         </div>
         <span className="text-xs text-muted-foreground/40">{expanded ? "−" : "+"}</span>
