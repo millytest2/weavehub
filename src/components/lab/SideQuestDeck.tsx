@@ -61,9 +61,9 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   };
 
   useEffect(() => {
-    if (user && !quest) drawQuest("Bold", "easy");
+    if (user && expanded && !quest) drawQuest("Bold", "easy");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, expanded]);
 
   const handleCategory = (cat: Category) => {
     setCategory(cat);
