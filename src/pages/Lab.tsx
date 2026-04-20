@@ -20,6 +20,7 @@ import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
 import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
 import { FocusLock } from "@/components/lab/FocusLock";
+import { SideQuestDeck } from "@/components/lab/SideQuestDeck";
 
 type LabTab = "write" | "weekly" | "experiments" | "patterns";
 
@@ -241,6 +242,9 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
               <div className="space-y-6">
                 {/* Focus Lock — appears when too many experiments */}
                 <FocusLock experimentCount={experiments.length} />
+
+                {/* Side Quest Deck — novel, low-friction quests that become experiments */}
+                <SideQuestDeck onQuestAccepted={fetchExperiments} />
 
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground/50">Track what you're testing</p>
