@@ -102,6 +102,42 @@ export type Database = {
           },
         ]
       }
+      calendar_settings: {
+        Row: {
+          cache_date: string | null
+          cached_events: Json | null
+          created_at: string
+          google_calendar_enabled: boolean | null
+          id: string
+          last_synced_at: string | null
+          primary_calendar_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cache_date?: string | null
+          cached_events?: Json | null
+          created_at?: string
+          google_calendar_enabled?: boolean | null
+          id?: string
+          last_synced_at?: string | null
+          primary_calendar_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cache_date?: string | null
+          cached_events?: Json | null
+          created_at?: string
+          google_calendar_enabled?: boolean | null
+          id?: string
+          last_synced_at?: string | null
+          primary_calendar_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       connections: {
         Row: {
           created_at: string
@@ -268,6 +304,57 @@ export type Database = {
           credits_spent?: number | null
           id?: string
           total_credits?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_scoreboard: {
+        Row: {
+          ai_leverage_rep: boolean | null
+          charisma_rep: boolean | null
+          content_rep: boolean | null
+          created_at: string
+          fitness_rep: boolean | null
+          id: string
+          money_rep: boolean | null
+          notes: string | null
+          relationship_rep: boolean | null
+          sales_rep: boolean | null
+          scoreboard_date: string
+          upath_rep: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_leverage_rep?: boolean | null
+          charisma_rep?: boolean | null
+          content_rep?: boolean | null
+          created_at?: string
+          fitness_rep?: boolean | null
+          id?: string
+          money_rep?: boolean | null
+          notes?: string | null
+          relationship_rep?: boolean | null
+          sales_rep?: boolean | null
+          scoreboard_date?: string
+          upath_rep?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_leverage_rep?: boolean | null
+          charisma_rep?: boolean | null
+          content_rep?: boolean | null
+          created_at?: string
+          fitness_rep?: boolean | null
+          id?: string
+          money_rep?: boolean | null
+          notes?: string | null
+          relationship_rep?: boolean | null
+          sales_rep?: boolean | null
+          scoreboard_date?: string
+          upath_rep?: boolean | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1154,6 +1241,57 @@ export type Database = {
         }
         Relationships: []
       }
+      skill_stack: {
+        Row: {
+          active: boolean | null
+          archetype: string
+          created_at: string
+          daily_reps: string | null
+          failure_mode: string | null
+          id: string
+          label: string
+          metrics: string | null
+          skills: string | null
+          sort_order: number | null
+          standard: string | null
+          target: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          archetype: string
+          created_at?: string
+          daily_reps?: string | null
+          failure_mode?: string | null
+          id?: string
+          label: string
+          metrics?: string | null
+          skills?: string | null
+          sort_order?: number | null
+          standard?: string | null
+          target?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          archetype?: string
+          created_at?: string
+          daily_reps?: string | null
+          failure_mode?: string | null
+          id?: string
+          label?: string
+          metrics?: string | null
+          skills?: string | null
+          sort_order?: number | null
+          standard?: string | null
+          target?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       thread_milestones: {
         Row: {
           capability_focus: string | null
@@ -1457,6 +1595,51 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weekly_target?: number
+        }
+        Relationships: []
+      }
+      weekly_rhythm: {
+        Row: {
+          created_at: string
+          deep_work_blocks: string | null
+          gym_blocks: string | null
+          id: string
+          meal_pattern: string | null
+          notes: string | null
+          sleep_target: string | null
+          social_blocks: string | null
+          updated_at: string
+          user_id: string
+          weekend_pattern: string | null
+          work_hours: string | null
+        }
+        Insert: {
+          created_at?: string
+          deep_work_blocks?: string | null
+          gym_blocks?: string | null
+          id?: string
+          meal_pattern?: string | null
+          notes?: string | null
+          sleep_target?: string | null
+          social_blocks?: string | null
+          updated_at?: string
+          user_id: string
+          weekend_pattern?: string | null
+          work_hours?: string | null
+        }
+        Update: {
+          created_at?: string
+          deep_work_blocks?: string | null
+          gym_blocks?: string | null
+          id?: string
+          meal_pattern?: string | null
+          notes?: string | null
+          sleep_target?: string | null
+          social_blocks?: string | null
+          updated_at?: string
+          user_id?: string
+          weekend_pattern?: string | null
+          work_hours?: string | null
         }
         Relationships: []
       }
