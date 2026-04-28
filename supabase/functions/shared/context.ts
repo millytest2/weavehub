@@ -522,6 +522,28 @@ export async function fetchUserContext(
     weekly_intentions: weeklyIntentions.data || [],
     active_learning_paths: activePaths.data || [],
     recent_observations: observations.data || [],
+    // Operating system layer
+    skill_stack: skillStack.data || [],
+    weekly_rhythm: weeklyRhythm.data || null,
+    calendar_events: (() => {
+      const cs = calendarSettings.data;
+      if (!cs?.google_calendar_enabled) return [];
+      const today = now.toISOString().split("T")[0];
+      if (cs.cache_date !== today) return [];
+      return Array.isArray(cs.cached_events) ? cs.cached_events : [];
+    })(),
+    scoreboard_today: scoreboardToday.data || null,
+    scoreboard_streak: (() => {
+      const rows = scoreboardRecent.data || [];
+      let streak = 0;
+      for (const r of rows) {
+        const reps = ['sales_rep','upath_rep','content_rep','fitness_rep','charisma_rep','relationship_rep','ai_leverage_rep','money_rep']
+          .filter(k => r[k]).length;
+        if (reps >= 5) streak++;
+        else break;
+      }
+      return streak;
+    })(),
   };
 }
 
