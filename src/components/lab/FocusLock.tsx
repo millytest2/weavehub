@@ -124,12 +124,16 @@ export const FocusLock = ({ experimentCount }: { experimentCount: number }) => {
         </button>
       </div>
 
-      {/* Misogi / 2026 Vision - always visible */}
+      {/* Misogi / 2026 Vision - distilled one-liner, full text in expand */}
       <div className="pl-11">
         <p className="text-xs text-muted-foreground/40 mb-1">Your 2026 Vision</p>
-        <p className="text-[15px] text-foreground/90 font-medium leading-relaxed">{misogi}</p>
+        <p className="text-[15px] text-foreground/90 font-medium leading-relaxed line-clamp-2">
+          {distill(misogi)}
+        </p>
         {weeklyFocus && (
-          <p className="text-[12px] text-primary/50 mt-1.5">This week: {weeklyFocus}</p>
+          <p className="text-[12px] text-primary/50 mt-1.5 line-clamp-1">
+            This week: {distill(weeklyFocus)}
+          </p>
         )}
       </div>
 
