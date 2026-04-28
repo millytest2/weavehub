@@ -240,6 +240,9 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
             {/* EXPERIMENTS */}
             {activeTab === "experiments" && (
               <div className="space-y-6">
+                {/* Daily Scoreboard — 8 reps, woven into all agents */}
+                <DailyScoreboard />
+
                 {/* Focus Lock — appears when too many experiments */}
                 <FocusLock experimentCount={experiments.length} />
 
