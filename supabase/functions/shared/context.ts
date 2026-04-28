@@ -233,7 +233,7 @@ export async function fetchUserContext(
   const fourteenDaysAgo = new Date();
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-  const [identitySeed, recentInsights, olderInsights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations] = await Promise.all([
+  const [identitySeed, recentInsights, olderInsights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations, skillStack, weeklyRhythm, calendarSettings, scoreboardToday, scoreboardRecent] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note, life_domains").eq("user_id", userId).maybeSingle(),
     // RECENT insights (last 14 days) — highest priority
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).gte("created_at", fourteenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(10),
@@ -252,6 +252,12 @@ export async function fetchUserContext(
     supabase.from("weekly_intentions").select("text, pillar, completed").eq("user_id", userId).eq("week_number", currentWeek).eq("year", currentYear).order("sort_order", { ascending: true }).limit(8),
     supabase.from("learning_paths").select("title, description, current_day, duration_days, status, topic_name").eq("user_id", userId).eq("status", "active").order("updated_at", { ascending: false }).limit(3),
     supabase.from("observations").select("content, observation_type, source, created_at").eq("user_id", userId).gte("created_at", sevenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(5),
+    // Operating system layer
+    supabase.from("skill_stack").select("archetype, label, target, skills, daily_reps, metrics, failure_mode, standard, sort_order").eq("user_id", userId).eq("active", true).order("sort_order", { ascending: true }),
+    supabase.from("weekly_rhythm").select("work_hours, gym_blocks, deep_work_blocks, meal_pattern, sleep_target, social_blocks, weekend_pattern, notes").eq("user_id", userId).maybeSingle(),
+    supabase.from("calendar_settings").select("google_calendar_enabled, cached_events, cache_date").eq("user_id", userId).maybeSingle(),
+    supabase.from("daily_scoreboard").select("*").eq("user_id", userId).eq("scoreboard_date", now.toISOString().split("T")[0]).maybeSingle(),
+    supabase.from("daily_scoreboard").select("*").eq("user_id", userId).gte("scoreboard_date", sevenDaysAgo.toISOString().split("T")[0]).order("scoreboard_date", { ascending: false }).limit(7),
   ]);
 
   // Merge insights: recent first, then older to fill up to 15 total
