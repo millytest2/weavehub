@@ -11,6 +11,22 @@ interface DomainConsistency {
   streak: number;
 }
 
+// Pull a short, human-readable headline out of a long pasted vision/weekly note.
+// Strips markdown, finds the first meaningful sentence, caps length.
+const distill = (raw: string | null, maxLen = 110): string => {
+  if (!raw) return "";
+  // Strip markdown headers, bullets, bold, code, extra whitespace
+  const cleaned = raw
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[#*_>`-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Prefer a line that looks like a thesis (skip "PRIORITY ORDER", lists, etc.)
+  const sentences = cleaned.split(/(?<=[.!?])\s+/).filter(s => s.length > 20);
+  const pick = sentences[0] || cleaned;
+  return pick.length > maxLen ? pick.slice(0, maxLen).trimEnd() + "…" : pick;
+};
+
 export const FocusLock = ({ experimentCount }: { experimentCount: number }) => {
   const { user } = useAuth();
   const [misogi, setMisogi] = useState<string | null>(null);
