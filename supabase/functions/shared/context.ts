@@ -746,6 +746,62 @@ export function formatContextForAI(context: CompactContext): string {
     formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
   }
 
+  // === OPERATING SYSTEM: SKILL STACK (highest signal — the person they're training to become) ===
+  if (context.skill_stack && context.skill_stack.length > 0) {
+    formatted += `SKILL STACK (the operator they're training to become — reference these archetypes when shaping actions):\n`;
+    for (const s of context.skill_stack) {
+      formatted += `\n[${s.label}]\n`;
+      if (s.target) formatted += `  Target: ${s.target}\n`;
+      if (s.daily_reps) formatted += `  Daily reps: ${s.daily_reps}\n`;
+      if (s.standard) formatted += `  Standard: ${s.standard}\n`;
+      if (s.failure_mode) formatted += `  Failure mode to watch: ${s.failure_mode}\n`;
+    }
+    formatted += `\nWhen suggesting actions, name which archetype's rep it advances. Do not invent generic productivity tasks — every suggestion must map to a daily rep above.\n\n`;
+  }
+
+  // === SCHEDULE: Calendar + Weekly Rhythm ===
+  if (context.calendar_events && context.calendar_events.length > 0) {
+    formatted += `TODAY'S CALENDAR (Google):\n`;
+    for (const e of context.calendar_events.slice(0, 12)) {
+      const t = e.all_day ? "all-day" : (e.start ? new Date(e.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '');
+      formatted += `- ${t} ${e.summary}${e.location ? ` @ ${e.location}` : ''}\n`;
+    }
+    formatted += `\nSCHEDULE RULE: Suggest actions that fit between or around these blocks. Do not propose deep work during meetings. Honor protected time.\n\n`;
+  } else if (context.weekly_rhythm) {
+    const r = context.weekly_rhythm;
+    formatted += `WEEKLY RHYTHM (default schedule when calendar is empty):\n`;
+    if (r.work_hours) formatted += `- Work: ${r.work_hours}\n`;
+    if (r.gym_blocks) formatted += `- Gym: ${r.gym_blocks}\n`;
+    if (r.deep_work_blocks) formatted += `- Deep work: ${r.deep_work_blocks}\n`;
+    if (r.meal_pattern) formatted += `- Meals: ${r.meal_pattern}\n`;
+    if (r.sleep_target) formatted += `- Sleep: ${r.sleep_target}\n`;
+    if (r.social_blocks) formatted += `- Social: ${r.social_blocks}\n`;
+    if (r.notes) formatted += `- Operating standard: ${r.notes}\n`;
+    formatted += `\n`;
+  }
+
+  // === SCOREBOARD: today's 8 reps + streak ===
+  if (context.scoreboard_today || context.scoreboard_streak) {
+    const s = context.scoreboard_today;
+    if (s) {
+      const reps = [
+        ['sales', s.sales_rep], ['upath', s.upath_rep], ['content', s.content_rep],
+        ['fitness', s.fitness_rep], ['charisma', s.charisma_rep], ['relationship', s.relationship_rep],
+        ['ai_leverage', s.ai_leverage_rep], ['money', s.money_rep],
+      ];
+      const done = reps.filter(([_, v]) => v).map(([k]) => k);
+      const missing = reps.filter(([_, v]) => !v).map(([k]) => k);
+      formatted += `SCOREBOARD TODAY: ${done.length}/8 done. `;
+      if (missing.length > 0) formatted += `Missing: ${missing.join(', ')}.`;
+      formatted += `\n`;
+    }
+    if (context.scoreboard_streak > 0) {
+      formatted += `STREAK: ${context.scoreboard_streak} days hitting 5+ reps.\n`;
+    }
+    formatted += `Prioritize actions that close the missing reps above.\n\n`;
+  }
+
+
   // Life Landscape - all interests and pursuits the user wants the system to know about
   if (context.life_domains) {
     // Parse domains and detect which have been touched recently vs neglected
