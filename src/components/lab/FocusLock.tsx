@@ -11,6 +11,22 @@ interface DomainConsistency {
   streak: number;
 }
 
+// Pull a short, human-readable headline out of a long pasted vision/weekly note.
+// Strips markdown, finds the first meaningful sentence, caps length.
+const distill = (raw: string | null, maxLen = 110): string => {
+  if (!raw) return "";
+  // Strip markdown headers, bullets, bold, code, extra whitespace
+  const cleaned = raw
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[#*_>`-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Prefer a line that looks like a thesis (skip "PRIORITY ORDER", lists, etc.)
+  const sentences = cleaned.split(/(?<=[.!?])\s+/).filter(s => s.length > 20);
+  const pick = sentences[0] || cleaned;
+  return pick.length > maxLen ? pick.slice(0, maxLen).trimEnd() + "…" : pick;
+};
+
 export const FocusLock = ({ experimentCount }: { experimentCount: number }) => {
   const { user } = useAuth();
   const [misogi, setMisogi] = useState<string | null>(null);
@@ -124,12 +140,16 @@ export const FocusLock = ({ experimentCount }: { experimentCount: number }) => {
         </button>
       </div>
 
-      {/* Misogi / 2026 Vision - always visible */}
+      {/* Misogi / 2026 Vision - distilled one-liner, full text in expand */}
       <div className="pl-11">
         <p className="text-xs text-muted-foreground/40 mb-1">Your 2026 Vision</p>
-        <p className="text-[15px] text-foreground/90 font-medium leading-relaxed">{misogi}</p>
+        <p className="text-[15px] text-foreground/90 font-medium leading-relaxed line-clamp-2">
+          {distill(misogi)}
+        </p>
         {weeklyFocus && (
-          <p className="text-[12px] text-primary/50 mt-1.5">This week: {weeklyFocus}</p>
+          <p className="text-[12px] text-primary/50 mt-1.5 line-clamp-1">
+            This week: {distill(weeklyFocus)}
+          </p>
         )}
       </div>
 
@@ -144,6 +164,27 @@ export const FocusLock = ({ experimentCount }: { experimentCount: number }) => {
             className="overflow-hidden"
           >
             <div className="pl-11 space-y-4 pt-2">
+              {/* Full vision + weekly text, collapsed by default */}
+              {(misogi || weeklyFocus) && (
+                <div className="space-y-3 pb-2 border-b border-border/20">
+                  {misogi && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 mb-1.5">Full vision</p>
+                      <p className="text-[12px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {misogi}
+                      </p>
+                    </div>
+                  )}
+                  {weeklyFocus && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 mb-1.5">This week</p>
+                      <p className="text-[12px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {weeklyFocus}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Overall consistency */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-1.5 bg-muted/30 rounded-full overflow-hidden">
