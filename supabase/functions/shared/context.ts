@@ -76,6 +76,12 @@ export interface CompactContext {
   weekly_intentions: any[];  // This week's intentions
   active_learning_paths: any[];  // Learning paths currently in progress
   recent_observations: any[];  // Lab observations and content drafts
+  // Operating system layer
+  skill_stack: any[];  // User's structured skill archetypes (Money-making, Salesman, Content, etc.)
+  weekly_rhythm: any | null;  // Default weekly schedule template
+  calendar_events: any[];  // Today's Google Calendar events (if synced)
+  scoreboard_today: any | null;  // Today's 8-rep scoreboard state
+  scoreboard_streak: number;  // Consecutive days with 5+ reps
 }
 
 export interface DocumentContext {
@@ -227,7 +233,7 @@ export async function fetchUserContext(
   const fourteenDaysAgo = new Date();
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-  const [identitySeed, recentInsights, olderInsights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations] = await Promise.all([
+  const [identitySeed, recentInsights, olderInsights, documents, experiments, pastExperiments, learningPaths, dailyTasks, actionHistory, topics, connections, threadMilestones, monthlyPlans, weeklyIntentions, activePaths, observations, skillStack, weeklyRhythm, calendarSettings, scoreboardToday, scoreboardRecent] = await Promise.all([
     supabase.from("identity_seeds").select("content, current_phase, last_pillar_used, weekly_focus, core_values, year_note, life_domains").eq("user_id", userId).maybeSingle(),
     // RECENT insights (last 14 days) — highest priority
     supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", userId).gte("created_at", fourteenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(10),
@@ -246,6 +252,12 @@ export async function fetchUserContext(
     supabase.from("weekly_intentions").select("text, pillar, completed").eq("user_id", userId).eq("week_number", currentWeek).eq("year", currentYear).order("sort_order", { ascending: true }).limit(8),
     supabase.from("learning_paths").select("title, description, current_day, duration_days, status, topic_name").eq("user_id", userId).eq("status", "active").order("updated_at", { ascending: false }).limit(3),
     supabase.from("observations").select("content, observation_type, source, created_at").eq("user_id", userId).gte("created_at", sevenDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(5),
+    // Operating system layer
+    supabase.from("skill_stack").select("archetype, label, target, skills, daily_reps, metrics, failure_mode, standard, sort_order").eq("user_id", userId).eq("active", true).order("sort_order", { ascending: true }),
+    supabase.from("weekly_rhythm").select("work_hours, gym_blocks, deep_work_blocks, meal_pattern, sleep_target, social_blocks, weekend_pattern, notes").eq("user_id", userId).maybeSingle(),
+    supabase.from("calendar_settings").select("google_calendar_enabled, cached_events, cache_date").eq("user_id", userId).maybeSingle(),
+    supabase.from("daily_scoreboard").select("*").eq("user_id", userId).eq("scoreboard_date", now.toISOString().split("T")[0]).maybeSingle(),
+    supabase.from("daily_scoreboard").select("*").eq("user_id", userId).gte("scoreboard_date", sevenDaysAgo.toISOString().split("T")[0]).order("scoreboard_date", { ascending: false }).limit(7),
   ]);
 
   // Merge insights: recent first, then older to fill up to 15 total
@@ -510,6 +522,28 @@ export async function fetchUserContext(
     weekly_intentions: weeklyIntentions.data || [],
     active_learning_paths: activePaths.data || [],
     recent_observations: observations.data || [],
+    // Operating system layer
+    skill_stack: skillStack.data || [],
+    weekly_rhythm: weeklyRhythm.data || null,
+    calendar_events: (() => {
+      const cs = calendarSettings.data;
+      if (!cs?.google_calendar_enabled) return [];
+      const today = now.toISOString().split("T")[0];
+      if (cs.cache_date !== today) return [];
+      return Array.isArray(cs.cached_events) ? cs.cached_events : [];
+    })(),
+    scoreboard_today: scoreboardToday.data || null,
+    scoreboard_streak: (() => {
+      const rows = scoreboardRecent.data || [];
+      let streak = 0;
+      for (const r of rows) {
+        const reps = ['sales_rep','upath_rep','content_rep','fitness_rep','charisma_rep','relationship_rep','ai_leverage_rep','money_rep']
+          .filter(k => r[k]).length;
+        if (reps >= 5) streak++;
+        else break;
+      }
+      return streak;
+    })(),
   };
 }
 
@@ -711,6 +745,62 @@ export function formatContextForAI(context: CompactContext): string {
   if (context.weekly_focus) {
     formatted += `CURRENT REALITY:\n${context.weekly_focus}\n\n`;
   }
+
+  // === OPERATING SYSTEM: SKILL STACK (highest signal — the person they're training to become) ===
+  if (context.skill_stack && context.skill_stack.length > 0) {
+    formatted += `SKILL STACK (the operator they're training to become — reference these archetypes when shaping actions):\n`;
+    for (const s of context.skill_stack) {
+      formatted += `\n[${s.label}]\n`;
+      if (s.target) formatted += `  Target: ${s.target}\n`;
+      if (s.daily_reps) formatted += `  Daily reps: ${s.daily_reps}\n`;
+      if (s.standard) formatted += `  Standard: ${s.standard}\n`;
+      if (s.failure_mode) formatted += `  Failure mode to watch: ${s.failure_mode}\n`;
+    }
+    formatted += `\nWhen suggesting actions, name which archetype's rep it advances. Do not invent generic productivity tasks — every suggestion must map to a daily rep above.\n\n`;
+  }
+
+  // === SCHEDULE: Calendar + Weekly Rhythm ===
+  if (context.calendar_events && context.calendar_events.length > 0) {
+    formatted += `TODAY'S CALENDAR (Google):\n`;
+    for (const e of context.calendar_events.slice(0, 12)) {
+      const t = e.all_day ? "all-day" : (e.start ? new Date(e.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '');
+      formatted += `- ${t} ${e.summary}${e.location ? ` @ ${e.location}` : ''}\n`;
+    }
+    formatted += `\nSCHEDULE RULE: Suggest actions that fit between or around these blocks. Do not propose deep work during meetings. Honor protected time.\n\n`;
+  } else if (context.weekly_rhythm) {
+    const r = context.weekly_rhythm;
+    formatted += `WEEKLY RHYTHM (default schedule when calendar is empty):\n`;
+    if (r.work_hours) formatted += `- Work: ${r.work_hours}\n`;
+    if (r.gym_blocks) formatted += `- Gym: ${r.gym_blocks}\n`;
+    if (r.deep_work_blocks) formatted += `- Deep work: ${r.deep_work_blocks}\n`;
+    if (r.meal_pattern) formatted += `- Meals: ${r.meal_pattern}\n`;
+    if (r.sleep_target) formatted += `- Sleep: ${r.sleep_target}\n`;
+    if (r.social_blocks) formatted += `- Social: ${r.social_blocks}\n`;
+    if (r.notes) formatted += `- Operating standard: ${r.notes}\n`;
+    formatted += `\n`;
+  }
+
+  // === SCOREBOARD: today's 8 reps + streak ===
+  if (context.scoreboard_today || context.scoreboard_streak) {
+    const s = context.scoreboard_today;
+    if (s) {
+      const reps = [
+        ['sales', s.sales_rep], ['upath', s.upath_rep], ['content', s.content_rep],
+        ['fitness', s.fitness_rep], ['charisma', s.charisma_rep], ['relationship', s.relationship_rep],
+        ['ai_leverage', s.ai_leverage_rep], ['money', s.money_rep],
+      ];
+      const done = reps.filter(([_, v]) => v).map(([k]) => k);
+      const missing = reps.filter(([_, v]) => !v).map(([k]) => k);
+      formatted += `SCOREBOARD TODAY: ${done.length}/8 done. `;
+      if (missing.length > 0) formatted += `Missing: ${missing.join(', ')}.`;
+      formatted += `\n`;
+    }
+    if (context.scoreboard_streak > 0) {
+      formatted += `STREAK: ${context.scoreboard_streak} days hitting 5+ reps.\n`;
+    }
+    formatted += `Prioritize actions that close the missing reps above.\n\n`;
+  }
+
 
   // Life Landscape - all interests and pursuits the user wants the system to know about
   if (context.life_domains) {
