@@ -76,6 +76,12 @@ export interface CompactContext {
   weekly_intentions: any[];  // This week's intentions
   active_learning_paths: any[];  // Learning paths currently in progress
   recent_observations: any[];  // Lab observations and content drafts
+  // Operating system layer
+  skill_stack: any[];  // User's structured skill archetypes (Money-making, Salesman, Content, etc.)
+  weekly_rhythm: any | null;  // Default weekly schedule template
+  calendar_events: any[];  // Today's Google Calendar events (if synced)
+  scoreboard_today: any | null;  // Today's 8-rep scoreboard state
+  scoreboard_streak: number;  // Consecutive days with 5+ reps
 }
 
 export interface DocumentContext {
