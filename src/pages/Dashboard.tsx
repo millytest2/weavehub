@@ -450,11 +450,6 @@ const Dashboard = () => {
         </motion.div>
       )}
 
-      {/* ===== DAILY SCOREBOARD (8 reps) ===== */}
-      <div className="mb-4">
-        <DailyScoreboard />
-      </div>
-
       {/* ===== QUICK ADD PANEL ===== */}
       <AnimatePresence>
         {showQuickAdd && (
