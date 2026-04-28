@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { EveningClose } from "@/components/dashboard/EveningClose";
+import { DailyScoreboard } from "@/components/dashboard/DailyScoreboard";
 import { Confetti, useConfetti } from "@/components/ui/confetti";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 
