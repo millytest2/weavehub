@@ -164,6 +164,27 @@ export const FocusLock = ({ experimentCount }: { experimentCount: number }) => {
             className="overflow-hidden"
           >
             <div className="pl-11 space-y-4 pt-2">
+              {/* Full vision + weekly text, collapsed by default */}
+              {(misogi || weeklyFocus) && (
+                <div className="space-y-3 pb-2 border-b border-border/20">
+                  {misogi && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 mb-1.5">Full vision</p>
+                      <p className="text-[12px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {misogi}
+                      </p>
+                    </div>
+                  )}
+                  {weeklyFocus && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 mb-1.5">This week</p>
+                      <p className="text-[12px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {weeklyFocus}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Overall consistency */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-1.5 bg-muted/30 rounded-full overflow-hidden">
