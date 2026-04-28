@@ -21,6 +21,7 @@ import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
 import { FocusLock } from "@/components/lab/FocusLock";
 import { SideQuestDeck } from "@/components/lab/SideQuestDeck";
+import { DailyScoreboard } from "@/components/dashboard/DailyScoreboard";
 
 type LabTab = "write" | "weekly" | "experiments" | "patterns";
 
@@ -240,6 +241,9 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
             {/* EXPERIMENTS */}
             {activeTab === "experiments" && (
               <div className="space-y-6">
+                {/* Daily Scoreboard — 8 reps, woven into all agents */}
+                <DailyScoreboard />
+
                 {/* Focus Lock — appears when too many experiments */}
                 <FocusLock experimentCount={experiments.length} />
 
