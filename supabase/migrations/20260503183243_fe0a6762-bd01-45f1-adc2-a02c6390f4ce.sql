@@ -1,0 +1,1 @@
+ALTER TABLE public.experiments ADD COLUMN IF NOT EXISTS acceptance_criteria jsonb DEFAULT '{}'::jsonb;

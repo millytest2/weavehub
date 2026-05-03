@@ -535,6 +535,7 @@ export type Database = {
       }
       experiments: {
         Row: {
+          acceptance_criteria: Json | null
           baseline_impact: number | null
           completed_at: string | null
           content_fuel: number | null
@@ -561,6 +562,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          acceptance_criteria?: Json | null
           baseline_impact?: number | null
           completed_at?: string | null
           content_fuel?: number | null
@@ -587,6 +589,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          acceptance_criteria?: Json | null
           baseline_impact?: number | null
           completed_at?: string | null
           content_fuel?: number | null
