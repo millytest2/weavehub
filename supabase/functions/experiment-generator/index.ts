@@ -976,9 +976,19 @@ Don't default to the same project every time. Make it about THEIR specific life.
                           type: "string", 
                           description: "Format: 'I am someone who [action verb]...' Example: 'I ship under pressure.'" 
                         },
-                        pillar: { type: "string", enum: ALL_PILLARS }
+                        pillar: { type: "string", enum: ALL_PILLARS },
+                        acceptance_criteria: {
+                          type: "object",
+                          description: "Concrete checklist for declaring this experiment a success or failure. No therapy-speak.",
+                          properties: {
+                            time_box: { type: "string", description: "Hard deadline. Example: '7 days, ending Sunday 9pm'" },
+                            minimum_reps: { type: "string", description: "Minimum measurable reps to count as a pass. Example: 'At least 5 of 7 days posted before 10am'" },
+                            success_looks_like: { type: "string", description: "Binary, observable proof of success. Example: '3 sales calls booked + landing page live'" }
+                          },
+                          required: ["time_box", "minimum_reps", "success_looks_like"]
+                        }
                       },
-                      required: ["title", "description", "steps", "duration", "identity_shift_target", "pillar"]
+                      required: ["title", "description", "steps", "duration", "identity_shift_target", "pillar", "acceptance_criteria"]
                     },
                     minItems: 1,
                     maxItems: 1
