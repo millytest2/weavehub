@@ -114,8 +114,27 @@ function validateExperiments(data: any): ExperimentOutput[] {
     identity_shift_target: stripEmojis(exp.identity_shift_target),
     pillar: exp.pillar,
     sprint_type: exp.sprint_type,
-    intensity: exp.intensity
+    intensity: exp.intensity,
+    acceptance_criteria: exp.acceptance_criteria
+      ? {
+          time_box: stripEmojis(String(exp.acceptance_criteria.time_box || exp.duration || "")),
+          minimum_reps: stripEmojis(String(exp.acceptance_criteria.minimum_reps || "")),
+          success_looks_like: stripEmojis(String(exp.acceptance_criteria.success_looks_like || "")),
+        }
+      : deriveAcceptanceCriteria(exp)
   })) as ExperimentOutput[];
+}
+
+// Derive acceptance criteria from steps + duration when AI omits it
+function deriveAcceptanceCriteria(exp: any): AcceptanceCriteria {
+  const stepCount = Array.isArray(exp.steps) ? exp.steps.length : 0;
+  return {
+    time_box: exp.duration || "7 days",
+    minimum_reps: stepCount > 0 ? `Complete ${stepCount} core actions` : "Complete every daily action",
+    success_looks_like: exp.identity_shift_target
+      ? `You can honestly say: "${exp.identity_shift_target}"`
+      : "Visible deliverable shipped by deadline"
+  };
 }
 
 // NEW FORMAT: [Duration] [Constraint] → [Deliverable]
