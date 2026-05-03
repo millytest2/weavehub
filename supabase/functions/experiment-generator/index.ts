@@ -1092,6 +1092,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
     // Insert AI-generated experiment with sprint metadata and return the ID
     const insertedIds: string[] = [];
     for (const exp of experiments) {
+      const acceptance = exp.acceptance_criteria || deriveAcceptanceCriteria(exp);
       const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
         user_id: user.id,
         title: stripEmojis(exp.title),
@@ -1100,6 +1101,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
         duration: exp.duration,
         identity_shift_target: stripEmojis(exp.identity_shift_target),
         hypothesis: `Sprint: ${sprintConfig.type} | Intensity: ${sprintConfig.intensity} | ${sprintConfig.reason}`,
+        acceptance_criteria: acceptance,
         status: "planning"
       }).select("id").single();
       
