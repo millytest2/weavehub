@@ -308,13 +308,66 @@ const Experiments = () => {
         </div>
       )}
 
-      {/* Other Experiments - Card Grid */}
-      {experiments.filter((e) => e.status !== "in_progress").length > 0 && (
+      {/* Paused / Planning */}
+      {experiments.filter((e) => e.status === "paused" || e.status === "planning").length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Past Experiments</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Paused — tap to resume</p>
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {experiments
-              .filter((e) => e.status !== "in_progress")
+              .filter((e) => e.status === "paused" || e.status === "planning")
+              .map((exp) => (
+                <Card
+                  key={exp.id}
+                  className="rounded-[10px] border-amber-500/30 bg-amber-500/5 hover:shadow-lg hover:border-amber-500/50 transition-all duration-200 cursor-pointer"
+                  onClick={() => handleViewDetails(exp)}
+                >
+                  <CardContent className="pt-5 pb-5">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
+                          <FlaskConical className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 text-xs mb-1">
+                            {exp.status === "paused" ? "Paused" : "Draft"}
+                          </Badge>
+                          <h3 className="font-medium text-base">{exp.title}</h3>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleStatusChange(exp.id, "in_progress"); }}
+                          className="h-8 px-2 shrink-0 text-xs"
+                        >
+                          Resume
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(exp.id); }}
+                          className="h-8 w-8 p-0 shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      {exp.description && (
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 pl-11">{exp.description}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Completed */}
+      {experiments.filter((e) => e.status === "completed").length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Completed</p>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {experiments
+              .filter((e) => e.status === "completed")
               .map((exp) => (
                 <Card
                   key={exp.id}
@@ -336,10 +389,7 @@ const Experiments = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(exp.id);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(exp.id); }}
                           className="h-8 w-8 p-0 shrink-0"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
