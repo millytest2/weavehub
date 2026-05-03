@@ -99,13 +99,15 @@ const Experiments = () => {
   };
 
   const handleGenerateExperiment = async () => {
-    // Check for active experiments first
-    const activeExperiments = experiments.filter((e) => e.status === "in_progress" || e.status === "planning");
+    // Block only on truly active (in_progress). Planning/paused are fine to replace.
+    const active = experiments.find((e) => e.status === "in_progress");
 
-    if (activeExperiments.length > 0) {
-      toast.error("You already have an active experiment. Complete or pause it first.", {
-        description: "One experiment at a time ensures focus and completion.",
+    if (active) {
+      toast.error(`"${active.title}" is still active`, {
+        description: "Pause or complete it first — opening it now.",
+        duration: 4000,
       });
+      handleViewDetails(active);
       return;
     }
 
