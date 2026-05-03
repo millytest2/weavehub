@@ -642,7 +642,7 @@ serve(async (req) => {
       .from("experiments")
       .select("id, title")
       .eq("user_id", user.id)
-      .in("status", ["in_progress", "planning"])
+      .eq("status", "in_progress")
       .limit(1);
 
     if (activeExperiments && activeExperiments.length > 0) {
