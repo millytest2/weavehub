@@ -26,6 +26,12 @@ interface SprintConfig {
   topicName?: string;
 }
 
+interface AcceptanceCriteria {
+  time_box: string;
+  minimum_reps: string;
+  success_looks_like: string;
+}
+
 interface ExperimentOutput {
   title: string;
   description: string;
@@ -35,6 +41,7 @@ interface ExperimentOutput {
   pillar: string;
   sprint_type?: SprintType;
   intensity?: Intensity;
+  acceptance_criteria?: AcceptanceCriteria;
 }
 
 // BANNED THERAPY-SPEAK WORDS - experiments containing these get rejected
@@ -107,8 +114,27 @@ function validateExperiments(data: any): ExperimentOutput[] {
     identity_shift_target: stripEmojis(exp.identity_shift_target),
     pillar: exp.pillar,
     sprint_type: exp.sprint_type,
-    intensity: exp.intensity
+    intensity: exp.intensity,
+    acceptance_criteria: exp.acceptance_criteria
+      ? {
+          time_box: stripEmojis(String(exp.acceptance_criteria.time_box || exp.duration || "")),
+          minimum_reps: stripEmojis(String(exp.acceptance_criteria.minimum_reps || "")),
+          success_looks_like: stripEmojis(String(exp.acceptance_criteria.success_looks_like || "")),
+        }
+      : deriveAcceptanceCriteria(exp)
   })) as ExperimentOutput[];
+}
+
+// Derive acceptance criteria from steps + duration when AI omits it
+function deriveAcceptanceCriteria(exp: any): AcceptanceCriteria {
+  const stepCount = Array.isArray(exp.steps) ? exp.steps.length : 0;
+  return {
+    time_box: exp.duration || "7 days",
+    minimum_reps: stepCount > 0 ? `Complete ${stepCount} core actions` : "Complete every daily action",
+    success_looks_like: exp.identity_shift_target
+      ? `You can honestly say: "${exp.identity_shift_target}"`
+      : "Visible deliverable shipped by deadline"
+  };
 }
 
 // NEW FORMAT: [Duration] [Constraint] → [Deliverable]
@@ -902,6 +928,7 @@ FORMAT REQUIRED:
 - Steps: 2-4 concrete daily actions with specific times/quantities
 - Duration: ${sprintConfig.duration}
 - Identity shift: "I am someone who [action verb]..." - tie to their stated identity
+- Acceptance criteria (REQUIRED): time_box (hard deadline), minimum_reps (measurable floor to count as pass, e.g. "5 of 7 days"), success_looks_like (binary observable proof). No therapy-speak. No "feel better" or "more aligned".
 
 Sprint: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}.
 
@@ -950,9 +977,19 @@ Don't default to the same project every time. Make it about THEIR specific life.
                           type: "string", 
                           description: "Format: 'I am someone who [action verb]...' Example: 'I ship under pressure.'" 
                         },
-                        pillar: { type: "string", enum: ALL_PILLARS }
+                        pillar: { type: "string", enum: ALL_PILLARS },
+                        acceptance_criteria: {
+                          type: "object",
+                          description: "Concrete checklist for declaring this experiment a success or failure. No therapy-speak.",
+                          properties: {
+                            time_box: { type: "string", description: "Hard deadline. Example: '7 days, ending Sunday 9pm'" },
+                            minimum_reps: { type: "string", description: "Minimum measurable reps to count as a pass. Example: 'At least 5 of 7 days posted before 10am'" },
+                            success_looks_like: { type: "string", description: "Binary, observable proof of success. Example: '3 sales calls booked + landing page live'" }
+                          },
+                          required: ["time_box", "minimum_reps", "success_looks_like"]
+                        }
                       },
-                      required: ["title", "description", "steps", "duration", "identity_shift_target", "pillar"]
+                      required: ["title", "description", "steps", "duration", "identity_shift_target", "pillar", "acceptance_criteria"]
                     },
                     minItems: 1,
                     maxItems: 1
@@ -971,6 +1008,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
     async function insertAndReturnExperiments(exps: ExperimentOutput[], sprint: SprintConfig): Promise<Response> {
       const insertedIds: string[] = [];
       for (const exp of exps) {
+        const acceptance = exp.acceptance_criteria || deriveAcceptanceCriteria(exp);
         const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
           user_id: user!.id,
           title: stripEmojis(exp.title),
@@ -979,6 +1017,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
           duration: exp.duration,
           identity_shift_target: stripEmojis(exp.identity_shift_target),
           hypothesis: `Sprint: ${sprint.type} | Intensity: ${sprint.intensity} | ${sprint.reason}`,
+          acceptance_criteria: acceptance,
           status: "planning"
         }).select("id").single();
         
@@ -1054,6 +1093,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
     // Insert AI-generated experiment with sprint metadata and return the ID
     const insertedIds: string[] = [];
     for (const exp of experiments) {
+      const acceptance = exp.acceptance_criteria || deriveAcceptanceCriteria(exp);
       const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
         user_id: user.id,
         title: stripEmojis(exp.title),
@@ -1062,6 +1102,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
         duration: exp.duration,
         identity_shift_target: stripEmojis(exp.identity_shift_target),
         hypothesis: `Sprint: ${sprintConfig.type} | Intensity: ${sprintConfig.intensity} | ${sprintConfig.reason}`,
+        acceptance_criteria: acceptance,
         status: "planning"
       }).select("id").single();
       

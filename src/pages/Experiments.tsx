@@ -445,6 +445,37 @@ const Experiments = () => {
               </div>
             )}
 
+            {/* Acceptance Criteria Checklist */}
+            {selectedExperiment?.acceptance_criteria && (
+              selectedExperiment.acceptance_criteria.time_box ||
+              selectedExperiment.acceptance_criteria.minimum_reps ||
+              selectedExperiment.acceptance_criteria.success_looks_like
+            ) && (
+              <div className="p-4 rounded-lg bg-accent/5 border border-accent/20 space-y-3">
+                <h3 className="text-xs font-medium text-accent uppercase tracking-wide">Acceptance Criteria</h3>
+                <ul className="space-y-2.5">
+                  {selectedExperiment.acceptance_criteria.time_box && (
+                    <li className="flex gap-3 text-sm">
+                      <span className="shrink-0 mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-sm border border-accent/40 text-accent text-[10px]">▢</span>
+                      <span><span className="text-foreground font-medium">Time box:</span> <span className="text-muted-foreground">{selectedExperiment.acceptance_criteria.time_box}</span></span>
+                    </li>
+                  )}
+                  {selectedExperiment.acceptance_criteria.minimum_reps && (
+                    <li className="flex gap-3 text-sm">
+                      <span className="shrink-0 mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-sm border border-accent/40 text-accent text-[10px]">▢</span>
+                      <span><span className="text-foreground font-medium">Minimum reps:</span> <span className="text-muted-foreground">{selectedExperiment.acceptance_criteria.minimum_reps}</span></span>
+                    </li>
+                  )}
+                  {selectedExperiment.acceptance_criteria.success_looks_like && (
+                    <li className="flex gap-3 text-sm">
+                      <span className="shrink-0 mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-sm border border-accent/40 text-accent text-[10px]">▢</span>
+                      <span><span className="text-foreground font-medium">Success looks like:</span> <span className="text-muted-foreground">{selectedExperiment.acceptance_criteria.success_looks_like}</span></span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
             {/* Description */}
             {selectedExperiment?.description && (
               <div>
