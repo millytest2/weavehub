@@ -26,6 +26,12 @@ interface SprintConfig {
   topicName?: string;
 }
 
+interface AcceptanceCriteria {
+  time_box: string;
+  minimum_reps: string;
+  success_looks_like: string;
+}
+
 interface ExperimentOutput {
   title: string;
   description: string;
@@ -35,6 +41,7 @@ interface ExperimentOutput {
   pillar: string;
   sprint_type?: SprintType;
   intensity?: Intensity;
+  acceptance_criteria?: AcceptanceCriteria;
 }
 
 // BANNED THERAPY-SPEAK WORDS - experiments containing these get rejected
