@@ -928,6 +928,7 @@ FORMAT REQUIRED:
 - Steps: 2-4 concrete daily actions with specific times/quantities
 - Duration: ${sprintConfig.duration}
 - Identity shift: "I am someone who [action verb]..." - tie to their stated identity
+- Acceptance criteria (REQUIRED): time_box (hard deadline), minimum_reps (measurable floor to count as pass, e.g. "5 of 7 days"), success_looks_like (binary observable proof). No therapy-speak. No "feel better" or "more aligned".
 
 Sprint: ${sprintConfig.type}. Intensity: ${sprintConfig.intensity}.
 
