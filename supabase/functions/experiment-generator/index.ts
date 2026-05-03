@@ -1007,6 +1007,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
     async function insertAndReturnExperiments(exps: ExperimentOutput[], sprint: SprintConfig): Promise<Response> {
       const insertedIds: string[] = [];
       for (const exp of exps) {
+        const acceptance = exp.acceptance_criteria || deriveAcceptanceCriteria(exp);
         const { data: inserted, error: insertError } = await supabase.from("experiments").insert({
           user_id: user!.id,
           title: stripEmojis(exp.title),
@@ -1015,6 +1016,7 @@ Don't default to the same project every time. Make it about THEIR specific life.
           duration: exp.duration,
           identity_shift_target: stripEmojis(exp.identity_shift_target),
           hypothesis: `Sprint: ${sprint.type} | Intensity: ${sprint.intensity} | ${sprint.reason}`,
+          acceptance_criteria: acceptance,
           status: "planning"
         }).select("id").single();
         
