@@ -329,7 +329,53 @@ export const QuickCapture = () => {
     }
   };
 
-  const handleRealign = async (mode: RealignMode) => {
+  // One-tap log: jealousy/comparison moment. No dialog, no AI roundtrip.
+  // Also auto-appends the "old contract" line to the Identity Seed once the
+  // pattern has been logged at least twice.
+  const handleQuickTagComparison = async () => {
+    if (!user) return;
+    setShowEmotionalPicker(false);
+    setIsOpen(false);
+    try {
+      await supabase.from("grounding_log").insert({
+        user_id: user.id,
+        emotional_state: "comparing",
+        gentle_rep: "Named the urge. One rep on me instead.",
+        reminder: "Different lane. Different timeline.",
+      });
+
+      // Count recent comparison logs to decide whether to auto-suggest
+      const { count } = await supabase
+        .from("grounding_log")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("emotional_state", "comparing");
+
+      const { data: seed } = await supabase
+        .from("identity_seeds")
+        .select("id, content")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (seed && !seedHasOldContract(seed.content) && (count ?? 0) >= 2) {
+        await supabase
+          .from("identity_seeds")
+          .update({ content: `${seed.content}\n\n${OLD_CONTRACT_LINE}` })
+          .eq("id", seed.id);
+        toast.success("Logged. Added the old contract to your Identity Seed.", {
+          description: "Pattern named twice. Now it's on the page.",
+          duration: 6000,
+        });
+      } else {
+        toast.success("Logged. Back to you.", {
+          description: "Different lane. Different timeline.",
+        });
+      }
+    } catch (err: any) {
+      console.error("Quick-tag comparison error:", err);
+      toast.error("Couldn't log that. Try again.");
+    }
+  };
     if (!mode) return;
     setShowRealignPicker(false);
     setIsLoadingRealign(true);
