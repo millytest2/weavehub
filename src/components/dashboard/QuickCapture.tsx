@@ -14,6 +14,11 @@ import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
 import { RealignDialog, RealignData } from "./RealignDialog";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
+import {
+  detectRelationshipTrigger,
+  seedHasOldContract,
+  OLD_CONTRACT_LINE,
+} from "@/lib/relationshipTriggerDetection";
 
 import { Confetti, useConfetti } from "@/components/ui/confetti";
 
@@ -201,6 +206,37 @@ export const QuickCapture = () => {
     capability: string;
   } | null>(null);
 
+  // If captured text reads like a relationship/comparison trigger, offer to
+  // append the "old contract" line to the Identity Seed (one tap to confirm).
+  const maybeSuggestOldContract = async (capturedText: string) => {
+    if (!user || !detectRelationshipTrigger(capturedText)) return;
+    try {
+      const { data: seed } = await supabase
+        .from("identity_seeds")
+        .select("id, content")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!seed || seedHasOldContract(seed.content)) return;
+
+      toast("Relationship trigger detected", {
+        description: "Add the 'old contract' line to your Identity Seed?",
+        duration: 10000,
+        action: {
+          label: "Add it",
+          onClick: async () => {
+            await supabase
+              .from("identity_seeds")
+              .update({ content: `${seed.content}\n\n${OLD_CONTRACT_LINE}` })
+              .eq("id", seed.id);
+            toast.success("Added to Identity Seed.");
+          },
+        },
+      });
+    } catch (err) {
+      console.error("Old contract suggest error:", err);
+    }
+  };
+
   const executeSubmit = async () => {
     if (!user || !content.trim()) return;
     
@@ -250,9 +286,11 @@ export const QuickCapture = () => {
           handleClose();
         }
         showCareerToastForPaste(content);
+        await maybeSuggestOldContract(content);
       } else if (captureType === "insight") {
         setIsProcessing(true);
         const processed = await processWithBrain(content);
+        await maybeSuggestOldContract(`${title} ${content}`);
         
         await supabase.from("insights").insert({
           user_id: user.id,
@@ -321,6 +359,54 @@ export const QuickCapture = () => {
       });
     } finally {
       setIsLoadingReturnToSelf(false);
+    }
+  };
+
+  // One-tap log: jealousy/comparison moment. No dialog, no AI roundtrip.
+  // Also auto-appends the "old contract" line to the Identity Seed once the
+  // pattern has been logged at least twice.
+  const handleQuickTagComparison = async () => {
+    if (!user) return;
+    setShowEmotionalPicker(false);
+    setIsOpen(false);
+    try {
+      await supabase.from("grounding_log").insert({
+        user_id: user.id,
+        emotional_state: "comparing",
+        gentle_rep: "Named the urge. One rep on me instead.",
+        reminder: "Different lane. Different timeline.",
+      });
+
+      // Count recent comparison logs to decide whether to auto-suggest
+      const { count } = await supabase
+        .from("grounding_log")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("emotional_state", "comparing");
+
+      const { data: seed } = await supabase
+        .from("identity_seeds")
+        .select("id, content")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (seed && !seedHasOldContract(seed.content) && (count ?? 0) >= 2) {
+        await supabase
+          .from("identity_seeds")
+          .update({ content: `${seed.content}\n\n${OLD_CONTRACT_LINE}` })
+          .eq("id", seed.id);
+        toast.success("Logged. Added the old contract to your Identity Seed.", {
+          description: "Pattern named twice. Now it's on the page.",
+          duration: 6000,
+        });
+      } else {
+        toast.success("Logged. Back to you.", {
+          description: "Different lane. Different timeline.",
+        });
+      }
+    } catch (err: any) {
+      console.error("Quick-tag comparison error:", err);
+      toast.error("Couldn't log that. Try again.");
     }
   };
 
@@ -443,6 +529,19 @@ export const QuickCapture = () => {
               {/* Spiral States - for when you're IN IT */}
               <div>
                 <p className="text-xs text-destructive/80 font-medium mb-2">I'm spiraling</p>
+
+                {/* One-tap Comparison Trigger — logs immediately, no dialog */}
+                <button
+                  onClick={handleQuickTagComparison}
+                  className="w-full mb-2 flex items-center justify-between p-3 rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 transition-all text-left"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">Comparison Trigger</span>
+                    <span className="text-xs text-muted-foreground">One tap. Name it. Move on.</span>
+                  </div>
+                  <span className="text-xs text-destructive font-medium">Log</span>
+                </button>
+
                 <div className="grid grid-cols-2 gap-2">
                   {SPIRAL_STATES.map((state) => (
                     <button
