@@ -496,6 +496,19 @@ export const QuickCapture = () => {
               {/* Spiral States - for when you're IN IT */}
               <div>
                 <p className="text-xs text-destructive/80 font-medium mb-2">I'm spiraling</p>
+
+                {/* One-tap Comparison Trigger — logs immediately, no dialog */}
+                <button
+                  onClick={handleQuickTagComparison}
+                  className="w-full mb-2 flex items-center justify-between p-3 rounded-xl border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 transition-all text-left"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">Comparison Trigger</span>
+                    <span className="text-xs text-muted-foreground">One tap. Name it. Move on.</span>
+                  </div>
+                  <span className="text-xs text-destructive font-medium">Log</span>
+                </button>
+
                 <div className="grid grid-cols-2 gap-2">
                   {SPIRAL_STATES.map((state) => (
                     <button
