@@ -206,6 +206,37 @@ export const QuickCapture = () => {
     capability: string;
   } | null>(null);
 
+  // If captured text reads like a relationship/comparison trigger, offer to
+  // append the "old contract" line to the Identity Seed (one tap to confirm).
+  const maybeSuggestOldContract = async (capturedText: string) => {
+    if (!user || !detectRelationshipTrigger(capturedText)) return;
+    try {
+      const { data: seed } = await supabase
+        .from("identity_seeds")
+        .select("id, content")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!seed || seedHasOldContract(seed.content)) return;
+
+      toast("Relationship trigger detected", {
+        description: "Add the 'old contract' line to your Identity Seed?",
+        duration: 10000,
+        action: {
+          label: "Add it",
+          onClick: async () => {
+            await supabase
+              .from("identity_seeds")
+              .update({ content: `${seed.content}\n\n${OLD_CONTRACT_LINE}` })
+              .eq("id", seed.id);
+            toast.success("Added to Identity Seed.");
+          },
+        },
+      });
+    } catch (err) {
+      console.error("Old contract suggest error:", err);
+    }
+  };
+
   const executeSubmit = async () => {
     if (!user || !content.trim()) return;
     
