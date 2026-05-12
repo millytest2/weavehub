@@ -376,6 +376,8 @@ export const QuickCapture = () => {
       toast.error("Couldn't log that. Try again.");
     }
   };
+
+  const handleRealign = async (mode: RealignMode) => {
     if (!mode) return;
     setShowRealignPicker(false);
     setIsLoadingRealign(true);
