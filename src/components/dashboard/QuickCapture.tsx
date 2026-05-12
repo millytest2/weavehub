@@ -14,6 +14,11 @@ import { ReturnToSelfDialog } from "./ReturnToSelfDialog";
 import { ManualPasteFallback } from "./ManualPasteFallback";
 import { RealignDialog, RealignData } from "./RealignDialog";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
+import {
+  detectRelationshipTrigger,
+  seedHasOldContract,
+  OLD_CONTRACT_LINE,
+} from "@/lib/relationshipTriggerDetection";
 
 import { Confetti, useConfetti } from "@/components/ui/confetti";
 
