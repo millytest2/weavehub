@@ -255,9 +255,11 @@ export const QuickCapture = () => {
           handleClose();
         }
         showCareerToastForPaste(content);
+        await maybeSuggestOldContract(content);
       } else if (captureType === "insight") {
         setIsProcessing(true);
         const processed = await processWithBrain(content);
+        await maybeSuggestOldContract(`${title} ${content}`);
         
         await supabase.from("insights").insert({
           user_id: user.id,
