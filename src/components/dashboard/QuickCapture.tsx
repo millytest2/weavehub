@@ -677,7 +677,7 @@ export const QuickCapture = () => {
                   }
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[100px] text-base pr-24"
+                  className="min-h-[100px] text-base pr-36"
                   style={{ fontSize: '16px' }}
                   autoFocus
                 />
