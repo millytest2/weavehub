@@ -682,7 +682,7 @@ export const QuickCapture = () => {
                   autoFocus
                 />
                 
-                {/* Hidden file input for audio upload */}
+                {/* Hidden file inputs */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -690,12 +690,39 @@ export const QuickCapture = () => {
                   onChange={handleAudioFileUpload}
                   className="hidden"
                 />
-                
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={handlePdfUpload}
+                  className="hidden"
+                />
+
+                {/* PDF upload button (goal / operating page document) */}
+                <button
+                  type="button"
+                  onClick={() => pdfInputRef.current?.click()}
+                  disabled={isUploadingPdf || isUploadingAudio || isRecording || isTranscribing}
+                  className={`absolute right-[6.5rem] bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    isUploadingPdf
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  } disabled:opacity-50`}
+                  aria-label="Upload PDF as a goal document"
+                  title="Upload a PDF goal / operating page (e.g. June 2026)"
+                >
+                  {isUploadingPdf ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <FileText className="h-5 w-5" />
+                  )}
+                </button>
+
                 {/* Audio upload button */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingAudio || isRecording || isTranscribing}
+                  disabled={isUploadingAudio || isRecording || isTranscribing || isUploadingPdf}
                   className={`absolute right-14 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     isUploadingAudio
                       ? 'bg-muted text-muted-foreground'
@@ -745,6 +772,10 @@ export const QuickCapture = () => {
               
               {isUploadingAudio && (
                 <p className="text-xs text-muted-foreground animate-pulse">Transcribing audio file...</p>
+              )}
+
+              {isUploadingPdf && (
+                <p className="text-xs text-muted-foreground animate-pulse">Reading PDF and weaving it in...</p>
               )}
               
               {isProcessing && (
