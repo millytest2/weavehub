@@ -786,7 +786,7 @@ export const QuickCapture = () => {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing || isUploadingAudio}
+                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing || isUploadingAudio || isUploadingPdf}
                 className="w-full h-10"
               >
                 {isSubmitting ? "Processing..." : captureType === "paste" ? "Save & Extract" : "Capture Insight"}
