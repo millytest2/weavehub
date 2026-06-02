@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp, Upload } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,7 +103,81 @@ export const QuickCapture = () => {
   
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file || !user) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("PDF too large (max 20MB)");
+      return;
+    }
+
+    setIsUploadingPdf(true);
+    toast.info("Reading PDF...");
+    try {
+      // 1. Extract text with pdfjs-dist
+      const pdfjs: any = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc = (await import(
+        // @ts-ignore
+        "pdfjs-dist/build/pdf.worker.min.mjs?url"
+      )).default;
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: buf }).promise;
+      let extracted = "";
+      const maxPages = Math.min(pdf.numPages, 50);
+      for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const text = await page.getTextContent();
+        extracted += text.items.map((it: any) => it.str).join(" ") + "\n\n";
+      }
+
+      // 2. Upload original PDF to storage
+      const safeName = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
+      const storagePath = `${user.id}/${Date.now()}-${safeName}`;
+      const { error: upErr } = await supabase.storage
+        .from("documents")
+        .upload(storagePath, file, { contentType: "application/pdf" });
+      if (upErr) throw upErr;
+
+      // 3. Create document row
+      const title = file.name.replace(/\.pdf$/i, "").replace(/[-_]/g, " ").trim();
+      const { data: doc, error: docErr } = await supabase
+        .from("documents")
+        .insert({
+          user_id: user.id,
+          title,
+          file_path: storagePath,
+          file_type: "application/pdf",
+          file_size: file.size,
+          extracted_content: extracted.slice(0, 60000),
+          summary: extracted.slice(0, 400),
+        })
+        .select()
+        .single();
+      if (docErr) throw docErr;
+
+      // 4. Fire-and-forget intelligence pass (insights, embeddings, weaving)
+      supabase.functions
+        .invoke("document-intelligence", {
+          body: { documentId: doc.id, content: extracted, title },
+        })
+        .catch((err) => console.warn("document-intelligence:", err));
+
+      toast.success(`"${title}" added as a goal document`, {
+        description: "It will weave into your morning brief, mirror, and experiments.",
+      });
+      handleClose();
+    } catch (err: any) {
+      console.error("PDF upload error:", err);
+      toast.error(err.message || "Couldn't read that PDF");
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  };
   
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
     onTranscript: (text) => {
