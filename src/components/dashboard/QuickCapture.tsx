@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp, Upload } from "lucide-react";
+import { Lightbulb, Compass, Sparkles, Mic, MicOff, Loader2, Zap, Waves, Target, ChevronUp, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,7 +103,81 @@ export const QuickCapture = () => {
   
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file || !user) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("PDF too large (max 20MB)");
+      return;
+    }
+
+    setIsUploadingPdf(true);
+    toast.info("Reading PDF...");
+    try {
+      // 1. Extract text with pdfjs-dist
+      const pdfjs: any = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc = (await import(
+        // @ts-ignore
+        "pdfjs-dist/build/pdf.worker.min.mjs?url"
+      )).default;
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: buf }).promise;
+      let extracted = "";
+      const maxPages = Math.min(pdf.numPages, 50);
+      for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const text = await page.getTextContent();
+        extracted += text.items.map((it: any) => it.str).join(" ") + "\n\n";
+      }
+
+      // 2. Upload original PDF to storage
+      const safeName = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
+      const storagePath = `${user.id}/${Date.now()}-${safeName}`;
+      const { error: upErr } = await supabase.storage
+        .from("documents")
+        .upload(storagePath, file, { contentType: "application/pdf" });
+      if (upErr) throw upErr;
+
+      // 3. Create document row
+      const title = file.name.replace(/\.pdf$/i, "").replace(/[-_]/g, " ").trim();
+      const { data: doc, error: docErr } = await supabase
+        .from("documents")
+        .insert({
+          user_id: user.id,
+          title,
+          file_path: storagePath,
+          file_type: "application/pdf",
+          file_size: file.size,
+          extracted_content: extracted.slice(0, 60000),
+          summary: extracted.slice(0, 400),
+        })
+        .select()
+        .single();
+      if (docErr) throw docErr;
+
+      // 4. Fire-and-forget intelligence pass (insights, embeddings, weaving)
+      supabase.functions
+        .invoke("document-intelligence", {
+          body: { documentId: doc.id, content: extracted, title },
+        })
+        .catch((err) => console.warn("document-intelligence:", err));
+
+      toast.success(`"${title}" added as a goal document`, {
+        description: "It will weave into your morning brief, mirror, and experiments.",
+      });
+      handleClose();
+    } catch (err: any) {
+      console.error("PDF upload error:", err);
+      toast.error(err.message || "Couldn't read that PDF");
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  };
   
   const { isRecording, isTranscribing, toggleRecording } = useVoiceCapture({
     onTranscript: (text) => {
@@ -603,12 +677,12 @@ export const QuickCapture = () => {
                   }
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[100px] text-base pr-24"
+                  className="min-h-[100px] text-base pr-36"
                   style={{ fontSize: '16px' }}
                   autoFocus
                 />
                 
-                {/* Hidden file input for audio upload */}
+                {/* Hidden file inputs */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -616,12 +690,39 @@ export const QuickCapture = () => {
                   onChange={handleAudioFileUpload}
                   className="hidden"
                 />
-                
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={handlePdfUpload}
+                  className="hidden"
+                />
+
+                {/* PDF upload button (goal / operating page document) */}
+                <button
+                  type="button"
+                  onClick={() => pdfInputRef.current?.click()}
+                  disabled={isUploadingPdf || isUploadingAudio || isRecording || isTranscribing}
+                  className={`absolute right-[6.5rem] bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    isUploadingPdf
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  } disabled:opacity-50`}
+                  aria-label="Upload PDF as a goal document"
+                  title="Upload a PDF goal / operating page (e.g. June 2026)"
+                >
+                  {isUploadingPdf ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <FileText className="h-5 w-5" />
+                  )}
+                </button>
+
                 {/* Audio upload button */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingAudio || isRecording || isTranscribing}
+                  disabled={isUploadingAudio || isRecording || isTranscribing || isUploadingPdf}
                   className={`absolute right-14 bottom-2 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     isUploadingAudio
                       ? 'bg-muted text-muted-foreground'
@@ -672,6 +773,10 @@ export const QuickCapture = () => {
               {isUploadingAudio && (
                 <p className="text-xs text-muted-foreground animate-pulse">Transcribing audio file...</p>
               )}
+
+              {isUploadingPdf && (
+                <p className="text-xs text-muted-foreground animate-pulse">Reading PDF and weaving it in...</p>
+              )}
               
               {isProcessing && (
                 <p className="text-xs text-muted-foreground animate-pulse">
@@ -681,7 +786,7 @@ export const QuickCapture = () => {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing || isUploadingAudio}
+                disabled={!content.trim() || isSubmitting || isRecording || isTranscribing || isUploadingAudio || isUploadingPdf}
                 className="w-full h-10"
               >
                 {isSubmitting ? "Processing..." : captureType === "paste" ? "Save & Extract" : "Capture Insight"}
