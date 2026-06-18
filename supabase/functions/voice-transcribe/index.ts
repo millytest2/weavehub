@@ -5,36 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Process base64 in chunks to prevent memory issues
-function processBase64Chunks(base64String: string, chunkSize = 32768): Uint8Array {
-  const chunks: Uint8Array[] = [];
-  let position = 0;
-  
-  while (position < base64String.length) {
-    const chunk = base64String.slice(position, position + chunkSize);
-    const binaryChunk = atob(chunk);
-    const bytes = new Uint8Array(binaryChunk.length);
-    
-    for (let i = 0; i < binaryChunk.length; i++) {
-      bytes[i] = binaryChunk.charCodeAt(i);
-    }
-    
-    chunks.push(bytes);
-    position += chunkSize;
-  }
-
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -47,7 +17,7 @@ serve(async (req) => {
     }
 
     const { audio, mimeType } = await req.json();
-    
+
     if (!audio) {
       return new Response(
         JSON.stringify({ error: 'No audio data provided' }),
@@ -55,61 +25,71 @@ serve(async (req) => {
       );
     }
 
-    // Decode base64 directly to ArrayBuffer
-    const binaryString = atob(audio);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    
-    // Prepare form data for OpenAI Whisper via Lovable AI Gateway
-    const formData = new FormData();
-    const blob = new Blob([bytes], { type: mimeType || 'audio/webm' });
-    formData.append('file', blob, 'audio.webm');
-    formData.append('model', 'whisper-1');
+    // Use Gemini multimodal via Lovable AI Gateway for transcription
+    // (the gateway does not expose /v1/audio/transcriptions)
+    const audioMime = mimeType || 'audio/webm';
+    const dataUrl = `data:${audioMime};base64,${audio}`;
 
-    // Use Lovable AI Gateway for transcription
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/audio/transcriptions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a speech-to-text transcriber. Return ONLY the verbatim transcription of the audio with no commentary, no quotes, no formatting. If there is no speech, return an empty string.',
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Transcribe this audio verbatim.' },
+              { type: 'input_audio', input_audio: { data: dataUrl, format: audioMime.includes('mp4') ? 'mp4' : 'webm' } },
+            ],
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Transcription error:', response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'AI credits exhausted. Please add credits.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      throw new Error(`Transcription failed: ${errorText}`);
+
+      return new Response(
+        JSON.stringify({ error: `Transcription unavailable`, fallback: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const result = await response.json();
+    const text = result.choices?.[0]?.message?.content?.trim() || '';
 
     return new Response(
-      JSON.stringify({ text: result.text }),
+      JSON.stringify({ text }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
     console.error('Voice transcribe error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message, fallback: true }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
