@@ -62,6 +62,29 @@ const DOMAIN_CONFIG = {
   play: { label: 'Play', icon: Gamepad2, color: 'text-cyan-500' },
 } as const;
 
+// Synonyms the AI extractor sometimes emits. Map to the 6 canonical domains.
+const DOMAIN_ALIASES: Record<string, keyof typeof DOMAIN_CONFIG> = {
+  work: 'business', career: 'business', money: 'business', wealth: 'business',
+  finance: 'business', financial: 'business', income: 'business', sales: 'business',
+  revenue: 'business', upath: 'business',
+  fitness: 'body', health: 'body', physical: 'body', training: 'body',
+  weight: 'body', strength: 'body',
+  creative: 'content', creation: 'content', writing: 'content', social: 'content',
+  audience: 'content', media: 'content',
+  love: 'relationship', relationships: 'relationship', friends: 'relationship',
+  family: 'relationship', dating: 'relationship', connection: 'relationship',
+  learning: 'mind', knowledge: 'mind', skills: 'mind', growth: 'mind',
+  spiritual: 'mind', mindset: 'mind',
+  fun: 'play', joy: 'play', adventure: 'play', hobby: 'play', hobbies: 'play',
+};
+
+const resolveDomain = (raw: string | null | undefined): keyof typeof DOMAIN_CONFIG | null => {
+  const k = (raw || '').toLowerCase().trim();
+  if (!k) return null;
+  if (k in DOMAIN_CONFIG) return k as keyof typeof DOMAIN_CONFIG;
+  return DOMAIN_ALIASES[k] || null;
+};
+
 export function WeeklyMetricsCheckin({ 
   open, 
   onOpenChange, 
