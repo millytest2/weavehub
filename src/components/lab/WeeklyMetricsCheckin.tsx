@@ -431,7 +431,8 @@ export function WeeklyMetricsCheckin({
         </DialogHeader>
         <div className="space-y-4">
           {goals.map((goal) => {
-            const config = DOMAIN_CONFIG[goal.domain as keyof typeof DOMAIN_CONFIG];
+            const resolved = resolveDomain(goal.domain);
+            const config = resolved ? DOMAIN_CONFIG[resolved] : null;
             const Icon = config?.icon || Target;
             const currentValue = parseFloat(metricValues[goal.id] || "0");
             const progress = calculateProgress(currentValue, goal.target_value);
