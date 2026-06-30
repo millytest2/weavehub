@@ -62,6 +62,29 @@ const DOMAIN_CONFIG = {
   play: { label: 'Play', icon: Gamepad2, color: 'text-cyan-500' },
 } as const;
 
+// Synonyms the AI extractor sometimes emits. Map to the 6 canonical domains.
+const DOMAIN_ALIASES: Record<string, keyof typeof DOMAIN_CONFIG> = {
+  work: 'business', career: 'business', money: 'business', wealth: 'business',
+  finance: 'business', financial: 'business', income: 'business', sales: 'business',
+  revenue: 'business', upath: 'business',
+  fitness: 'body', health: 'body', physical: 'body', training: 'body',
+  weight: 'body', strength: 'body',
+  creative: 'content', creation: 'content', writing: 'content', social: 'content',
+  audience: 'content', media: 'content',
+  love: 'relationship', relationships: 'relationship', friends: 'relationship',
+  family: 'relationship', dating: 'relationship', connection: 'relationship',
+  learning: 'mind', knowledge: 'mind', skills: 'mind', growth: 'mind',
+  spiritual: 'mind', mindset: 'mind',
+  fun: 'play', joy: 'play', adventure: 'play', hobby: 'play', hobbies: 'play',
+};
+
+const resolveDomain = (raw: string | null | undefined): keyof typeof DOMAIN_CONFIG | null => {
+  const k = (raw || '').toLowerCase().trim();
+  if (!k) return null;
+  if (k in DOMAIN_CONFIG) return k as keyof typeof DOMAIN_CONFIG;
+  return DOMAIN_ALIASES[k] || null;
+};
+
 export function WeeklyMetricsCheckin({ 
   open, 
   onOpenChange, 
@@ -319,14 +342,16 @@ export function WeeklyMetricsCheckin({
           </DialogHeader>
           <div className="space-y-4">
             {pendingGoals.map((goal, index) => {
-              const config = DOMAIN_CONFIG[goal.domain as keyof typeof DOMAIN_CONFIG];
+              const resolved = resolveDomain(goal.domain);
+              const config = resolved ? DOMAIN_CONFIG[resolved] : null;
               const Icon = config?.icon || Target;
+              const chipLabel = config?.label || (goal.domain ? goal.domain.charAt(0).toUpperCase() + goal.domain.slice(1) : 'Other');
               
               return (
                 <Card key={index} className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Icon className={`h-4 w-4 ${config?.color || 'text-muted-foreground'}`} />
-                    <Badge variant="outline" className="capitalize">{goal.domain}</Badge>
+                    <Badge variant="outline">{chipLabel}</Badge>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-1">
@@ -406,7 +431,8 @@ export function WeeklyMetricsCheckin({
         </DialogHeader>
         <div className="space-y-4">
           {goals.map((goal) => {
-            const config = DOMAIN_CONFIG[goal.domain as keyof typeof DOMAIN_CONFIG];
+            const resolved = resolveDomain(goal.domain);
+            const config = resolved ? DOMAIN_CONFIG[resolved] : null;
             const Icon = config?.icon || Target;
             const currentValue = parseFloat(metricValues[goal.id] || "0");
             const progress = calculateProgress(currentValue, goal.target_value);

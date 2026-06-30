@@ -39,7 +39,45 @@ interface WeeklyExportGeneratorProps {
   year: number;
 }
 
-const DOMAIN_ORDER = ['business', 'body', 'content', 'relationship', 'mind', 'play'];
+const DOMAIN_LABELS: Record<string, string> = {
+  business: 'Business',
+  body: 'Body',
+  content: 'Content',
+  relationship: 'Relationship',
+  mind: 'Mind',
+  play: 'Play',
+};
+
+// Map common synonyms the AI extractor sometimes emits onto our 6 canonical domains.
+const DOMAIN_ALIASES: Record<string, string> = {
+  work: 'business', career: 'business', money: 'business', wealth: 'business',
+  finance: 'business', financial: 'business', income: 'business', sales: 'business',
+  revenue: 'business', upath: 'business',
+  fitness: 'body', health: 'body', physical: 'body', training: 'body', body: 'body',
+  weight: 'body', strength: 'body',
+  creative: 'content', creation: 'content', writing: 'content', social: 'content',
+  audience: 'content', media: 'content',
+  love: 'relationship', relationships: 'relationship', friends: 'relationship',
+  family: 'relationship', dating: 'relationship', connection: 'relationship',
+  learning: 'mind', knowledge: 'mind', skills: 'mind', growth: 'mind',
+  spiritual: 'mind', mindset: 'mind',
+  fun: 'play', joy: 'play', adventure: 'play', hobby: 'play', hobbies: 'play',
+};
+
+const ORDER = ['business', 'body', 'content', 'relationship', 'mind', 'play', 'other'];
+
+const normalizeDomain = (raw: string | null | undefined): string => {
+  const k = (raw || '').toLowerCase().trim();
+  if (!k) return 'other';
+  if (DOMAIN_LABELS[k]) return k;
+  if (DOMAIN_ALIASES[k]) return DOMAIN_ALIASES[k];
+  return 'other';
+};
+
+const labelFor = (raw: string | null | undefined): string => {
+  const k = normalizeDomain(raw);
+  return DOMAIN_LABELS[k] || (raw && raw.trim() ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Other');
+};
 
 export function WeeklyExportGenerator({ 
   open, 
@@ -128,9 +166,11 @@ export function WeeklyExportGenerator({
     const previousLogsByGoal = new Map(previousLogs.map(l => [l.goal_id, l]));
 
     // Sort goals by domain order
-    const sortedGoals = [...goals].sort((a, b) => 
-      DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain)
-    );
+    const sortedGoals = [...goals].sort((a, b) => {
+      const ai = ORDER.indexOf(normalizeDomain(a.domain));
+      const bi = ORDER.indexOf(normalizeDomain(b.domain));
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
 
     // Build the export text
     let lines: string[] = [];
@@ -152,7 +192,7 @@ export function WeeklyExportGenerator({
         ? ` (${change >= 0 ? '+' : ''}${formatNumber(change)} this week)` 
         : '';
 
-      const domainLabel = goal.domain.charAt(0).toUpperCase() + goal.domain.slice(1);
+      const domainLabel = labelFor(goal.domain);
       const line = `${domainLabel}: ${goal.goal_name} ${formatNumber(currentValue)}${goal.unit ? ` ${goal.unit}` : ''} / ${formatNumber(goal.target_value)}${goal.unit ? ` ${goal.unit}` : ''} (${progress}%)${changeStr}`;
       
       lines.push(line);
