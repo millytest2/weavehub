@@ -166,9 +166,11 @@ export function WeeklyExportGenerator({
     const previousLogsByGoal = new Map(previousLogs.map(l => [l.goal_id, l]));
 
     // Sort goals by domain order
-    const sortedGoals = [...goals].sort((a, b) => 
-      DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain)
-    );
+    const sortedGoals = [...goals].sort((a, b) => {
+      const ai = ORDER.indexOf(normalizeDomain(a.domain));
+      const bi = ORDER.indexOf(normalizeDomain(b.domain));
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
 
     // Build the export text
     let lines: string[] = [];
@@ -190,7 +192,7 @@ export function WeeklyExportGenerator({
         ? ` (${change >= 0 ? '+' : ''}${formatNumber(change)} this week)` 
         : '';
 
-      const domainLabel = goal.domain.charAt(0).toUpperCase() + goal.domain.slice(1);
+      const domainLabel = labelFor(goal.domain);
       const line = `${domainLabel}: ${goal.goal_name} ${formatNumber(currentValue)}${goal.unit ? ` ${goal.unit}` : ''} / ${formatNumber(goal.target_value)}${goal.unit ? ` ${goal.unit}` : ''} (${progress}%)${changeStr}`;
       
       lines.push(line);
