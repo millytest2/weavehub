@@ -342,14 +342,16 @@ export function WeeklyMetricsCheckin({
           </DialogHeader>
           <div className="space-y-4">
             {pendingGoals.map((goal, index) => {
-              const config = DOMAIN_CONFIG[goal.domain as keyof typeof DOMAIN_CONFIG];
+              const resolved = resolveDomain(goal.domain);
+              const config = resolved ? DOMAIN_CONFIG[resolved] : null;
               const Icon = config?.icon || Target;
+              const chipLabel = config?.label || (goal.domain ? goal.domain.charAt(0).toUpperCase() + goal.domain.slice(1) : 'Other');
               
               return (
                 <Card key={index} className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Icon className={`h-4 w-4 ${config?.color || 'text-muted-foreground'}`} />
-                    <Badge variant="outline" className="capitalize">{goal.domain}</Badge>
+                    <Badge variant="outline">{chipLabel}</Badge>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-1">
