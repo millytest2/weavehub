@@ -83,7 +83,7 @@ Schema:
     {
       "title": "string",
       "author": "string",
-      "type": "essay|article|paper|book|talk|podcast",
+      "type": "essay|article|substack|newsletter|paper|book|talk|podcast|video",
       "pillar": "one of the user's pillars",
       "why": "one sentence — why THIS person needs it right now (reference their actual goal or a captured note if relevant)",
       "takeaway": "one sentence — the core idea",
