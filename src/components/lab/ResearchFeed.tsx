@@ -155,7 +155,7 @@ export function ResearchFeed() {
       {loading && readings.length === 0 && (
         <div className="text-center py-16 space-y-3">
           <Loader2 className="h-6 w-6 mx-auto animate-spin text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground/40">Pulling research + scanning your library...</p>
+          <p className="text-sm text-muted-foreground/40">Pulling research...</p>
         </div>
       )}
 
