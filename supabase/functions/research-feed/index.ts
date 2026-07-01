@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       ? yourLibrary.map((x, i) => `${i + 1}. [${x.kind}] ${x.title} — ${x.snippet}`).join("\n")
       : "(no matching items in library yet)";
 
-    const system = `You are a research librarian for a specific person. Recommend 6 high-signal external readings (essays, articles, book chapters, papers, talks) that directly help them move on their CURRENT goals${topic ? ` and the specific topic: "${topic}"` : ""}. Not generic self-help. Bias toward: durable essays (Paul Graham, Naval, David Perell, Julian Shapiro, Koe, Nat Eliason, Andrew Huberman research, HBR, Farnam Street, Substack originals), specific research papers when relevant, and canonical books. Consider what they've already captured (below) — don't recommend things they already know; go one layer deeper or adjacent. Return STRICT JSON only.
+    const system = `You are a research librarian for a specific person. Recommend 6 high-signal external readings (essays, articles, Substack posts, book chapters, papers, YouTube talks, podcast episodes, newsletters) that directly help them move on their CURRENT goals${topic ? ` and the specific topic: "${topic}"` : ""}. Not generic self-help. Bias toward: durable essays (Paul Graham, Naval, David Perell, Julian Shapiro, Dan Koe, Nat Eliason, Sasha Chapin, Ava Huang, Visakan Veerasamy), Substack originals (Every, Not Boring, The Generalist, Lenny's, Ali Abdaal, Tim Ferriss), specific research papers, Huberman Lab episodes, canonical books. For Substack items set type to \"substack\" and put the direct substack.com URL in search_url when known. Consider what they've already captured (below) — don't recommend things they already know; go one layer deeper or adjacent. Return STRICT JSON only.
 
 Schema:
 {
