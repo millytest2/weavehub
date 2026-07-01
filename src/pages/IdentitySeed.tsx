@@ -20,6 +20,10 @@ export default function IdentitySeed() {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [currentReality, setCurrentReality] = useState("");
+  const [previousReality, setPreviousReality] = useState("");
+  const [realityUpdatedAt, setRealityUpdatedAt] = useState<string | null>(null);
+  const [showPrevious, setShowPrevious] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [coreValues, setCoreValues] = useState("");
   const [yearNote, setYearNote] = useState("");
   const [lifeDomains, setLifeDomains] = useState("");
