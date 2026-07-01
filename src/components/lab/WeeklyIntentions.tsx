@@ -5,19 +5,19 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Plus, 
-  Check, 
-  Circle, 
-  X, 
+import {
+  Plus,
+  Check,
+  Circle,
+  X,
   ListTodo,
   Mic,
   MicOff,
   Sparkles,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getWeek, getYear } from "date-fns";
+import { getWeek, getYear, startOfWeek, addDays, format, isSameDay } from "date-fns";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
 
 interface Intention {
@@ -26,56 +26,56 @@ interface Intention {
   pillar: string | null;
   completed: boolean;
   sort_order: number;
+  day_of_week: number | null;
 }
 
+// Miles's real skill-stack pillars (from identity + skill_stack table)
 const PILLAR_COLORS: Record<string, string> = {
-  Stability: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  Health: "bg-green-500/15 text-green-600 dark:text-green-400",
+  Money: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  UPath: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+  Sales: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   Content: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
-  Connection: "bg-pink-500/15 text-pink-600 dark:text-pink-400",
-  Presence: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-  Skill: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
-  Learning: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400",
+  Body: "bg-green-500/15 text-green-600 dark:text-green-400",
+  Charisma: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+  Relationship: "bg-pink-500/15 text-pink-600 dark:text-pink-400",
+  Friendship: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+  Mind: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
   Admin: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
 };
 
 const PILLAR_KEYWORDS: Record<string, string[]> = {
-  Stability: ["money", "income", "rent", "job", "apply", "interview", "salary", "save", "budget", "financial", "pay", "bills", "freelance", "client", "invoice"],
-  Health: ["gym", "workout", "run", "walk", "sleep", "eat", "cook", "meal", "stretch", "yoga", "exercise", "water", "fast", "weight", "body", "meditate"],
-  Content: ["post", "write", "video", "tiktok", "youtube", "tweet", "thread", "newsletter", "substack", "blog", "publish", "edit", "record", "share", "draft", "content"],
-  Connection: ["call", "reach out", "text", "meet", "friend", "family", "network", "dm", "coffee", "hang", "visit", "relationship", "date", "check in"],
-  Presence: ["journal", "reflect", "breathe", "ground", "meditat", "mindful", "gratitude", "pray", "intention", "slow down", "stillness", "awareness"],
-  Skill: ["build", "code", "design", "learn", "course", "practice", "ship", "deploy", "project", "prototype", "develop", "create", "app", "tool"],
-  Learning: ["read", "book", "article", "study", "research", "podcast", "listen", "watch", "notes", "review", "understand", "explore"],
-  Admin: ["clean", "organize", "email", "inbox", "errands", "laundry", "dishes", "appointment", "schedule", "tax", "paperwork", "update", "fix", "cancel"],
+  Money: ["money", "income", "rent", "bills", "budget", "invoice", "close", "pay", "cash", "3k", "$", "revenue", "sale", "client"],
+  UPath: ["upath", "product", "ship", "build", "deploy", "founder", "startup", "feature", "landing"],
+  Sales: ["outreach", "dm", "cold", "pitch", "call", "prospect", "lead", "follow up", "book", "demo", "interview"],
+  Content: ["post", "write", "video", "tiktok", "youtube", "tweet", "thread", "newsletter", "substack", "blog", "publish", "edit", "record", "share", "draft", "content", "reads"],
+  Body: ["gym", "workout", "run", "walk", "sleep", "eat", "cook", "meal", "stretch", "yoga", "exercise", "water", "fast", "weight", "body", "lift", "cardio"],
+  Charisma: ["speak", "voice", "presence", "eye contact", "story", "charisma", "presentation", "stage"],
+  Relationship: ["girlfriend", "partner", "her", "date", "relationship", "romantic"],
+  Friendship: ["friend", "hang", "coffee", "meet up", "text", "call friend", "brother", "sister", "family"],
+  Mind: ["journal", "reflect", "breathe", "ground", "meditat", "mindful", "gratitude", "read", "book", "study", "notes", "let go", "evening"],
+  Admin: ["clean", "organize", "email", "inbox", "errands", "laundry", "dishes", "appointment", "schedule", "tax", "paperwork", "cancel"],
 };
 
 function detectPillar(text: string): string | null {
   const lower = text.toLowerCase();
   let bestPillar: string | null = null;
   let bestScore = 0;
-  
   for (const [pillar, keywords] of Object.entries(PILLAR_KEYWORDS)) {
-    const score = keywords.filter(kw => lower.includes(kw)).length;
+    const score = keywords.filter((kw) => lower.includes(kw)).length;
     if (score > bestScore) {
       bestScore = score;
       bestPillar = pillar;
     }
   }
-  
   return bestPillar;
 }
 
 function splitCompoundEntry(text: string): string[] {
   const parts = text
     .split(/\s+and\s+|\s*,\s+|\s*\+\s+/i)
-    .map(p => p.trim())
-    .filter(p => p.length > 3);
-  
-  if (parts.length > 1 && parts.every(p => p.split(/\s+/).length >= 2)) {
-    return parts;
-  }
-  
+    .map((p) => p.trim())
+    .filter((p) => p.length > 3);
+  if (parts.length > 1 && parts.every((p) => p.split(/\s+/).length >= 2)) return parts;
   return [text];
 }
 
@@ -86,6 +86,7 @@ export function WeeklyIntentions() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null); // 0=Mon..6=Sun, null=any
   const [identityContext, setIdentityContext] = useState<{
     coreValues: string | null;
     yearNote: string | null;
@@ -94,12 +95,12 @@ export function WeeklyIntentions() {
 
   const weekNumber = getWeek(new Date(), { weekStartsOn: 1 });
   const year = getYear(new Date());
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const today = new Date();
 
   const { isRecording, toggleRecording, isSupported } = useVoiceCaptureWebSpeech({
     maxDuration: 30,
-    onTranscript: (text) => {
-      setNewText(text);
-    }
+    onTranscript: (text) => setNewText(text),
   });
 
   useEffect(() => {
@@ -136,8 +137,7 @@ export function WeeklyIntentions() {
         .eq("week_number", weekNumber)
         .eq("year", year)
         .order("sort_order", { ascending: true });
-      
-      setIntentions(data || []);
+      setIntentions((data as any) || []);
     } catch (err) {
       console.error("Error fetching intentions:", err);
     } finally {
@@ -157,13 +157,11 @@ export function WeeklyIntentions() {
         year,
         sort_order: intentions.length + i,
         pillar: detectPillar(entry),
+        day_of_week: selectedDay,
       }));
-      
-      const { error } = await supabase.from("weekly_intentions").insert(inserts);
+      const { error } = await supabase.from("weekly_intentions").insert(inserts as any);
       if (error) throw error;
-      if (entries.length > 1) {
-        toast.success(`Split into ${entries.length} items`);
-      }
+      if (entries.length > 1) toast.success(`Split into ${entries.length} items`);
       setNewText("");
       fetchIntentions();
     } catch (err) {
@@ -179,10 +177,9 @@ export function WeeklyIntentions() {
     setSuggesting(true);
     try {
       const { data, error } = await supabase.functions.invoke("daily-suggestions", {
-        body: { type: "weekly-intentions" }
+        body: { type: "weekly-intentions" },
       });
       if (error) throw error;
-      
       if (data?.suggestions && Array.isArray(data.suggestions)) {
         const inserts = data.suggestions.map((s: any, i: number) => ({
           user_id: user.id,
@@ -191,9 +188,9 @@ export function WeeklyIntentions() {
           year,
           sort_order: intentions.length + i,
           pillar: s.pillar || detectPillar(s.text || s),
+          day_of_week: null,
         }));
-        
-        const { error: insertError } = await supabase.from("weekly_intentions").insert(inserts);
+        const { error: insertError } = await supabase.from("weekly_intentions").insert(inserts as any);
         if (insertError) throw insertError;
         toast.success(`Added ${inserts.length} suggestions`);
         fetchIntentions();
@@ -208,35 +205,44 @@ export function WeeklyIntentions() {
 
   const toggleComplete = async (id: string, completed: boolean) => {
     try {
-      await supabase
-        .from("weekly_intentions")
-        .update({ completed: !completed })
-        .eq("id", id);
-      setIntentions(prev =>
-        prev.map(i => i.id === id ? { ...i, completed: !completed } : i)
-      );
+      await supabase.from("weekly_intentions").update({ completed: !completed }).eq("id", id);
+      setIntentions((prev) => prev.map((i) => (i.id === id ? { ...i, completed: !completed } : i)));
     } catch (err) {
       console.error("Error toggling:", err);
+    }
+  };
+
+  const setDay = async (id: string, day: number | null) => {
+    try {
+      await supabase.from("weekly_intentions").update({ day_of_week: day } as any).eq("id", id);
+      setIntentions((prev) => prev.map((i) => (i.id === id ? { ...i, day_of_week: day } : i)));
+    } catch (err) {
+      console.error("Error setting day:", err);
     }
   };
 
   const removeIntention = async (id: string) => {
     try {
       await supabase.from("weekly_intentions").delete().eq("id", id);
-      setIntentions(prev => prev.filter(i => i.id !== id));
+      setIntentions((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
       console.error("Error removing:", err);
     }
   };
 
-  const completedCount = intentions.filter(i => i.completed).length;
+  const completedCount = intentions.filter((i) => i.completed).length;
 
-  // Extract a short grounding line from identity
   const groundingLine = identityContext?.coreValues
-    ? identityContext.coreValues.split(/[,\n]/).slice(0, 3).map(v => v.trim()).filter(Boolean).join(' · ')
+    ? identityContext.coreValues.split(/[,\n]/).slice(0, 3).map((v) => v.trim()).filter(Boolean).join(" · ")
     : identityContext?.yearNote
-      ? identityContext.yearNote.substring(0, 60) + (identityContext.yearNote.length > 60 ? '...' : '')
+      ? identityContext.yearNote.substring(0, 60) + (identityContext.yearNote.length > 60 ? "..." : "")
       : null;
+
+  const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+
+  // Filter intentions: null day = shown in "any day"; otherwise grouped by day
+  const filtered =
+    selectedDay === null ? intentions : intentions.filter((i) => i.day_of_week === selectedDay || i.day_of_week === null);
 
   return (
     <Card className="p-4 rounded-2xl space-y-3">
@@ -252,21 +258,59 @@ export function WeeklyIntentions() {
         )}
       </div>
 
-      {/* Identity grounding line */}
       {groundingLine && (
-        <p className="text-[11px] text-muted-foreground/60 italic px-1">
-          Grounded in: {groundingLine}
-        </p>
+        <p className="text-[11px] text-muted-foreground/60 italic px-1">Grounded in: {groundingLine}</p>
       )}
+
+      {/* Day selector: Any + M T W T F S S */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <button
+          onClick={() => setSelectedDay(null)}
+          className={`shrink-0 text-[11px] h-7 px-2.5 rounded-full border transition-colors ${
+            selectedDay === null
+              ? "bg-primary/10 border-primary/30 text-primary"
+              : "border-border/40 text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Any day
+        </button>
+        {DAY_LABELS.map((label, idx) => {
+          const dayDate = addDays(weekStart, idx);
+          const isToday = isSameDay(dayDate, today);
+          const isActive = selectedDay === idx;
+          const count = intentions.filter((i) => i.day_of_week === idx).length;
+          return (
+            <button
+              key={idx}
+              onClick={() => setSelectedDay(idx)}
+              title={format(dayDate, "EEEE, MMM d")}
+              className={`shrink-0 flex flex-col items-center justify-center h-9 w-9 rounded-full border text-[10px] transition-colors ${
+                isActive
+                  ? "bg-primary/10 border-primary/30 text-primary"
+                  : isToday
+                    ? "border-primary/25 text-foreground"
+                    : "border-border/40 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span className="leading-none font-medium">{label}</span>
+              {count > 0 && <span className="text-[9px] leading-none mt-0.5 opacity-60">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Input */}
       <div className="flex gap-2">
         <Input
           value={newText}
-          onChange={e => setNewText(e.target.value)}
-          placeholder="What do you want to do this week?"
+          onChange={(e) => setNewText(e.target.value)}
+          placeholder={
+            selectedDay === null
+              ? "What do you want to do this week?"
+              : `Add to ${format(addDays(weekStart, selectedDay), "EEEE")}`
+          }
           className="text-sm h-9"
-          onKeyDown={e => e.key === "Enter" && addIntention()}
+          onKeyDown={(e) => e.key === "Enter" && addIntention()}
         />
         {isSupported && (
           <Button
@@ -278,17 +322,11 @@ export function WeeklyIntentions() {
             {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
           </Button>
         )}
-        <Button
-          size="sm"
-          className="h-9 px-3 shrink-0"
-          onClick={addIntention}
-          disabled={!newText.trim() || adding}
-        >
+        <Button size="sm" className="h-9 px-3 shrink-0" onClick={addIntention} disabled={!newText.trim() || adding}>
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {/* AI Suggest button - only show when identity exists and few/no intentions */}
       {identityContext && intentions.length < 3 && (
         <Button
           variant="outline"
@@ -298,25 +336,25 @@ export function WeeklyIntentions() {
           className="w-full h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5"
         >
           {suggesting ? (
-            <><Loader2 className="h-3 w-3 animate-spin" /> Weaving from your identity...</>
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" /> Weaving from your identity...
+            </>
           ) : (
-            <><Sparkles className="h-3 w-3" /> Suggest from my identity</>
+            <>
+              <Sparkles className="h-3 w-3" /> Suggest from my identity
+            </>
           )}
         </Button>
       )}
 
-      {/* Intentions list */}
-      {intentions.length > 0 && (
+      {filtered.length > 0 && (
         <div className="space-y-1">
-          {intentions.map(intention => (
+          {filtered.map((intention) => (
             <div
               key={intention.id}
               className="flex items-center gap-2 group py-1.5 px-2 rounded-lg hover:bg-muted/50 transition-colors"
             >
-              <button
-                onClick={() => toggleComplete(intention.id, intention.completed)}
-                className="shrink-0"
-              >
+              <button onClick={() => toggleComplete(intention.id, intention.completed)} className="shrink-0">
                 {intention.completed ? (
                   <Check className="h-4 w-4 text-green-500" />
                 ) : (
@@ -327,10 +365,24 @@ export function WeeklyIntentions() {
                 {intention.text}
               </span>
               {intention.pillar && (
-                <Badge variant="secondary" className={`text-[10px] h-4 px-1.5 ${PILLAR_COLORS[intention.pillar] || ""}`}>
+                <Badge
+                  variant="secondary"
+                  className={`text-[10px] h-4 px-1.5 ${PILLAR_COLORS[intention.pillar] || "bg-muted text-muted-foreground"}`}
+                >
                   {intention.pillar}
                 </Badge>
               )}
+              {/* Day chip — click to cycle day */}
+              <button
+                onClick={() => {
+                  const next = intention.day_of_week === null ? 0 : intention.day_of_week >= 6 ? null : intention.day_of_week + 1;
+                  setDay(intention.id, next);
+                }}
+                className="text-[10px] h-4 px-1.5 rounded border border-border/40 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                title="Click to change day"
+              >
+                {intention.day_of_week === null ? "any" : DAY_LABELS[intention.day_of_week]}
+              </button>
               <button
                 onClick={() => removeIntention(intention.id)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
@@ -342,9 +394,9 @@ export function WeeklyIntentions() {
         </div>
       )}
 
-      {intentions.length === 0 && !loading && (
+      {filtered.length === 0 && !loading && (
         <p className="text-xs text-muted-foreground text-center py-2">
-          Add what you want to accomplish this week
+          {selectedDay === null ? "Add what you want to accomplish this week" : "Nothing scheduled for this day yet"}
         </p>
       )}
     </Card>

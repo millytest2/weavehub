@@ -1536,6 +1536,7 @@ export type Database = {
         Row: {
           completed: boolean | null
           created_at: string
+          day_of_week: number | null
           id: string
           pillar: string | null
           sort_order: number | null
@@ -1547,6 +1548,7 @@ export type Database = {
         Insert: {
           completed?: boolean | null
           created_at?: string
+          day_of_week?: number | null
           id?: string
           pillar?: string | null
           sort_order?: number | null
@@ -1558,6 +1560,7 @@ export type Database = {
         Update: {
           completed?: boolean | null
           created_at?: string
+          day_of_week?: number | null
           id?: string
           pillar?: string | null
           sort_order?: number | null

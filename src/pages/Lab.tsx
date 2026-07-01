@@ -19,7 +19,6 @@ import { MonthlyPlanView } from "@/components/lab/MonthlyPlanView";
 import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
 import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
-import { FocusLock } from "@/components/lab/FocusLock";
 import { SideQuestDeck } from "@/components/lab/SideQuestDeck";
 import { DailyScoreboard } from "@/components/dashboard/DailyScoreboard";
 
@@ -107,9 +106,16 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
       if (data) {
         // Edge function returns { experiments: [...], sprint: {...} }
         const exp = data.experiments?.[0] || data;
+        // Build a deeper hypothesis: the identity shift, the why, and the description
+        const parts: string[] = [];
+        if (exp.identity_shift_target) parts.push(`Identity shift: ${exp.identity_shift_target}`);
+        if (exp.why || exp.rationale) parts.push(`Why it matters: ${exp.why || exp.rationale}`);
+        if (exp.description) parts.push(exp.description);
+        if (exp.success_looks_like) parts.push(`Success looks like: ${exp.success_looks_like}`);
+        const deepHypothesis = parts.filter(Boolean).join("\n\n") || exp.hypothesis || "";
         setNewExperiment({
           title: exp.title || "",
-          hypothesis: exp.identity_shift_target || exp.description || "",
+          hypothesis: deepHypothesis,
           duration_days: parseInt(String(exp.duration || "7").replace(/\D/g, '') || "7") || 7,
           experiment_type: exp.pillar?.toLowerCase() || "personal",
           metrics: ""
@@ -244,9 +250,6 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
                 {/* Daily Scoreboard — 8 reps, woven into all agents */}
                 <DailyScoreboard />
 
-                {/* Focus Lock — appears when too many experiments */}
-                <FocusLock experimentCount={experiments.length} />
-
                 {/* Side Quest Deck — novel, low-friction quests that become experiments */}
                 <SideQuestDeck onQuestAccepted={fetchExperiments} />
 
@@ -309,30 +312,6 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
                         </div>
                       );
                     })}
-                  </div>
-                )}
-
-                {pausedExperiments.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-[11px] uppercase tracking-widest text-muted-foreground/25">Paused</p>
-                    {pausedExperiments.map((exp) => (
-                      <div key={exp.id} className="rounded-xl border border-border/20 p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-foreground/60">{exp.title}</p>
-                          <p className="text-[11px] text-muted-foreground/30">Day {exp.current_day} of {exp.duration_days}</p>
-                        </div>
-                        <button
-                          onClick={async () => {
-                            await supabase.from("experiments").update({ status: "in_progress" }).eq("id", exp.id);
-                            setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: "in_progress" } : e));
-                            toast.success("Experiment resumed");
-                          }}
-                          className="text-[12px] text-primary/40 hover:text-primary transition-colors"
-                        >
-                          Resume
-                        </button>
-                      </div>
-                    ))}
                   </div>
                 )}
 
