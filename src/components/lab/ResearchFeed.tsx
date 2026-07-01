@@ -3,7 +3,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ExternalLink, Loader2, RefreshCw, Bookmark, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { BookOpen, ExternalLink, Loader2, RefreshCw, Bookmark, Check, Search, Library } from "lucide-react";
 import { toast } from "sonner";
 
 interface Reading {
@@ -14,6 +15,15 @@ interface Reading {
   why: string;
   takeaway: string;
   search_url: string;
+}
+
+interface LibraryItem {
+  kind: string;
+  id: string;
+  title: string;
+  snippet: string;
+  source?: string;
+  created_at: string;
 }
 
 const PILLAR_COLORS: Record<string, string> = {
@@ -33,29 +43,34 @@ const FOCUS_CHIPS = ["All", "Money", "Body", "Charisma", "Mind", "UPath", "Relat
 export function ResearchFeed() {
   const { user } = useAuth();
   const [readings, setReadings] = useState<Reading[]>([]);
+  const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [activeFocus, setActiveFocus] = useState("All");
+  const [topic, setTopic] = useState("");
 
   useEffect(() => {
-    if (user && readings.length === 0) loadReadings("All");
+    if (user && readings.length === 0) loadReadings("All", "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const loadReadings = async (focus: string) => {
+  const loadReadings = async (focus: string, topicOverride?: string) => {
     if (!user) return;
     setLoading(true);
     setActiveFocus(focus);
     try {
       const { data, error } = await supabase.functions.invoke("research-feed", {
-        body: { focus: focus === "All" ? null : focus },
+        body: {
+          focus: focus === "All" ? null : focus,
+          topic: (topicOverride ?? topic).trim() || null,
+        },
       });
       if (error) throw error;
-      if (data?.error) {
+      if (data?.error && !data?.readings?.length) {
         toast.error(data.error);
-        return;
       }
       setReadings(data?.readings || []);
+      setLibrary(data?.from_library || []);
     } catch (err: any) {
       toast.error(err.message || "Couldn't load research");
     } finally {
@@ -74,7 +89,7 @@ export function ResearchFeed() {
       });
       setSaved((prev) => new Set(prev).add(r.title));
       toast.success("Saved");
-    } catch (err: any) {
+    } catch {
       toast.error("Couldn't save");
     }
   };
@@ -84,7 +99,7 @@ export function ResearchFeed() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground/50">Reading tuned to your goals</p>
-          <p className="text-[11px] text-muted-foreground/30 mt-0.5">Essays, papers, books that move the needle</p>
+          <p className="text-[11px] text-muted-foreground/30 mt-0.5">External sources + your own captured library</p>
         </div>
         <button
           onClick={() => loadReadings(activeFocus)}
@@ -94,6 +109,29 @@ export function ResearchFeed() {
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           Refresh
         </button>
+      </div>
+
+      {/* Topic search */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
+          <Input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && loadReadings(activeFocus)}
+            placeholder="Specific topic (e.g. cold outreach, sleep, attachment)"
+            className="h-9 pl-9 text-sm bg-background/50"
+          />
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => loadReadings(activeFocus)}
+          disabled={loading}
+          className="h-9"
+        >
+          Search
+        </Button>
       </div>
 
       {/* Focus chips */}
@@ -117,11 +155,37 @@ export function ResearchFeed() {
       {loading && readings.length === 0 && (
         <div className="text-center py-16 space-y-3">
           <Loader2 className="h-6 w-6 mx-auto animate-spin text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground/40">Pulling research for your goals...</p>
+          <p className="text-sm text-muted-foreground/40">Pulling research + scanning your library...</p>
         </div>
       )}
 
-      {!loading && readings.length === 0 && (
+      {/* From your library */}
+      {library.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Library className="h-3 w-3 text-muted-foreground/50" />
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">From your library</p>
+          </div>
+          <div className="space-y-2">
+            {library.map((item) => (
+              <div key={`${item.kind}-${item.id}`} className="rounded-lg border border-border/20 p-3 hover:border-border/40 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-muted/50">
+                    {item.kind}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground/40">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-[13px] font-medium leading-snug">{item.title}</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-1 line-clamp-2">{item.snippet}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && readings.length === 0 && library.length === 0 && (
         <div className="text-center py-16 space-y-3">
           <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/15" />
           <p className="text-sm text-muted-foreground/30">No readings yet</p>
@@ -131,8 +195,13 @@ export function ResearchFeed() {
         </div>
       )}
 
+      {/* External readings */}
       {readings.length > 0 && (
         <div className="space-y-3">
+          <div className="flex items-center gap-1.5">
+            <BookOpen className="h-3 w-3 text-muted-foreground/50" />
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">New sources</p>
+          </div>
           {readings.map((r, i) => (
             <div key={i} className="rounded-xl border border-border/25 p-4 space-y-2.5 hover:border-border/50 transition-colors">
               <div className="flex items-start justify-between gap-3">
