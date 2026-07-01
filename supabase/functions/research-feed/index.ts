@@ -27,11 +27,12 @@ Deno.serve(async (req) => {
 
     const { focus, topic } = await req.json().catch(() => ({ focus: null, topic: null }));
 
-    // Pull identity + skill stack + user's own observations (library)
-    const [identityRes, skillRes, obsRes] = await Promise.all([
+    // Pull identity + skill stack + user's own observations (library) + substack posts
+    const [identityRes, skillRes, obsRes, subRes] = await Promise.all([
       supabase.from("identity_seeds").select("year_note, weekly_focus, core_values").eq("user_id", user.id).maybeSingle(),
       supabase.from("skill_stack").select("archetype, description").eq("user_id", user.id),
       supabase.from("observations").select("id, content, observation_type, source, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(80),
+      supabase.from("substack_posts").select("id, title, author, link, summary, published_at").eq("user_id", user.id).order("published_at", { ascending: false, nullsFirst: false }).limit(60),
     ]);
 
     const identity = identityRes.data;
