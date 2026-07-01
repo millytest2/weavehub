@@ -66,14 +66,14 @@ export function ResearchFeed() {
   const saveAsCapture = async (r: Reading) => {
     if (!user) return;
     try {
-      await supabase.from("captures").insert({
+      await supabase.from("observations").insert({
         user_id: user.id,
-        content: `📖 ${r.title} — ${r.author}\n\nWhy: ${r.why}\nTakeaway: ${r.takeaway}\n\n${r.search_url}`,
+        observation_type: "reference",
+        content: `${r.title} — ${r.author}\n\nWhy: ${r.why}\nTakeaway: ${r.takeaway}\n\n${r.search_url}`,
         source: "research",
-        capture_type: "reference",
-      } as any);
+      });
       setSaved((prev) => new Set(prev).add(r.title));
-      toast.success("Saved to Capture");
+      toast.success("Saved");
     } catch (err: any) {
       toast.error("Couldn't save");
     }
