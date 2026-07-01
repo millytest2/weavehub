@@ -101,12 +101,16 @@ export default function IdentitySeed() {
         setContent(data.content || "");
         setIdentitySeedId(data.id);
         setCurrentReality(data.weekly_focus || "");
+        setPreviousReality((data as any).previous_reality || "");
+        setRealityUpdatedAt((data as any).reality_updated_at || null);
         setCoreValues(data.core_values || "");
         setYearNote(data.year_note || "");
         setLifeDomains((data as any).life_domains || "");
       } else {
         setContent("");
         setCurrentReality("");
+        setPreviousReality("");
+        setRealityUpdatedAt(null);
         setCoreValues("");
         setYearNote("");
         setLifeDomains("");
