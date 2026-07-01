@@ -99,3 +99,6 @@ verify_jwt = true
 
 [functions.generate-pillar-targets]
 verify_jwt = true
+
+[functions.refresh-current-reality]
+verify_jwt = true
