@@ -151,7 +151,7 @@ Return 6 real, findable readings. No fabricated titles.`;
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("Gateway error:", resp.status, errText);
-      return new Response(JSON.stringify({ error: "AI temporarily unavailable", status: resp.status, from_library: yourLibrary, readings: [] }), {
+      return new Response(JSON.stringify({ error: "AI temporarily unavailable", status: resp.status, from_library: yourLibrary, readings: substackPicks, substack: substackPicks }), {
         status: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
       });
@@ -162,12 +162,15 @@ Return 6 real, findable readings. No fabricated titles.`;
     let parsed: any = {};
     try { parsed = JSON.parse(raw); } catch { parsed = { readings: [] }; }
 
-    const readings = (parsed.readings || []).map((r: any) => ({
+    const aiReadings = (parsed.readings || []).map((r: any) => ({
       ...r,
       search_url: r.search_url || `https://www.google.com/search?q=${encodeURIComponent(`${r.title || ""} ${r.author || ""}`)}`,
     }));
 
-    return new Response(JSON.stringify({ readings, from_library: yourLibrary }), {
+    // Merge: substack picks first (user's own sources), then AI recs
+    const readings = [...substackPicks, ...aiReadings];
+
+    return new Response(JSON.stringify({ readings, from_library: yourLibrary, substack: substackPicks }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (err: any) {
