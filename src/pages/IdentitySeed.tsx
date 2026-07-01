@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User, Star, Target, Mic, MicOff, Layers } from "lucide-react";
+import { Compass, User, Star, Target, Mic, MicOff, Layers, Sparkles, History } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { z } from "zod";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
 
