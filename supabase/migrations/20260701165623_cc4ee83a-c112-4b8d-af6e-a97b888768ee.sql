@@ -1,0 +1,3 @@
+UPDATE public.identity_seeds
+SET weekly_focus = weekly_focus || E'\n\n---\nJULY 2026 DREAM (if everything went my way):\n• Money: start making money on the side of work; close 5–10 deals at Social Hog.\n• Move: into new apartment with new bed, basic cooking stuff, and a desk.\n• Body: gym 4x/week; eat and be in bed by 11 (not 12).\n• Discipline: no masturbation the whole month — redirect into confidence, curiosities, flirting, friends.\n• Friends: see a friend or talk to one I love at least once a week (ideally every other day).\n• UPath: really consistent; detailed intention for each week.\n• Arley: keep building — practice letting go, staying swaggy, goofy, mature.\n• Read: every day, ~1 hour.'
+WHERE user_id = '9fb78f6d-3224-4738-bbfa-0214931e9a2c';
