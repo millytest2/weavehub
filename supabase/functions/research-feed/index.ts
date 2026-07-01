@@ -1,6 +1,6 @@
 // Research Feed — generates identity-grounded reading recommendations
-// across the user's active goals/pillars. Returns article/essay/book suggestions
-// with search URLs so Miles can jump straight to reading.
+// PLUS surfaces relevant existing insights/documents/observations from user's own library
+// so the user re-encounters their own captured wisdom alongside new external sources.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -25,18 +25,67 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
 
-    const { focus } = await req.json().catch(() => ({ focus: null }));
+    const { focus, topic } = await req.json().catch(() => ({ focus: null, topic: null }));
 
-    // Pull identity + skill stack for grounding
-    const [identityRes, skillRes] = await Promise.all([
+    // Pull identity + skill stack + user's own library
+    const [identityRes, skillRes, insightsRes, docsRes, obsRes] = await Promise.all([
       supabase.from("identity_seeds").select("year_note, weekly_focus, core_values").eq("user_id", user.id).maybeSingle(),
       supabase.from("skill_stack").select("archetype, description").eq("user_id", user.id),
+      supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(80),
+      supabase.from("documents").select("id, title, summary, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(40),
+      supabase.from("observations").select("id, content, observation_type, source, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60),
     ]);
 
     const identity = identityRes.data;
     const skills = (skillRes.data || []).map((s: any) => `${s.archetype}: ${s.description || ""}`).join("\n");
 
-    const system = `You are a research librarian for a specific person. Recommend 6 high-signal readings (essays, articles, book chapters, papers, talks) that directly help them move on their CURRENT goals. Not generic self-help. Bias toward: durable essays (Paul Graham, Naval, David Perell, Julian Shapiro, Koe, Nat Eliason, Andrew Huberman research, HBR, Farnam Street, Substack originals), specific research papers when relevant, and canonical books. Return STRICT JSON only.
+    // Simple keyword match against user's library
+    const matchTerms: string[] = [];
+    if (topic) matchTerms.push(topic.toLowerCase());
+    if (focus && focus !== "All") matchTerms.push(focus.toLowerCase());
+    // pillar synonyms
+    const synMap: Record<string, string[]> = {
+      money: ["money","income","sales","deal","revenue","business","upath"],
+      body: ["body","gym","workout","lift","training","sleep","food"],
+      charisma: ["charisma","social","speaking","presence","confidence","women","date"],
+      mind: ["mind","focus","reading","learning","think","attention"],
+      upath: ["upath","career","clarity","overthink"],
+      relationship: ["relationship","arley","partner","love","attachment"],
+      friendship: ["friend","friendship","community"],
+      content: ["content","write","post","tweet","video"],
+    };
+    const focusKey = (focus || "").toLowerCase();
+    const expanded = new Set<string>(matchTerms);
+    if (synMap[focusKey]) synMap[focusKey].forEach((t) => expanded.add(t));
+    const terms = [...expanded].filter(Boolean);
+
+    const scoreItem = (text: string) => {
+      if (!terms.length) return 1;
+      const lower = text.toLowerCase();
+      return terms.reduce((n, t) => n + (lower.includes(t) ? 1 : 0), 0);
+    };
+
+    const fromLibrary: any[] = [];
+    (insightsRes.data || []).forEach((i: any) => {
+      const s = scoreItem(`${i.title} ${i.content}`);
+      if (s > 0 || !terms.length) fromLibrary.push({ kind: "insight", id: i.id, title: i.title, snippet: (i.content || "").slice(0, 220), source: i.source, created_at: i.created_at, score: s });
+    });
+    (docsRes.data || []).forEach((d: any) => {
+      const s = scoreItem(`${d.title} ${d.summary || ""}`);
+      if (s > 0 || !terms.length) fromLibrary.push({ kind: "document", id: d.id, title: d.title, snippet: (d.summary || "").slice(0, 220), created_at: d.created_at, score: s });
+    });
+    (obsRes.data || []).forEach((o: any) => {
+      const s = scoreItem(o.content || "");
+      if (s > 0) fromLibrary.push({ kind: "observation", id: o.id, title: (o.content || "").split("\n")[0].slice(0, 80), snippet: (o.content || "").slice(0, 220), source: o.source, created_at: o.created_at, score: s });
+    });
+    fromLibrary.sort((a, b) => b.score - a.score || (b.created_at > a.created_at ? 1 : -1));
+    const yourLibrary = fromLibrary.slice(0, 6);
+
+    const librarySummary = yourLibrary.length
+      ? yourLibrary.map((x, i) => `${i + 1}. [${x.kind}] ${x.title} — ${x.snippet}`).join("\n")
+      : "(no matching items in library yet)";
+
+    const system = `You are a research librarian for a specific person. Recommend 6 high-signal external readings (essays, articles, book chapters, papers, talks) that directly help them move on their CURRENT goals${topic ? ` and the specific topic: "${topic}"` : ""}. Not generic self-help. Bias toward: durable essays (Paul Graham, Naval, David Perell, Julian Shapiro, Koe, Nat Eliason, Andrew Huberman research, HBR, Farnam Street, Substack originals), specific research papers when relevant, and canonical books. Consider what they've already captured (below) — don't recommend things they already know; go one layer deeper or adjacent. Return STRICT JSON only.
 
 Schema:
 {
@@ -45,8 +94,8 @@ Schema:
       "title": "string",
       "author": "string",
       "type": "essay|article|paper|book|talk|podcast",
-      "pillar": "one of the user's pillars (e.g. Money, Body, Charisma, UPath, Content, Sales, Relationship, Mind)",
-      "why": "one sentence — why THIS person needs it right now (reference their actual goal)",
+      "pillar": "one of the user's pillars",
+      "why": "one sentence — why THIS person needs it right now (reference their actual goal or a captured note if relevant)",
       "takeaway": "one sentence — the core idea",
       "search_url": "https://www.google.com/search?q=<url-encoded title + author>"
     }
@@ -64,9 +113,11 @@ Values: ${identity?.core_values || "(none)"}
 Skill stack:
 ${skills || "(none)"}
 
-${focus ? `SPECIFIC FOCUS FOR THIS BATCH: ${focus}` : "Cover a mix of pillars — at least one for money/sales, one for body/discipline, one for relationships/charisma, one for mind/critical thinking."}
+${topic ? `SPECIFIC TOPIC REQUEST: ${topic}\n` : ""}${focus && focus !== "All" ? `PILLAR FOCUS: ${focus}\n` : "Cover a mix of pillars.\n"}
+WHAT THEY'VE ALREADY CAPTURED (most relevant from their library):
+${librarySummary}
 
-Return 6 readings. Real, findable pieces. No fabricated titles.`;
+Return 6 real, findable readings. No fabricated titles.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -87,7 +138,7 @@ Return 6 readings. Real, findable pieces. No fabricated titles.`;
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("Gateway error:", resp.status, errText);
-      return new Response(JSON.stringify({ error: "AI temporarily unavailable", status: resp.status }), {
+      return new Response(JSON.stringify({ error: "AI temporarily unavailable", status: resp.status, from_library: yourLibrary, readings: [] }), {
         status: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
       });
@@ -98,13 +149,12 @@ Return 6 readings. Real, findable pieces. No fabricated titles.`;
     let parsed: any = {};
     try { parsed = JSON.parse(raw); } catch { parsed = { readings: [] }; }
 
-    // Ensure search_url exists for every reading
     const readings = (parsed.readings || []).map((r: any) => ({
       ...r,
       search_url: r.search_url || `https://www.google.com/search?q=${encodeURIComponent(`${r.title || ""} ${r.author || ""}`)}`,
     }));
 
-    return new Response(JSON.stringify({ readings }), {
+    return new Response(JSON.stringify({ readings, from_library: yourLibrary }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (err: any) {
