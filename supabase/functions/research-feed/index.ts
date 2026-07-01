@@ -64,14 +64,6 @@ Deno.serve(async (req) => {
     };
 
     const fromLibrary: any[] = [];
-    (insightsRes.data || []).forEach((i: any) => {
-      const s = scoreItem(`${i.title} ${i.content}`);
-      if (s > 0 || !terms.length) fromLibrary.push({ kind: "insight", id: i.id, title: i.title, snippet: (i.content || "").slice(0, 220), source: i.source, created_at: i.created_at, score: s });
-    });
-    (docsRes.data || []).forEach((d: any) => {
-      const s = scoreItem(`${d.title} ${d.summary || ""}`);
-      if (s > 0 || !terms.length) fromLibrary.push({ kind: "document", id: d.id, title: d.title, snippet: (d.summary || "").slice(0, 220), created_at: d.created_at, score: s });
-    });
     (obsRes.data || []).forEach((o: any) => {
       const s = scoreItem(o.content || "");
       if (s > 0) fromLibrary.push({ kind: "observation", id: o.id, title: (o.content || "").split("\n")[0].slice(0, 80), snippet: (o.content || "").slice(0, 220), source: o.source, created_at: o.created_at, score: s });
