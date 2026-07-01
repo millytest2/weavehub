@@ -1295,6 +1295,89 @@ export type Database = {
         }
         Relationships: []
       }
+      substack_posts: {
+        Row: {
+          author: string | null
+          content: string | null
+          created_at: string
+          guid: string
+          id: string
+          link: string
+          published_at: string | null
+          source_id: string
+          summary: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          author?: string | null
+          content?: string | null
+          created_at?: string
+          guid: string
+          id?: string
+          link: string
+          published_at?: string | null
+          source_id: string
+          summary?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          author?: string | null
+          content?: string | null
+          created_at?: string
+          guid?: string
+          id?: string
+          link?: string
+          published_at?: string | null
+          source_id?: string
+          summary?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "substack_posts_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "substack_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      substack_sources: {
+        Row: {
+          created_at: string
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          name: string | null
+          post_count: number
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          name?: string | null
+          post_count?: number
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          name?: string | null
+          post_count?: number
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       thread_milestones: {
         Row: {
           capability_focus: string | null

@@ -27,11 +27,12 @@ Deno.serve(async (req) => {
 
     const { focus, topic } = await req.json().catch(() => ({ focus: null, topic: null }));
 
-    // Pull identity + skill stack + user's own observations (library)
-    const [identityRes, skillRes, obsRes] = await Promise.all([
+    // Pull identity + skill stack + user's own observations (library) + substack posts
+    const [identityRes, skillRes, obsRes, subRes] = await Promise.all([
       supabase.from("identity_seeds").select("year_note, weekly_focus, core_values").eq("user_id", user.id).maybeSingle(),
       supabase.from("skill_stack").select("archetype, description").eq("user_id", user.id),
       supabase.from("observations").select("id, content, observation_type, source, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(80),
+      supabase.from("substack_posts").select("id, title, author, link, summary, published_at").eq("user_id", user.id).order("published_at", { ascending: false, nullsFirst: false }).limit(60),
     ]);
 
     const identity = identityRes.data;
@@ -70,6 +71,28 @@ Deno.serve(async (req) => {
     });
     fromLibrary.sort((a, b) => b.score - a.score || (b.created_at > a.created_at ? 1 : -1));
     const yourLibrary = fromLibrary.slice(0, 6);
+
+    // Score substack posts against the same terms
+    const substackScored: any[] = [];
+    (subRes.data || []).forEach((p: any) => {
+      const text = `${p.title || ""} ${p.summary || ""}`;
+      const s = scoreItem(text);
+      if (s > 0 || !terms.length) {
+        substackScored.push({
+          title: p.title,
+          author: p.author || "Substack",
+          type: "substack",
+          pillar: focus && focus !== "All" ? focus : "Mind",
+          why: "From a Substack you follow — matches your current focus.",
+          takeaway: (p.summary || "").slice(0, 180),
+          search_url: p.link,
+          published_at: p.published_at,
+          score: s || 0.5,
+        });
+      }
+    });
+    substackScored.sort((a, b) => b.score - a.score || ((b.published_at || "") > (a.published_at || "") ? 1 : -1));
+    const substackPicks = substackScored.slice(0, 4);
 
     const librarySummary = yourLibrary.length
       ? yourLibrary.map((x, i) => `${i + 1}. [${x.kind}] ${x.title} — ${x.snippet}`).join("\n")
@@ -128,7 +151,7 @@ Return 6 real, findable readings. No fabricated titles.`;
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("Gateway error:", resp.status, errText);
-      return new Response(JSON.stringify({ error: "AI temporarily unavailable", status: resp.status, from_library: yourLibrary, readings: [] }), {
+      return new Response(JSON.stringify({ error: "AI temporarily unavailable", status: resp.status, from_library: yourLibrary, readings: substackPicks, substack: substackPicks }), {
         status: 200,
         headers: { ...CORS, "Content-Type": "application/json" },
       });
@@ -139,12 +162,15 @@ Return 6 real, findable readings. No fabricated titles.`;
     let parsed: any = {};
     try { parsed = JSON.parse(raw); } catch { parsed = { readings: [] }; }
 
-    const readings = (parsed.readings || []).map((r: any) => ({
+    const aiReadings = (parsed.readings || []).map((r: any) => ({
       ...r,
       search_url: r.search_url || `https://www.google.com/search?q=${encodeURIComponent(`${r.title || ""} ${r.author || ""}`)}`,
     }));
 
-    return new Response(JSON.stringify({ readings, from_library: yourLibrary }), {
+    // Merge: substack picks first (user's own sources), then AI recs
+    const readings = [...substackPicks, ...aiReadings];
+
+    return new Response(JSON.stringify({ readings, from_library: yourLibrary, substack: substackPicks }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (err: any) {
