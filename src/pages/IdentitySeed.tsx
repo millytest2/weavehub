@@ -169,6 +169,29 @@ export default function IdentitySeed() {
     }
   };
 
+  const handleAutoRefresh = async () => {
+    if (!user?.id) return;
+    setRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("refresh-current-reality", {
+        body: { current_reality: currentReality },
+      });
+      if (error) throw error;
+      const next = (data as any)?.current_reality?.trim();
+      if (!next) {
+        toast.info("Nothing new to weave in yet.");
+        return;
+      }
+      setCurrentReality(next);
+      toast.success("Refreshed from your latest captures. Review and save.");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Couldn't refresh right now.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const VoiceButton = ({ field }: { field: ActiveField }) => {
     const isActive = isRecording && activeVoiceField === field;
     return (
