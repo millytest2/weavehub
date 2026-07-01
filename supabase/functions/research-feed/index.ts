@@ -72,6 +72,28 @@ Deno.serve(async (req) => {
     fromLibrary.sort((a, b) => b.score - a.score || (b.created_at > a.created_at ? 1 : -1));
     const yourLibrary = fromLibrary.slice(0, 6);
 
+    // Score substack posts against the same terms
+    const substackScored: any[] = [];
+    (subRes.data || []).forEach((p: any) => {
+      const text = `${p.title || ""} ${p.summary || ""}`;
+      const s = scoreItem(text);
+      if (s > 0 || !terms.length) {
+        substackScored.push({
+          title: p.title,
+          author: p.author || "Substack",
+          type: "substack",
+          pillar: focus && focus !== "All" ? focus : "Mind",
+          why: "From a Substack you follow — matches your current focus.",
+          takeaway: (p.summary || "").slice(0, 180),
+          search_url: p.link,
+          published_at: p.published_at,
+          score: s || 0.5,
+        });
+      }
+    });
+    substackScored.sort((a, b) => b.score - a.score || ((b.published_at || "") > (a.published_at || "") ? 1 : -1));
+    const substackPicks = substackScored.slice(0, 4);
+
     const librarySummary = yourLibrary.length
       ? yourLibrary.map((x, i) => `${i + 1}. [${x.kind}] ${x.title} — ${x.snippet}`).join("\n")
       : "(no matching items in library yet)";
