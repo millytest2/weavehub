@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BookOpen, ExternalLink, Loader2, RefreshCw, Bookmark, Check, Search, Library } from "lucide-react";
+import { BookOpen, ExternalLink, Loader2, RefreshCw, Bookmark, Check, Search, Rss, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Reading {
@@ -17,13 +17,13 @@ interface Reading {
   search_url: string;
 }
 
-interface LibraryItem {
-  kind: string;
+interface SubstackSource {
   id: string;
-  title: string;
-  snippet: string;
-  source?: string;
-  created_at: string;
+  url: string;
+  name: string | null;
+  last_synced_at: string | null;
+  post_count: number;
+  last_error: string | null;
 }
 
 const PILLAR_COLORS: Record<string, string> = {
@@ -43,16 +43,62 @@ const FOCUS_CHIPS = ["All", "Money", "Body", "Charisma", "Mind", "UPath", "Relat
 export function ResearchFeed() {
   const { user } = useAuth();
   const [readings, setReadings] = useState<Reading[]>([]);
-  const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [activeFocus, setActiveFocus] = useState("All");
   const [topic, setTopic] = useState("");
 
+  // Substack
+  const [sources, setSources] = useState<SubstackSource[]>([]);
+  const [showSubstack, setShowSubstack] = useState(false);
+  const [newUrl, setNewUrl] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
   useEffect(() => {
-    if (user && readings.length === 0) loadReadings("All", "");
+    if (!user) return;
+    loadSources();
+    if (readings.length === 0) loadReadings("All", "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const loadSources = async () => {
+    const { data } = await supabase.functions.invoke("substack-sync", { body: { action: "list" } });
+    setSources(data?.sources || []);
+  };
+
+  const addSubstack = async () => {
+    if (!newUrl.trim()) return;
+    setAdding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("substack-sync", { body: { action: "add", url: newUrl } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Connected ${data?.name || "Substack"} — ${data?.count || 0} posts`);
+      setNewUrl("");
+      loadSources();
+      loadReadings(activeFocus);
+    } catch (e: any) {
+      toast.error(e.message || "Couldn't connect");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const syncAll = async () => {
+    setSyncing(true);
+    try {
+      await supabase.functions.invoke("substack-sync", { body: { action: "sync" } });
+      toast.success("Substacks synced");
+      loadSources();
+      loadReadings(activeFocus);
+    } finally { setSyncing(false); }
+  };
+
+  const removeSource = async (id: string) => {
+    await supabase.functions.invoke("substack-sync", { body: { action: "remove", id } });
+    loadSources();
+  };
 
   const loadReadings = async (focus: string, topicOverride?: string) => {
     if (!user) return;
@@ -66,11 +112,8 @@ export function ResearchFeed() {
         },
       });
       if (error) throw error;
-      if (data?.error && !data?.readings?.length) {
-        toast.error(data.error);
-      }
+      if (data?.error && !data?.readings?.length) toast.error(data.error);
       setReadings(data?.readings || []);
-      setLibrary(data?.from_library || []);
     } catch (err: any) {
       toast.error(err.message || "Couldn't load research");
     } finally {
@@ -96,15 +139,15 @@ export function ResearchFeed() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground/50">Reading tuned to your goals</p>
           <p className="text-[11px] text-muted-foreground/30 mt-0.5">Essays, Substack, papers, talks + podcasts</p>
         </div>
         <button
           onClick={() => loadReadings(activeFocus)}
           disabled={loading}
-          className="text-sm text-primary/60 hover:text-primary transition-colors flex items-center gap-1.5"
+          className="shrink-0 text-sm text-primary/60 hover:text-primary transition-colors flex items-center gap-1.5"
         >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           Refresh
@@ -113,29 +156,82 @@ export function ResearchFeed() {
 
       {/* Topic search */}
       <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
           <Input
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && loadReadings(activeFocus)}
-            placeholder="Specific topic (e.g. cold outreach, sleep, attachment)"
+            placeholder="Specific topic..."
             className="h-9 pl-9 text-sm bg-background/50"
           />
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => loadReadings(activeFocus)}
-          disabled={loading}
-          className="h-9"
-        >
+        <Button size="sm" variant="outline" onClick={() => loadReadings(activeFocus)} disabled={loading} className="h-9 shrink-0">
           Search
         </Button>
       </div>
 
+      {/* Substack panel */}
+      <div className="rounded-xl border border-border/25 p-3 space-y-3">
+        <button
+          onClick={() => setShowSubstack((s) => !s)}
+          className="w-full flex items-center justify-between text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Rss className="h-3.5 w-3.5 text-orange-500/70" />
+            <span className="text-sm font-medium">Your Substacks</span>
+            <span className="text-[11px] text-muted-foreground/40">{sources.length}</span>
+          </div>
+          <span className="text-[11px] text-muted-foreground/50">{showSubstack ? "Hide" : "Manage"}</span>
+        </button>
+
+        {showSubstack && (
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center gap-2">
+              <Input
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addSubstack()}
+                placeholder="e.g. https://every.to or username.substack.com"
+                className="h-9 text-sm bg-background/50 flex-1 min-w-0"
+              />
+              <Button size="sm" onClick={addSubstack} disabled={adding || !newUrl.trim()} className="h-9 shrink-0">
+                {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Plus className="h-3.5 w-3.5 mr-1" />Add</>}
+              </Button>
+            </div>
+
+            {sources.length > 0 && (
+              <div className="space-y-1.5">
+                {sources.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/20 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] truncate">{s.name || s.url}</p>
+                      <p className="text-[10px] text-muted-foreground/40">
+                        {s.post_count} posts · {s.last_synced_at ? `synced ${new Date(s.last_synced_at).toLocaleDateString()}` : "not synced"}
+                        {s.last_error && <span className="text-destructive/70"> · {s.last_error}</span>}
+                      </p>
+                    </div>
+                    <button onClick={() => removeSource(s.id)} className="shrink-0 text-muted-foreground/40 hover:text-destructive p-1">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={syncAll}
+                  disabled={syncing}
+                  className="text-[11px] text-primary/60 hover:text-primary flex items-center gap-1"
+                >
+                  {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Sync all
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Focus chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
         {FOCUS_CHIPS.map((chip) => (
           <button
             key={chip}
@@ -159,12 +255,11 @@ export function ResearchFeed() {
         </div>
       )}
 
-      {/* External readings */}
       {readings.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-1.5">
             <BookOpen className="h-3 w-3 text-muted-foreground/50" />
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">New sources</p>
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">Reading list</p>
           </div>
           {readings.map((r, i) => (
             <div key={i} className="rounded-xl border border-border/25 p-4 space-y-2.5 hover:border-border/50 transition-colors">
@@ -177,19 +272,24 @@ export function ResearchFeed() {
                     >
                       {r.pillar}
                     </Badge>
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40">{r.type}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1">
+                      {r.type === "substack" && <Rss className="h-2.5 w-2.5 text-orange-500/70" />}
+                      {r.type}
+                    </span>
                   </div>
-                  <p className="text-sm font-medium leading-snug">{r.title}</p>
-                  <p className="text-[12px] text-muted-foreground/50 mt-0.5">{r.author}</p>
+                  <p className="text-sm font-medium leading-snug break-words">{r.title}</p>
+                  <p className="text-[12px] text-muted-foreground/50 mt-0.5 truncate">{r.author}</p>
                 </div>
               </div>
 
-              <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
-                <span className="text-muted-foreground/40">Why: </span>{r.why}
-              </p>
-              <p className="text-[12px] text-muted-foreground/50 italic leading-relaxed">
-                {r.takeaway}
-              </p>
+              {r.why && (
+                <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+                  <span className="text-muted-foreground/40">Why: </span>{r.why}
+                </p>
+              )}
+              {r.takeaway && (
+                <p className="text-[12px] text-muted-foreground/50 italic leading-relaxed">{r.takeaway}</p>
+              )}
 
               <div className="flex items-center gap-3 pt-1">
                 <a
