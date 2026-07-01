@@ -99,7 +99,7 @@ export function ResearchFeed() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground/50">Reading tuned to your goals</p>
-          <p className="text-[11px] text-muted-foreground/30 mt-0.5">External sources + your own captured library</p>
+          <p className="text-[11px] text-muted-foreground/30 mt-0.5">Essays, Substack, papers, talks + podcasts</p>
         </div>
         <button
           onClick={() => loadReadings(activeFocus)}
