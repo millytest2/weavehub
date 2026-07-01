@@ -99,7 +99,7 @@ export function ResearchFeed() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground/50">Reading tuned to your goals</p>
-          <p className="text-[11px] text-muted-foreground/30 mt-0.5">External sources + your own captured library</p>
+          <p className="text-[11px] text-muted-foreground/30 mt-0.5">Essays, Substack, papers, talks + podcasts</p>
         </div>
         <button
           onClick={() => loadReadings(activeFocus)}
@@ -155,43 +155,7 @@ export function ResearchFeed() {
       {loading && readings.length === 0 && (
         <div className="text-center py-16 space-y-3">
           <Loader2 className="h-6 w-6 mx-auto animate-spin text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground/40">Pulling research + scanning your library...</p>
-        </div>
-      )}
-
-      {/* From your library */}
-      {library.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-1.5">
-            <Library className="h-3 w-3 text-muted-foreground/50" />
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">From your library</p>
-          </div>
-          <div className="space-y-2">
-            {library.map((item) => (
-              <div key={`${item.kind}-${item.id}`} className="rounded-lg border border-border/20 p-3 hover:border-border/40 transition-colors">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-muted/50">
-                    {item.kind}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground/40">
-                    {new Date(item.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-[13px] font-medium leading-snug">{item.title}</p>
-                <p className="text-[11px] text-muted-foreground/60 mt-1 line-clamp-2">{item.snippet}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!loading && readings.length === 0 && library.length === 0 && (
-        <div className="text-center py-16 space-y-3">
-          <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/15" />
-          <p className="text-sm text-muted-foreground/30">No readings yet</p>
-          <Button variant="outline" size="sm" onClick={() => loadReadings("All")}>
-            Load reading list
-          </Button>
+          <p className="text-sm text-muted-foreground/40">Pulling research...</p>
         </div>
       )}
 

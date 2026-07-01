@@ -27,13 +27,11 @@ Deno.serve(async (req) => {
 
     const { focus, topic } = await req.json().catch(() => ({ focus: null, topic: null }));
 
-    // Pull identity + skill stack + user's own library
-    const [identityRes, skillRes, insightsRes, docsRes, obsRes] = await Promise.all([
+    // Pull identity + skill stack + user's own observations (library)
+    const [identityRes, skillRes, obsRes] = await Promise.all([
       supabase.from("identity_seeds").select("year_note, weekly_focus, core_values").eq("user_id", user.id).maybeSingle(),
       supabase.from("skill_stack").select("archetype, description").eq("user_id", user.id),
-      supabase.from("insights").select("id, title, content, source, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(80),
-      supabase.from("documents").select("id, title, summary, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(40),
-      supabase.from("observations").select("id, content, observation_type, source, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60),
+      supabase.from("observations").select("id, content, observation_type, source, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(80),
     ]);
 
     const identity = identityRes.data;
@@ -66,14 +64,6 @@ Deno.serve(async (req) => {
     };
 
     const fromLibrary: any[] = [];
-    (insightsRes.data || []).forEach((i: any) => {
-      const s = scoreItem(`${i.title} ${i.content}`);
-      if (s > 0 || !terms.length) fromLibrary.push({ kind: "insight", id: i.id, title: i.title, snippet: (i.content || "").slice(0, 220), source: i.source, created_at: i.created_at, score: s });
-    });
-    (docsRes.data || []).forEach((d: any) => {
-      const s = scoreItem(`${d.title} ${d.summary || ""}`);
-      if (s > 0 || !terms.length) fromLibrary.push({ kind: "document", id: d.id, title: d.title, snippet: (d.summary || "").slice(0, 220), created_at: d.created_at, score: s });
-    });
     (obsRes.data || []).forEach((o: any) => {
       const s = scoreItem(o.content || "");
       if (s > 0) fromLibrary.push({ kind: "observation", id: o.id, title: (o.content || "").split("\n")[0].slice(0, 80), snippet: (o.content || "").slice(0, 220), source: o.source, created_at: o.created_at, score: s });
@@ -85,7 +75,7 @@ Deno.serve(async (req) => {
       ? yourLibrary.map((x, i) => `${i + 1}. [${x.kind}] ${x.title} — ${x.snippet}`).join("\n")
       : "(no matching items in library yet)";
 
-    const system = `You are a research librarian for a specific person. Recommend 6 high-signal external readings (essays, articles, book chapters, papers, talks) that directly help them move on their CURRENT goals${topic ? ` and the specific topic: "${topic}"` : ""}. Not generic self-help. Bias toward: durable essays (Paul Graham, Naval, David Perell, Julian Shapiro, Koe, Nat Eliason, Andrew Huberman research, HBR, Farnam Street, Substack originals), specific research papers when relevant, and canonical books. Consider what they've already captured (below) — don't recommend things they already know; go one layer deeper or adjacent. Return STRICT JSON only.
+    const system = `You are a research librarian for a specific person. Recommend 6 high-signal external readings (essays, articles, Substack posts, book chapters, papers, YouTube talks, podcast episodes, newsletters) that directly help them move on their CURRENT goals${topic ? ` and the specific topic: "${topic}"` : ""}. Not generic self-help. Bias toward: durable essays (Paul Graham, Naval, David Perell, Julian Shapiro, Dan Koe, Nat Eliason, Sasha Chapin, Ava Huang, Visakan Veerasamy), Substack originals (Every, Not Boring, The Generalist, Lenny's, Ali Abdaal, Tim Ferriss), specific research papers, Huberman Lab episodes, canonical books. For Substack items set type to \"substack\" and put the direct substack.com URL in search_url when known. Consider what they've already captured (below) — don't recommend things they already know; go one layer deeper or adjacent. Return STRICT JSON only.
 
 Schema:
 {
@@ -93,7 +83,7 @@ Schema:
     {
       "title": "string",
       "author": "string",
-      "type": "essay|article|paper|book|talk|podcast",
+      "type": "essay|article|substack|newsletter|paper|book|talk|podcast|video",
       "pillar": "one of the user's pillars",
       "why": "one sentence — why THIS person needs it right now (reference their actual goal or a captured note if relevant)",
       "takeaway": "one sentence — the core idea",

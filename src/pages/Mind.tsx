@@ -43,16 +43,16 @@ const Mind = () => {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-      {/* Tab navigation — underline style */}
-      <div className="flex items-center border-b border-border/30">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-5 sm:space-y-6">
+      {/* Tab navigation — underline style, mobile-friendly */}
+      <div className="flex items-center border-b border-border/30 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors ${
+              className={`relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 text-[13px] sm:text-sm font-medium transition-colors shrink-0 ${
                 isActive
                   ? "text-foreground"
                   : "text-muted-foreground/40 hover:text-muted-foreground"
