@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User, Star, Target, Mic, MicOff, Layers } from "lucide-react";
+import { Compass, User, Star, Target, Mic, MicOff, Layers, Sparkles, History } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { z } from "zod";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
 
@@ -19,6 +20,10 @@ export default function IdentitySeed() {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [currentReality, setCurrentReality] = useState("");
+  const [previousReality, setPreviousReality] = useState("");
+  const [realityUpdatedAt, setRealityUpdatedAt] = useState<string | null>(null);
+  const [showPrevious, setShowPrevious] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [coreValues, setCoreValues] = useState("");
   const [yearNote, setYearNote] = useState("");
   const [lifeDomains, setLifeDomains] = useState("");
@@ -96,12 +101,16 @@ export default function IdentitySeed() {
         setContent(data.content || "");
         setIdentitySeedId(data.id);
         setCurrentReality(data.weekly_focus || "");
+        setPreviousReality((data as any).previous_reality || "");
+        setRealityUpdatedAt((data as any).reality_updated_at || null);
         setCoreValues(data.core_values || "");
         setYearNote(data.year_note || "");
         setLifeDomains((data as any).life_domains || "");
       } else {
         setContent("");
         setCurrentReality("");
+        setPreviousReality("");
+        setRealityUpdatedAt(null);
         setCoreValues("");
         setYearNote("");
         setLifeDomains("");
@@ -160,6 +169,29 @@ export default function IdentitySeed() {
     }
   };
 
+  const handleAutoRefresh = async () => {
+    if (!user?.id) return;
+    setRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("refresh-current-reality", {
+        body: { current_reality: currentReality },
+      });
+      if (error) throw error;
+      const next = (data as any)?.current_reality?.trim();
+      if (!next) {
+        toast.info("Nothing new to weave in yet.");
+        return;
+      }
+      setCurrentReality(next);
+      toast.success("Refreshed from your latest captures. Review and save.");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Couldn't refresh right now.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const VoiceButton = ({ field }: { field: ActiveField }) => {
     const isActive = isRecording && activeVoiceField === field;
     return (
@@ -191,8 +223,27 @@ export default function IdentitySeed() {
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-muted-foreground" />
               <h2 className="text-sm font-medium text-muted-foreground">Current Reality</h2>
+              {realityUpdatedAt && (
+                <span className="text-[10px] text-muted-foreground/60">
+                  · updated {formatDistanceToNow(new Date(realityUpdatedAt), { addSuffix: true })}
+                </span>
+              )}
             </div>
-            <VoiceButton field="currentReality" />
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleAutoRefresh}
+                disabled={refreshing}
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                title="Weave in your latest captures"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1" />
+                {refreshing ? "Weaving..." : "Auto-refresh"}
+              </Button>
+              <VoiceButton field="currentReality" />
+            </div>
           </div>
           <Textarea
             value={currentReality}
@@ -201,11 +252,29 @@ export default function IdentitySeed() {
             className="min-h-[120px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
           />
           <p className="text-xs text-muted-foreground mt-2">
-            Just write or speak naturally. The system extracts what it needs.
+            Auto-refresh pulls your last 14 days of captures and rewrites this. Prior version is preserved below.
           </p>
           <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
             → Feeds into: daily invitations, experiment generation, decision mirror
           </p>
+
+          {previousReality && (
+            <div className="mt-4 pt-4 border-t border-border/40">
+              <button
+                type="button"
+                onClick={() => setShowPrevious((v) => !v)}
+                className="flex items-center gap-2 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors"
+              >
+                <History className="w-3 h-3" />
+                {showPrevious ? "Hide" : "Show"} previous reality
+              </button>
+              {showPrevious && (
+                <div className="mt-2 p-3 rounded-md bg-muted/20 text-xs text-muted-foreground/80 whitespace-pre-wrap leading-relaxed">
+                  {previousReality}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
 
         {/* Core Values */}
