@@ -671,6 +671,8 @@ export type Database = {
           job_apps_this_week: number | null
           last_pillar_used: string | null
           life_domains: string | null
+          previous_reality: string | null
+          reality_updated_at: string | null
           target_monthly_income: number | null
           updated_at: string
           user_id: string
@@ -691,6 +693,8 @@ export type Database = {
           job_apps_this_week?: number | null
           last_pillar_used?: string | null
           life_domains?: string | null
+          previous_reality?: string | null
+          reality_updated_at?: string | null
           target_monthly_income?: number | null
           updated_at?: string
           user_id: string
@@ -711,6 +715,8 @@ export type Database = {
           job_apps_this_week?: number | null
           last_pillar_used?: string | null
           life_domains?: string | null
+          previous_reality?: string | null
+          reality_updated_at?: string | null
           target_monthly_income?: number | null
           updated_at?: string
           user_id?: string
