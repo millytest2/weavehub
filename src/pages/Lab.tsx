@@ -198,15 +198,15 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
   return (
     <Wrapper>
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Tab navigation — underline style matching Mind */}
-        <div className="flex items-center border-b border-border/30">
+        {/* Tab navigation — underline style matching Mind, scrollable on mobile */}
+        <div className="flex items-center border-b border-border/30 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`relative shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-[13px] sm:text-sm font-medium transition-colors ${
                   isActive ? "text-foreground" : "text-muted-foreground/40 hover:text-muted-foreground"
                 }`}
               >
