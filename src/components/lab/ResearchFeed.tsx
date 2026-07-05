@@ -179,7 +179,7 @@ export function ResearchFeed() {
         >
           <div className="flex items-center gap-2">
             <Rss className="h-3.5 w-3.5 text-orange-500/70" />
-            <span className="text-sm font-medium">Your Substacks</span>
+            <span className="text-sm font-medium">Your feeds</span>
             <span className="text-[11px] text-muted-foreground/40">{sources.length}</span>
           </div>
           <span className="text-[11px] text-muted-foreground/50">{showSubstack ? "Hide" : "Manage"}</span>
@@ -192,13 +192,16 @@ export function ResearchFeed() {
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addSubstack()}
-                placeholder="e.g. https://every.to or username.substack.com"
+                placeholder="sashachapin.substack.com or any blog URL"
                 className="h-9 text-sm bg-background/50 flex-1 min-w-0"
               />
               <Button size="sm" onClick={addSubstack} disabled={adding || !newUrl.trim()} className="h-9 shrink-0">
                 {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Plus className="h-3.5 w-3.5 mr-1" />Add</>}
               </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground/40 leading-relaxed">
+              Paste a Substack or any blog with an RSS/Atom feed. We'll auto-discover the feed.
+            </p>
 
             {sources.length > 0 && (
               <div className="space-y-1.5">
