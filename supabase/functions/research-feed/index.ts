@@ -130,7 +130,7 @@ ${topic ? `SPECIFIC TOPIC REQUEST: ${topic}\n` : ""}${focus && focus !== "All" ?
 WHAT THEY'VE ALREADY CAPTURED (most relevant from their library):
 ${librarySummary}
 
-Return 6 real, findable readings. No fabricated titles.`;
+Return 12 real, findable readings across a mix of formats (essays, substack, papers, podcasts, videos, books). No fabricated titles.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
