@@ -60,6 +60,64 @@ const DEFAULT_PROVOCATIONS = [
   "What would they do?",
 ];
 
+// Deep prompts — grouped for real digging
+const DEEP_PROMPTS: { key: string; label: string; color: string; prompts: string[] }[] = [
+  {
+    key: "let-go",
+    label: "Let go",
+    color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
+    prompts: [
+      "What am I still carrying that isn't mine?",
+      "What version of me do I need to bury this month?",
+      "Who am I performing for, and what would drop if they weren't watching?",
+      "What am I gripping so tight my hand's gone numb?",
+      "What resentment is quietly running my week?",
+      "What am I afraid will happen if I stop trying so hard?",
+    ],
+  },
+  {
+    key: "expand",
+    label: "Expand",
+    color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    prompts: [
+      "Where am I one small rep away from a bigger identity?",
+      "What would I do this week if I trusted myself fully?",
+      "What am I quietly hungry for but not admitting?",
+      "Where is my edge — and what's the smallest way to touch it today?",
+      "If I doubled the thing that's already working, what would break open?",
+      "What conversation, if I actually had it, would change the season?",
+    ],
+  },
+  {
+    key: "grieve",
+    label: "Grieve",
+    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+    prompts: [
+      "What loss am I still walking around?",
+      "What did I want that I didn't get — and can I let that be real?",
+      "Who or what am I still trying to convince?",
+      "What am I sad about that I keep calling 'fine'?",
+    ],
+  },
+  {
+    key: "claim",
+    label: "Claim",
+    color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    prompts: [
+      "What am I already good at that I refuse to own?",
+      "What am I choosing this month — actually choosing, not defaulting into?",
+      "If I said 'this is mine' out loud, what would I be pointing at?",
+      "What line am I willing to draw and defend this week?",
+    ],
+  },
+];
+
+const pickDeep = (key: string) => {
+  const g = DEEP_PROMPTS.find((d) => d.key === key);
+  if (!g) return null;
+  return g.prompts[Math.floor(Math.random() * g.prompts.length)];
+};
+
 export const FreeWriteSpace = () => {
   const { user } = useAuth();
   const [writes, setWrites] = useState<FreeWrite[]>([]);
@@ -221,13 +279,13 @@ export const FreeWriteSpace = () => {
     }
   }, [activeWrite, user]);
 
-  const handleNewWrite = async (type: EntryType = "journal") => {
+  const handleNewWrite = async (type: EntryType = "journal", seedPrompt?: string) => {
     if (!user) return;
     setIsCreating(true);
     setActiveEntryType(type);
     
-    // Get a provocative question to start with
-    const question = await getProvocativeQuestion();
+    // Get a provocative question to start with (or use the seed prompt)
+    const question = seedPrompt || (await getProvocativeQuestion());
     setProvocativeQuestion(question);
     
     const { data, error } = await supabase
@@ -415,6 +473,36 @@ export const FreeWriteSpace = () => {
               </span>
             )}
             <span>{getWordCount(content)} words</span>
+
+            {/* Go deeper — inject a fresh provocation into the page */}
+            <div className="hidden sm:flex items-center gap-1 ml-2">
+              {DEEP_PROMPTS.map((g) => (
+                <button
+                  key={g.key}
+                  onClick={() => {
+                    const p = pickDeep(g.key);
+                    if (!p) return;
+                    const stamped = `\n\n— ${p}\n`;
+                    const next = content ? `${content}${stamped}` : `${p}\n`;
+                    handleContentChange(next);
+                    setContent(next);
+                    setProvocativeQuestion(null);
+                    setTimeout(() => {
+                      const ta = textareaRef.current;
+                      if (ta) {
+                        ta.focus();
+                        ta.selectionStart = ta.selectionEnd = next.length;
+                        ta.scrollTop = ta.scrollHeight;
+                      }
+                    }, 20);
+                  }}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border ${g.color} hover:opacity-80 transition-opacity`}
+                  title={`Deeper: ${g.label}`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
             
             {/* Turn into content button - only show if enough content */}
             {getWordCount(content) >= 20 && (
@@ -589,6 +677,30 @@ export const FreeWriteSpace = () => {
             {type.label}
           </Button>
         ))}
+      </div>
+
+      {/* Deep dive prompts — start a journal from a real question */}
+      <div className="rounded-xl border border-border/30 p-3 space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground/60">Dig deeper</p>
+          <p className="text-[10px] text-muted-foreground/40">Pick a lens — starts a journal with that question</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {DEEP_PROMPTS.flatMap((g) =>
+            g.prompts.map((p, i) => (
+              <button
+                key={`${g.key}-${i}`}
+                onClick={() => handleNewWrite("journal", p)}
+                disabled={isCreating}
+                className={`text-[11px] leading-snug text-left px-2.5 py-1.5 rounded-lg border ${g.color} hover:opacity-80 transition-opacity max-w-full`}
+                title={g.label}
+              >
+                <span className="opacity-60 mr-1">{g.label}:</span>
+                {p}
+              </button>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Filter chips + search */}
