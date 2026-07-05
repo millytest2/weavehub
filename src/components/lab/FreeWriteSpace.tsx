@@ -279,13 +279,13 @@ export const FreeWriteSpace = () => {
     }
   }, [activeWrite, user]);
 
-  const handleNewWrite = async (type: EntryType = "journal") => {
+  const handleNewWrite = async (type: EntryType = "journal", seedPrompt?: string) => {
     if (!user) return;
     setIsCreating(true);
     setActiveEntryType(type);
     
-    // Get a provocative question to start with
-    const question = await getProvocativeQuestion();
+    // Get a provocative question to start with (or use the seed prompt)
+    const question = seedPrompt || (await getProvocativeQuestion());
     setProvocativeQuestion(question);
     
     const { data, error } = await supabase
