@@ -473,6 +473,36 @@ export const FreeWriteSpace = () => {
               </span>
             )}
             <span>{getWordCount(content)} words</span>
+
+            {/* Go deeper — inject a fresh provocation into the page */}
+            <div className="hidden sm:flex items-center gap-1 ml-2">
+              {DEEP_PROMPTS.map((g) => (
+                <button
+                  key={g.key}
+                  onClick={() => {
+                    const p = pickDeep(g.key);
+                    if (!p) return;
+                    const stamped = `\n\n— ${p}\n`;
+                    const next = content ? `${content}${stamped}` : `${p}\n`;
+                    handleContentChange(next);
+                    setContent(next);
+                    setProvocativeQuestion(null);
+                    setTimeout(() => {
+                      const ta = textareaRef.current;
+                      if (ta) {
+                        ta.focus();
+                        ta.selectionStart = ta.selectionEnd = next.length;
+                        ta.scrollTop = ta.scrollHeight;
+                      }
+                    }, 20);
+                  }}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border ${g.color} hover:opacity-80 transition-opacity`}
+                  title={`Deeper: ${g.label}`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
             
             {/* Turn into content button - only show if enough content */}
             {getWordCount(content) >= 20 && (
