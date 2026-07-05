@@ -679,6 +679,30 @@ export const FreeWriteSpace = () => {
         ))}
       </div>
 
+      {/* Deep dive prompts — start a journal from a real question */}
+      <div className="rounded-xl border border-border/30 p-3 space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground/60">Dig deeper</p>
+          <p className="text-[10px] text-muted-foreground/40">Pick a lens — starts a journal with that question</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {DEEP_PROMPTS.flatMap((g) =>
+            g.prompts.map((p, i) => (
+              <button
+                key={`${g.key}-${i}`}
+                onClick={() => handleNewWrite("journal", p)}
+                disabled={isCreating}
+                className={`text-[11px] leading-snug text-left px-2.5 py-1.5 rounded-lg border ${g.color} hover:opacity-80 transition-opacity max-w-full`}
+                title={g.label}
+              >
+                <span className="opacity-60 mr-1">{g.label}:</span>
+                {p}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
       {/* Filter chips + search */}
       {writes.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-2">
