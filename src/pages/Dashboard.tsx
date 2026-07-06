@@ -763,6 +763,7 @@ const Dashboard = () => {
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Vision link</p>
                 <p className="text-sm italic text-foreground/80">{bigMove.vision_link}</p>
               </div>
+              <ResourceLink text={`${bigMove.headline} ${bigMove.the_move} ${bigMove.vision_link || ''}`} pillar="Stability" />
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/50">
                 <span>{bigMove.time}</span>
                 <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary font-medium">Consistency</span>
