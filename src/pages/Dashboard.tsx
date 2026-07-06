@@ -73,6 +73,38 @@ const detectPillar = (text: string): string => {
   return 'Admin';
 };
 
+// Short resource recommendation per pillar / context — one read that connects
+const pillarReads: Record<string, { t: string; a: string; u: string; why: string }> = {
+  Health:      { t: "The Comfort Crisis",            a: "Michael Easter",  u: "https://eastermichael.com/the-comfort-crisis/",           why: "Do the hard rep — it's the whole point." },
+  Stability:   { t: "How to Do Great Work",          a: "Paul Graham",     u: "https://paulgraham.com/greatwork.html",                    why: "Stay on the lane that compounds." },
+  Content:     { t: "1,000 True Fans",               a: "Kevin Kelly",     u: "https://kk.org/thetechnium/1000-true-fans/",               why: "Post for the few who actually need this." },
+  Skill:       { t: "Specific Knowledge",            a: "Naval",           u: "https://nav.al/specific-knowledge",                        why: "Edge lives where curiosity + rep meet." },
+  Admin:       { t: "Cal Newport on Shutdowns",      a: "Cal Newport",     u: "https://calnewport.com/drastically-reduce-your-time-spent-shallow-work-in-four-steps/", why: "Close the loop so the mind can rest." },
+  Presence:    { t: "The Tail End",                  a: "Tim Urban",       u: "https://waitbutwhy.com/2015/12/the-tail-end.html",         why: "Why this present moment counts." },
+  Connection:  { t: "What Makes a Good Life",        a: "Robert Waldinger",u: "https://www.ted.com/talks/robert_waldinger_what_makes_a_good_life_lessons_from_the_longest_study_on_happiness", why: "Relationships are the compounding asset." },
+};
+
+const pickRead = (text: string, pillar?: string) => {
+  const lower = (text || "").toLowerCase();
+  if (/drift|numb|scroll|distract|reset/i.test(lower)) return { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter today." };
+  if (/upath|big move|2026|vision|leverage/i.test(lower)) return { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "The first real reps happen by hand." };
+  return pillarReads[pillar || "Skill"] || pillarReads.Skill;
+};
+
+const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
+  const r = pickRead(text, pillar);
+  return (
+    <div className="mt-4 pt-3 border-t border-border/20">
+      <p className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1">A read that connects</p>
+      <a href={r.u} target="_blank" rel="noopener noreferrer" className="text-[12px] text-primary/70 hover:text-primary hover:underline font-medium">
+        {r.t}
+      </a>
+      <span className="text-[11px] text-muted-foreground/50"> — {r.a}</span>
+      <p className="text-[10px] text-muted-foreground/45 mt-0.5 leading-snug">{r.why}</p>
+    </div>
+  );
+};
+
 const getLocalToday = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
