@@ -727,6 +727,7 @@ const Dashboard = () => {
                 <span>{nextRep.time}</span>
                 <span className="px-2 py-1 rounded-lg bg-muted font-medium">{nextRep.bucket}</span>
               </div>
+              <ResourceLink text={`${nextRep.rep} ${nextRep.why || ''}`} pillar={nextRep.bucket} />
               <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">Got it</Button>
             </div>
           )}
