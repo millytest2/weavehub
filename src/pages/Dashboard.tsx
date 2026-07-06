@@ -898,8 +898,11 @@ const WeaveActionCard = ({
                   </div>
                 </motion.div>
               )}
-            </AnimatePresence>
           </div>
+        )}
+
+        {!isDone && (
+          <ResourceLink text={`${action.one_thing} ${action.impact_description || ''}`} pillar={action.pillar} />
         )}
       </div>
 
