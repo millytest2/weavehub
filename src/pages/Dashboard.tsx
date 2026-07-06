@@ -73,22 +73,69 @@ const detectPillar = (text: string): string => {
   return 'Admin';
 };
 
-// Short resource recommendation per pillar / context — one read that connects
-const pillarReads: Record<string, { t: string; a: string; u: string; why: string }> = {
-  Health:      { t: "The Comfort Crisis",            a: "Michael Easter",  u: "https://eastermichael.com/the-comfort-crisis/",           why: "Do the hard rep — it's the whole point." },
-  Stability:   { t: "How to Do Great Work",          a: "Paul Graham",     u: "https://paulgraham.com/greatwork.html",                    why: "Stay on the lane that compounds." },
-  Content:     { t: "1,000 True Fans",               a: "Kevin Kelly",     u: "https://kk.org/thetechnium/1000-true-fans/",               why: "Post for the few who actually need this." },
-  Skill:       { t: "Specific Knowledge",            a: "Naval",           u: "https://nav.al/specific-knowledge",                        why: "Edge lives where curiosity + rep meet." },
-  Admin:       { t: "Cal Newport on Shutdowns",      a: "Cal Newport",     u: "https://calnewport.com/drastically-reduce-your-time-spent-shallow-work-in-four-steps/", why: "Close the loop so the mind can rest." },
-  Presence:    { t: "The Tail End",                  a: "Tim Urban",       u: "https://waitbutwhy.com/2015/12/the-tail-end.html",         why: "Why this present moment counts." },
-  Connection:  { t: "What Makes a Good Life",        a: "Robert Waldinger",u: "https://www.ted.com/talks/robert_waldinger_what_makes_a_good_life_lessons_from_the_longest_study_on_happiness", why: "Relationships are the compounding asset." },
+// Curated library of reads — varied per item, biased by context/pillar
+type Read = { t: string; a: string; u: string; why: string; tags: string[] };
+
+const READS: Read[] = [
+  // Health / body
+  { t: "The Comfort Crisis", a: "Michael Easter", u: "https://eastermichael.com/the-comfort-crisis/", why: "Do the hard rep — it's the whole point.", tags: ["Health","hard","gym","run","cold","discipline"] },
+  { t: "Why We Sleep (summary)", a: "Matthew Walker", u: "https://www.sleepfoundation.org/how-sleep-works", why: "Sleep is the multiplier on every other rep.", tags: ["Health","sleep","bed","rest","11pm"] },
+  { t: "The Scarcity Brain", a: "Michael Easter", u: "https://eastermichael.com/scarcity-brain/", why: "Notice the loop before it grabs you.", tags: ["Health","scroll","urge","numb","food"] },
+  // Stability / focus / compounding
+  { t: "How to Do Great Work", a: "Paul Graham", u: "https://paulgraham.com/greatwork.html", why: "Stay on the lane that compounds.", tags: ["Stability","work","focus","upath"] },
+  { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter today.", tags: ["Stability","Presence","drift","reset","time"] },
+  { t: "Keep Your Identity Small", a: "Paul Graham", u: "https://paulgraham.com/identity.html", why: "Less to defend, more to see clearly.", tags: ["Stability","identity","judgment"] },
+  { t: "Deep Work (primer)", a: "Cal Newport", u: "https://calnewport.com/deep-work-primer/", why: "Protect the hours that build the thing.", tags: ["Stability","Skill","focus","build","code"] },
+  // Content / building an audience
+  { t: "1,000 True Fans", a: "Kevin Kelly", u: "https://kk.org/thetechnium/1000-true-fans/", why: "Post for the few who actually need this.", tags: ["Content","post","write","audience"] },
+  { t: "Write Simply", a: "Paul Graham", u: "https://paulgraham.com/simply.html", why: "Clear beats clever every time.", tags: ["Content","write","copy","post"] },
+  { t: "Permissionless Apprentice", a: "David Perell", u: "https://perell.com/essay/how-to-develop-your-personal-monopoly/", why: "Find the shape only you can make.", tags: ["Content","Skill","brand","voice"] },
+  { t: "Show Your Work", a: "Austin Kleon", u: "https://austinkleon.com/show-your-work/", why: "Ship the process, not just the polish.", tags: ["Content","share","build in public"] },
+  // Skill / craft / AI
+  { t: "Specific Knowledge", a: "Naval", u: "https://nav.al/specific-knowledge", why: "Edge lives where curiosity + rep meet.", tags: ["Skill","learn","ai","curiosity"] },
+  { t: "How to Learn Anything Fast", a: "Scott Young", u: "https://www.scotthyoung.com/blog/2019/08/12/learn-anything/", why: "Compress the curve with active reps.", tags: ["Skill","learn","study","chess","poker"] },
+  { t: "Situational Awareness", a: "Leopold Aschenbrenner", u: "https://situational-awareness.ai/", why: "Zoom out on where AI is actually going.", tags: ["Skill","ai","upath","future"] },
+  // Sales / small business / Social Hog
+  { t: "$100M Leads (notes)", a: "Alex Hormozi", u: "https://www.acquisition.com/hubfs/$100M%20Leads%20-%20Alex%20Hormozi.pdf", why: "More at-bats, fewer excuses.", tags: ["Skill","Stability","sales","outreach","deals","socialhog"] },
+  { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "The first real reps happen by hand.", tags: ["Stability","Skill","sales","startup","upath","big move"] },
+  { t: "The Mom Test (summary)", a: "Rob Fitzpatrick", u: "https://www.momtestbook.com/", why: "Real questions get real answers.", tags: ["Skill","sales","customer","interview"] },
+  // Admin / systems
+  { t: "Shutdown Ritual", a: "Cal Newport", u: "https://calnewport.com/drastically-reduce-your-time-spent-shallow-work-in-four-steps/", why: "Close the loop so the mind can rest.", tags: ["Admin","clean","organize","end of day"] },
+  { t: "Getting Things Done (primer)", a: "David Allen", u: "https://gettingthingsdone.com/what-is-gtd/", why: "Get it out of your head, into a system.", tags: ["Admin","inbox","tasks","organize"] },
+  // Presence / play / joy
+  { t: "The Tail End", a: "Tim Urban", u: "https://waitbutwhy.com/2015/12/the-tail-end.html", why: "Why this present moment counts.", tags: ["Presence","time","family","mom","dad"] },
+  { t: "Play as Research", a: "Kevin Kelly (Cool Tools)", u: "https://kk.org/thetechnium/68-bits-of-unsolicited-advice/", why: "Goofy, curious, spontaneous — on purpose.", tags: ["Presence","play","fun","chess","drum","dance","surf","swim"] },
+  { t: "Solitude and Leadership", a: "William Deresiewicz", u: "https://theamericanscholar.org/solitude-and-leadership/", why: "Think your own thoughts before you act.", tags: ["Presence","journal","reflect","walk"] },
+  // Connection
+  { t: "What Makes a Good Life", a: "Robert Waldinger", u: "https://www.ted.com/talks/robert_waldinger_what_makes_a_good_life_lessons_from_the_longest_study_on_happiness", why: "Relationships are the compounding asset.", tags: ["Connection","friend","family","call","arley","augie"] },
+  { t: "How to Be a Great Friend", a: "Ryan Holiday", u: "https://ryanholiday.net/how-to-be-a-friend/", why: "Show up on purpose, not by default.", tags: ["Connection","friend","hang"] },
+  // Abundance / less judgment
+  { t: "It's Not About You", a: "Ryan Holiday", u: "https://ryanholiday.net/ego-is-the-enemy/", why: "Less defending, more building.", tags: ["Presence","Stability","judgment","ego","abundance"] },
+];
+
+const hashStr = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 };
 
-const pickRead = (text: string, pillar?: string) => {
+const pickRead = (text: string, pillar?: string): Read => {
   const lower = (text || "").toLowerCase();
-  if (/drift|numb|scroll|distract|reset/i.test(lower)) return { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter today." };
-  if (/upath|big move|2026|vision|leverage/i.test(lower)) return { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "The first real reps happen by hand." };
-  return pillarReads[pillar || "Skill"] || pillarReads.Skill;
+  // Score each read by tag hits in text + pillar match
+  const scored = READS.map((r) => {
+    let score = 0;
+    for (const tag of r.tags) {
+      const t = tag.toLowerCase();
+      if (pillar && t === pillar.toLowerCase()) score += 2;
+      if (t.length > 2 && lower.includes(t)) score += 3;
+    }
+    return { r, score };
+  });
+  const maxScore = Math.max(...scored.map((s) => s.score));
+  const pool = maxScore > 0 ? scored.filter((s) => s.score === maxScore).map((s) => s.r) : READS;
+  // Deterministic per-item pick within the top pool → varied across items, stable per item
+  const idx = hashStr(`${text}|${pillar || ""}`) % pool.length;
+  return pool[idx];
 };
 
 const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
@@ -104,6 +151,7 @@ const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
     </div>
   );
 };
+
 
 const getLocalToday = () => {
   const now = new Date();
