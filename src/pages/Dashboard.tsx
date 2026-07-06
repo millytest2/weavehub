@@ -958,6 +958,7 @@ const WeaveGemCard = ({ gem, context }: { gem: ForgottenGem; context?: string | 
           {context}
         </p>
       )}
+      <ResourceLink text={`${gem.title} ${gem.content || ''}`} />
     </div>
   </div>
 );
