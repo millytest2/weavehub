@@ -376,6 +376,37 @@ export default function IdentitySeed() {
         >
           {saving ? "Saving..." : "Save"}
         </Button>
+
+        {/* Resource connection — a good read that connects to who you're becoming */}
+        <Card className="p-5 bg-muted/20 border-dashed">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-medium text-muted-foreground">A read that connects here</h2>
+          </div>
+          <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">
+            Short, high-signal reads for the lane you're actually in — career direction in the AI era, sales reps, local business visibility, and staying focused when everything is interesting.
+          </p>
+          <ul className="space-y-2.5 text-[13px]">
+            {[
+              { t: "How to Do Great Work", a: "Paul Graham", u: "https://paulgraham.com/greatwork.html", why: "Focus, taste, and the courage to stay on one lane." },
+              { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter. Compound what does." },
+              { t: "Specific Knowledge", a: "Naval", u: "https://nav.al/specific-knowledge", why: "Your edge is the intersection nobody else has — build for it." },
+              { t: "The Ultimate Guide to Writing Online", a: "David Perell", u: "https://perell.com/essay/the-ultimate-guide-to-writing-online/", why: "Turn what you're already doing into founder-led proof." },
+              { t: "$100M Offers", a: "Alex Hormozi", u: "https://www.acquisition.com/hormozi-offers", why: "Offer construction for Social Hog / Built for Main Street." },
+              { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "How UPath's first 8–10 real career reads should happen." },
+              { t: "A Founder's Guide to Writing Well", a: "Julian Shapiro", u: "https://www.julian.com/guide/write/intro", why: "Sharper messaging for LinkedIn / Substack / UPath." },
+              { t: "Good Work", a: "Henrik Karlsson", u: "https://www.henrikkarlsson.xyz/p/good-work", why: "Protecting the through-line when you have many interests." },
+            ].map((r, i) => (
+              <li key={i} className="leading-snug">
+                <a href={r.u} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  {r.t}
+                </a>
+                <span className="text-muted-foreground/60"> — {r.a}</span>
+                <p className="text-[11px] text-muted-foreground/50 mt-0.5">{r.why}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
       </div>
     </div>
   );
