@@ -673,7 +673,34 @@ const Dashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* Resource connection — a good read that connects to today */}
+      <div className="max-w-2xl mx-auto px-5 pb-10 pt-4">
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 p-5">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-3">
+            A read that connects here
+          </p>
+          <ul className="space-y-2.5 text-[13px]">
+            {[
+              { t: "How to Do Great Work", a: "Paul Graham", u: "https://paulgraham.com/greatwork.html", why: "Focus and taste — stay on the lane that compounds." },
+              { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter today." },
+              { t: "Specific Knowledge", a: "Naval", u: "https://nav.al/specific-knowledge", why: "Your edge lives at the intersection nobody else has." },
+              { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "How the first real UPath reads should happen." },
+              { t: "Good Work", a: "Henrik Karlsson", u: "https://www.henrikkarlsson.xyz/p/good-work", why: "Protect the through-line across many interests." },
+            ].map((r, i) => (
+              <li key={i} className="leading-snug">
+                <a href={r.u} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  {r.t}
+                </a>
+                <span className="text-muted-foreground/60"> — {r.a}</span>
+                <p className="text-[11px] text-muted-foreground/50 mt-0.5">{r.why}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
       {/* Next Best Rep Dialog */}
+
       <Dialog open={showRepDialog} onOpenChange={setShowRepDialog}>
         <DialogContent className="max-w-sm rounded-3xl border-border/50">
           <DialogHeader>
