@@ -73,6 +73,38 @@ const detectPillar = (text: string): string => {
   return 'Admin';
 };
 
+// Short resource recommendation per pillar / context — one read that connects
+const pillarReads: Record<string, { t: string; a: string; u: string; why: string }> = {
+  Health:      { t: "The Comfort Crisis",            a: "Michael Easter",  u: "https://eastermichael.com/the-comfort-crisis/",           why: "Do the hard rep — it's the whole point." },
+  Stability:   { t: "How to Do Great Work",          a: "Paul Graham",     u: "https://paulgraham.com/greatwork.html",                    why: "Stay on the lane that compounds." },
+  Content:     { t: "1,000 True Fans",               a: "Kevin Kelly",     u: "https://kk.org/thetechnium/1000-true-fans/",               why: "Post for the few who actually need this." },
+  Skill:       { t: "Specific Knowledge",            a: "Naval",           u: "https://nav.al/specific-knowledge",                        why: "Edge lives where curiosity + rep meet." },
+  Admin:       { t: "Cal Newport on Shutdowns",      a: "Cal Newport",     u: "https://calnewport.com/drastically-reduce-your-time-spent-shallow-work-in-four-steps/", why: "Close the loop so the mind can rest." },
+  Presence:    { t: "The Tail End",                  a: "Tim Urban",       u: "https://waitbutwhy.com/2015/12/the-tail-end.html",         why: "Why this present moment counts." },
+  Connection:  { t: "What Makes a Good Life",        a: "Robert Waldinger",u: "https://www.ted.com/talks/robert_waldinger_what_makes_a_good_life_lessons_from_the_longest_study_on_happiness", why: "Relationships are the compounding asset." },
+};
+
+const pickRead = (text: string, pillar?: string) => {
+  const lower = (text || "").toLowerCase();
+  if (/drift|numb|scroll|distract|reset/i.test(lower)) return { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter today." };
+  if (/upath|big move|2026|vision|leverage/i.test(lower)) return { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "The first real reps happen by hand." };
+  return pillarReads[pillar || "Skill"] || pillarReads.Skill;
+};
+
+const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
+  const r = pickRead(text, pillar);
+  return (
+    <div className="mt-4 pt-3 border-t border-border/20">
+      <p className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1">A read that connects</p>
+      <a href={r.u} target="_blank" rel="noopener noreferrer" className="text-[12px] text-primary/70 hover:text-primary hover:underline font-medium">
+        {r.t}
+      </a>
+      <span className="text-[11px] text-muted-foreground/50"> — {r.a}</span>
+      <p className="text-[10px] text-muted-foreground/45 mt-0.5 leading-snug">{r.why}</p>
+    </div>
+  );
+};
+
 const getLocalToday = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -673,31 +705,8 @@ const Dashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* Resource connection — a good read that connects to today */}
-      <div className="max-w-2xl mx-auto px-5 pb-10 pt-4">
-        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/10 p-5">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-3">
-            A read that connects here
-          </p>
-          <ul className="space-y-2.5 text-[13px]">
-            {[
-              { t: "How to Do Great Work", a: "Paul Graham", u: "https://paulgraham.com/greatwork.html", why: "Focus and taste — stay on the lane that compounds." },
-              { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter today." },
-              { t: "Specific Knowledge", a: "Naval", u: "https://nav.al/specific-knowledge", why: "Your edge lives at the intersection nobody else has." },
-              { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "How the first real UPath reads should happen." },
-              { t: "Good Work", a: "Henrik Karlsson", u: "https://www.henrikkarlsson.xyz/p/good-work", why: "Protect the through-line across many interests." },
-            ].map((r, i) => (
-              <li key={i} className="leading-snug">
-                <a href={r.u} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
-                  {r.t}
-                </a>
-                <span className="text-muted-foreground/60"> — {r.a}</span>
-                <p className="text-[11px] text-muted-foreground/50 mt-0.5">{r.why}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+
+
 
       {/* Next Best Rep Dialog */}
 
@@ -718,6 +727,7 @@ const Dashboard = () => {
                 <span>{nextRep.time}</span>
                 <span className="px-2 py-1 rounded-lg bg-muted font-medium">{nextRep.bucket}</span>
               </div>
+              <ResourceLink text={`${nextRep.rep} ${nextRep.why || ''}`} pillar={nextRep.bucket} />
               <Button onClick={() => setShowRepDialog(false)} className="w-full h-12 rounded-2xl">Got it</Button>
             </div>
           )}
@@ -753,6 +763,7 @@ const Dashboard = () => {
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Vision link</p>
                 <p className="text-sm italic text-foreground/80">{bigMove.vision_link}</p>
               </div>
+              <ResourceLink text={`${bigMove.headline} ${bigMove.the_move} ${bigMove.vision_link || ''}`} pillar="Stability" />
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/50">
                 <span>{bigMove.time}</span>
                 <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary font-medium">Consistency</span>
@@ -890,6 +901,10 @@ const WeaveActionCard = ({
             </AnimatePresence>
           </div>
         )}
+
+        {!isDone && (
+          <ResourceLink text={`${action.one_thing} ${action.impact_description || ''}`} pillar={action.pillar} />
+        )}
       </div>
 
       {/* Actions */}
@@ -943,6 +958,7 @@ const WeaveGemCard = ({ gem, context }: { gem: ForgottenGem; context?: string | 
           {context}
         </p>
       )}
+      <ResourceLink text={`${gem.title} ${gem.content || ''}`} />
     </div>
   </div>
 );
