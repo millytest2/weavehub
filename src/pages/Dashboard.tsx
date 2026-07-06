@@ -898,6 +898,7 @@ const WeaveActionCard = ({
                   </div>
                 </motion.div>
               )}
+            </AnimatePresence>
           </div>
         )}
 
