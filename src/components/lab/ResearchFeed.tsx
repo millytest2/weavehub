@@ -122,7 +122,12 @@ export function ResearchFeed() {
       });
       if (error) throw error;
       if (data?.error && !data?.readings?.length) toast.error(data.error);
-      setReadings(data?.readings || []);
+      const next = data?.readings || [];
+      setReadings(next);
+      feedCache.readings = next;
+      feedCache.focus = focus;
+      feedCache.topic = (topicOverride ?? topic).trim();
+      feedCache.ts = Date.now();
     } catch (err: any) {
       toast.error(err.message || "Couldn't load research");
     } finally {
