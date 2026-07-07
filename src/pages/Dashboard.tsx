@@ -138,16 +138,66 @@ const pickRead = (text: string, pillar?: string): Read => {
   return pool[idx];
 };
 
+// In-memory + localStorage cache so we don't re-fetch the same item.
+type FreshPick = { title: string; author: string; url: string; why: string; type: string };
+const freshCache = new Map<string, FreshPick>();
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 3; // 3 days
+
+const loadCached = (key: string): FreshPick | null => {
+  if (freshCache.has(key)) return freshCache.get(key)!;
+  try {
+    const raw = localStorage.getItem(`rpick:${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.t > CACHE_TTL_MS) return null;
+    freshCache.set(key, parsed.v);
+    return parsed.v;
+  } catch { return null; }
+};
+const saveCached = (key: string, v: FreshPick) => {
+  freshCache.set(key, v);
+  try { localStorage.setItem(`rpick:${key}`, JSON.stringify({ t: Date.now(), v })); } catch {}
+};
+
 const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
-  const r = pickRead(text, pillar);
+  const fallback = pickRead(text, pillar);
+  const key = String(hashStr(`${text}|${pillar || ""}`));
+  const [fresh, setFresh] = useState<FreshPick | null>(() => loadCached(key));
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (fresh || !text) return;
+    let cancelled = false;
+    setLoading(true);
+    supabase.functions
+      .invoke("resource-pick", { body: { text, pillar } })
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data && !data.error && data.url && data.title) {
+          const v: FreshPick = { title: data.title, author: data.author || "", url: data.url, why: data.why || "", type: data.type || "read" };
+          saveCached(key, v);
+          setFresh(v);
+        }
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const pick = fresh ?? { title: fallback.t, author: fallback.a, url: fallback.u, why: fallback.why, type: "essay" };
+  const typeLabel = pick.type ? pick.type.toUpperCase() : "READ";
+
   return (
     <div className="mt-4 pt-3 border-t border-border/20">
-      <p className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1">A read that connects</p>
-      <a href={r.u} target="_blank" rel="noopener noreferrer" className="text-[12px] text-primary/70 hover:text-primary hover:underline font-medium">
-        {r.t}
+      <p className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1 flex items-center gap-1.5">
+        <span>{fresh ? `Fresh ${typeLabel.toLowerCase()}` : "A read that connects"}</span>
+        {loading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+      </p>
+      <a href={pick.url} target="_blank" rel="noopener noreferrer" className="text-[12px] text-primary/70 hover:text-primary hover:underline font-medium">
+        {pick.title}
       </a>
-      <span className="text-[11px] text-muted-foreground/50"> — {r.a}</span>
-      <p className="text-[10px] text-muted-foreground/45 mt-0.5 leading-snug">{r.why}</p>
+      {pick.author && <span className="text-[11px] text-muted-foreground/50"> — {pick.author}</span>}
+      {pick.why && <p className="text-[10px] text-muted-foreground/45 mt-0.5 leading-snug">{pick.why}</p>}
     </div>
   );
 };
