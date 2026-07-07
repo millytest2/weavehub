@@ -40,13 +40,21 @@ const PILLAR_COLORS: Record<string, string> = {
 
 const FOCUS_CHIPS = ["All", "Money", "Body", "Charisma", "Mind", "UPath", "Relationship"];
 
+// Module-level cache so switching tabs doesn't refetch. Manual Refresh button re-fetches.
+const feedCache: { readings: Reading[]; focus: string; topic: string; ts: number } = {
+  readings: [],
+  focus: "All",
+  topic: "",
+  ts: 0,
+};
+
 export function ResearchFeed() {
   const { user } = useAuth();
-  const [readings, setReadings] = useState<Reading[]>([]);
+  const [readings, setReadings] = useState<Reading[]>(feedCache.readings);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [activeFocus, setActiveFocus] = useState("All");
-  const [topic, setTopic] = useState("");
+  const [activeFocus, setActiveFocus] = useState(feedCache.focus);
+  const [topic, setTopic] = useState(feedCache.topic);
 
   // Substack
   const [sources, setSources] = useState<SubstackSource[]>([]);
@@ -58,7 +66,8 @@ export function ResearchFeed() {
   useEffect(() => {
     if (!user) return;
     loadSources();
-    if (readings.length === 0) loadReadings("All", "");
+    // Only auto-load on very first visit — never re-fetch on tab switch.
+    if (feedCache.readings.length === 0) loadReadings("All", "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -113,7 +122,12 @@ export function ResearchFeed() {
       });
       if (error) throw error;
       if (data?.error && !data?.readings?.length) toast.error(data.error);
-      setReadings(data?.readings || []);
+      const next = data?.readings || [];
+      setReadings(next);
+      feedCache.readings = next;
+      feedCache.focus = focus;
+      feedCache.topic = (topicOverride ?? topic).trim();
+      feedCache.ts = Date.now();
     } catch (err: any) {
       toast.error(err.message || "Couldn't load research");
     } finally {
