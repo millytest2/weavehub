@@ -108,7 +108,9 @@ export default function IdentitySeed() {
         setCoreValues(data.core_values || "");
         setYearNote(data.year_note || "");
         setLifeDomains((data as any).life_domains || "");
-        setThroughLine((data as any).through_line || "");
+        // Merge: Through-Line replaces "Who You Are Becoming". If user hasn't
+        // set through_line yet but has legacy `content`, pre-fill from it.
+        setThroughLine((data as any).through_line || data.content || "");
       } else {
         setContent("");
         setCurrentReality("");
