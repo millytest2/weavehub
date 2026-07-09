@@ -128,7 +128,11 @@ export default function IdentitySeed() {
   };
 
   const handleSave = async () => {
-    const validation = identitySeedSchema.safeParse({ content });
+    // Through-Line is now the single anchored direction. Mirror it into `content`
+    // so downstream systems (morning brief, experiments, mirror, navigator) that
+    // read identity_seeds.content keep working without a migration.
+    const source = throughLine.trim() || content.trim();
+    const validation = identitySeedSchema.safeParse({ content: source });
     if (!validation.success) {
       const firstError = validation.error.errors[0];
       toast.error(firstError.message);
@@ -328,7 +332,7 @@ export default function IdentitySeed() {
           </p>
         </Card>
 
-        {/* Through-Line — the narrow polymath focus */}
+        {/* Through-Line — one anchored direction (merged with Who You Are Becoming) */}
         <Card className="p-5 border-primary/20">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -340,14 +344,14 @@ export default function IdentitySeed() {
           <Textarea
             value={throughLine}
             onChange={(e) => setThroughLine(e.target.value)}
-            placeholder="The narrow thread that ties everything you love into one direction. e.g. 'A polymath building tools and content that help people find their own path — chess, psychology, writing, UPath, hobbies all feed the same practice of pattern-finding and self-authorship.'"
-            className="min-h-[140px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
+            placeholder="The one direction that ties who you are becoming to everything you love. e.g. 'A polymath building tools and writing that help people find their own path — chess, psychology, UPath, hobbies all feed the same practice of pattern-finding and self-authorship.'"
+            className="min-h-[200px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
           />
           <p className="text-xs text-muted-foreground mt-2">
-            Not what you do — the through-line under all of it. The one sentence a stranger would use to describe the shape of your work and life a decade from now.
+            Who you are becoming, said as one thread. The single sentence a stranger would use to describe the shape of your work and life a decade from now.
           </p>
           <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
-            → Anchors: which of your many interests get pulled into today, why disparate things belong together
+            → The core thread: anchors experiments, daily invitations, decision mirror, and which of your many interests get pulled into today
           </p>
         </Card>
 
