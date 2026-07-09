@@ -14,7 +14,7 @@ const identitySeedSchema = z.object({
   content: z.string().trim().min(1, "Identity seed content is required").max(50000, "Content must be less than 50,000 characters"),
 });
 
-type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | "lifeDomains" | null;
+type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | "lifeDomains" | "throughLine" | null;
 
 export default function IdentitySeed() {
   const { user } = useAuth();
@@ -27,6 +27,7 @@ export default function IdentitySeed() {
   const [coreValues, setCoreValues] = useState("");
   const [yearNote, setYearNote] = useState("");
   const [lifeDomains, setLifeDomains] = useState("");
+  const [throughLine, setThroughLine] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function IdentitySeed() {
         case "yearNote": setYearNote(append); break;
         case "content": setContent(append); break;
         case "lifeDomains": setLifeDomains(append); break;
+        case "throughLine": setThroughLine(append); break;
       }
     },
     onError: (error) => {
