@@ -108,6 +108,7 @@ export default function IdentitySeed() {
         setCoreValues(data.core_values || "");
         setYearNote(data.year_note || "");
         setLifeDomains((data as any).life_domains || "");
+        setThroughLine((data as any).through_line || "");
       } else {
         setContent("");
         setCurrentReality("");
@@ -116,6 +117,7 @@ export default function IdentitySeed() {
         setCoreValues("");
         setYearNote("");
         setLifeDomains("");
+        setThroughLine("");
         setIdentitySeedId(null);
       }
     } catch (error) {
