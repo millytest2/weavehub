@@ -143,8 +143,9 @@ export default function IdentitySeed() {
         core_values: coreValues || null,
         year_note: yearNote || null,
         life_domains: lifeDomains || null,
+        through_line: throughLine || null,
         current_phase: "baseline",
-      };
+      } as any;
 
       if (identitySeedId) {
         const { error } = await supabase
