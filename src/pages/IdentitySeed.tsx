@@ -378,29 +378,6 @@ export default function IdentitySeed() {
           </p>
         </Card>
 
-        {/* Identity Seed Content */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Compass className="w-4 h-4 text-muted-foreground" />
-              <h2 className="text-sm font-medium text-muted-foreground">Who You Are Becoming</h2>
-            </div>
-            <VoiceButton field="content" />
-          </div>
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="I am becoming someone who... (describe your values, future self, what drives you)"
-            className="min-h-[200px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            This guides your experiments, daily actions, and recommendations.
-          </p>
-          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
-            → The core thread: everything in the system aligns with this
-          </p>
-        </Card>
-
         <Button
           onClick={handleSave}
           disabled={saving || initialLoading}
