@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User, Star, Target, Mic, MicOff, Layers, Sparkles, History } from "lucide-react";
+import { Compass, User, Star, Target, Mic, MicOff, Layers, Sparkles, History, Anchor } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { z } from "zod";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
@@ -14,7 +14,7 @@ const identitySeedSchema = z.object({
   content: z.string().trim().min(1, "Identity seed content is required").max(50000, "Content must be less than 50,000 characters"),
 });
 
-type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | "lifeDomains" | null;
+type ActiveField = "currentReality" | "coreValues" | "yearNote" | "content" | "lifeDomains" | "throughLine" | null;
 
 export default function IdentitySeed() {
   const { user } = useAuth();
@@ -27,6 +27,7 @@ export default function IdentitySeed() {
   const [coreValues, setCoreValues] = useState("");
   const [yearNote, setYearNote] = useState("");
   const [lifeDomains, setLifeDomains] = useState("");
+  const [throughLine, setThroughLine] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [identitySeedId, setIdentitySeedId] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function IdentitySeed() {
         case "yearNote": setYearNote(append); break;
         case "content": setContent(append); break;
         case "lifeDomains": setLifeDomains(append); break;
+        case "throughLine": setThroughLine(append); break;
       }
     },
     onError: (error) => {
@@ -106,6 +108,7 @@ export default function IdentitySeed() {
         setCoreValues(data.core_values || "");
         setYearNote(data.year_note || "");
         setLifeDomains((data as any).life_domains || "");
+        setThroughLine((data as any).through_line || "");
       } else {
         setContent("");
         setCurrentReality("");
@@ -114,6 +117,7 @@ export default function IdentitySeed() {
         setCoreValues("");
         setYearNote("");
         setLifeDomains("");
+        setThroughLine("");
         setIdentitySeedId(null);
       }
     } catch (error) {
@@ -139,8 +143,9 @@ export default function IdentitySeed() {
         core_values: coreValues || null,
         year_note: yearNote || null,
         life_domains: lifeDomains || null,
+        through_line: throughLine || null,
         current_phase: "baseline",
-      };
+      } as any;
 
       if (identitySeedId) {
         const { error } = await supabase
@@ -323,6 +328,29 @@ export default function IdentitySeed() {
           </p>
         </Card>
 
+        {/* Through-Line — the narrow polymath focus */}
+        <Card className="p-5 border-primary/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Anchor className="w-4 h-4 text-primary/70" />
+              <h2 className="text-sm font-medium text-muted-foreground">The Through-Line</h2>
+            </div>
+            <VoiceButton field="throughLine" />
+          </div>
+          <Textarea
+            value={throughLine}
+            onChange={(e) => setThroughLine(e.target.value)}
+            placeholder="The narrow thread that ties everything you love into one direction. e.g. 'A polymath building tools and content that help people find their own path — chess, psychology, writing, UPath, hobbies all feed the same practice of pattern-finding and self-authorship.'"
+            className="min-h-[140px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Not what you do — the through-line under all of it. The one sentence a stranger would use to describe the shape of your work and life a decade from now.
+          </p>
+          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
+            → Anchors: which of your many interests get pulled into today, why disparate things belong together
+          </p>
+        </Card>
+
         {/* Life Landscape - Brain Dump */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
@@ -335,11 +363,11 @@ export default function IdentitySeed() {
           <Textarea
             value={lifeDomains}
             onChange={(e) => setLifeDomains(e.target.value)}
-            placeholder="Dump everything you care about: chess, gym, piano, psychology, content creation, building UPath, relationships, poker, spirituality, style, cooking, tennis... Just list it all. The system will naturally rotate across these."
+            placeholder="Dump everything you care about: chess, gym, piano, psychology, content creation, building UPath, relationships, poker, spirituality, style, cooking, tennis... Just list it all. The Through-Line above decides which ones get pulled forward on any given day."
             className="min-h-[140px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
           />
           <p className="text-xs text-muted-foreground mt-2">
-            Everything you want the system to be aware of. It learns which ones need attention from your behavior over time.
+            Everything you want the system to be aware of. Combined with your Through-Line, it learns which domains to rotate into and which to let rest.
           </p>
           <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
             → Drives: domain rotation in invitations, weekly intention suggestions
@@ -376,37 +404,6 @@ export default function IdentitySeed() {
         >
           {saving ? "Saving..." : "Save"}
         </Button>
-
-        {/* Resource connection — a good read that connects to who you're becoming */}
-        <Card className="p-5 bg-muted/20 border-dashed">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-sm font-medium text-muted-foreground">A read that connects here</h2>
-          </div>
-          <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">
-            Short, high-signal reads for the lane you're actually in — career direction in the AI era, sales reps, local business visibility, and staying focused when everything is interesting.
-          </p>
-          <ul className="space-y-2.5 text-[13px]">
-            {[
-              { t: "How to Do Great Work", a: "Paul Graham", u: "https://paulgraham.com/greatwork.html", why: "Focus, taste, and the courage to stay on one lane." },
-              { t: "Life is Short", a: "Paul Graham", u: "https://paulgraham.com/vb.html", why: "Cut what doesn't matter. Compound what does." },
-              { t: "Specific Knowledge", a: "Naval", u: "https://nav.al/specific-knowledge", why: "Your edge is the intersection nobody else has — build for it." },
-              { t: "The Ultimate Guide to Writing Online", a: "David Perell", u: "https://perell.com/essay/the-ultimate-guide-to-writing-online/", why: "Turn what you're already doing into founder-led proof." },
-              { t: "$100M Offers", a: "Alex Hormozi", u: "https://www.acquisition.com/hormozi-offers", why: "Offer construction for Social Hog / Built for Main Street." },
-              { t: "Do Things That Don't Scale", a: "Paul Graham", u: "https://paulgraham.com/ds.html", why: "How UPath's first 8–10 real career reads should happen." },
-              { t: "A Founder's Guide to Writing Well", a: "Julian Shapiro", u: "https://www.julian.com/guide/write/intro", why: "Sharper messaging for LinkedIn / Substack / UPath." },
-              { t: "Good Work", a: "Henrik Karlsson", u: "https://www.henrikkarlsson.xyz/p/good-work", why: "Protecting the through-line when you have many interests." },
-            ].map((r, i) => (
-              <li key={i} className="leading-snug">
-                <a href={r.u} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
-                  {r.t}
-                </a>
-                <span className="text-muted-foreground/60"> — {r.a}</span>
-                <p className="text-[11px] text-muted-foreground/50 mt-0.5">{r.why}</p>
-              </li>
-            ))}
-          </ul>
-        </Card>
       </div>
     </div>
   );

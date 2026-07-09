@@ -1,0 +1,1 @@
+ALTER TABLE public.identity_seeds ADD COLUMN IF NOT EXISTS through_line text;

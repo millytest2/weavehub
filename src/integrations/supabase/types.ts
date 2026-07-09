@@ -674,6 +674,7 @@ export type Database = {
           previous_reality: string | null
           reality_updated_at: string | null
           target_monthly_income: number | null
+          through_line: string | null
           updated_at: string
           user_id: string
           weekly_focus: string | null
@@ -696,6 +697,7 @@ export type Database = {
           previous_reality?: string | null
           reality_updated_at?: string | null
           target_monthly_income?: number | null
+          through_line?: string | null
           updated_at?: string
           user_id: string
           weekly_focus?: string | null
@@ -718,6 +720,7 @@ export type Database = {
           previous_reality?: string | null
           reality_updated_at?: string | null
           target_monthly_income?: number | null
+          through_line?: string | null
           updated_at?: string
           user_id?: string
           weekly_focus?: string | null
