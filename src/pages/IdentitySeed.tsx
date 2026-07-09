@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Compass, User, Star, Target, Mic, MicOff, Layers, Sparkles, History } from "lucide-react";
+import { Compass, User, Star, Target, Mic, MicOff, Layers, Sparkles, History, Anchor } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { z } from "zod";
 import { useVoiceCaptureWebSpeech } from "@/hooks/useVoiceCaptureWebSpeech";
@@ -328,6 +328,29 @@ export default function IdentitySeed() {
           </p>
         </Card>
 
+        {/* Through-Line — the narrow polymath focus */}
+        <Card className="p-5 border-primary/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Anchor className="w-4 h-4 text-primary/70" />
+              <h2 className="text-sm font-medium text-muted-foreground">The Through-Line</h2>
+            </div>
+            <VoiceButton field="throughLine" />
+          </div>
+          <Textarea
+            value={throughLine}
+            onChange={(e) => setThroughLine(e.target.value)}
+            placeholder="The narrow thread that ties everything you love into one direction. e.g. 'A polymath building tools and content that help people find their own path — chess, psychology, writing, UPath, hobbies all feed the same practice of pattern-finding and self-authorship.'"
+            className="min-h-[140px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Not what you do — the through-line under all of it. The one sentence a stranger would use to describe the shape of your work and life a decade from now.
+          </p>
+          <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
+            → Anchors: which of your many interests get pulled into today, why disparate things belong together
+          </p>
+        </Card>
+
         {/* Life Landscape - Brain Dump */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
@@ -340,11 +363,11 @@ export default function IdentitySeed() {
           <Textarea
             value={lifeDomains}
             onChange={(e) => setLifeDomains(e.target.value)}
-            placeholder="Dump everything you care about: chess, gym, piano, psychology, content creation, building UPath, relationships, poker, spirituality, style, cooking, tennis... Just list it all. The system will naturally rotate across these."
+            placeholder="Dump everything you care about: chess, gym, piano, psychology, content creation, building UPath, relationships, poker, spirituality, style, cooking, tennis... Just list it all. The Through-Line above decides which ones get pulled forward on any given day."
             className="min-h-[140px] text-sm leading-relaxed resize-none border-0 bg-muted/30 focus-visible:ring-1"
           />
           <p className="text-xs text-muted-foreground mt-2">
-            Everything you want the system to be aware of. It learns which ones need attention from your behavior over time.
+            Everything you want the system to be aware of. Combined with your Through-Line, it learns which domains to rotate into and which to let rest.
           </p>
           <p className="text-[10px] text-muted-foreground/40 mt-1 italic">
             → Drives: domain rotation in invitations, weekly intention suggestions
