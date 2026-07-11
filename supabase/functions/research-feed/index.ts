@@ -1,6 +1,6 @@
 // Research Feed — generates identity-grounded reading recommendations
-// PLUS surfaces relevant existing insights/documents/observations from user's own library
-// so the user re-encounters their own captured wisdom alongside new external sources.
+// Layers fresh web results (Firecrawl, last month) with AI-curated durable picks
+// so the user always gets a mix of new + canonical sources.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -8,6 +8,27 @@ const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+
+async function firecrawlSearch(query: string, tbs = "qdr:m", limit = 5): Promise<any[]> {
+  if (!FIRECRAWL_KEY) return [];
+  try {
+    const res = await fetch("https://api.firecrawl.dev/v2/search", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${FIRECRAWL_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query, limit, tbs }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const web = data?.data?.web || data?.data || data?.web || [];
+    return Array.isArray(web) ? web : [];
+  } catch { return []; }
+}
+
+function hostAuthor(url: string, fallback: string) {
+  try { return new URL(url).hostname.replace("www.", ""); } catch { return fallback || "Web"; }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
