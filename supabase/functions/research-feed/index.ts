@@ -119,7 +119,31 @@ Deno.serve(async (req) => {
       ? yourLibrary.map((x, i) => `${i + 1}. [${x.kind}] ${x.title} — ${x.snippet}`).join("\n")
       : "(no matching items in library yet)";
 
-    const system = `You are a research librarian for a specific person. Recommend 12 high-signal external readings that directly help them move on their CURRENT goals${topic ? ` and the specific topic: "${topic}"` : ""}. Cover a wide mix of source types across the 12 items — don't cluster on one format. Aim for roughly: 3-4 durable essays/blog posts, 2-3 Substack/newsletter posts, 1-2 research papers or arXiv links, 1-2 podcast episodes (Huberman Lab, Tim Ferriss, Lex Fridman, Modern Wisdom, My First Million, Founders, Acquired), 1-2 YouTube talks or lectures, 1 canonical book chapter. Not generic self-help. Bias toward: Paul Graham, Naval, David Perell, Julian Shapiro, Dan Koe, Nat Eliason, Sasha Chapin, Ava Huang, Visakan Veerasamy, Cate Hall, Henrik Karlsson, Rob Henderson, Scott Alexander, Slime Mold Time Mold, Byrne Hobart, Packy McCormick, Every (Dan Shipper, Evan Armstrong), Not Boring, The Generalist, Lenny Rachitsky, Alex Hormozi, Justin Welsh, Codie Sanchez, Sahil Bloom, Peter Attia, Andrew Huberman, Cal Newport, Derek Sivers, Morgan Housel, Tim Urban, Kevin Kelly, Nassim Taleb, David Whyte, Rick Rubin, Anne Lamott, James Hollis, Robert Greene. For Substack items set type to "substack" and put the direct substack.com URL in search_url when known. For podcasts include the specific episode title + host in the title. For papers include arXiv id or DOI when possible. Consider what they've already captured (below) — don't recommend things they already know; go one layer deeper or adjacent. Return STRICT JSON only.
+    // Fresh web candidates (last month) so recs feel current, not just canonical
+    const focusWord = focus && focus !== "All" ? focus : "";
+    const topicWord = topic || "";
+    const identityKeywords = ((identity?.weekly_focus || "") + " " + (identity?.year_note || ""))
+      .split(/\s+/).filter((w: string) => w.length > 3).slice(0, 6).join(" ");
+    const baseQ = [topicWord, focusWord, identityKeywords].filter(Boolean).join(" ").trim() || "founders creators building";
+    const [freshEssays, freshSubs, freshPods, freshVids, freshPapers] = await Promise.all([
+      firecrawlSearch(`${baseQ} essay 2025`, "qdr:m", 6),
+      firecrawlSearch(`${baseQ} 2025 site:substack.com`, "qdr:m", 5),
+      firecrawlSearch(`${baseQ} podcast episode 2025`, "qdr:m", 4),
+      firecrawlSearch(`${baseQ} 2025 site:youtube.com`, "qdr:m", 4),
+      firecrawlSearch(`${baseQ} 2025 site:arxiv.org OR site:ssrn.com`, "qdr:y", 3),
+    ]);
+    const freshAll = [
+      ...freshEssays.map((x: any) => ({ ...x, _k: "essay" })),
+      ...freshSubs.map((x: any) => ({ ...x, _k: "substack" })),
+      ...freshPods.map((x: any) => ({ ...x, _k: "podcast" })),
+      ...freshVids.map((x: any) => ({ ...x, _k: "video" })),
+      ...freshPapers.map((x: any) => ({ ...x, _k: "paper" })),
+    ].filter((x: any) => x?.url && x?.title).slice(0, 22);
+    const freshBlock = freshAll.length
+      ? freshAll.map((c: any, i: number) => `${i + 1}. [${c._k}] ${c.title} — ${c.url}\n   ${(c.description || c.snippet || "").slice(0, 180)}`).join("\n")
+      : "(no fresh web results — use canonical picks)";
+
+    const system = `You are a research librarian for a specific person. Recommend 20 high-signal external readings that directly help them move on their CURRENT goals${topic ? ` and the specific topic: "${topic}"` : ""}. Cover a WIDE mix of source types across the 20 items — don't cluster on one format. Aim for roughly: 5-6 durable essays/blog posts, 4-5 Substack/newsletter posts, 2-3 research papers or arXiv links, 2-3 podcast episodes (Huberman Lab, Tim Ferriss, Lex Fridman, Modern Wisdom, My First Million, Founders, Acquired, Invest Like the Best, Dwarkesh), 2-3 YouTube talks or lectures, 1-2 canonical book chapters. When a FRESH candidate from web search (below) fits, PREFER it over an older canonical pick and use its exact URL. Not generic self-help. Bias toward: Paul Graham, Naval, David Perell, Julian Shapiro, Dan Koe, Nat Eliason, Sasha Chapin, Ava Huang, Visakan Veerasamy, Cate Hall, Henrik Karlsson, Rob Henderson, Scott Alexander, Slime Mold Time Mold, Byrne Hobart, Packy McCormick, Every (Dan Shipper, Evan Armstrong), Not Boring, The Generalist, Lenny Rachitsky, Alex Hormozi, Justin Welsh, Codie Sanchez, Sahil Bloom, Peter Attia, Andrew Huberman, Cal Newport, Derek Sivers, Morgan Housel, Tim Urban, Kevin Kelly, Nassim Taleb, David Whyte, Rick Rubin, Anne Lamott, James Hollis, Robert Greene, Ben Thompson, Jasmine Sun, Simon Sarris, Nadia Asparouhova. For Substack items set type to "substack" and put the direct URL in search_url when known. For podcasts include the specific episode title + host in the title. For papers include arXiv id or DOI when possible. Consider what they've already captured (below) — don't recommend things they already know; go one layer deeper or adjacent. Return STRICT JSON only.
 
 Schema:
 {
@@ -131,7 +155,7 @@ Schema:
       "pillar": "one of the user's pillars",
       "why": "one sentence — why THIS person needs it right now (reference their actual goal or a captured note if relevant)",
       "takeaway": "one sentence — the core idea",
-      "search_url": "https://www.google.com/search?q=<url-encoded title + author>"
+      "search_url": "https://... direct URL when known, otherwise a Google search URL"
     }
   ]
 }`;
@@ -151,7 +175,10 @@ ${topic ? `SPECIFIC TOPIC REQUEST: ${topic}\n` : ""}${focus && focus !== "All" ?
 WHAT THEY'VE ALREADY CAPTURED (most relevant from their library):
 ${librarySummary}
 
-Return 12 real, findable readings across a mix of formats (essays, substack, papers, podcasts, videos, books). No fabricated titles.`;
+FRESH WEB CANDIDATES (last month — prefer these when they fit, use exact URLs):
+${freshBlock}
+
+Return 20 real, findable readings across a mix of formats. No fabricated titles or URLs. If unsure of a URL, use a Google search URL.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
