@@ -39,7 +39,6 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [seenTitles, setSeenTitles] = useState<string[]>([]);
-  const [expanded, setExpanded] = useState(false);
 
   const drawQuest = async (cat: Category = category, diff: Difficulty = difficulty) => {
     if (!user || loading) return;
@@ -61,9 +60,10 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   };
 
   useEffect(() => {
-    if (user && expanded && !quest) drawQuest("Bold", "easy");
+    if (user && !quest) drawQuest("Bold", "easy");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, expanded]);
+  }, [user]);
+
 
   const handleCategory = (cat: Category) => {
     setCategory(cat);
@@ -131,31 +131,25 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   return (
     <div className="rounded-2xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-hidden">
       {/* Header */}
-      <button
-        onClick={() => setExpanded((e) => !e)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-accent/20 transition-colors"
-      >
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border/20">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
             <Compass className="h-4 w-4 text-primary/70" />
           </div>
           <div className="text-left">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50">Side Quest</p>
-            <p className="text-sm font-medium text-foreground/80">Break the loop</p>
+            <p className="text-sm font-medium text-foreground/80">Break the loop — pick a lane, accept the rep</p>
           </div>
         </div>
-        <span className="text-xs text-muted-foreground/40">{expanded ? "−" : "+"}</span>
-      </button>
+      </div>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
+      <div className="overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+
             <div className="px-5 pb-5 space-y-4">
               {/* Category chips */}
               <div className="flex flex-wrap gap-1.5">
@@ -266,9 +260,9 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      </div>
     </div>
   );
 };
+
