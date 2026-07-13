@@ -389,6 +389,21 @@ const Dashboard = () => {
         user_id: user.id, hour_of_day: now.getHours(), day_of_week: now.getDay(),
         activity_type: 'skip', pillar: action.pillar
       });
+      toast.message("Passed — pulling a fresh one");
+      if (activeIndex < totalNodes - 2) {
+        setTimeout(() => navigate(1), 300);
+      }
+      // Ask morning-brief to top up so the brief stays current after a pass
+      try {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await supabase.functions.invoke("morning-brief", {
+          body: { timezone, top_up: true, skipped_pillar: action.pillar },
+        });
+        hasLoaded.current = false;
+        await fetchBrief();
+      } catch (e) {
+        console.error("Top-up after skip failed:", e);
+      }
     } catch (error: any) {
       console.error("Skip error:", error);
     }
@@ -784,14 +799,27 @@ const Dashboard = () => {
               </div>
 
               <button
-                onClick={() => {
+                onClick={async () => {
+                  const currentBriefId = brief?.id;
                   hasLoaded.current = false;
                   setActiveIndex(0);
-                  if (brief?.id) {
-                    supabase.from("daily_briefs").delete().eq("id", brief.id).then(() => {
-                      supabase.from("daily_tasks").delete().eq("daily_brief_id", brief.id).then(() => fetchBrief());
-                    });
-                  } else { fetchBrief(); }
+                  setActions([]);
+                  setForgottenGem(null);
+                  setBrief(null);
+                  setIsLoading(true);
+                  try {
+                    if (currentBriefId) {
+                      await supabase.from("daily_tasks").delete().eq("daily_brief_id", currentBriefId);
+                      await supabase.from("daily_briefs").delete().eq("id", currentBriefId);
+                    }
+                    await fetchBrief();
+                    await fetchPropulsionData();
+                    toast.success("Fresh brief woven");
+                  } catch (e: any) {
+                    console.error("Regenerate error:", e);
+                    toast.error("Couldn't regenerate");
+                    setIsLoading(false);
+                  }
                 }}
                 className="flex items-center gap-1.5 text-[11px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
               >
