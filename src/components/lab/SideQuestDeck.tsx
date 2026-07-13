@@ -39,7 +39,6 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [seenTitles, setSeenTitles] = useState<string[]>([]);
-  const [expanded, setExpanded] = useState(false);
 
   const drawQuest = async (cat: Category = category, diff: Difficulty = difficulty) => {
     if (!user || loading) return;
@@ -61,9 +60,10 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   };
 
   useEffect(() => {
-    if (user && expanded && !quest) drawQuest("Bold", "easy");
+    if (user && !quest) drawQuest("Bold", "easy");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, expanded]);
+  }, [user]);
+
 
   const handleCategory = (cat: Category) => {
     setCategory(cat);
