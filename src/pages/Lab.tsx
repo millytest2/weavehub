@@ -249,11 +249,9 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
             {/* EXPERIMENTS */}
             {activeTab === "experiments" && (
               <div className="space-y-6">
-                {/* Daily Scoreboard — 8 reps, woven into all agents */}
-                <DailyScoreboard />
-
                 {/* Side Quest Deck — novel, low-friction quests that become experiments */}
                 <SideQuestDeck onQuestAccepted={fetchExperiments} />
+
 
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground/50">Track what you're testing</p>
