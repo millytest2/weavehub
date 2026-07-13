@@ -260,9 +260,10 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      </div>
     </div>
+  );
+
   );
 };
