@@ -264,6 +264,5 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
       </div>
     </div>
   );
-
-  );
 };
+
