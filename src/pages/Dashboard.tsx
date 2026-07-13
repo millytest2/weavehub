@@ -389,6 +389,21 @@ const Dashboard = () => {
         user_id: user.id, hour_of_day: now.getHours(), day_of_week: now.getDay(),
         activity_type: 'skip', pillar: action.pillar
       });
+      toast.message("Passed — pulling a fresh one");
+      if (activeIndex < totalNodes - 2) {
+        setTimeout(() => navigate(1), 300);
+      }
+      // Ask morning-brief to top up so the brief stays current after a pass
+      try {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await supabase.functions.invoke("morning-brief", {
+          body: { timezone, top_up: true, skipped_pillar: action.pillar },
+        });
+        hasLoaded.current = false;
+        await fetchBrief();
+      } catch (e) {
+        console.error("Top-up after skip failed:", e);
+      }
     } catch (error: any) {
       console.error("Skip error:", error);
     }
