@@ -799,14 +799,27 @@ const Dashboard = () => {
               </div>
 
               <button
-                onClick={() => {
+                onClick={async () => {
+                  const currentBriefId = brief?.id;
                   hasLoaded.current = false;
                   setActiveIndex(0);
-                  if (brief?.id) {
-                    supabase.from("daily_briefs").delete().eq("id", brief.id).then(() => {
-                      supabase.from("daily_tasks").delete().eq("daily_brief_id", brief.id).then(() => fetchBrief());
-                    });
-                  } else { fetchBrief(); }
+                  setActions([]);
+                  setForgottenGem(null);
+                  setBrief(null);
+                  setIsLoading(true);
+                  try {
+                    if (currentBriefId) {
+                      await supabase.from("daily_tasks").delete().eq("daily_brief_id", currentBriefId);
+                      await supabase.from("daily_briefs").delete().eq("id", currentBriefId);
+                    }
+                    await fetchBrief();
+                    await fetchPropulsionData();
+                    toast.success("Fresh brief woven");
+                  } catch (e: any) {
+                    console.error("Regenerate error:", e);
+                    toast.error("Couldn't regenerate");
+                    setIsLoading(false);
+                  }
                 }}
                 className="flex items-center gap-1.5 text-[11px] text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
               >
