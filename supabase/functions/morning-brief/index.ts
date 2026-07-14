@@ -108,8 +108,8 @@ serve(async (req) => {
       supabase.from("daily_tasks").select("*").eq("user_id", user.id).gte("task_date", sevenDaysAgo.split('T')[0]).order("task_date", { ascending: false }),
       // Action history (completed actions, last 30 days)
       supabase.from("action_history").select("action_text, pillar, action_date, why_it_mattered").eq("user_id", user.id).gte("action_date", thirtyDaysAgo.split('T')[0]).order("action_date", { ascending: false }).limit(30),
-      // Weekly intentions
-      supabase.from("weekly_intentions").select("text, pillar, completed").eq("user_id", user.id).eq("week_number", currentWeek).eq("year", currentYear),
+      // Weekly intentions — include day_of_week so we can anchor today's plan
+      supabase.from("weekly_intentions").select("text, pillar, completed, day_of_week").eq("user_id", user.id).eq("week_number", currentWeek).eq("year", currentYear),
       // Monthly plans
       supabase.from("monthly_plans").select("text, plan_type, completed").eq("user_id", user.id).eq("month_number", currentMonth).eq("year", currentYear),
       // Thread milestones
