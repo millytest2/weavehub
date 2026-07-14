@@ -692,24 +692,52 @@ const Dashboard = () => {
             } />
           </motion.div>
         ) : totalNodes === 0 ? (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <p className="text-muted-foreground/50 text-sm">Nothing woven yet today.</p>
-              <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={() => { hasLoaded.current = false; fetchBrief(); }}
-                  className="text-sm text-primary/60 hover:text-primary transition-colors"
-                >
-                  Generate brief
-                </button>
-                <button
-                  onClick={() => setShowQuickAdd(true)}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add your own tasks
-                </button>
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col items-center justify-between py-8">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <p className="text-muted-foreground/50 text-sm">Nothing woven yet today.</p>
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={() => { hasLoaded.current = false; fetchBrief(); }}
+                    className="text-sm text-primary/60 hover:text-primary transition-colors"
+                  >
+                    Generate brief
+                  </button>
+                  <button
+                    onClick={() => setShowQuickAdd(true)}
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add your own tasks
+                  </button>
+                </div>
               </div>
+            </div>
+
+            {/* Bottom utilities — always available, even when nothing is woven */}
+            <div className="w-full flex items-center justify-center gap-6 pt-6 border-t border-border/10">
+              <button
+                onClick={handleNextRep}
+                disabled={isGettingRep}
+                className="group flex items-center gap-2"
+                title="Drifting, bored, or numb? Get a small rep to return to center."
+              >
+                <Zap className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                <span className="text-[12px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+                  {isGettingRep ? "Finding..." : "Next rep"}
+                </span>
+              </button>
+              <button
+                onClick={handleBigMove}
+                disabled={isGettingBigMove}
+                className="group flex items-center gap-2"
+                title="Aligned and ready? Get the ONE high-leverage move toward your 2026."
+              >
+                <Target className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                <span className="text-[12px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+                  {isGettingBigMove ? "Aligning..." : "Big Move"}
+                </span>
+              </button>
             </div>
           </motion.div>
         ) : (
