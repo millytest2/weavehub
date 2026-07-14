@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, Sparkle, FlaskConical } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
-import { ReflectionMirror } from "@/components/mind/ReflectionMirror";
+import { AskWeave } from "@/components/mind/AskWeave";
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
