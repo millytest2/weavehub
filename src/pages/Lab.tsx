@@ -15,7 +15,6 @@ import {
   Check, Network, PenLine, RefreshCw, Sparkles, BookOpen
 } from "lucide-react";
 import { WeeklyIntentions } from "@/components/lab/WeeklyIntentions";
-import { IdealWeekPlanner } from "@/components/lab/IdealWeekPlanner";
 import { MonthlyPlanView } from "@/components/lab/MonthlyPlanView";
 import { WeeklyRhythmView } from "@/components/lab/WeeklyRhythmView";
 import { JourneyFlow } from "@/components/lab/JourneyFlow";
@@ -240,7 +239,6 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
             {/* WEEKLY */}
             {activeTab === "weekly" && (
               <div className="space-y-8">
-                <IdealWeekPlanner />
                 <WeeklyIntentions />
                 <WeeklyRhythmView onCheckin={() => {}} />
                 <MonthlyPlanView />

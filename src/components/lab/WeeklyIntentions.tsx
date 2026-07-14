@@ -291,15 +291,30 @@ export function WeeklyIntentions() {
   const filtered =
     selectedDay === null ? intentions : intentions.filter((i) => i.day_of_week === selectedDay || i.day_of_week === null);
 
+  // Group by day for the full breakdown (used when "Any day" is selected)
+  const byDay: Record<string, Intention[]> = { any: [] };
+  for (let i = 0; i < 7; i++) byDay[i] = [];
+  for (const it of intentions) {
+    if (it.day_of_week === null || it.day_of_week === undefined) byDay.any.push(it);
+    else byDay[it.day_of_week].push(it);
+  }
+
+  const FULL_DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
   return (
-    <Card className="p-4 rounded-2xl space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ListTodo className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">This Week's Plan</h3>
+    <Card className="p-4 rounded-2xl space-y-3 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <ListTodo className="h-4 w-4 text-primary mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold">This Week</h3>
+            <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+              Paste your ideal Mon–Sun below and I'll reverse-engineer it into daily anchors — or add items one at a time.
+            </p>
+          </div>
         </div>
         {intentions.length > 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground shrink-0">
             {completedCount}/{intentions.length} done
           </span>
         )}
@@ -437,7 +452,85 @@ export function WeeklyIntentions() {
         </Button>
       )}
 
-      {filtered.length > 0 && (
+      {/* Grouped breakdown when viewing all; flat interactive list when a day is selected */}
+      {selectedDay === null && intentions.length > 0 && (
+        <div className="space-y-3 pt-1">
+          {[...Array(7)].map((_, idx) => {
+            const items = byDay[idx] || [];
+            if (items.length === 0) return null;
+            const dayDate = addDays(weekStart, idx);
+            const isToday = isSameDay(dayDate, today);
+            return (
+              <div key={idx} className={`rounded-lg border p-3 ${isToday ? "border-primary/40 bg-primary/5" : "border-border/40 bg-muted/10"}`}>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className={`text-xs font-semibold ${isToday ? "text-primary" : "text-foreground/80"}`}>
+                    {FULL_DAY_LABELS[idx]}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">{format(dayDate, "MMM d")}</span>
+                  {isToday && <span className="text-[9px] text-primary/70 uppercase tracking-wider">today</span>}
+                </div>
+                <ul className="space-y-1">
+                  {items.map((it) => (
+                    <li key={it.id} className="flex items-start gap-2 group">
+                      <button onClick={() => toggleComplete(it.id, it.completed)} className="shrink-0 mt-0.5">
+                        {it.completed ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Circle className="h-3.5 w-3.5 text-muted-foreground" />}
+                      </button>
+                      {it.pillar && (
+                        <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}>
+                          {it.pillar}
+                        </Badge>
+                      )}
+                      <span className={`text-xs leading-snug flex-1 ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/85"}`}>
+                        {it.text}
+                      </span>
+                      <button onClick={() => removeIntention(it.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+          {byDay.any.length > 0 && (
+            <div className="rounded-lg border border-dashed border-border/40 bg-muted/10 p-3">
+              <div className="text-xs font-semibold text-muted-foreground/80 mb-2">Any day</div>
+              <ul className="space-y-1">
+                {byDay.any.map((it) => (
+                  <li key={it.id} className="flex items-start gap-2 group">
+                    <button onClick={() => toggleComplete(it.id, it.completed)} className="shrink-0 mt-0.5">
+                      {it.completed ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Circle className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </button>
+                    {it.pillar && (
+                      <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}>
+                        {it.pillar}
+                      </Badge>
+                    )}
+                    <span className={`text-xs leading-snug flex-1 ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/85"}`}>
+                      {it.text}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const next = it.day_of_week === null ? 0 : it.day_of_week >= 6 ? null : it.day_of_week + 1;
+                        setDay(it.id, next);
+                      }}
+                      className="text-[9px] h-4 px-1.5 rounded border border-border/40 text-muted-foreground hover:text-foreground shrink-0"
+                      title="Assign a day"
+                    >
+                      set day
+                    </button>
+                    <button onClick={() => removeIntention(it.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedDay !== null && filtered.length > 0 && (
         <div className="space-y-1">
           {filtered.map((intention) => (
             <div
@@ -462,7 +555,6 @@ export function WeeklyIntentions() {
                   {intention.pillar}
                 </Badge>
               )}
-              {/* Day chip — click to cycle day */}
               <button
                 onClick={() => {
                   const next = intention.day_of_week === null ? 0 : intention.day_of_week >= 6 ? null : intention.day_of_week + 1;
@@ -486,7 +578,7 @@ export function WeeklyIntentions() {
 
       {filtered.length === 0 && !loading && (
         <p className="text-xs text-muted-foreground text-center py-2">
-          {selectedDay === null ? "Add what you want to accomplish this week" : "Nothing scheduled for this day yet"}
+          {selectedDay === null ? "Add what you want to accomplish this week, or paste your ideal Mon–Sun above" : "Nothing scheduled for this day yet"}
         </p>
       )}
     </Card>
