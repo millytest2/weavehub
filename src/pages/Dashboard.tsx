@@ -440,7 +440,8 @@ const Dashboard = () => {
   const handleBigMove = async () => {
     setIsGettingBigMove(true);
     try {
-      const { data, error } = await supabase.functions.invoke("big-move", { body: {} });
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { data, error } = await supabase.functions.invoke("big-move", { body: { timezone } });
       if (error) throw error;
       if (data) { setBigMove(data); setShowBigMoveDialog(true); }
     } catch (error: any) {

@@ -492,8 +492,9 @@ export const QuickCapture = () => {
     setIsOpen(false);
     
     try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { data, error } = await supabase.functions.invoke("realign", {
-        body: { mode }
+        body: { mode, timezone }
       });
       if (error) throw error;
       setRealignData(data);
