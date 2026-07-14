@@ -71,7 +71,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   try {
     if (!LOVABLE_API_KEY) throw new Error("Missing LOVABLE_API_KEY");
-    const { text, pillar } = await req.json();
+    const { text, pillar, exclude } = await req.json();
+    const excludeList: string[] = Array.isArray(exclude) ? exclude.filter((u) => typeof u === "string") : [];
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "text required" }), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
     }
