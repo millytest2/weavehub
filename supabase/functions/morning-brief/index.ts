@@ -363,18 +363,18 @@ CRITICAL RULES:
                       priority: { type: "string", enum: ["HIGH", "NICE_TO_HAVE"] },
                       sources: {
                         type: "array",
-                        description: "The 2-4 specific data points that wove together to produce this action. Each source is a thread in the weave.",
+                        description: "The threads that wove together to produce this action. Cross-reference AGGRESSIVELY: pull from captures, patterns, journals, gems, experiments, weekly plan, milestones, energy patterns, and identity/through-line. Minimum 5 threads — every action must show the weave.",
                         items: {
                           type: "object",
                           properties: {
-                            label: { type: "string", description: "Short label (3-6 words) e.g. 'Chess insight Mar 28', 'Health gap 4 days', 'June milestone'" },
-                            type: { type: "string", enum: ["capture", "pattern", "goal", "journal", "gem", "experiment", "gap"] },
-                            detail: { type: "string", description: "One sentence explaining this thread's connection" }
+                            label: { type: "string", description: "Short label (3-6 words) e.g. 'Chess insight Mar 28', 'Health gap 4 days', 'June milestone', 'Through-line: polymath'" },
+                            type: { type: "string", enum: ["capture", "pattern", "goal", "journal", "gem", "experiment", "gap", "identity", "milestone", "energy"] },
+                            detail: { type: "string", description: "One sentence explaining this thread's connection to the action" }
                           },
                           required: ["label", "type", "detail"]
                         },
-                        minItems: 2,
-                        maxItems: 4
+                        minItems: 5,
+                        maxItems: 8
                       }
                     },
                     required: ["action_text", "why", "impact", "time_estimate", "pillar", "action_type", "priority", "sources"]
