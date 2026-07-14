@@ -71,8 +71,9 @@ serve(async (req) => {
       });
     }
 
-    const { mode } = await req.json();
+    const { mode, timezone } = await req.json();
     const realignMode: "push" | "flow" = mode === "push" ? "push" : "flow";
+    const tz: string = typeof timezone === "string" && timezone ? timezone : "UTC";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -143,8 +144,9 @@ RULES:
 
       userMessage = "I want to push. Show me where I am vs where I want to be, and what move would close the gap fastest.";
     } else {
-      // Get current hour for time-aware suggestions
-      const currentHour = new Date().getHours();
+      // Get current hour in USER's timezone
+      const hourStr = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }).format(new Date());
+      const currentHour = parseInt(hourStr, 10);
       const timeOfDay = currentHour < 12 ? "morning" : currentHour < 17 ? "afternoon" : currentHour < 21 ? "evening" : "night";
       
       systemPrompt = `You are a values check-in mirror. Not therapy. Not productivity. Just clarity on what matters.

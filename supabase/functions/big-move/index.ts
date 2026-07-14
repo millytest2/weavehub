@@ -33,6 +33,10 @@ serve(async (req) => {
   }
 
   try {
+    let timezone: string | undefined;
+    try { const body = await req.json(); timezone = body?.timezone; } catch { /* no body */ }
+    const tz = timezone || "UTC";
+
     const authHeader = req.headers.get("authorization");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -61,14 +65,16 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    // Recent thread milestone (current month focus)
-    const now = new Date();
+    // Recent thread milestone (current month focus in user's timezone)
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "numeric" }).formatToParts(new Date());
+    const currentYear = parseInt(parts.find(p => p.type === "year")?.value || `${new Date().getFullYear()}`, 10);
+    const currentMonth = parseInt(parts.find(p => p.type === "month")?.value || `${new Date().getMonth() + 1}`, 10);
     const { data: milestone } = await supabase
       .from("thread_milestones")
       .select("title, description, capability_focus")
       .eq("user_id", user.id)
-      .eq("year", now.getFullYear())
-      .eq("month_number", now.getMonth() + 1)
+      .eq("year", currentYear)
+      .eq("month_number", currentMonth)
       .maybeSingle();
 
     // Last 7 days of completed actions to detect consistency on the big thing
