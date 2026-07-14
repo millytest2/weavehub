@@ -304,8 +304,8 @@ TASK: Generate a morning brief with these EXACT sections:
 1. WHAT_SHIFTED: 2-3 bullet points about what changed in the last 48 hours. Reference specific journal entries, captures, or patterns WITH dates. Be concrete — "You mentioned X on [date]" not "You've been thinking about X".
 
 2. THREE RECOMMENDED ACTIONS (one per type):
-   - ACTION 1 (goal_gap): Addresses the biggest gap in their milestones or weekly intentions
-   - ACTION 2 (domain_balance): Addresses a neglected domain or leverages a learned pattern
+   - ACTION 1 (goal_gap): MUST come from "TODAY'S IDEAL-WEEK ANCHORS" if any are unfinished — the user pre-committed to these for TODAY. Only fall back to weekly intentions / milestones if today has no anchors.
+   - ACTION 2 (domain_balance): Addresses a neglected domain or leverages a learned pattern (respect the ideal-week pillar mix — don't stack on domains already covered today)
    - ACTION 3 (capture_test): Tests or applies something from a recent capture/insight
    
    Each action needs: action_text, why (citing specific user data with dates), impact (connection to their goal), time_estimate, pillar, action_type
