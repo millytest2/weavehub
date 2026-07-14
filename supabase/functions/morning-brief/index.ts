@@ -74,7 +74,13 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ===== GATHER ALL USER DATA =====
+    if (existingBrief && force) {
+      // Wipe today's brief + tasks so we truly regenerate
+      await supabase.from("daily_tasks").delete().eq("daily_brief_id", existingBrief.id);
+      await supabase.from("daily_briefs").delete().eq("id", existingBrief.id);
+    }
+
+
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
