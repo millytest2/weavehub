@@ -108,8 +108,8 @@ serve(async (req) => {
       supabase.from("daily_tasks").select("*").eq("user_id", user.id).gte("task_date", sevenDaysAgo.split('T')[0]).order("task_date", { ascending: false }),
       // Action history (completed actions, last 30 days)
       supabase.from("action_history").select("action_text, pillar, action_date, why_it_mattered").eq("user_id", user.id).gte("action_date", thirtyDaysAgo.split('T')[0]).order("action_date", { ascending: false }).limit(30),
-      // Weekly intentions
-      supabase.from("weekly_intentions").select("text, pillar, completed").eq("user_id", user.id).eq("week_number", currentWeek).eq("year", currentYear),
+      // Weekly intentions — include day_of_week so we can anchor today's plan
+      supabase.from("weekly_intentions").select("text, pillar, completed, day_of_week").eq("user_id", user.id).eq("week_number", currentWeek).eq("year", currentYear),
       // Monthly plans
       supabase.from("monthly_plans").select("text, plan_type, completed").eq("user_id", user.id).eq("month_number", currentMonth).eq("year", currentYear),
       // Thread milestones
@@ -225,8 +225,15 @@ serve(async (req) => {
       .map(a => `- [${a.action_date}] [${a.pillar}] ${a.action_text}`)
       .join('\n');
 
-    const weeklyIntentionsText = weeklyIntentions
-      .map(w => `- ${w.completed ? '✓' : '○'} [${w.pillar || 'General'}] ${w.text}`)
+    // Today's day-of-week (0=Mon..6=Sun) for the user's ideal week anchoring
+    const dow = (new Date().getDay() + 6) % 7;
+    const todayIntentions = weeklyIntentions.filter((w: any) => w.day_of_week === dow);
+    const anyDayIntentions = weeklyIntentions.filter((w: any) => w.day_of_week === null || w.day_of_week === undefined);
+    const todayIntentionsText = todayIntentions
+      .map((w: any) => `- ${w.completed ? '✓' : '○'} [${w.pillar || 'General'}] ${w.text}`)
+      .join('\n');
+    const weeklyIntentionsText = [...anyDayIntentions, ...weeklyIntentions.filter((w: any) => w.day_of_week !== dow && w.day_of_week !== null)]
+      .map((w: any) => `- ${w.completed ? '✓' : '○'} [day ${w.day_of_week ?? 'any'}] [${w.pillar || 'General'}] ${w.text}`)
       .join('\n');
 
     const monthlyPlansText = monthlyPlans
@@ -256,7 +263,10 @@ WEEKLY FOCUS: ${identity?.weekly_focus || 'Not set'}
 2026 DIRECTION: ${identity?.year_note || 'Not set'}
 LIFE DOMAINS: ${identity?.life_domains || 'Not set'}
 
-WEEKLY INTENTIONS (this week):
+TODAY'S IDEAL-WEEK ANCHORS (day ${dow} of Mon..Sun — HIGHEST PRIORITY, user pre-committed to these for today):
+${todayIntentionsText || 'None specifically anchored to today'}
+
+OTHER WEEKLY INTENTIONS (any-day + other days this week — use for balance/context):
 ${weeklyIntentionsText || 'None set'}
 
 MONTHLY PLANS:
@@ -294,8 +304,8 @@ TASK: Generate a morning brief with these EXACT sections:
 1. WHAT_SHIFTED: 2-3 bullet points about what changed in the last 48 hours. Reference specific journal entries, captures, or patterns WITH dates. Be concrete — "You mentioned X on [date]" not "You've been thinking about X".
 
 2. THREE RECOMMENDED ACTIONS (one per type):
-   - ACTION 1 (goal_gap): Addresses the biggest gap in their milestones or weekly intentions
-   - ACTION 2 (domain_balance): Addresses a neglected domain or leverages a learned pattern
+   - ACTION 1 (goal_gap): MUST come from "TODAY'S IDEAL-WEEK ANCHORS" if any are unfinished — the user pre-committed to these for TODAY. Only fall back to weekly intentions / milestones if today has no anchors.
+   - ACTION 2 (domain_balance): Addresses a neglected domain or leverages a learned pattern (respect the ideal-week pillar mix — don't stack on domains already covered today)
    - ACTION 3 (capture_test): Tests or applies something from a recent capture/insight
    
    Each action needs: action_text, why (citing specific user data with dates), impact (connection to their goal), time_estimate, pillar, action_type
