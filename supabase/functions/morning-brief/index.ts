@@ -23,9 +23,11 @@ serve(async (req) => {
     if (!user) throw new Error("Unauthorized");
 
     let timezone: string | undefined;
+    let force = false;
     try {
       const body = await req.json();
       timezone = body?.timezone;
+      force = body?.force === true;
     } catch { /* no body */ }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -48,7 +50,7 @@ serve(async (req) => {
       .eq("brief_date", today)
       .maybeSingle();
 
-    if (existingBrief) {
+    if (existingBrief && !force) {
       // Return existing brief with tasks
       const { data: tasks } = await supabase
         .from("daily_tasks")
@@ -72,7 +74,13 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ===== GATHER ALL USER DATA =====
+    if (existingBrief && force) {
+      // Wipe today's brief + tasks so we truly regenerate
+      await supabase.from("daily_tasks").delete().eq("daily_brief_id", existingBrief.id);
+      await supabase.from("daily_briefs").delete().eq("id", existingBrief.id);
+    }
+
+
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();

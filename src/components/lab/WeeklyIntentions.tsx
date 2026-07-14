@@ -3,6 +3,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +16,9 @@ import {
   MicOff,
   Sparkles,
   Loader2,
+  Wand2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getWeek, getYear, startOfWeek, addDays, format, isSameDay } from "date-fns";
@@ -87,6 +91,9 @@ export function WeeklyIntentions() {
   const [adding, setAdding] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null); // 0=Mon..6=Sun, null=any
+  const [showPlanPaste, setShowPlanPaste] = useState(false);
+  const [planText, setPlanText] = useState("");
+  const [parsingPlan, setParsingPlan] = useState(false);
   const [identityContext, setIdentityContext] = useState<{
     coreValues: string | null;
     yearNote: string | null;
@@ -202,6 +209,46 @@ export function WeeklyIntentions() {
       setSuggesting(false);
     }
   };
+
+  const parsePlan = async () => {
+    if (!user || !planText.trim() || parsingPlan) return;
+    setParsingPlan(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-weekly-plan", {
+        body: { text: planText.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const parsed: Array<{ text: string; pillar: string | null; day_of_week: number | null }> =
+        data?.intentions || [];
+      if (parsed.length === 0) {
+        toast.error("Couldn't break that down — try again");
+        return;
+      }
+      const inserts = parsed.map((p, i) => ({
+        user_id: user.id,
+        text: p.text,
+        week_number: weekNumber,
+        year,
+        sort_order: intentions.length + i,
+        pillar: p.pillar || detectPillar(p.text),
+        day_of_week: p.day_of_week,
+      }));
+      const { error: insErr } = await supabase.from("weekly_intentions").insert(inserts as any);
+      if (insErr) throw insErr;
+      toast.success(`Broke plan into ${inserts.length} items`);
+      setPlanText("");
+      setShowPlanPaste(false);
+      fetchIntentions();
+    } catch (err: any) {
+      console.error("parsePlan error", err);
+      toast.error(err.message || "Failed to parse plan");
+    } finally {
+      setParsingPlan(false);
+    }
+  };
+
+
 
   const toggleComplete = async (id: string, completed: boolean) => {
     try {
@@ -325,6 +372,49 @@ export function WeeklyIntentions() {
         <Button size="sm" className="h-9 px-3 shrink-0" onClick={addIntention} disabled={!newText.trim() || adding}>
           <Plus className="h-3.5 w-3.5" />
         </Button>
+      </div>
+
+      {/* Paste-a-plan: AI breakdown */}
+      <div className="rounded-xl border border-dashed border-border/40 bg-muted/20">
+        <button
+          onClick={() => setShowPlanPaste((v) => !v)}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <Wand2 className="h-3 w-3" />
+            Paste a full weekly plan — I'll break it down
+          </span>
+          {showPlanPaste ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        {showPlanPaste && (
+          <div className="px-3 pb-3 space-y-2">
+            <Textarea
+              value={planText}
+              onChange={(e) => setPlanText(e.target.value)}
+              placeholder={`Paste your weekly plan. Sections, targets, floors, day-specific commitments — I'll split into atomic items, pillar-tag them, and assign days when mentioned.\n\nExample:\nJob Search — Target 5-10 apps/day. Weekly floor: 33.\nBody — 4 sessions. Tuesday: 30-45m workout. Friday: gym.`}
+              className="min-h-[140px] text-xs"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-xs"
+                onClick={() => { setPlanText(""); setShowPlanPaste(false); }}
+                disabled={parsingPlan}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={parsePlan}
+                disabled={!planText.trim() || parsingPlan}
+              >
+                {parsingPlan ? <><Loader2 className="h-3 w-3 animate-spin" /> Weaving…</> : <><Wand2 className="h-3 w-3" /> Break it down</>}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {identityContext && intentions.length < 3 && (
