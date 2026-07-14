@@ -263,7 +263,10 @@ WEEKLY FOCUS: ${identity?.weekly_focus || 'Not set'}
 2026 DIRECTION: ${identity?.year_note || 'Not set'}
 LIFE DOMAINS: ${identity?.life_domains || 'Not set'}
 
-WEEKLY INTENTIONS (this week):
+TODAY'S IDEAL-WEEK ANCHORS (day ${dow} of Mon..Sun — HIGHEST PRIORITY, user pre-committed to these for today):
+${todayIntentionsText || 'None specifically anchored to today'}
+
+OTHER WEEKLY INTENTIONS (any-day + other days this week — use for balance/context):
 ${weeklyIntentionsText || 'None set'}
 
 MONTHLY PLANS:
