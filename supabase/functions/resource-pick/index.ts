@@ -71,7 +71,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   try {
     if (!LOVABLE_API_KEY) throw new Error("Missing LOVABLE_API_KEY");
-    const { text, pillar } = await req.json();
+    const { text, pillar, exclude } = await req.json();
+    const excludeList: string[] = Array.isArray(exclude) ? exclude.filter((u) => typeof u === "string") : [];
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "text required" }), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
     }
@@ -121,6 +122,7 @@ Deno.serve(async (req) => {
       ...vid.map((x: any) => ({ ...x, _type: "video" })),
     ]
       .filter((x) => x?.url && x?.title)
+      .filter((x) => !excludeList.some((u) => x.url === u || x.url?.includes(u)))
       .slice(0, 20);
 
     const system = `You pick ONE fresh, high-signal read/watch/listen for a specific person's SPECIFIC current item.
@@ -150,6 +152,7 @@ Recent captures: ${recentCaptures || "(none)"}
 FRESH CANDIDATES FROM WEB SEARCH (last month):
 ${candidateBlock}
 
+${excludeList.length ? `DO NOT return any of these URLs (user rejected them): ${excludeList.join(", ")}\n` : ""}
 Pick the ONE best match that ties the item to who they are. If none fit tightly, return a real 2024-2025 alternative you know exists — never fabricate URLs.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

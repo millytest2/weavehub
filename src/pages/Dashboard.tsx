@@ -165,35 +165,62 @@ const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
   const key = String(hashStr(`${text}|${pillar || ""}`));
   const [fresh, setFresh] = useState<FreshPick | null>(() => loadCached(key));
   const [loading, setLoading] = useState(false);
+  const [rejected, setRejected] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`rpick:reject:${key}`) || "[]"); } catch { return []; }
+  });
 
-  useEffect(() => {
-    if (fresh || !text) return;
-    let cancelled = false;
+  const fetchPick = (excludeUrls: string[]) => {
+    if (!text) return;
     setLoading(true);
     supabase.functions
-      .invoke("resource-pick", { body: { text, pillar } })
+      .invoke("resource-pick", { body: { text, pillar, exclude: excludeUrls } })
       .then(({ data }) => {
-        if (cancelled) return;
         if (data && !data.error && data.url && data.title) {
           const v: FreshPick = { title: data.title, author: data.author || "", url: data.url, why: data.why || "", type: data.type || "read" };
           saveCached(key, v);
           setFresh(v);
         }
       })
-      .finally(() => !cancelled && setLoading(false));
-    return () => { cancelled = true; };
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (fresh || !text) return;
+    fetchPick(rejected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+
+  const swap = () => {
+    if (loading) return;
+    const current = fresh?.url;
+    const nextRejected = current ? Array.from(new Set([...rejected, current])) : rejected;
+    setRejected(nextRejected);
+    try { localStorage.setItem(`rpick:reject:${key}`, JSON.stringify(nextRejected.slice(-10))); } catch {}
+    try { localStorage.removeItem(`rpick:${key}`); } catch {}
+    freshCache.delete(key);
+    setFresh(null);
+    fetchPick(nextRejected);
+  };
 
   const pick = fresh ?? { title: fallback.t, author: fallback.a, url: fallback.u, why: fallback.why, type: "essay" };
   const typeLabel = pick.type ? pick.type.toUpperCase() : "READ";
 
   return (
     <div className="mt-4 pt-3 border-t border-border/20">
-      <p className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-1 flex items-center gap-1.5">
-        <span>{fresh ? `Fresh ${typeLabel.toLowerCase()}` : "A read that connects"}</span>
-        {loading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <p className="text-[9px] uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1.5">
+          <span>{fresh ? `Fresh ${typeLabel.toLowerCase()}` : "A read that connects"}</span>
+          {loading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+        </p>
+        <button
+          onClick={swap}
+          disabled={loading}
+          className="text-[9px] uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors disabled:opacity-40"
+          title="Not it — find another"
+        >
+          Swap
+        </button>
+      </div>
       <a href={pick.url} target="_blank" rel="noopener noreferrer" className="text-[12px] text-primary/70 hover:text-primary hover:underline font-medium">
         {pick.title}
       </a>

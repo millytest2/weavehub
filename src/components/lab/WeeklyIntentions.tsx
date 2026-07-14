@@ -453,82 +453,92 @@ export function WeeklyIntentions() {
       )}
 
       {/* Grouped breakdown when viewing all; flat interactive list when a day is selected */}
-      {selectedDay === null && intentions.length > 0 && (
-        <div className="space-y-3 pt-1">
-          {[...Array(7)].map((_, idx) => {
-            const items = byDay[idx] || [];
-            if (items.length === 0) return null;
-            const dayDate = addDays(weekStart, idx);
-            const isToday = isSameDay(dayDate, today);
-            return (
-              <div key={idx} className={`rounded-lg border p-3 ${isToday ? "border-primary/40 bg-primary/5" : "border-border/40 bg-muted/10"}`}>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className={`text-xs font-semibold ${isToday ? "text-primary" : "text-foreground/80"}`}>
-                    {FULL_DAY_LABELS[idx]}
+      {selectedDay === null && intentions.length > 0 && (() => {
+        const sortItems = (arr: Intention[]) =>
+          [...arr].sort((a, b) => {
+            if (a.completed !== b.completed) return a.completed ? 1 : -1;
+            const pa = a.pillar || "zzz";
+            const pb = b.pillar || "zzz";
+            if (pa !== pb) return pa.localeCompare(pb);
+            return a.sort_order - b.sort_order;
+          });
+
+        const renderItem = (it: Intention, showSetDay = false) => (
+          <li key={it.id} className="flex items-start gap-2 group py-1">
+            <button onClick={() => toggleComplete(it.id, it.completed)} className="shrink-0 mt-0.5" aria-label="toggle complete">
+              {it.completed ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Circle className="h-3.5 w-3.5 text-muted-foreground/60" />}
+            </button>
+            <span className={`text-xs leading-snug flex-1 ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/85"}`}>
+              {it.text}
+            </span>
+            {it.pillar && (
+              <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}>
+                {it.pillar}
+              </Badge>
+            )}
+            {showSetDay && (
+              <button
+                onClick={() => {
+                  const next = it.day_of_week === null ? 0 : it.day_of_week >= 6 ? null : it.day_of_week + 1;
+                  setDay(it.id, next);
+                }}
+                className="text-[9px] h-4 px-1.5 rounded border border-border/40 text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
+                title="Assign a day"
+              >
+                set day
+              </button>
+            )}
+            <button onClick={() => removeIntention(it.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" aria-label="remove">
+              <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+            </button>
+          </li>
+        );
+
+        return (
+          <div className="space-y-2 pt-1">
+            {/* Unscheduled at top — soft, easy to triage */}
+            {byDay.any.length > 0 && (
+              <div className="rounded-lg border border-dashed border-border/40 bg-muted/5 p-3">
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Unscheduled</span>
+                  <span className="text-[10px] text-muted-foreground/50">
+                    {byDay.any.filter(i => i.completed).length}/{byDay.any.length}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60">{format(dayDate, "MMM d")}</span>
-                  {isToday && <span className="text-[9px] text-primary/70 uppercase tracking-wider">today</span>}
                 </div>
-                <ul className="space-y-1">
-                  {items.map((it) => (
-                    <li key={it.id} className="flex items-start gap-2 group">
-                      <button onClick={() => toggleComplete(it.id, it.completed)} className="shrink-0 mt-0.5">
-                        {it.completed ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Circle className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </button>
-                      {it.pillar && (
-                        <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}>
-                          {it.pillar}
-                        </Badge>
-                      )}
-                      <span className={`text-xs leading-snug flex-1 ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/85"}`}>
-                        {it.text}
-                      </span>
-                      <button onClick={() => removeIntention(it.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <ul className="divide-y divide-border/20">{sortItems(byDay.any).map((it) => renderItem(it, true))}</ul>
               </div>
-            );
-          })}
-          {byDay.any.length > 0 && (
-            <div className="rounded-lg border border-dashed border-border/40 bg-muted/10 p-3">
-              <div className="text-xs font-semibold text-muted-foreground/80 mb-2">Any day</div>
-              <ul className="space-y-1">
-                {byDay.any.map((it) => (
-                  <li key={it.id} className="flex items-start gap-2 group">
-                    <button onClick={() => toggleComplete(it.id, it.completed)} className="shrink-0 mt-0.5">
-                      {it.completed ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Circle className="h-3.5 w-3.5 text-muted-foreground" />}
-                    </button>
-                    {it.pillar && (
-                      <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}>
-                        {it.pillar}
-                      </Badge>
-                    )}
-                    <span className={`text-xs leading-snug flex-1 ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/85"}`}>
-                      {it.text}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const next = it.day_of_week === null ? 0 : it.day_of_week >= 6 ? null : it.day_of_week + 1;
-                        setDay(it.id, next);
-                      }}
-                      className="text-[9px] h-4 px-1.5 rounded border border-border/40 text-muted-foreground hover:text-foreground shrink-0"
-                      title="Assign a day"
-                    >
-                      set day
-                    </button>
-                    <button onClick={() => removeIntention(it.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+
+            {/* Mon–Sun, always in order, only rendered when items exist */}
+            {[...Array(7)].map((_, idx) => {
+              const items = byDay[idx] || [];
+              if (items.length === 0) return null;
+              const dayDate = addDays(weekStart, idx);
+              const isToday = isSameDay(dayDate, today);
+              const done = items.filter((i) => i.completed).length;
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-lg border p-3 ${isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-background/40"}`}
+                >
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <div className="flex items-baseline gap-2">
+                      <span className={`text-[11px] font-semibold uppercase tracking-wider ${isToday ? "text-primary" : "text-foreground/70"}`}>
+                        {FULL_DAY_LABELS[idx]}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/50">{format(dayDate, "MMM d")}</span>
+                      {isToday && <span className="text-[9px] text-primary/70 uppercase tracking-wider">today</span>}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/50">{done}/{items.length}</span>
+                  </div>
+                  <ul className="divide-y divide-border/20">{sortItems(items).map((it) => renderItem(it, false))}</ul>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
 
       {selectedDay !== null && filtered.length > 0 && (
         <div className="space-y-1">
