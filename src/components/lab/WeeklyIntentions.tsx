@@ -291,15 +291,30 @@ export function WeeklyIntentions() {
   const filtered =
     selectedDay === null ? intentions : intentions.filter((i) => i.day_of_week === selectedDay || i.day_of_week === null);
 
+  // Group by day for the full breakdown (used when "Any day" is selected)
+  const byDay: Record<string, Intention[]> = { any: [] };
+  for (let i = 0; i < 7; i++) byDay[i] = [];
+  for (const it of intentions) {
+    if (it.day_of_week === null || it.day_of_week === undefined) byDay.any.push(it);
+    else byDay[it.day_of_week].push(it);
+  }
+
+  const FULL_DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
   return (
-    <Card className="p-4 rounded-2xl space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ListTodo className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">This Week's Plan</h3>
+    <Card className="p-4 rounded-2xl space-y-3 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <ListTodo className="h-4 w-4 text-primary mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold">This Week</h3>
+            <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+              Paste your ideal Mon–Sun below and I'll reverse-engineer it into daily anchors — or add items one at a time.
+            </p>
+          </div>
         </div>
         {intentions.length > 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground shrink-0">
             {completedCount}/{intentions.length} done
           </span>
         )}
