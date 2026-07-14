@@ -413,7 +413,7 @@ const Dashboard = () => {
           body: { timezone, top_up: true, skipped_pillar: action.pillar },
         });
         hasLoaded.current = false;
-        await fetchBrief();
+        await fetchBrief({ force: true });
       } catch (e) {
         console.error("Top-up after skip failed:", e);
       }
