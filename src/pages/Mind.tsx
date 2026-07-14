@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, Scale, FlaskConical } from "lucide-react";
+import { Compass, Route, Sparkle, FlaskConical } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
-import { DecisionMirror } from "@/components/dashboard/DecisionMirror";
+import { ReflectionMirror } from "@/components/mind/ReflectionMirror";
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,7 +39,7 @@ const Mind = () => {
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
-    { id: "mirror" as MindTab, label: "Mirror", icon: Scale },
+    { id: "mirror" as MindTab, label: "Mirror", icon: Sparkle },
   ];
 
   return (
@@ -92,7 +92,7 @@ const Mind = () => {
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
-          {activeTab === "mirror" && <DecisionMirror embedded />}
+          {activeTab === "mirror" && <ReflectionMirror />}
         </motion.div>
       </AnimatePresence>
     </div>

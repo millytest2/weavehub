@@ -793,30 +793,6 @@ export const QuickCapture = () => {
                 {isSubmitting ? "Processing..." : captureType === "paste" ? "Save & Extract" : "Capture Insight"}
               </Button>
 
-              {/* Secondary actions - collapsed by default */}
-              <AnimatePresence>
-                {showMoreActions && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <SecondaryActions />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* More actions toggle */}
-              <button
-                onClick={() => setShowMoreActions(!showMoreActions)}
-                className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
-              >
-                <motion.div animate={{ rotate: showMoreActions ? 180 : 0 }}>
-                  <ChevronUp className="h-3 w-3" />
-                </motion.div>
-                {showMoreActions ? "Less" : "More actions"}
-              </button>
             </div>
           )}
         </DialogContent>
