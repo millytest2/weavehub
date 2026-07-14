@@ -9,7 +9,7 @@ import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "mirror" | "lab";
+type MindTab = "identity" | "thread" | "ask" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
