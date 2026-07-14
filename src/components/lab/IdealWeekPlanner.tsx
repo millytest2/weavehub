@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, CalendarRange, Sparkles, Brain, ShieldCheck, ArrowRight } from "lucide-react";
+import { Loader2, Wand2, CalendarRange, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { addDays, format, getWeek, getYear, startOfWeek } from "date-fns";
 
