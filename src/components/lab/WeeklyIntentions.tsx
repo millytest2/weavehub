@@ -494,28 +494,29 @@ export function WeeklyIntentions() {
           </li>
         );
 
+        // Disperse unscheduled: attach as "flex" items to today's card so they surface in-context.
+        const todayIdx = ((today.getDay() + 6) % 7); // Mon=0..Sun=6
+        const daysWithContent = new Set<number>();
+        for (let i = 0; i < 7; i++) if ((byDay[i] || []).length > 0) daysWithContent.add(i);
+        daysWithContent.add(todayIdx);
+
+        const flexByDay: Record<number, Intention[]> = {};
+        if (byDay.any.length > 0) {
+          // put all flex items on today's card; keeps things simple and always in-view
+          flexByDay[todayIdx] = byDay.any;
+        }
+
         return (
           <div className="space-y-2 pt-1">
-            {/* Unscheduled at top — soft, easy to triage */}
-            {byDay.any.length > 0 && (
-              <div className="rounded-lg border border-dashed border-border/40 bg-muted/5 p-3">
-                <div className="flex items-baseline justify-between mb-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Unscheduled</span>
-                  <span className="text-[10px] text-muted-foreground/50">
-                    {byDay.any.filter(i => i.completed).length}/{byDay.any.length}
-                  </span>
-                </div>
-                <ul className="divide-y divide-border/20">{sortItems(byDay.any).map((it) => renderItem(it, true))}</ul>
-              </div>
-            )}
-
-            {/* Mon–Sun, always in order, only rendered when items exist */}
+            {/* Mon–Sun, always in order, render if items or flex exist */}
             {[...Array(7)].map((_, idx) => {
               const items = byDay[idx] || [];
-              if (items.length === 0) return null;
+              const flex = flexByDay[idx] || [];
+              if (items.length === 0 && flex.length === 0) return null;
               const dayDate = addDays(weekStart, idx);
               const isToday = isSameDay(dayDate, today);
-              const done = items.filter((i) => i.completed).length;
+              const done = items.filter((i) => i.completed).length + flex.filter((i) => i.completed).length;
+              const total = items.length + flex.length;
               return (
                 <div
                   key={idx}
@@ -529,9 +530,48 @@ export function WeeklyIntentions() {
                       <span className="text-[10px] text-muted-foreground/50">{format(dayDate, "MMM d")}</span>
                       {isToday && <span className="text-[9px] text-primary/70 uppercase tracking-wider">today</span>}
                     </div>
-                    <span className="text-[10px] text-muted-foreground/50">{done}/{items.length}</span>
+                    <span className="text-[10px] text-muted-foreground/50">{done}/{total}</span>
                   </div>
-                  <ul className="divide-y divide-border/20">{sortItems(items).map((it) => renderItem(it, false))}</ul>
+                  <ul className="divide-y divide-border/20">
+                    {sortItems(items).map((it) => renderItem(it, false))}
+                    {flex.length > 0 && (
+                      <>
+                        {items.length > 0 && (
+                          <li className="pt-1.5 pb-0.5 text-[9px] uppercase tracking-wider text-muted-foreground/50">
+                            Flex — assign a day
+                          </li>
+                        )}
+                        {sortItems(flex).map((it) => (
+                          <li key={it.id} className="flex items-start gap-2 group py-1">
+                            <button onClick={() => toggleComplete(it.id, it.completed)} className="shrink-0 mt-0.5" aria-label="toggle complete">
+                              {it.completed ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Circle className="h-3.5 w-3.5 text-muted-foreground/60" />}
+                            </button>
+                            <span className={`text-xs leading-snug flex-1 italic ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/75"}`}>
+                              {it.text}
+                            </span>
+                            {it.pillar && (
+                              <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}>
+                                {it.pillar}
+                              </Badge>
+                            )}
+                            <button
+                              onClick={() => {
+                                const next = it.day_of_week === null ? 0 : it.day_of_week >= 6 ? null : it.day_of_week + 1;
+                                setDay(it.id, next);
+                              }}
+                              className="text-[9px] h-4 px-1.5 rounded border border-border/40 text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
+                              title="Assign a day"
+                            >
+                              set day
+                            </button>
+                            <button onClick={() => removeIntention(it.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" aria-label="remove">
+                              <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
+                  </ul>
                 </div>
               );
             })}

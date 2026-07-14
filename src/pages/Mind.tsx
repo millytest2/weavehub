@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, Sparkle, FlaskConical } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
-import { ReflectionMirror } from "@/components/mind/ReflectionMirror";
+import { AskWeave } from "@/components/mind/AskWeave";
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "mirror" | "lab";
+type MindTab = "identity" | "thread" | "ask" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
@@ -39,7 +39,7 @@ const Mind = () => {
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
-    { id: "mirror" as MindTab, label: "Mirror", icon: Sparkle },
+    { id: "ask" as MindTab, label: "Ask", icon: MessageCircle },
   ];
 
   return (
@@ -92,7 +92,7 @@ const Mind = () => {
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
-          {activeTab === "mirror" && <ReflectionMirror />}
+          {activeTab === "ask" && <AskWeave />}
         </motion.div>
       </AnimatePresence>
     </div>
