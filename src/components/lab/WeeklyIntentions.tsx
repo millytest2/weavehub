@@ -374,6 +374,49 @@ export function WeeklyIntentions() {
         </Button>
       </div>
 
+      {/* Paste-a-plan: AI breakdown */}
+      <div className="rounded-xl border border-dashed border-border/40 bg-muted/20">
+        <button
+          onClick={() => setShowPlanPaste((v) => !v)}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <Wand2 className="h-3 w-3" />
+            Paste a full weekly plan — I'll break it down
+          </span>
+          {showPlanPaste ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        {showPlanPaste && (
+          <div className="px-3 pb-3 space-y-2">
+            <Textarea
+              value={planText}
+              onChange={(e) => setPlanText(e.target.value)}
+              placeholder={`Paste your weekly plan. Sections, targets, floors, day-specific commitments — I'll split into atomic items, pillar-tag them, and assign days when mentioned.\n\nExample:\nJob Search — Target 5-10 apps/day. Weekly floor: 33.\nBody — 4 sessions. Tuesday: 30-45m workout. Friday: gym.`}
+              className="min-h-[140px] text-xs"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-xs"
+                onClick={() => { setPlanText(""); setShowPlanPaste(false); }}
+                disabled={parsingPlan}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={parsePlan}
+                disabled={!planText.trim() || parsingPlan}
+              >
+                {parsingPlan ? <><Loader2 className="h-3 w-3 animate-spin" /> Weaving…</> : <><Wand2 className="h-3 w-3" /> Break it down</>}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {identityContext && intentions.length < 3 && (
         <Button
           variant="outline"
