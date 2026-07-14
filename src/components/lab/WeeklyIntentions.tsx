@@ -210,6 +210,46 @@ export function WeeklyIntentions() {
     }
   };
 
+  const parsePlan = async () => {
+    if (!user || !planText.trim() || parsingPlan) return;
+    setParsingPlan(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-weekly-plan", {
+        body: { text: planText.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const parsed: Array<{ text: string; pillar: string | null; day_of_week: number | null }> =
+        data?.intentions || [];
+      if (parsed.length === 0) {
+        toast.error("Couldn't break that down — try again");
+        return;
+      }
+      const inserts = parsed.map((p, i) => ({
+        user_id: user.id,
+        text: p.text,
+        week_number: weekNumber,
+        year,
+        sort_order: intentions.length + i,
+        pillar: p.pillar || detectPillar(p.text),
+        day_of_week: p.day_of_week,
+      }));
+      const { error: insErr } = await supabase.from("weekly_intentions").insert(inserts as any);
+      if (insErr) throw insErr;
+      toast.success(`Broke plan into ${inserts.length} items`);
+      setPlanText("");
+      setShowPlanPaste(false);
+      fetchIntentions();
+    } catch (err: any) {
+      console.error("parsePlan error", err);
+      toast.error(err.message || "Failed to parse plan");
+    } finally {
+      setParsingPlan(false);
+    }
+  };
+
+
+
   const toggleComplete = async (id: string, completed: boolean) => {
     try {
       await supabase.from("weekly_intentions").update({ completed: !completed }).eq("id", id);
