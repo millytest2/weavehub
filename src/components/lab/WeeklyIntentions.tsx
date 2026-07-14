@@ -91,6 +91,9 @@ export function WeeklyIntentions() {
   const [adding, setAdding] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null); // 0=Mon..6=Sun, null=any
+  const [showPlanPaste, setShowPlanPaste] = useState(false);
+  const [planText, setPlanText] = useState("");
+  const [parsingPlan, setParsingPlan] = useState(false);
   const [identityContext, setIdentityContext] = useState<{
     coreValues: string | null;
     yearNote: string | null;
