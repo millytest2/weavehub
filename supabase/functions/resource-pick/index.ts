@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
       ...vid.map((x: any) => ({ ...x, _type: "video" })),
     ]
       .filter((x) => x?.url && x?.title)
+      .filter((x) => !excludeList.some((u) => x.url === u || x.url?.includes(u)))
       .slice(0, 20);
 
     const system = `You pick ONE fresh, high-signal read/watch/listen for a specific person's SPECIFIC current item.
