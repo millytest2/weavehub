@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, CalendarRange, Sparkles, Brain, ShieldCheck, ArrowRight } from "lucide-react";
+import { Loader2, Wand2, CalendarRange, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { addDays, format, getWeek, getYear, startOfWeek } from "date-fns";
 
@@ -191,13 +191,13 @@ export function IdealWeekPlanner() {
                 return (
                   <div
                     key={idx}
-                    className={`rounded-lg border p-2 min-h-[110px] ${
+                    className={`rounded-lg border p-2 min-h-[70px] ${
                       isToday
                         ? "border-primary/40 bg-primary/5"
                         : "border-border/40 bg-muted/20"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center justify-between mb-1">
                       <span className={`text-[10px] font-semibold ${isToday ? "text-primary" : "text-muted-foreground"}`}>
                         {label}
                       </span>
@@ -205,26 +205,13 @@ export function IdealWeekPlanner() {
                         {format(dayDate, "d")}
                       </span>
                     </div>
-                    <div className="space-y-1">
-                      {items.slice(0, 5).map((it) => (
-                        <div
-                          key={it.id}
-                          className={`text-[10px] leading-tight ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/80"}`}
-                        >
-                          {it.pillar && (
-                            <span className={`inline-block text-[8px] px-1 rounded mr-1 ${PILLAR_COLORS[it.pillar] || "bg-muted"}`}>
-                              {it.pillar}
-                            </span>
-                          )}
-                          {it.text.length > 40 ? it.text.slice(0, 40) + "…" : it.text}
-                        </div>
-                      ))}
-                      {items.length > 5 && (
-                        <div className="text-[9px] text-muted-foreground/60">+{items.length - 5} more</div>
-                      )}
-                      {items.length === 0 && (
-                        <div className="text-[9px] text-muted-foreground/40 italic">open</div>
-                      )}
+                    <div className="text-center pt-1">
+                      <span className={`text-sm font-semibold ${isToday ? "text-primary" : "text-foreground/70"}`}>
+                        {items.length}
+                      </span>
+                      <div className="text-[9px] text-muted-foreground/60">
+                        {items.length === 1 ? "item" : "items"}
+                      </div>
                     </div>
                   </div>
                 );
@@ -248,6 +235,73 @@ export function IdealWeekPlanner() {
             </div>
           )}
 
+          {/* Full breakdown — day-by-day list with full text */}
+          {hasWeek && (
+            <div className="space-y-3 pt-2">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Breakdown
+              </div>
+              {[...Array(7)].map((_, idx) => {
+                const items = byDay[idx] || [];
+                if (items.length === 0) return null;
+                const dayDate = addDays(weekStart, idx);
+                const isToday = idx === todayIdx;
+                return (
+                  <div key={idx} className={`rounded-lg border p-3 ${isToday ? "border-primary/40 bg-primary/5" : "border-border/40 bg-muted/10"}`}>
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className={`text-xs font-semibold ${isToday ? "text-primary" : "text-foreground/80"}`}>
+                        {DAY_LABELS[idx]}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {format(dayDate, "MMM d")}
+                      </span>
+                      {isToday && <span className="text-[9px] text-primary/70 uppercase tracking-wider">today</span>}
+                    </div>
+                    <ul className="space-y-1.5">
+                      {items.map((it) => (
+                        <li key={it.id} className="flex items-start gap-2">
+                          {it.pillar && (
+                            <Badge
+                              variant="secondary"
+                              className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}
+                            >
+                              {it.pillar}
+                            </Badge>
+                          )}
+                          <span className={`text-xs leading-snug ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/85"}`}>
+                            {it.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+              {(byDay.any || []).length > 0 && (
+                <div className="rounded-lg border border-dashed border-border/40 bg-muted/10 p-3">
+                  <div className="text-xs font-semibold text-muted-foreground/80 mb-2">Any day</div>
+                  <ul className="space-y-1.5">
+                    {byDay.any.map((it) => (
+                      <li key={it.id} className="flex items-start gap-2">
+                        {it.pillar && (
+                          <Badge
+                            variant="secondary"
+                            className={`text-[9px] h-4 px-1.5 shrink-0 mt-0.5 ${PILLAR_COLORS[it.pillar] || "bg-muted text-muted-foreground"}`}
+                          >
+                            {it.pillar}
+                          </Badge>
+                        )}
+                        <span className={`text-xs leading-snug ${it.completed ? "line-through text-muted-foreground/50" : "text-foreground/85"}`}>
+                          {it.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* How this weaves */}
           {hasWeek && (
             <div className="rounded-xl border border-border/40 bg-muted/20 p-3 space-y-2">
@@ -263,27 +317,9 @@ export function IdealWeekPlanner() {
               </ul>
             </div>
           )}
-
-          {/* Sharpening, not dulling — critical thinking transparency */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Brain className="h-3 w-3 text-primary" />
-              <span className="text-[11px] font-semibold">Sharpening, not dulling</span>
-              <ShieldCheck className="h-3 w-3 text-primary/60 ml-auto" />
-            </div>
-            <p className="text-[10.5px] text-muted-foreground leading-relaxed">
-              Weave is designed to be the opposite of Instagram, ChatGPT, or Obsidian:
-            </p>
-            <ul className="text-[10.5px] text-muted-foreground space-y-1 leading-relaxed">
-              <li className="flex gap-1.5"><span className="text-primary/60">·</span><span><b className="text-foreground/80">You draw the week.</b> The AI never invents your ideal life — it only breaks down what YOU decide.</span></li>
-              <li className="flex gap-1.5"><span className="text-primary/60">·</span><span><b className="text-foreground/80">Show the work.</b> Every dashboard action cites the specific commitment, capture, or gap it came from.</span></li>
-              <li className="flex gap-1.5"><span className="text-primary/60">·</span><span><b className="text-foreground/80">Foundational questions.</b> The Critical Thinking Guard forces you to interrogate outputs, not accept them.</span></li>
-              <li className="flex gap-1.5"><span className="text-primary/60">·</span><span><b className="text-foreground/80">Friction over scroll.</b> No infinite feed. Every screen ends. When your reps are done, the app gets out of the way.</span></li>
-              <li className="flex gap-1.5"><span className="text-primary/60">·</span><span><b className="text-foreground/80">Named uncertainty.</b> Agents mark what they don't know instead of hallucinating confidence.</span></li>
-            </ul>
-          </div>
         </>
       )}
     </Card>
   );
 }
+
