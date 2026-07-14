@@ -5,21 +5,25 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Compass, RefreshCw, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
 
-type Category = "Bold" | "Solo" | "Social" | "Creative" | "Physical" | "Mind";
+type Category = "Play" | "Wander" | "Connect" | "Create" | "Body" | "Depth";
 type Difficulty = "easy" | "medium" | "hard";
+type Vibe = "Fun" | "Meaningful" | "Wild" | "Cozy";
 
 interface Quest {
   title: string;
   description: string;
   category: Category;
   difficulty: Difficulty;
+  vibe: Vibe;
   duration: string;
   proof: string;
   why: string;
+  value_hook?: string;
 }
 
-const CATEGORIES: Category[] = ["Bold", "Solo", "Social", "Creative", "Physical", "Mind"];
+const CATEGORIES: Category[] = ["Play", "Wander", "Connect", "Create", "Body", "Depth"];
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
+const VIBES: Vibe[] = ["Fun", "Meaningful", "Wild", "Cozy"];
 
 const difficultyDot: Record<Difficulty, string> = {
   easy: "bg-emerald-500/60",
@@ -33,19 +37,24 @@ interface Props {
 
 export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   const { user } = useAuth();
-  const [category, setCategory] = useState<Category>("Bold");
+  const [category, setCategory] = useState<Category>("Play");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
+  const [vibe, setVibe] = useState<Vibe>("Fun");
   const [quest, setQuest] = useState<Quest | null>(null);
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [seenTitles, setSeenTitles] = useState<string[]>([]);
 
-  const drawQuest = async (cat: Category = category, diff: Difficulty = difficulty) => {
+  const drawQuest = async (
+    cat: Category = category,
+    diff: Difficulty = difficulty,
+    vb: Vibe = vibe,
+  ) => {
     if (!user || loading) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("side-quest-generator", {
-        body: { category: cat, difficulty: diff, exclude: seenTitles.slice(-10) },
+        body: { category: cat, difficulty: diff, vibe: vb, exclude: seenTitles.slice(-10) },
       });
       if (error) throw error;
       if (data?.quest) {
@@ -60,26 +69,29 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
   };
 
   useEffect(() => {
-    if (user && !quest) drawQuest("Bold", "easy");
+    if (user && !quest) drawQuest("Play", "easy", "Fun");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-
   const handleCategory = (cat: Category) => {
     setCategory(cat);
-    drawQuest(cat, difficulty);
+    drawQuest(cat, difficulty, vibe);
   };
 
   const handleDifficulty = (diff: Difficulty) => {
     setDifficulty(diff);
-    drawQuest(category, diff);
+    drawQuest(category, diff, vibe);
+  };
+
+  const handleVibe = (vb: Vibe) => {
+    setVibe(vb);
+    drawQuest(category, difficulty, vb);
   };
 
   const handleAccept = async () => {
     if (!user || !quest || accepting) return;
     setAccepting(true);
     try {
-      // Check for active experiment
       const { data: active } = await supabase
         .from("experiments")
         .select("id, title")
@@ -93,7 +105,6 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
         return;
       }
 
-      // Parse duration -> days
       const dur = quest.duration.toLowerCase();
       let durationDays = 1;
       if (dur.includes("week")) durationDays = 7;
@@ -105,7 +116,7 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
         title: quest.title,
         description: quest.description,
         hypothesis: quest.why,
-        identity_shift_target: quest.why,
+        identity_shift_target: quest.value_hook || quest.why,
         steps: `${quest.description}\n\nProof of completion: ${quest.proof}`,
         duration: quest.duration,
         duration_days: durationDays,
@@ -119,7 +130,6 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
       if (error) throw error;
       toast.success("Quest accepted. It's a real experiment now.");
       onQuestAccepted?.();
-      // Auto-draw next quest for browsing
       drawQuest();
     } catch (err: any) {
       toast.error(err.message || "Couldn't accept quest");
@@ -138,7 +148,7 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
           </div>
           <div className="text-left">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50">Side Quest</p>
-            <p className="text-sm font-medium text-foreground/80">Break the loop — pick a lane, accept the rep</p>
+            <p className="text-sm font-medium text-foreground/80">Break the loop — pull toward the life you actually want</p>
           </div>
         </div>
       </div>
@@ -149,120 +159,145 @@ export const SideQuestDeck = ({ onQuestAccepted }: Props) => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
+          <div className="px-5 pb-5 space-y-4">
+            {/* Category chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => handleCategory(c)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full transition-all ${
+                    category === c
+                      ? "bg-primary/15 text-primary border border-primary/20"
+                      : "bg-muted/30 text-muted-foreground/60 hover:text-foreground border border-transparent"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
 
-            <div className="px-5 pb-5 space-y-4">
-              {/* Category chips */}
+            {/* Vibe chips */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40">Vibe</span>
               <div className="flex flex-wrap gap-1.5">
-                {CATEGORIES.map((c) => (
+                {VIBES.map((v) => (
                   <button
-                    key={c}
-                    onClick={() => handleCategory(c)}
-                    className={`text-[11px] px-2.5 py-1 rounded-full transition-all ${
-                      category === c
-                        ? "bg-primary/15 text-primary border border-primary/20"
-                        : "bg-muted/30 text-muted-foreground/60 hover:text-foreground border border-transparent"
+                    key={v}
+                    onClick={() => handleVibe(v)}
+                    className={`text-[10px] px-2 py-0.5 rounded-full transition-all ${
+                      vibe === v
+                        ? "bg-foreground/10 text-foreground/90 border border-foreground/20"
+                        : "text-muted-foreground/50 hover:text-foreground/80 border border-transparent"
                     }`}
                   >
-                    {c}
+                    {v}
                   </button>
                 ))}
               </div>
-
-              {/* Difficulty + refresh */}
-              <div className="flex items-center justify-between">
-                <div className="flex gap-1">
-                  {DIFFICULTIES.map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => handleDifficulty(d)}
-                      className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded transition-all flex items-center gap-1.5 ${
-                        difficulty === d
-                          ? "text-foreground/80"
-                          : "text-muted-foreground/40 hover:text-muted-foreground"
-                      }`}
-                    >
-                      <span className={`h-1.5 w-1.5 rounded-full ${difficultyDot[d]}`} />
-                      {d}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => drawQuest()}
-                  disabled={loading}
-                  className="text-[11px] text-muted-foreground/50 hover:text-foreground transition-colors flex items-center gap-1.5"
-                >
-                  <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-                  {loading ? "Drawing…" : "New quest"}
-                </button>
-              </div>
-
-              {/* Quest card */}
-              <AnimatePresence mode="wait">
-                {quest && (
-                  <motion.div
-                    key={quest.title}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.2 }}
-                    className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-5 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-base font-medium leading-snug text-foreground">{quest.title}</p>
-                      <span className="text-[10px] text-muted-foreground/50 whitespace-nowrap pt-1">
-                        {quest.duration}
-                      </span>
-                    </div>
-                    <p className="text-[13px] text-muted-foreground/70 leading-relaxed">{quest.description}</p>
-
-                    <div className="space-y-1.5 pt-1">
-                      <div className="flex gap-2 text-[11px] text-muted-foreground/50">
-                        <span className="text-muted-foreground/30 shrink-0">Proof:</span>
-                        <span>{quest.proof}</span>
-                      </div>
-                      {quest.why && (
-                        <div className="flex gap-2 text-[11px] text-primary/60 italic">
-                          <span className="text-muted-foreground/30 not-italic shrink-0">Why:</span>
-                          <span>{quest.why}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3 pt-2 border-t border-border/20">
-                      <button
-                        onClick={handleAccept}
-                        disabled={accepting}
-                        className="flex items-center gap-1.5 text-[12px] text-primary hover:text-primary/80 transition-colors font-medium"
-                      >
-                        {accepting ? (
-                          <RefreshCw className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Check className="h-3 w-3" />
-                        )}
-                        {accepting ? "Accepting…" : "Make it real"}
-                      </button>
-                      <button
-                        onClick={() => drawQuest()}
-                        disabled={loading}
-                        className="text-[12px] text-muted-foreground/40 hover:text-muted-foreground transition-colors flex items-center gap-1"
-                      >
-                        Skip
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {!quest && !loading && (
-                <div className="text-center py-8">
-                  <Sparkles className="h-5 w-5 mx-auto text-muted-foreground/20 mb-2" />
-                  <p className="text-xs text-muted-foreground/40">Pick a category to draw a quest.</p>
-                </div>
-              )}
             </div>
+
+            {/* Difficulty + refresh */}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-1">
+                {DIFFICULTIES.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => handleDifficulty(d)}
+                    className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded transition-all flex items-center gap-1.5 ${
+                      difficulty === d
+                        ? "text-foreground/80"
+                        : "text-muted-foreground/40 hover:text-muted-foreground"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${difficultyDot[d]}`} />
+                    {d}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => drawQuest()}
+                disabled={loading}
+                className="text-[11px] text-muted-foreground/50 hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+                {loading ? "Drawing…" : "New quest"}
+              </button>
+            </div>
+
+            {/* Quest card */}
+            <AnimatePresence mode="wait">
+              {quest && (
+                <motion.div
+                  key={quest.title}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-5 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-base font-medium leading-snug text-foreground">{quest.title}</p>
+                    <span className="text-[10px] text-muted-foreground/50 whitespace-nowrap pt-1">
+                      {quest.duration}
+                    </span>
+                  </div>
+                  <p className="text-[13px] text-muted-foreground/70 leading-relaxed">{quest.description}</p>
+
+                  {quest.value_hook && (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/8 border border-primary/15">
+                      <span className="text-[9px] uppercase tracking-widest text-primary/60">Hooks</span>
+                      <span className="text-[11px] text-primary/80">{quest.value_hook}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex gap-2 text-[11px] text-muted-foreground/50">
+                      <span className="text-muted-foreground/30 shrink-0">Proof:</span>
+                      <span>{quest.proof}</span>
+                    </div>
+                    {quest.why && (
+                      <div className="flex gap-2 text-[11px] text-primary/60 italic">
+                        <span className="text-muted-foreground/30 not-italic shrink-0">Why:</span>
+                        <span>{quest.why}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2 border-t border-border/20">
+                    <button
+                      onClick={handleAccept}
+                      disabled={accepting}
+                      className="flex items-center gap-1.5 text-[12px] text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      {accepting ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Check className="h-3 w-3" />
+                      )}
+                      {accepting ? "Accepting…" : "Make it real"}
+                    </button>
+                    <button
+                      onClick={() => drawQuest()}
+                      disabled={loading}
+                      className="text-[12px] text-muted-foreground/40 hover:text-muted-foreground transition-colors flex items-center gap-1"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!quest && !loading && (
+              <div className="text-center py-8">
+                <Sparkles className="h-5 w-5 mx-auto text-muted-foreground/20 mb-2" />
+                <p className="text-xs text-muted-foreground/40">Pick a category to draw a quest.</p>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
     </div>
   );
 };
-
