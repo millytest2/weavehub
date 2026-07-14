@@ -225,8 +225,15 @@ serve(async (req) => {
       .map(a => `- [${a.action_date}] [${a.pillar}] ${a.action_text}`)
       .join('\n');
 
-    const weeklyIntentionsText = weeklyIntentions
-      .map(w => `- ${w.completed ? '✓' : '○'} [${w.pillar || 'General'}] ${w.text}`)
+    // Today's day-of-week (0=Mon..6=Sun) for the user's ideal week anchoring
+    const dow = (new Date().getDay() + 6) % 7;
+    const todayIntentions = weeklyIntentions.filter((w: any) => w.day_of_week === dow);
+    const anyDayIntentions = weeklyIntentions.filter((w: any) => w.day_of_week === null || w.day_of_week === undefined);
+    const todayIntentionsText = todayIntentions
+      .map((w: any) => `- ${w.completed ? '✓' : '○'} [${w.pillar || 'General'}] ${w.text}`)
+      .join('\n');
+    const weeklyIntentionsText = [...anyDayIntentions, ...weeklyIntentions.filter((w: any) => w.day_of_week !== dow && w.day_of_week !== null)]
+      .map((w: any) => `- ${w.completed ? '✓' : '○'} [day ${w.day_of_week ?? 'any'}] [${w.pillar || 'General'}] ${w.text}`)
       .join('\n');
 
     const monthlyPlansText = monthlyPlans
