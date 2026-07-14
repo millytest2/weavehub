@@ -152,6 +152,7 @@ Recent captures: ${recentCaptures || "(none)"}
 FRESH CANDIDATES FROM WEB SEARCH (last month):
 ${candidateBlock}
 
+${excludeList.length ? `DO NOT return any of these URLs (user rejected them): ${excludeList.join(", ")}\n` : ""}
 Pick the ONE best match that ties the item to who they are. If none fit tightly, return a real 2024-2025 alternative you know exists — never fabricate URLs.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
