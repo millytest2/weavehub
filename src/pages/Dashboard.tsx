@@ -825,7 +825,7 @@ const Dashboard = () => {
                       await supabase.from("daily_tasks").delete().eq("daily_brief_id", currentBriefId);
                       await supabase.from("daily_briefs").delete().eq("id", currentBriefId);
                     }
-                    await fetchBrief();
+                    await fetchBrief({ force: true, expectDifferentFrom: currentBriefId });
                     await fetchPropulsionData();
                     toast.success("Fresh brief woven");
                   } catch (e: any) {
