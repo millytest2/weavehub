@@ -92,7 +92,7 @@ const Mind = () => {
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
-          {activeTab === "mirror" && <ReflectionMirror />}
+          {activeTab === "ask" && <AskWeave />}
         </motion.div>
       </AnimatePresence>
     </div>
