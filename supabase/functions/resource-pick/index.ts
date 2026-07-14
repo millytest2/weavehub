@@ -115,6 +115,14 @@ Deno.serve(async (req) => {
       firecrawlSearch(queries[3].q, "qdr:m", 4),
     ]);
 
+    const BLOCKLIST = [
+      "medium.com", "linkedin.com/pulse", "quora.com", "reddit.com",
+      "pinterest.", "wikihow.com", "geeksforgeeks", "indeed.com",
+      "hubspot.com/blog", "forbes.com/sites/", "entrepreneur.com",
+      "businessinsider.com", "inc.com", "fastcompany.com/9",
+    ];
+
+    const seen = new Set<string>();
     const candidates = [
       ...essay.map((x: any) => ({ ...x, _type: "essay" })),
       ...sub.map((x: any) => ({ ...x, _type: "substack" })),
@@ -123,22 +131,36 @@ Deno.serve(async (req) => {
     ]
       .filter((x) => x?.url && x?.title)
       .filter((x) => !excludeList.some((u) => x.url === u || x.url?.includes(u)))
-      .slice(0, 20);
+      .filter((x) => !BLOCKLIST.some((b) => x.url.toLowerCase().includes(b)))
+      .filter((x) => {
+        try {
+          const host = new URL(x.url).hostname.replace(/^www\./, "");
+          if (seen.has(host + (x.title || "").slice(0, 40))) return false;
+          seen.add(host + (x.title || "").slice(0, 40));
+          return true;
+        } catch { return false; }
+      })
+      .slice(0, 15);
 
-    const system = `You pick ONE fresh, high-signal read/watch/listen for a specific person's SPECIFIC current item.
-Non-negotiables:
-- The pick must directly connect to THIS item (not just the pillar). If nothing fits tightly, prefer a real 2024-2025 alternative you know exists over a loose match.
-- Prefer 2025 material; NEVER older than 2023.
-- Named creators only (no listicles, SEO farms, aggregators, Medium clones).
-- Substack, YouTube, personal blogs, real podcast episodes, arXiv papers are all fine.
+    // If no fresh web candidates survived filtering, bail cleanly rather than
+    // ask the model to invent a URL (it will, and it will be wrong).
+    if (candidates.length === 0) {
+      return new Response(JSON.stringify({ error: "no fresh candidates" }), {
+        status: 200, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
+    const system = `You pick the best-fit resource for a SPECIFIC person's SPECIFIC item, from a numbered list of REAL web results.
+HARD RULES:
+- You MUST return the index of one of the numbered candidates. Do NOT invent URLs. Do NOT reference anything outside the list.
+- Prefer named authors, essays, personal blogs, real Substack posts, real podcast episodes, real videos.
+- Reject listicles, SEO farms, and generic "top 10" pages by picking a different index instead.
 - The "why" is ONE crisp sentence tying the pick to BOTH the specific item AND something from their identity/recent captures. No fluff. No therapy-speak. No emojis.
-Return STRICT JSON only: {"title","author","url","why","type","published"} where type is one of essay|substack|podcast|video|paper.`;
+Return STRICT JSON only: {"index": number, "why": string}`;
 
-    const candidateBlock = candidates.length
-      ? candidates
-          .map((c: any, i: number) => `${i + 1}. [${c._type}] ${c.title} — ${c.url}\n   ${(c.description || c.snippet || "").slice(0, 200)}`)
-          .join("\n")
-      : "(no fresh search results — recommend a real, still-live 2024-2025 URL from your knowledge)";
+    const candidateBlock = candidates
+      .map((c: any, i: number) => `${i + 1}. [${c._type}] ${c.title} — ${c.url}\n   ${(c.description || c.snippet || "").slice(0, 220)}`)
+      .join("\n");
 
     const userMsg = `THIS PERSON'S SPECIFIC ITEM RIGHT NOW:
 ${text}
@@ -149,11 +171,8 @@ Year: ${identityYear || "(none)"}
 Current focus: ${identityFocus || "(none)"}
 Recent captures: ${recentCaptures || "(none)"}
 
-FRESH CANDIDATES FROM WEB SEARCH (last month):
-${candidateBlock}
-
-${excludeList.length ? `DO NOT return any of these URLs (user rejected them): ${excludeList.join(", ")}\n` : ""}
-Pick the ONE best match that ties the item to who they are. If none fit tightly, return a real 2024-2025 alternative you know exists — never fabricate URLs.`;
+CANDIDATES (pick ONE index):
+${candidateBlock}`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -168,30 +187,36 @@ Pick the ONE best match that ties the item to who they are. If none fit tightly,
       }),
     });
 
+    const pickFrom = (c: any, why: string): Pick => {
+      let author = c.author || "";
+      try { author = author || new URL(c.url).hostname.replace(/^www\./, ""); } catch {}
+      return {
+        title: c.title, author, url: c.url, why, type: c._type,
+        published: c.published_date || c.date || undefined,
+      };
+    };
+
     if (!resp.ok) {
-      const errText = await resp.text();
-      console.error("gateway", resp.status, errText);
-      const top = candidates[0];
-      if (top) {
-        return new Response(JSON.stringify({
-          title: top.title, author: top.author || new URL(top.url).hostname.replace("www.", ""),
-          url: top.url, why: "Fresh from this week's web.", type: top._type, published: top.published_date || null,
-        }), { headers: { ...CORS, "Content-Type": "application/json" } });
-      }
-      return new Response(JSON.stringify({ error: "ai unavailable" }), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
+      console.error("gateway", resp.status, await resp.text());
+      return new Response(JSON.stringify(pickFrom(candidates[0], "Fresh from this week's web.")), {
+        headers: { ...CORS, "Content-Type": "application/json" },
+      });
     }
 
     const data = await resp.json();
     const raw = data.choices?.[0]?.message?.content || "{}";
-    let pick: Pick;
-    try { pick = JSON.parse(raw); } catch {
-      const top = candidates[0];
-      pick = top
-        ? { title: top.title, author: top.author || new URL(top.url).hostname.replace("www.", ""), url: top.url, why: "Recent, matches your focus.", type: top._type }
-        : { title: "", author: "", url: "", why: "", type: "essay" };
-    }
+    let parsed: any = {};
+    try { parsed = JSON.parse(raw); } catch {}
 
-    return new Response(JSON.stringify(pick), { headers: { ...CORS, "Content-Type": "application/json" } });
+    const idx = Number(parsed.index) - 1;
+    const chosen = candidates[idx] || candidates[0];
+    const why = (typeof parsed.why === "string" && parsed.why.trim())
+      ? parsed.why.trim().slice(0, 240)
+      : "Recent, matches your focus.";
+
+    return new Response(JSON.stringify(pickFrom(chosen, why)), {
+      headers: { ...CORS, "Content-Type": "application/json" },
+    });
   } catch (err: any) {
     console.error("resource-pick", err);
     return new Response(JSON.stringify({ error: err.message || "failed" }), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
