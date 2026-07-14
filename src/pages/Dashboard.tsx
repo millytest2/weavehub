@@ -312,23 +312,35 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  const fetchBrief = useCallback(async () => {
+  const fetchBrief = useCallback(async (opts?: { force?: boolean; expectDifferentFrom?: string | null }) => {
     if (!user) return;
     setIsLoading(true);
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const { data, error } = await supabase.functions.invoke("morning-brief", {
-        body: { timezone }
-      });
-      if (error) throw error;
-      if (data) {
-        setBrief(data.brief);
-        const parsedActions = (data.actions || []).map((a: any) => ({
+      let attempt = 0;
+      const maxAttempts = opts?.force || opts?.expectDifferentFrom ? 4 : 1;
+      let lastData: any = null;
+      while (attempt < maxAttempts) {
+        const { data, error } = await supabase.functions.invoke("morning-brief", {
+          body: { timezone, force: !!opts?.force && attempt === 0 },
+        });
+        if (error) throw error;
+        lastData = data;
+        const actionsCount = (data?.actions || []).length;
+        const briefId = data?.brief?.id;
+        const differs = opts?.expectDifferentFrom ? briefId && briefId !== opts.expectDifferentFrom : true;
+        if (actionsCount > 0 && differs) break;
+        attempt++;
+        if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 800 * attempt));
+      }
+      if (lastData) {
+        setBrief(lastData.brief);
+        const parsedActions = (lastData.actions || []).map((a: any) => ({
           ...a,
           cited_sources: typeof a.cited_sources === 'string' ? JSON.parse(a.cited_sources) : a.cited_sources,
         }));
         setActions(parsedActions);
-        setForgottenGem(data.forgotten_gem || null);
+        setForgottenGem(lastData.forgotten_gem || null);
       }
     } catch (error: any) {
       console.error("Brief error:", error);
@@ -337,6 +349,7 @@ const Dashboard = () => {
       setIsLoading(false);
     }
   }, [user]);
+
 
   useEffect(() => {
     if (!user || hasLoaded.current) return;
