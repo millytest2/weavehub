@@ -23,9 +23,11 @@ serve(async (req) => {
     if (!user) throw new Error("Unauthorized");
 
     let timezone: string | undefined;
+    let force = false;
     try {
       const body = await req.json();
       timezone = body?.timezone;
+      force = body?.force === true;
     } catch { /* no body */ }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
