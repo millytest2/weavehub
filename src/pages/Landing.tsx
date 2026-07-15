@@ -170,8 +170,8 @@ const Landing = () => {
                       transition={{ delay: i * 0.1 }}
                       className="p-5 rounded-2xl border border-border/40 bg-card/50"
                     >
-                      <span className="text-2xl mb-2 block">{p.icon}</span>
                       <p className="text-sm text-muted-foreground leading-relaxed">{p.text}</p>
+
                     </motion.div>
                   ))}
                 </div>
