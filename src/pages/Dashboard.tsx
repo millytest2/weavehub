@@ -160,6 +160,24 @@ const saveCached = (key: string, v: FreshPick) => {
   try { localStorage.setItem(`rpick:${key}`, JSON.stringify({ t: Date.now(), v })); } catch {}
 };
 
+const STOPWORDS = new Set(["the","a","an","and","or","but","of","to","in","on","for","with","from","by","is","are","was","were","be","been","being","this","that","it","its","as","at","if","then","so","do","does","doing","did","have","has","had","you","your","my","our","we","they","them","he","she","his","her","not","no","yes","up","down","out","one","two","today","this","week","daily","just","some","any","more","most","less"]);
+
+const tokens = (s: string): string[] =>
+  (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !STOPWORDS.has(w));
+
+const relevanceScore = (itemText: string, pick: { title: string; why: string }): number => {
+  const item = new Set(tokens(itemText));
+  const pk = tokens(`${pick.title} ${pick.why}`);
+  if (item.size === 0 || pk.length === 0) return 0;
+  let hits = 0;
+  for (const t of pk) if (item.has(t)) hits++;
+  return hits;
+};
+
 const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
   const fallback = pickRead(text, pillar);
   const key = String(hashStr(`${text}|${pillar || ""}`));
@@ -177,8 +195,12 @@ const ResourceLink = ({ text, pillar }: { text: string; pillar?: string }) => {
       .then(({ data }) => {
         if (data && !data.error && data.url && data.title) {
           const v: FreshPick = { title: data.title, author: data.author || "", url: data.url, why: data.why || "", type: data.type || "read" };
-          saveCached(key, v);
-          setFresh(v);
+          // Relevance gate: if the fresh pick doesn't actually share vocabulary
+          // with the item, keep the curated staple instead of surfacing noise.
+          if (relevanceScore(text, v) >= 1) {
+            saveCached(key, v);
+            setFresh(v);
+          }
         }
       })
       .finally(() => setLoading(false));
