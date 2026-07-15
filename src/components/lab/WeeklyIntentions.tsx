@@ -284,6 +284,64 @@ export function WeeklyIntentions() {
     }
   };
 
+  // Auto-check: pull last 7 days of completed tasks + observations, tokenize each,
+  // and mark any incomplete intention whose meaningful words show up in what the
+  // user actually did/captured. Silent by default; `verbose` shows a toast.
+  const STOPWORDS = new Set(["the","a","an","and","or","but","of","to","in","on","for","with","from","by","is","are","was","were","be","been","this","that","it","its","as","at","if","then","so","do","does","did","have","has","had","you","your","my","our","we","they","not","no","just","some","any","more","today","week","daily","also","about","into","out","up","down","need","want","going","get","gonna"]);
+  const tokenize = (s: string): string[] =>
+    (s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 3 && !STOPWORDS.has(w));
+
+  const autoCheckFromActivity = async (verbose: boolean) => {
+    if (!user) return;
+    const incomplete = intentions.filter((i) => !i.completed);
+    if (incomplete.length === 0) {
+      if (verbose) toast.message("Nothing left to check off");
+      return;
+    }
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const sinceIso = since.toISOString();
+    const sinceDate = since.toISOString().slice(0, 10);
+
+    const [tasksRes, actionsRes, obsRes] = await Promise.all([
+      supabase.from("daily_tasks").select("one_thing, description, pillar").eq("user_id", user.id).eq("completed", true).gte("task_date", sinceDate),
+      supabase.from("action_history").select("action_text, pillar").eq("user_id", user.id).gte("action_date", sinceDate),
+      supabase.from("observations").select("content").eq("user_id", user.id).gte("created_at", sinceIso).limit(100),
+    ]);
+
+    const activityBlobs: string[] = [];
+    (tasksRes.data || []).forEach((t: any) => activityBlobs.push(`${t.one_thing || ""} ${t.description || ""}`));
+    (actionsRes.data || []).forEach((a: any) => activityBlobs.push(a.action_text || ""));
+    (obsRes.data || []).forEach((o: any) => activityBlobs.push(o.content || ""));
+    const activityTokens = activityBlobs.map((b) => new Set(tokenize(b))).filter((s) => s.size > 0);
+    if (activityTokens.length === 0) {
+      if (verbose) toast.message("No recent activity to match against");
+      return;
+    }
+
+    const toCheck: string[] = [];
+    for (const it of incomplete) {
+      const itTokens = tokenize(it.text);
+      if (itTokens.length < 2) continue; // too short to reliably match
+      const required = Math.min(2, Math.ceil(itTokens.length * 0.5));
+      const matched = activityTokens.some((set) => {
+        let hits = 0;
+        for (const t of itTokens) if (set.has(t)) hits++;
+        return hits >= required;
+      });
+      if (matched) toCheck.push(it.id);
+    }
+
+    if (toCheck.length === 0) {
+      if (verbose) toast.message("Nothing matched yet — keep going");
+      return;
+    }
+    await supabase.from("weekly_intentions").update({ completed: true }).in("id", toCheck);
+    setIntentions((prev) => prev.map((i) => (toCheck.includes(i.id) ? { ...i, completed: true } : i)));
+    toast.success(`Checked ${toCheck.length} from what you did`);
+  };
+
+
   const completedCount = intentions.filter((i) => i.completed).length;
 
   const groundingLine = identityContext?.coreValues
