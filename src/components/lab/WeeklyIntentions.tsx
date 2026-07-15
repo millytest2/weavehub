@@ -379,9 +379,18 @@ export function WeeklyIntentions() {
           </div>
         </div>
         {intentions.length > 0 && (
-          <span className="text-xs text-muted-foreground shrink-0">
-            {completedCount}/{intentions.length} done
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => autoCheckFromActivity(true)}
+              className="text-[10px] uppercase tracking-widest text-muted-foreground/50 hover:text-primary transition-colors"
+              title="Check off anything you already did or captured this week"
+            >
+              Sync
+            </button>
+            <span className="text-xs text-muted-foreground">
+              {completedCount}/{intentions.length} done
+            </span>
+          </div>
         )}
       </div>
 
