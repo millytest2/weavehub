@@ -20,10 +20,10 @@ const IDENTITY_STARTERS = [
 ];
 
 const PROBLEMS = [
-  { icon: "📱", text: "You save 50 things a week. None of them change your behavior." },
-  { icon: "🔄", text: "You ask ChatGPT the same question differently hoping for a better answer." },
-  { icon: "😶", text: "You know what to do. You just can't start." },
-  { icon: "📋", text: "Your todo list has 47 items. You did none of them." },
+  { text: "You save 50 things a week. None of them change your behavior." },
+  { text: "You ask ChatGPT the same question differently hoping for a better answer." },
+  { text: "You know what to do. You just can't start." },
+  { text: "Your todo list has 47 items. You did none of them." },
 ];
 
 const HOW_IT_WORKS = [
@@ -170,8 +170,8 @@ const Landing = () => {
                       transition={{ delay: i * 0.1 }}
                       className="p-5 rounded-2xl border border-border/40 bg-card/50"
                     >
-                      <span className="text-2xl mb-2 block">{p.icon}</span>
                       <p className="text-sm text-muted-foreground leading-relaxed">{p.text}</p>
+
                     </motion.div>
                   ))}
                 </div>

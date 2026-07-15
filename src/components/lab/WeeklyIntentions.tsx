@@ -322,8 +322,9 @@ export function WeeklyIntentions() {
     const toCheck: string[] = [];
     for (const it of incomplete) {
       const itTokens = tokenize(it.text);
-      if (itTokens.length < 2) continue; // too short to reliably match
-      const required = Math.min(2, Math.ceil(itTokens.length * 0.5));
+      if (itTokens.length < 1) continue;
+      // Short items (1-3 meaningful words): 1 hit is enough. Longer: require 2.
+      const required = itTokens.length <= 3 ? 1 : 2;
       const matched = activityTokens.some((set) => {
         let hits = 0;
         for (const t of itTokens) if (set.has(t)) hits++;

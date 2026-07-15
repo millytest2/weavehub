@@ -170,7 +170,7 @@ const LearningPathDetail = () => {
         status: "active"
       } : null);
       
-      toast.success("Sprint started! Let's go 🚀");
+      toast.success("Sprint started");
     } catch (error) {
       console.error("Error starting sprint:", error);
       toast.error("Failed to start sprint");
