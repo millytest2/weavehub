@@ -117,6 +117,13 @@ export function WeeklyIntentions() {
     }
   }, [user]);
 
+  // Auto-check items whose meaning shows up in the last 7 days of completions/captures.
+  useEffect(() => {
+    if (!user || loading || intentions.length === 0) return;
+    autoCheckFromActivity(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading, intentions.length]);
+
   const fetchIdentityContext = async () => {
     if (!user) return;
     const { data } = await supabase
