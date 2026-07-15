@@ -20,10 +20,10 @@ const IDENTITY_STARTERS = [
 ];
 
 const PROBLEMS = [
-  { icon: "📱", text: "You save 50 things a week. None of them change your behavior." },
-  { icon: "🔄", text: "You ask ChatGPT the same question differently hoping for a better answer." },
-  { icon: "😶", text: "You know what to do. You just can't start." },
-  { icon: "📋", text: "Your todo list has 47 items. You did none of them." },
+  { text: "You save 50 things a week. None of them change your behavior." },
+  { text: "You ask ChatGPT the same question differently hoping for a better answer." },
+  { text: "You know what to do. You just can't start." },
+  { text: "Your todo list has 47 items. You did none of them." },
 ];
 
 const HOW_IT_WORKS = [
