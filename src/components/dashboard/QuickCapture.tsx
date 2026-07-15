@@ -353,7 +353,7 @@ export const QuickCapture = () => {
             celebrate();
             localStorage.setItem(`first_paste_${user.id}`, "true");
             setIsFirstPaste(false);
-            toast.success("First capture! You're weaving. 🎉");
+            toast.success("First capture — you're weaving.");
           } else {
             toast.success(data.message || "Saved");
           }

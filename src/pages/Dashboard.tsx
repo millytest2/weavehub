@@ -404,7 +404,7 @@ const Dashboard = () => {
       const newCompleted = todayCompleted + 1;
       if (newCompleted >= todayTotal && todayTotal > 0) {
         celebrate();
-        toast.success("All done! 🎯");
+        toast.success("All done for now");
       } else {
         toast.success("Done!");
       }
