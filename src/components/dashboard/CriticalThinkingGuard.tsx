@@ -47,8 +47,7 @@ export function CriticalThinkingGuard() {
   return (
     <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-[11px] tracking-[0.15em] uppercase text-muted-foreground/60">
-          <Brain className="h-3 w-3" />
+        <div className="flex items-center text-[11px] tracking-[0.15em] uppercase text-muted-foreground/60">
           Critical thinking check
         </div>
         <button
