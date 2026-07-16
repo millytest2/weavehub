@@ -769,10 +769,9 @@ const Dashboard = () => {
               <button
                 onClick={handleNextRep}
                 disabled={isGettingRep}
-                className="group flex items-center gap-2"
+                className="group flex items-center"
                 title="Drifting, bored, or numb? Get a small rep to return to center."
               >
-                <Zap className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                 <span className="text-[12px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
                   {isGettingRep ? "Finding..." : "Next rep"}
                 </span>
@@ -780,10 +779,9 @@ const Dashboard = () => {
               <button
                 onClick={handleBigMove}
                 disabled={isGettingBigMove}
-                className="group flex items-center gap-2"
+                className="group flex items-center"
                 title="Aligned and ready? Get the ONE high-leverage move toward your 2026."
               >
-                <Target className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                 <span className="text-[12px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
                   {isGettingBigMove ? "Aligning..." : "Big Move"}
                 </span>
