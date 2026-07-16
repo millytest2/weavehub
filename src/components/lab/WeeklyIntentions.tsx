@@ -284,12 +284,13 @@ export function WeeklyIntentions() {
     }
   };
 
-  // Auto-check: pull last 7 days of completed tasks + observations, tokenize each,
-  // and mark any incomplete intention whose meaningful words show up in what the
-  // user actually did/captured. Silent by default; `verbose` shows a toast.
-  const STOPWORDS = new Set(["the","a","an","and","or","but","of","to","in","on","for","with","from","by","is","are","was","were","be","been","this","that","it","its","as","at","if","then","so","do","does","did","have","has","had","you","your","my","our","we","they","not","no","just","some","any","more","today","week","daily","also","about","into","out","up","down","need","want","going","get","gonna"]);
+  // Auto-check: pull last 7 days of what the user actually did/captured and
+  // cross off any incomplete intention whose meaning shows up in that activity.
+  // Uses stem-prefix matching so "posting" matches "post/posts/posted".
+  const STOPWORDS = new Set(["the","a","an","and","or","but","of","to","in","on","for","with","from","by","is","are","was","were","be","been","this","that","it","its","as","at","if","then","so","do","does","did","have","has","had","you","your","my","our","we","they","not","no","just","some","any","more","today","week","daily","also","about","into","out","up","down","need","want","going","get","gonna","make","made","take","took","really","very"]);
+  const stem = (w: string) => w.length > 5 ? w.slice(0, 5) : w;
   const tokenize = (s: string): string[] =>
-    (s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 3 && !STOPWORDS.has(w));
+    (s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 3 && !STOPWORDS.has(w)).map(stem);
 
   const autoCheckFromActivity = async (verbose: boolean) => {
     if (!user) return;
@@ -303,18 +304,28 @@ export function WeeklyIntentions() {
     const sinceIso = since.toISOString();
     const sinceDate = since.toISOString().slice(0, 10);
 
-    const [tasksRes, actionsRes, obsRes] = await Promise.all([
+    const [tasksRes, actionsRes, obsRes, insightsRes, convosRes] = await Promise.all([
       supabase.from("daily_tasks").select("one_thing, description, pillar").eq("user_id", user.id).eq("completed", true).gte("task_date", sinceDate),
       supabase.from("action_history").select("action_text, pillar").eq("user_id", user.id).gte("action_date", sinceDate),
-      supabase.from("observations").select("content").eq("user_id", user.id).gte("created_at", sinceIso).limit(100),
+      supabase.from("observations").select("content").eq("user_id", user.id).gte("created_at", sinceIso).limit(200),
+      supabase.from("insights").select("title, content").eq("user_id", user.id).gte("created_at", sinceIso).limit(100),
+      supabase.from("conversations").select("title, messages").eq("user_id", user.id).gte("updated_at", sinceIso).limit(30),
     ]);
 
-    const activityBlobs: string[] = [];
-    (tasksRes.data || []).forEach((t: any) => activityBlobs.push(`${t.one_thing || ""} ${t.description || ""}`));
-    (actionsRes.data || []).forEach((a: any) => activityBlobs.push(a.action_text || ""));
-    (obsRes.data || []).forEach((o: any) => activityBlobs.push(o.content || ""));
-    const activityTokens = activityBlobs.map((b) => new Set(tokenize(b))).filter((s) => s.size > 0);
-    if (activityTokens.length === 0) {
+    const activityBlobs: Array<{ text: string; pillar?: string | null }> = [];
+    (tasksRes.data || []).forEach((t: any) => activityBlobs.push({ text: `${t.one_thing || ""} ${t.description || ""}`, pillar: t.pillar }));
+    (actionsRes.data || []).forEach((a: any) => activityBlobs.push({ text: a.action_text || "", pillar: a.pillar }));
+    (obsRes.data || []).forEach((o: any) => activityBlobs.push({ text: o.content || "" }));
+    (insightsRes.data || []).forEach((i: any) => activityBlobs.push({ text: `${i.title || ""} ${i.content || ""}` }));
+    (convosRes.data || []).forEach((c: any) => {
+      const msgs = Array.isArray(c.messages) ? c.messages.map((m: any) => m?.content || "").join(" ") : "";
+      activityBlobs.push({ text: `${c.title || ""} ${msgs}` });
+    });
+
+    const activity = activityBlobs
+      .map((b) => ({ tokens: new Set(tokenize(b.text)), pillar: b.pillar }))
+      .filter((s) => s.tokens.size > 0);
+    if (activity.length === 0) {
       if (verbose) toast.message("No recent activity to match against");
       return;
     }
@@ -323,11 +334,12 @@ export function WeeklyIntentions() {
     for (const it of incomplete) {
       const itTokens = tokenize(it.text);
       if (itTokens.length < 1) continue;
-      // Short items (1-3 meaningful words): 1 hit is enough. Longer: require 2.
       const required = itTokens.length <= 3 ? 1 : 2;
-      const matched = activityTokens.some((set) => {
+      const matched = activity.some(({ tokens: set, pillar }) => {
         let hits = 0;
         for (const t of itTokens) if (set.has(t)) hits++;
+        // Same-pillar bonus so a matching-pillar capture with 1 keyword counts.
+        if ((it as any).pillar && pillar && (it as any).pillar === pillar) hits += 1;
         return hits >= required;
       });
       if (matched) toCheck.push(it.id);
