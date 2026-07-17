@@ -299,17 +299,24 @@ export function WeeklyIntentions() {
       if (verbose) toast.message("Nothing left to check off");
       return;
     }
-    const since = new Date();
-    since.setDate(since.getDate() - 7);
+    // Window: start of this week (Mon) OR last 7 days, whichever is earlier.
+    const now = new Date();
+    const dow = (now.getDay() + 6) % 7; // 0=Mon
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - dow);
+    weekStart.setHours(0, 0, 0, 0);
+    const sevenAgo = new Date(now.getTime() - 7 * 86400000);
+    const since = weekStart < sevenAgo ? weekStart : sevenAgo;
     const sinceIso = since.toISOString();
     const sinceDate = since.toISOString().slice(0, 10);
 
-    const [tasksRes, actionsRes, obsRes, insightsRes, convosRes] = await Promise.all([
+    const [tasksRes, actionsRes, obsRes, insightsRes, convosRes, scoreRes] = await Promise.all([
       supabase.from("daily_tasks").select("one_thing, description, pillar").eq("user_id", user.id).eq("completed", true).gte("task_date", sinceDate),
       supabase.from("action_history").select("action_text, pillar").eq("user_id", user.id).gte("action_date", sinceDate),
-      supabase.from("observations").select("content").eq("user_id", user.id).gte("created_at", sinceIso).limit(200),
-      supabase.from("insights").select("title, content").eq("user_id", user.id).gte("created_at", sinceIso).limit(100),
+      supabase.from("observations").select("content").eq("user_id", user.id).gte("created_at", sinceIso).limit(300),
+      supabase.from("insights").select("title, content").eq("user_id", user.id).gte("created_at", sinceIso).limit(150),
       supabase.from("conversations").select("title, messages").eq("user_id", user.id).gte("updated_at", sinceIso).limit(30),
+      supabase.from("daily_scoreboard").select("*").eq("user_id", user.id).gte("scoreboard_date", sinceDate),
     ]);
 
     const activityBlobs: Array<{ text: string; pillar?: string | null }> = [];
@@ -320,6 +327,22 @@ export function WeeklyIntentions() {
     (convosRes.data || []).forEach((c: any) => {
       const msgs = Array.isArray(c.messages) ? c.messages.map((m: any) => m?.content || "").join(" ") : "";
       activityBlobs.push({ text: `${c.title || ""} ${msgs}` });
+    });
+    // Daily scoreboard reps map to keywords that match ideal-week items.
+    const REP_KEYS: Array<[string, string, string]> = [
+      ["sales_rep", "sales outreach calls follow-ups pipeline upath", "Stability"],
+      ["upath_rep", "upath customer offer outreach", "Stability"],
+      ["content_rep", "content post video write blog tiktok instagram", "Content"],
+      ["fitness_rep", "fitness lift workout gym protein chest legs run", "Health"],
+      ["charisma_rep", "charisma conversation talk connect", "Connection"],
+      ["relationship_rep", "relationship family friend call check-in", "Connection"],
+      ["ai_leverage_rep", "ai workflow automation build tool", "Skill"],
+      ["money_rep", "money income pipeline invoice budget", "Stability"],
+    ];
+    (scoreRes.data || []).forEach((row: any) => {
+      REP_KEYS.forEach(([k, kw, pillar]) => {
+        if (row[k]) activityBlobs.push({ text: kw, pillar });
+      });
     });
 
     const activity = activityBlobs
