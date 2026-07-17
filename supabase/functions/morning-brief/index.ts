@@ -270,6 +270,20 @@ serve(async (req) => {
       ? `Neglected domains (3+ days): ${neglectedDomains.join(', ')}`
       : 'All domains active recently';
 
+    // User-pinned tasks the user manually declared for today
+    const pinnedTasksText = pinnedTasks.length > 0
+      ? pinnedTasks.map((t: any) => `- ${t.completed ? '✓' : '○'} [${t.pillar || 'General'}] ${t.one_thing || t.title}`).join('\n')
+      : 'None';
+
+    // Previous briefs' actions — the AI must NOT repeat these action texts
+    const previousBriefActions = (recentBriefs || [])
+      .flatMap((b: any) => (Array.isArray(b.recommended_actions) ? b.recommended_actions : []).map((a: any) => `- [${b.brief_date}] ${a.action_text}`))
+      .slice(0, 15)
+      .join('\n');
+
+    // Freshness seed — nudges the model to produce different framings across days
+    const varietySeed = Math.random().toString(36).slice(2, 8);
+
     const systemPrompt = `You are generating a personalized morning brief for a user. You KNOW this person deeply from their data.
 
 USER IDENTITY:
