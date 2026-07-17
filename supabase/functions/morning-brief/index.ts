@@ -89,6 +89,24 @@ serve(async (req) => {
       .is("daily_brief_id", null);
     const pinnedTasks = pinnedTasksRaw || [];
 
+    // Respect the user's own list. If they've pinned 5+ items and this isn't
+    // an explicit force/regenerate, don't add AI-generated actions on top.
+    if (pinnedTasks.length >= 5 && !force) {
+      const { data: credits } = await supabase
+        .from("daily_credits")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("credit_date", today)
+        .maybeSingle();
+      return new Response(JSON.stringify({
+        brief: existingBrief || { id: null, brief_date: today, what_shifted: "Your list — nothing added.", forgotten_gem_context: null },
+        actions: pinnedTasks,
+        credits: credits || { total_credits: 3, credits_spent: 0, actions_committed: [] },
+        cached: true,
+        pinned_only: true,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Fetch last 3 briefs (excluding today) so the AI can avoid repetition
     const { data: recentBriefs } = await supabase
       .from("daily_briefs")
