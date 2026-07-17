@@ -333,6 +333,14 @@ ${patternsText || 'None detected yet'}
 ACTIONS ALREADY DONE (DO NOT REPEAT):
 ${actionHistory.slice(0, 10).map(a => `- ${a.action_text}`).join('\n') || 'None'}
 
+USER-DECLARED PRIORITIES FOR TODAY (already pinned on the dashboard — DO NOT restate as new actions; refer to them as "already on your list" when relevant):
+${pinnedTasksText}
+
+PRIOR BRIEFS' ACTIONS (last 3 days — DO NOT repeat these exact action_texts or near-duplicates; produce genuinely different next moves):
+${previousBriefActions || 'None'}
+
+FRESHNESS SEED: ${varietySeed} — use this only as a tiebreaker to vary phrasing and framing between days.
+
 TASK: Generate a morning brief with these EXACT sections:
 
 1. WHAT_SHIFTED: 2-3 bullet points about what changed in the last 48 hours. Reference specific journal entries, captures, or patterns WITH dates. Be concrete — "You mentioned X on [date]" not "You've been thinking about X".
