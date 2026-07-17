@@ -52,13 +52,13 @@ interface MorningBrief {
 const SWIPE_THRESHOLD = 50;
 
 const sourceStyles: Record<string, { color: string; bg: string; icon: string }> = {
-  capture: { color: 'text-blue-500/70', bg: 'bg-blue-500/8 border-blue-500/15', icon: '◆' },
-  pattern: { color: 'text-violet-500/70', bg: 'bg-violet-500/8 border-violet-500/15', icon: '◎' },
-  goal: { color: 'text-emerald-500/70', bg: 'bg-emerald-500/8 border-emerald-500/15', icon: '▲' },
-  journal: { color: 'text-amber-500/70', bg: 'bg-amber-500/8 border-amber-500/15', icon: '●' },
-  gem: { color: 'text-amber-500/70', bg: 'bg-amber-500/8 border-amber-500/15', icon: '✦' },
-  experiment: { color: 'text-rose-500/70', bg: 'bg-rose-500/8 border-rose-500/15', icon: '◇' },
-  gap: { color: 'text-orange-500/70', bg: 'bg-orange-500/8 border-orange-500/15', icon: '○' },
+  capture: { color: 'text-blue-500/70', bg: 'bg-blue-500/8 border-blue-500/15', icon: '' },
+  pattern: { color: 'text-violet-500/70', bg: 'bg-violet-500/8 border-violet-500/15', icon: '' },
+  goal: { color: 'text-emerald-500/70', bg: 'bg-emerald-500/8 border-emerald-500/15', icon: '' },
+  journal: { color: 'text-amber-500/70', bg: 'bg-amber-500/8 border-amber-500/15', icon: '' },
+  gem: { color: 'text-amber-500/70', bg: 'bg-amber-500/8 border-amber-500/15', icon: '' },
+  experiment: { color: 'text-rose-500/70', bg: 'bg-rose-500/8 border-rose-500/15', icon: '' },
+  gap: { color: 'text-orange-500/70', bg: 'bg-orange-500/8 border-orange-500/15', icon: '' },
 };
 
 // Auto-detect pillar from text
