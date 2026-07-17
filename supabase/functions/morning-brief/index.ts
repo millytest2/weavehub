@@ -75,10 +75,28 @@ serve(async (req) => {
     }
 
     if (existingBrief && force) {
-      // Wipe today's brief + tasks so we truly regenerate
+      // Wipe today's brief + AI-generated tasks. Preserve user-pinned tasks (daily_brief_id null).
       await supabase.from("daily_tasks").delete().eq("daily_brief_id", existingBrief.id);
       await supabase.from("daily_briefs").delete().eq("id", existingBrief.id);
     }
+
+    // Fetch user-pinned tasks for today (added manually, not tied to any brief)
+    const { data: pinnedTasksRaw } = await supabase
+      .from("daily_tasks")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("task_date", today)
+      .is("daily_brief_id", null);
+    const pinnedTasks = pinnedTasksRaw || [];
+
+    // Fetch last 3 briefs (excluding today) so the AI can avoid repetition
+    const { data: recentBriefs } = await supabase
+      .from("daily_briefs")
+      .select("brief_date, recommended_actions")
+      .eq("user_id", user.id)
+      .lt("brief_date", today)
+      .order("brief_date", { ascending: false })
+      .limit(3);
 
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
