@@ -537,10 +537,12 @@ CRITICAL RULES:
     }
 
     // ===== SAVE ACTIONS AS DAILY_TASKS =====
+    // Pinned tasks keep sequence 1..N, AI actions come after
+    const pinnedOffset = pinnedTasks.length;
     const taskInserts = (briefData.actions || []).map((action: any, idx: number) => ({
       user_id: user.id,
       task_date: today,
-      task_sequence: idx + 1,
+      task_sequence: pinnedOffset + idx + 1,
       title: action.pillar || "Action",
       one_thing: action.action_text,
       why_matters: action.why,
