@@ -75,10 +75,28 @@ serve(async (req) => {
     }
 
     if (existingBrief && force) {
-      // Wipe today's brief + tasks so we truly regenerate
+      // Wipe today's brief + AI-generated tasks. Preserve user-pinned tasks (daily_brief_id null).
       await supabase.from("daily_tasks").delete().eq("daily_brief_id", existingBrief.id);
       await supabase.from("daily_briefs").delete().eq("id", existingBrief.id);
     }
+
+    // Fetch user-pinned tasks for today (added manually, not tied to any brief)
+    const { data: pinnedTasksRaw } = await supabase
+      .from("daily_tasks")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("task_date", today)
+      .is("daily_brief_id", null);
+    const pinnedTasks = pinnedTasksRaw || [];
+
+    // Fetch last 3 briefs (excluding today) so the AI can avoid repetition
+    const { data: recentBriefs } = await supabase
+      .from("daily_briefs")
+      .select("brief_date, recommended_actions")
+      .eq("user_id", user.id)
+      .lt("brief_date", today)
+      .order("brief_date", { ascending: false })
+      .limit(3);
 
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -252,6 +270,20 @@ serve(async (req) => {
       ? `Neglected domains (3+ days): ${neglectedDomains.join(', ')}`
       : 'All domains active recently';
 
+    // User-pinned tasks the user manually declared for today
+    const pinnedTasksText = pinnedTasks.length > 0
+      ? pinnedTasks.map((t: any) => `- ${t.completed ? '✓' : '○'} [${t.pillar || 'General'}] ${t.one_thing || t.title}`).join('\n')
+      : 'None';
+
+    // Previous briefs' actions — the AI must NOT repeat these action texts
+    const previousBriefActions = (recentBriefs || [])
+      .flatMap((b: any) => (Array.isArray(b.recommended_actions) ? b.recommended_actions : []).map((a: any) => `- [${b.brief_date}] ${a.action_text}`))
+      .slice(0, 15)
+      .join('\n');
+
+    // Freshness seed — nudges the model to produce different framings across days
+    const varietySeed = Math.random().toString(36).slice(2, 8);
+
     const systemPrompt = `You are generating a personalized morning brief for a user. You KNOW this person deeply from their data.
 
 USER IDENTITY:
@@ -300,6 +332,14 @@ ${patternsText || 'None detected yet'}
 
 ACTIONS ALREADY DONE (DO NOT REPEAT):
 ${actionHistory.slice(0, 10).map(a => `- ${a.action_text}`).join('\n') || 'None'}
+
+USER-DECLARED PRIORITIES FOR TODAY (already pinned on the dashboard — DO NOT restate as new actions; refer to them as "already on your list" when relevant):
+${pinnedTasksText}
+
+PRIOR BRIEFS' ACTIONS (last 3 days — DO NOT repeat these exact action_texts or near-duplicates; produce genuinely different next moves):
+${previousBriefActions || 'None'}
+
+FRESHNESS SEED: ${varietySeed} — use this only as a tiebreaker to vary phrasing and framing between days.
 
 TASK: Generate a morning brief with these EXACT sections:
 
@@ -497,10 +537,12 @@ CRITICAL RULES:
     }
 
     // ===== SAVE ACTIONS AS DAILY_TASKS =====
+    // Pinned tasks keep sequence 1..N, AI actions come after
+    const pinnedOffset = pinnedTasks.length;
     const taskInserts = (briefData.actions || []).map((action: any, idx: number) => ({
       user_id: user.id,
       task_date: today,
-      task_sequence: idx + 1,
+      task_sequence: pinnedOffset + idx + 1,
       title: action.pillar || "Action",
       one_thing: action.action_text,
       why_matters: action.why,
@@ -552,7 +594,7 @@ CRITICAL RULES:
 
     return new Response(JSON.stringify({
       brief: savedBrief,
-      actions: savedTasks || [],
+      actions: [...pinnedTasks, ...(savedTasks || [])],
       credits: credits || { total_credits: 3, credits_spent: 0, actions_committed: [] },
       forgotten_gem: gemDetails,
       cached: false,
