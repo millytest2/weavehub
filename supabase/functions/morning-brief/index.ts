@@ -594,7 +594,7 @@ CRITICAL RULES:
 
     return new Response(JSON.stringify({
       brief: savedBrief,
-      actions: savedTasks || [],
+      actions: [...pinnedTasks, ...(savedTasks || [])],
       credits: credits || { total_credits: 3, credits_spent: 0, actions_committed: [] },
       forgotten_gem: gemDetails,
       cached: false,
