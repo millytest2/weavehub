@@ -28,16 +28,24 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Provide a weekly plan text" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const system = `You break a user's raw weekly plan into structured, atomic, actionable weekly intentions.
+    const system = `You take a raw weekly plan and reduce it to WEEK-LEVEL commitments.
+Do NOT split into 7 per-day items. Do NOT create Mon/Tue/Wed variants. One line per real commitment.
+
+For EACH commitment, extract the DAILY floor and DAILY stretch:
+- daily_min = the minimum reps/units per day that still counts as "hit" (the floor).
+- daily_max = the max reps/units per day the user could push to if it's easy (the stretch).
+- unit = short noun for what's being counted ("applications", "outreaches", "minutes", "meals", "sessions", "posts", "words"). Use "session" for binary items (workout done or not) with min 1 max 1.
+- cadence = "daily" (most items), "weekly" (a one-shot thing like "order curtains" — min 1 max 1, unit "task"), or "weekdays".
 
 Rules:
-- Split every commitment, target, floor/stretch goal, and required sub-item into its OWN intention.
-- Keep the original phrasing; be terse. No fluff, no therapy-speak.
-- If a line mentions a specific weekday (Monday..Sunday), set day_of_week (0=Mon..6=Sun). Otherwise null.
-- Assign one pillar from: ${PILLARS.join(", ")}. Match by meaning (Sales=outreach/calls/applications, UPath=product/research/positioning, Body=workouts/movement, Relationship=girlfriend/partner, Friendship=friends/family, Mind=journal/read/phone-off, Admin=logistics/apartment/moving/wifi, Money=income/payments, Content=posts/blog/video).
-- For numeric targets ("5-10 calls", "weekly floor: 20", "4 movement sessions") keep the number in the text.
-- If a section header exists (e.g. "Job Search", "Body"), prepend it as a short tag in the text like "Job Search: apply to 5-10 jobs today" only when it adds clarity; otherwise omit.
-- Return ONLY JSON. Max 40 intentions.`;
+- Prefer the user's own numbers. "20-30 outreaches" -> min 20, max 30, unit outreaches. "5-10 jobs" -> min 5, max 10. "45 minute chest workout" -> min 1 max 1 unit session.
+- If only one number given ("2 big meals"), use it as both min and max (or set max slightly higher only if the plan implies a stretch).
+- If no number at all, min=1 max=1 unit "session".
+- Skip meta rules ("the goal is...", "understanding...", "weekly floor:") — collapse those into the parent commitment they modify instead of their own line.
+- Keep text short and imperative: "Apply to jobs", "Outreach for UPath", "Chest workout", "Order curtains + rod", "Two big healthy meals + 130g protein".
+- Assign one pillar from: ${PILLARS.join(", ")}.
+- Max 12 commitments. Fewer is better.
+Return ONLY JSON.`;
 
     const schema = {
       type: "object",
@@ -49,9 +57,12 @@ Rules:
             properties: {
               text: { type: "string" },
               pillar: { type: "string", enum: PILLARS },
-              day_of_week: { type: ["integer", "null"], minimum: 0, maximum: 6 },
+              daily_min: { type: "integer", minimum: 0 },
+              daily_max: { type: "integer", minimum: 0 },
+              unit: { type: "string" },
+              cadence: { type: "string", enum: ["daily", "weekdays", "weekly"] },
             },
-            required: ["text", "pillar", "day_of_week"],
+            required: ["text", "pillar", "daily_min", "daily_max", "unit", "cadence"],
             additionalProperties: false,
           },
         },
@@ -89,12 +100,27 @@ Rules:
 
     const intentions = (parsed.intentions || [])
       .filter((i: any) => i && typeof i.text === "string" && i.text.trim().length > 2)
-      .slice(0, 40)
-      .map((i: any) => ({
-        text: String(i.text).trim(),
-        pillar: PILLARS.includes(i.pillar) ? i.pillar : null,
-        day_of_week: Number.isInteger(i.day_of_week) && i.day_of_week >= 0 && i.day_of_week <= 6 ? i.day_of_week : null,
-      }));
+      .slice(0, 12)
+      .map((i: any) => {
+        const min = Number.isInteger(i.daily_min) ? Math.max(0, i.daily_min) : 1;
+        const maxRaw = Number.isInteger(i.daily_max) ? Math.max(min, i.daily_max) : min;
+        const unit = (typeof i.unit === "string" && i.unit.trim()) ? i.unit.trim() : "session";
+        const cadence = ["daily","weekdays","weekly"].includes(i.cadence) ? i.cadence : "daily";
+        const suffix = cadence === "weekly"
+          ? ` (one-shot this week)`
+          : min === maxRaw
+            ? ` (${min} ${unit}${cadence === "weekdays" ? "/weekday" : "/day"})`
+            : ` (min ${min} · stretch ${maxRaw} ${unit}${cadence === "weekdays" ? "/weekday" : "/day"})`;
+        return {
+          text: `${String(i.text).trim()}${suffix}`,
+          pillar: PILLARS.includes(i.pillar) ? i.pillar : null,
+          day_of_week: null,
+          daily_min: min,
+          daily_max: maxRaw,
+          unit,
+          cadence,
+        };
+      });
 
     return new Response(JSON.stringify({ intentions }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
