@@ -1,0 +1,1 @@
+DELETE FROM public.daily_tasks WHERE user_id='9fb78f6d-3224-4738-bbfa-0214931e9a2c' AND task_date='2026-07-18' AND daily_brief_id IS NOT NULL; DELETE FROM public.daily_briefs WHERE user_id='9fb78f6d-3224-4738-bbfa-0214931e9a2c' AND brief_date='2026-07-18';

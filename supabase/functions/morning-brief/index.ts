@@ -175,19 +175,30 @@ serve(async (req) => {
     const experiments = experimentsRes.data || [];
 
     // ===== ANALYZE DOMAIN NEGLECT =====
+    // Use the user's ACTUAL pillar taxonomy (from identity + skill_stack), not
+    // the legacy generic set. Otherwise every domain reads as "neglected" and
+    // the brief collapses into "Do something for Skill".
     const pillarLastActive: Record<string, string> = {};
     for (const action of actionHistory) {
       if (action.pillar && !pillarLastActive[action.pillar]) {
         pillarLastActive[action.pillar] = action.action_date;
       }
     }
+    // Also count completed weekly intentions as recent activity per pillar so
+    // we don't mislabel active domains as neglected.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    for (const w of (weeklyIntentionsRes.data || []) as any[]) {
+      if (w.completed && w.pillar && !pillarLastActive[w.pillar]) {
+        pillarLastActive[w.pillar] = todayIso;
+      }
+    }
 
-    const allPillars = ["Stability", "Skill", "Content", "Health", "Presence", "Connection", "Learning"];
+    const allPillars = ["Sales", "UPath", "Money", "Content", "Body", "Charisma", "Relationship", "Friendship", "Mind"];
     const neglectedDomains = allPillars.filter(p => {
       const lastDate = pillarLastActive[p];
       if (!lastDate) return true;
       const daysSince = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000);
-      return daysSince >= 3;
+      return daysSince >= 4;
     });
 
     // ===== BUILD JOURNAL CONTEXT =====
@@ -261,15 +272,26 @@ serve(async (req) => {
       .map(a => `- [${a.action_date}] [${a.pillar}] ${a.action_text}`)
       .join('\n');
 
-    // Today's day-of-week (0=Mon..6=Sun) for the user's ideal week anchoring
+    // Today's day-of-week (0=Mon..6=Sun) for the user's ideal week anchoring.
+    // Filter the weekly plan to unfinished, non-Admin, non-meta items and cap
+    // counts so the prompt isn't drowned in setup/errand cruft.
     const dow = (new Date().getDay() + 6) % 7;
-    const todayIntentions = weeklyIntentions.filter((w: any) => w.day_of_week === dow);
-    const anyDayIntentions = weeklyIntentions.filter((w: any) => w.day_of_week === null || w.day_of_week === undefined);
+    const isCruftPillar = (p: string | null | undefined) => (p || "").toLowerCase() === "admin";
+    const isMetaLine = (t: string) => {
+      const s = (t || "").toLowerCase();
+      // Rules-of-the-week style meta ("The goal is...", "A workout counts when...")
+      return /^(the goal|a \w+ counts|do not|understanding is|weekly (floor|stretch))/.test(s);
+    };
+    const openIntentions = ((weeklyIntentionsRes.data || []) as any[])
+      .filter((w) => !w.completed && !isCruftPillar(w.pillar) && !isMetaLine(w.text));
+    const todayIntentions = openIntentions.filter((w: any) => w.day_of_week === dow).slice(0, 5);
+    const anyDayIntentions = openIntentions.filter((w: any) => w.day_of_week === null || w.day_of_week === undefined).slice(0, 6);
+    const otherDayIntentions = openIntentions.filter((w: any) => w.day_of_week !== dow && w.day_of_week !== null && w.day_of_week !== undefined).slice(0, 4);
     const todayIntentionsText = todayIntentions
-      .map((w: any) => `- ${w.completed ? '✓' : '○'} [${w.pillar || 'General'}] ${w.text}`)
+      .map((w: any) => `- [${w.pillar || 'General'}] ${w.text}`)
       .join('\n');
-    const weeklyIntentionsText = [...anyDayIntentions, ...weeklyIntentions.filter((w: any) => w.day_of_week !== dow && w.day_of_week !== null)]
-      .map((w: any) => `- ${w.completed ? '✓' : '○'} [day ${w.day_of_week ?? 'any'}] [${w.pillar || 'General'}] ${w.text}`)
+    const weeklyIntentionsText = [...anyDayIntentions, ...otherDayIntentions]
+      .map((w: any) => `- [day ${w.day_of_week ?? 'any'}] [${w.pillar || 'General'}] ${w.text}`)
       .join('\n');
 
     const monthlyPlansText = monthlyPlans
@@ -455,47 +477,53 @@ CRITICAL RULES:
     if (!response.ok) {
       console.error(`AI error ${response.status}`);
       // Fallback brief
+      // Fallback brief — use REAL user intentions verbatim, never generic
+      // "Do something for X" filler. Prefer today-anchored, then any-day.
+      const topOpen = [...todayIntentions, ...anyDayIntentions, ...otherDayIntentions];
+      const first = topOpen[0];
+      const second = topOpen[1];
+      const third = topOpen[2];
       briefData = {
         what_shifted: neglectedDomains.length > 0
-          ? `• ${neglectedDomains.join(', ')} haven't been touched in 3+ days\n• Completion rate this week: ${completionRate}%`
-          : `• Completion rate this week: ${completionRate}%\n• All domains active recently`,
+          ? `• ${neglectedDomains.slice(0, 3).join(', ')} cold 4+ days\n• Completion rate this week: ${completionRate}%`
+          : `• Completion rate this week: ${completionRate}%\n• Domains staying warm`,
         actions: [
-          {
-            action_text: weeklyIntentions.find(w => !w.completed)?.text || "Take one step toward your biggest goal",
-            why: "This is your top unfinished weekly intention",
-            impact: "Advances your weekly commitments",
+          first && {
+            action_text: first.text,
+            why: first.day_of_week === dow ? "Anchored to today in your ideal week" : "Top unfinished item from your week",
+            impact: "Advances a real commitment you set",
             time_estimate: "30 min",
-            pillar: weeklyIntentions.find(w => !w.completed)?.pillar || "Skill",
+            pillar: first.pillar || "Sales",
             action_type: "goal_gap",
             priority: "HIGH"
           },
-          {
-            action_text: neglectedDomains.length > 0
-              ? `Do something for ${neglectedDomains[0]}`
-              : "Move your body for 20 minutes",
-            why: neglectedDomains.length > 0
-              ? `${neglectedDomains[0]} hasn't been active in 3+ days`
-              : "Physical energy creates mental clarity",
-            impact: "Balances your domains",
-            time_estimate: "20 min",
-            pillar: neglectedDomains[0] || "Health",
+          second && {
+            action_text: second.text,
+            why: neglectedDomains.length > 0 ? `${neglectedDomains[0]} is cold — this warms it` : "Balances the week",
+            impact: "Keeps the plan in motion",
+            time_estimate: "25 min",
+            pillar: second.pillar || neglectedDomains[0] || "Body",
             action_type: "domain_balance",
             priority: "HIGH"
           },
-          {
-            action_text: recentInsights.length > 0
-              ? `Apply your insight "${recentInsights[0].title}" to one concrete action`
-              : "Capture one thing you learned today",
-            why: recentInsights.length > 0
-              ? `You captured this recently but haven't acted on it`
-              : "Turn consumption into creation",
+          recentInsights.length > 0 ? {
+            action_text: `Apply your insight "${recentInsights[0].title}" to one concrete action`,
+            why: `You captured this on ${new Date(recentInsights[0].created_at).toLocaleDateString()} but haven't acted on it`,
             impact: "Converts learning to doing",
             time_estimate: "25 min",
-            pillar: "Learning",
+            pillar: "Mind",
+            action_type: "capture_test",
+            priority: "HIGH"
+          } : third && {
+            action_text: third.text,
+            why: "Third open item from your week",
+            impact: "Keeps the plan in motion",
+            time_estimate: "25 min",
+            pillar: third.pillar || "Mind",
             action_type: "capture_test",
             priority: "HIGH"
           }
-        ],
+        ].filter(Boolean),
         forgotten_gem_context: null
       };
     } else {
