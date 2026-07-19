@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 const PILLARS = ["Money","UPath","Sales","Content","Body","Charisma","Relationship","Friendship","Mind","Admin"];
+const DAY_LABELS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -28,46 +29,60 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Provide a weekly plan text" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const system = `You take a raw weekly plan and reduce it to WEEK-LEVEL commitments.
-Do NOT split into 7 per-day items. Do NOT create Mon/Tue/Wed variants. One line per real commitment.
+    const system = `You take a raw weekly plan and REVERSE-ENGINEER it into a Mon-Sun daily rhythm.
 
-For EACH commitment, extract the DAILY floor and DAILY stretch:
-- daily_min = the minimum reps/units per day that still counts as "hit" (the floor).
-- daily_max = the max reps/units per day the user could push to if it's easy (the stretch).
-- unit = short noun for what's being counted ("applications", "outreaches", "minutes", "meals", "sessions", "posts", "words"). Use "session" for binary items (workout done or not) with min 1 max 1.
-- cadence = "daily" (most items), "weekly" (a one-shot thing like "order curtains" — min 1 max 1, unit "task"), or "weekdays".
+For each real commitment in the plan, output a per-day breakdown across all 7 days (Mon=0..Sun=6).
+Some days should be heavier, some lighter — a real human week has rhythm, not a flat line.
+
+Heuristics:
+- Weekday grind (Sales, UPath outreach, Job apps, Content): weight Mon/Tue/Wed heavier, taper Thu/Fri, minimal or 0 on Sat/Sun.
+- Body / workouts: 3-4x per week — pick specific days (e.g. Mon/Wed/Fri, or Tue/Thu/Sat), rest days = 0.
+- Meals / daily habits (protein, sleep, hydration): consistent every day.
+- Social / fun / friends / drumming / play: weight Fri/Sat/Sun, low or 0 on Mon-Thu.
+- Admin / errands (apartment setup, laundry, curtains): 1-2 specific days, not spread out.
+- One-shot tasks ("close Daniel", "order curtains"): pick ONE best day, 0 on all others.
+- Honor day-specific mentions ("Tuesday gym" -> Tue only).
+- Big pushes stated by user ("Mon-Wed heavy on outreach") get 1.3-1.5x weight those days.
+
+For EACH commitment output:
+- text: short imperative ("Apply to jobs", "UPath outreach", "Chest workout", "Order curtains", "Two big meals + 130g protein")
+- pillar: one of ${PILLARS.join(", ")}
+- unit: short noun ("applications", "outreaches", "session", "meals", "minutes")
+- per_day: array of 7 integers, one per day Mon..Sun. Each = target count for that day. Use 0 for rest days. For binary items (workout done or not) use 1 or 0.
+- one_shot: true if this is a single task done once this week (like "close Daniel"), false for recurring.
 
 Rules:
-- Prefer the user's own numbers. "20-30 outreaches" -> min 20, max 30, unit outreaches. "5-10 jobs" -> min 5, max 10. "45 minute chest workout" -> min 1 max 1 unit session.
-- If only one number given ("2 big meals"), use it as both min and max (or set max slightly higher only if the plan implies a stretch).
-- If no number at all, min=1 max=1 unit "session".
-- Skip meta rules ("the goal is...", "understanding...", "weekly floor:") — collapse those into the parent commitment they modify instead of their own line.
-- Keep text short and imperative: "Apply to jobs", "Outreach for UPath", "Chest workout", "Order curtains + rod", "Two big healthy meals + 130g protein".
-- Assign one pillar from: ${PILLARS.join(", ")}.
-- Max 12 commitments. Fewer is better.
+- Prefer user's numbers. "20-30 outreaches/day" -> per_day sums to ~140-210, distribute heavier early week.
+- If the user gives a weekly floor ("5-10 jobs/day, floor 33/week") aim per_day sum >= floor, weighted.
+- Skip pure meta rules ("the goal is understanding..."). Collapse them into the parent item.
+- Max 10 commitments. Fewer is better.
 Return ONLY JSON.`;
 
     const schema = {
       type: "object",
       properties: {
-        intentions: {
+        commitments: {
           type: "array",
           items: {
             type: "object",
             properties: {
               text: { type: "string" },
               pillar: { type: "string", enum: PILLARS },
-              daily_min: { type: "integer", minimum: 0 },
-              daily_max: { type: "integer", minimum: 0 },
               unit: { type: "string" },
-              cadence: { type: "string", enum: ["daily", "weekdays", "weekly"] },
+              per_day: {
+                type: "array",
+                items: { type: "integer", minimum: 0 },
+                minItems: 7,
+                maxItems: 7,
+              },
+              one_shot: { type: "boolean" },
             },
-            required: ["text", "pillar", "daily_min", "daily_max", "unit", "cadence"],
+            required: ["text", "pillar", "unit", "per_day", "one_shot"],
             additionalProperties: false,
           },
         },
       },
-      required: ["intentions"],
+      required: ["commitments"],
       additionalProperties: false,
     };
 
@@ -96,33 +111,51 @@ Return ONLY JSON.`;
     const json = await resp.json();
     const content = json.choices?.[0]?.message?.content ?? "{}";
     let parsed: any = {};
-    try { parsed = JSON.parse(content); } catch { parsed = { intentions: [] }; }
+    try { parsed = JSON.parse(content); } catch { parsed = { commitments: [] }; }
 
-    const intentions = (parsed.intentions || [])
-      .filter((i: any) => i && typeof i.text === "string" && i.text.trim().length > 2)
-      .slice(0, 12)
-      .map((i: any) => {
-        const min = Number.isInteger(i.daily_min) ? Math.max(0, i.daily_min) : 1;
-        const maxRaw = Number.isInteger(i.daily_max) ? Math.max(min, i.daily_max) : min;
-        const unit = (typeof i.unit === "string" && i.unit.trim()) ? i.unit.trim() : "session";
-        const cadence = ["daily","weekdays","weekly"].includes(i.cadence) ? i.cadence : "daily";
-        const suffix = cadence === "weekly"
-          ? ` (one-shot this week)`
-          : min === maxRaw
-            ? ` (${min} ${unit}${cadence === "weekdays" ? "/weekday" : "/day"})`
-            : ` (min ${min} · stretch ${maxRaw} ${unit}${cadence === "weekdays" ? "/weekday" : "/day"})`;
-        return {
-          text: `${String(i.text).trim()}${suffix}`,
-          pillar: PILLARS.includes(i.pillar) ? i.pillar : null,
-          day_of_week: null,
-          daily_min: min,
-          daily_max: maxRaw,
-          unit,
-          cadence,
-        };
-      });
+    // Flatten commitments into one intention per active day
+    const intentions: Array<{ text: string; pillar: string | null; day_of_week: number | null }> = [];
+    const commitments = (parsed.commitments || []).slice(0, 10);
 
-    return new Response(JSON.stringify({ intentions }), {
+    for (const c of commitments) {
+      if (!c || typeof c.text !== "string" || !Array.isArray(c.per_day)) continue;
+      const baseText = String(c.text).trim();
+      const unit = (typeof c.unit === "string" && c.unit.trim()) ? c.unit.trim() : "session";
+      const pillar = PILLARS.includes(c.pillar) ? c.pillar : null;
+      const perDay: number[] = c.per_day.slice(0, 7).map((n: any) => Math.max(0, Number.isInteger(n) ? n : 0));
+      const oneShot = !!c.one_shot;
+
+      if (oneShot) {
+        // Pick the single day with the highest value (or first non-zero)
+        let dayIdx = perDay.findIndex((n) => n > 0);
+        if (dayIdx < 0) dayIdx = 0;
+        intentions.push({
+          text: `${baseText} (${DAY_LABELS[dayIdx]})`,
+          pillar,
+          day_of_week: dayIdx,
+        });
+        continue;
+      }
+
+      // Recurring: one entry per active day, with the day's target inline
+      for (let d = 0; d < 7; d++) {
+        const target = perDay[d] || 0;
+        if (target <= 0) continue;
+        const suffix = target === 1 && (unit === "session" || unit === "task")
+          ? ""
+          : ` — ${target} ${unit}`;
+        intentions.push({
+          text: `${baseText}${suffix}`,
+          pillar,
+          day_of_week: d,
+        });
+      }
+    }
+
+    // Cap total to prevent flood
+    const capped = intentions.slice(0, 40);
+
+    return new Response(JSON.stringify({ intentions: capped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
