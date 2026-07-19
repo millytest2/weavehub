@@ -94,6 +94,7 @@ const Mind = () => {
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
+          {activeTab === "research" && <ResearchFeed />}
           {activeTab === "ask" && <AskWeave />}
         </motion.div>
       </AnimatePresence>
