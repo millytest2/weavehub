@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, MessageCircle, FlaskConical, BookOpen } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
-import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { AskWeave } from "@/components/mind/AskWeave";
 import { ResearchFeed } from "@/components/lab/ResearchFeed";
