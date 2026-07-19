@@ -188,7 +188,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
     { id: "write" as LabTab, label: "Write", icon: PenLine },
     { id: "weekly" as LabTab, label: "Weekly", icon: TrendingUp },
     { id: "experiments" as LabTab, label: "Experiments", icon: FlaskConical },
-    { id: "research" as LabTab, label: "Research", icon: BookOpen },
+    { id: "patterns" as LabTab, label: "Patterns", icon: Network },
     { id: "patterns" as LabTab, label: "Patterns", icon: Network },
   ];
 
