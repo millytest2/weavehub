@@ -39,7 +39,6 @@ const Mind = () => {
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
-    { id: "research" as MindTab, label: "Research", icon: BookOpen },
     { id: "ask" as MindTab, label: "Ask", icon: MessageCircle },
   ];
 
