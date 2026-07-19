@@ -4,7 +4,7 @@ import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { AskWeave } from "@/components/mind/AskWeave";
-import { ResearchFeed } from "@/components/lab/ResearchFeed";
+
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
