@@ -88,11 +88,10 @@ const Mind = () => {
                 <h1 className="text-2xl font-display font-semibold">The Thread</h1>
                 <p className="text-sm text-muted-foreground/40">{insightCount} insights woven</p>
               </div>
-              <ThreadSubTabs insightCount={insightCount} identityContext={identityContext} userId={user?.id || ""} />
+              <MindSynthesis insightCount={insightCount} />
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
-          {activeTab === "research" && <ResearchFeed />}
           {activeTab === "ask" && <AskWeave />}
         </motion.div>
       </AnimatePresence>
