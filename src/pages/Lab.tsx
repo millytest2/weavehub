@@ -189,7 +189,6 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
     { id: "weekly" as LabTab, label: "Weekly", icon: TrendingUp },
     { id: "experiments" as LabTab, label: "Experiments", icon: FlaskConical },
     { id: "patterns" as LabTab, label: "Patterns", icon: Network },
-    { id: "patterns" as LabTab, label: "Patterns", icon: Network },
   ];
 
   const Wrapper = embedded ? ({ children }: { children: React.ReactNode }) => <>{children}</> : MainLayout;
