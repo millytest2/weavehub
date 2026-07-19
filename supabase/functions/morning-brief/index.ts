@@ -506,15 +506,7 @@ CRITICAL RULES:
             action_type: "domain_balance",
             priority: "HIGH"
           },
-          recentInsights.length > 0 ? {
-            action_text: `Apply your insight "${recentInsights[0].title}" to one concrete action`,
-            why: `You captured this on ${new Date(recentInsights[0].created_at).toLocaleDateString()} but haven't acted on it`,
-            impact: "Converts learning to doing",
-            time_estimate: "25 min",
-            pillar: "Mind",
-            action_type: "capture_test",
-            priority: "HIGH"
-          } : third && {
+          third && {
             action_text: third.text,
             why: "Third open item from your week",
             impact: "Keeps the plan in motion",

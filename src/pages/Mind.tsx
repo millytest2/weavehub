@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, MessageCircle, FlaskConical, BookOpen } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
-import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { AskWeave } from "@/components/mind/AskWeave";
-import { ResearchFeed } from "@/components/lab/ResearchFeed";
+
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "ask" | "lab" | "research";
+type MindTab = "identity" | "thread" | "ask" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
@@ -40,7 +39,6 @@ const Mind = () => {
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
-    { id: "research" as MindTab, label: "Research", icon: BookOpen },
     { id: "ask" as MindTab, label: "Ask", icon: MessageCircle },
   ];
 
@@ -90,11 +88,10 @@ const Mind = () => {
                 <h1 className="text-2xl font-display font-semibold">The Thread</h1>
                 <p className="text-sm text-muted-foreground/40">{insightCount} insights woven</p>
               </div>
-              <ThreadSubTabs insightCount={insightCount} identityContext={identityContext} userId={user?.id || ""} />
+              <MindSynthesis insightCount={insightCount} />
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
-          {activeTab === "research" && <ResearchFeed />}
           {activeTab === "ask" && <AskWeave />}
         </motion.div>
       </AnimatePresence>
@@ -102,38 +99,5 @@ const Mind = () => {
   );
 };
 
-// Thread sub-tabs
-const ThreadSubTabs = ({ insightCount, identityContext, userId }: { insightCount: number; identityContext: any; userId: string }) => {
-  const [sub, setSub] = useState<"roadmap" | "synthesize">("roadmap");
-  return (
-    <div className="space-y-5">
-      <div className="flex justify-center gap-6 border-b border-border/20">
-        {(["roadmap", "synthesize"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setSub(tab)}
-            className={`relative pb-2.5 text-sm font-medium transition-colors capitalize ${
-              sub === tab ? "text-foreground" : "text-muted-foreground/30 hover:text-muted-foreground"
-            }`}
-          >
-            {tab}
-            {sub === tab && (
-              <motion.div
-                layoutId="thread-sub-indicator"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
-      {sub === "roadmap" ? (
-        <ThreadView userId={userId} yearNote={identityContext?.yearNote} weeklyFocus={identityContext?.weeklyFocus} insightCount={insightCount} />
-      ) : (
-        <MindSynthesis insightCount={insightCount} />
-      )}
-    </div>
-  );
-};
 
 export default Mind;
