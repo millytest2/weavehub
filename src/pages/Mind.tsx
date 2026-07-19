@@ -99,38 +99,5 @@ const Mind = () => {
   );
 };
 
-// Thread sub-tabs
-const ThreadSubTabs = ({ insightCount, identityContext, userId }: { insightCount: number; identityContext: any; userId: string }) => {
-  const [sub, setSub] = useState<"roadmap" | "synthesize">("roadmap");
-  return (
-    <div className="space-y-5">
-      <div className="flex justify-center gap-6 border-b border-border/20">
-        {(["roadmap", "synthesize"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setSub(tab)}
-            className={`relative pb-2.5 text-sm font-medium transition-colors capitalize ${
-              sub === tab ? "text-foreground" : "text-muted-foreground/30 hover:text-muted-foreground"
-            }`}
-          >
-            {tab}
-            {sub === tab && (
-              <motion.div
-                layoutId="thread-sub-indicator"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
-      {sub === "roadmap" ? (
-        <ThreadView userId={userId} yearNote={identityContext?.yearNote} weeklyFocus={identityContext?.weeklyFocus} insightCount={insightCount} />
-      ) : (
-        <MindSynthesis insightCount={insightCount} />
-      )}
-    </div>
-  );
-};
 
 export default Mind;
