@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical, BookOpen } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadView } from "@/components/explore/ThreadView";
 import { MindSynthesis } from "@/components/explore/MindSynthesis";
 import { AskWeave } from "@/components/mind/AskWeave";
+import { ResearchFeed } from "@/components/lab/ResearchFeed";
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "ask" | "lab";
+type MindTab = "identity" | "thread" | "ask" | "lab" | "research";
 
 const Mind = () => {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ const Mind = () => {
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
+    { id: "research" as MindTab, label: "Research", icon: BookOpen },
     { id: "ask" as MindTab, label: "Ask", icon: MessageCircle },
   ];
 
@@ -92,6 +94,7 @@ const Mind = () => {
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
+          {activeTab === "research" && <ResearchFeed />}
           {activeTab === "ask" && <AskWeave />}
         </motion.div>
       </AnimatePresence>

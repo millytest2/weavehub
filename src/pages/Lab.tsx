@@ -21,9 +21,8 @@ import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
 import { SideQuestDeck } from "@/components/lab/SideQuestDeck";
 
-import { ResearchFeed } from "@/components/lab/ResearchFeed";
 
-type LabTab = "write" | "weekly" | "experiments" | "research" | "patterns";
+type LabTab = "write" | "weekly" | "experiments" | "patterns";
 
 interface Experiment {
   id: string;
@@ -189,7 +188,6 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
     { id: "write" as LabTab, label: "Write", icon: PenLine },
     { id: "weekly" as LabTab, label: "Weekly", icon: TrendingUp },
     { id: "experiments" as LabTab, label: "Experiments", icon: FlaskConical },
-    { id: "research" as LabTab, label: "Research", icon: BookOpen },
     { id: "patterns" as LabTab, label: "Patterns", icon: Network },
   ];
 
@@ -342,8 +340,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
               </div>
             )}
 
-            {/* RESEARCH */}
-            {activeTab === "research" && <ResearchFeed />}
+
 
             {/* PATTERNS */}
             {activeTab === "patterns" && (
