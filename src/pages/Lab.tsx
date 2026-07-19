@@ -21,9 +21,8 @@ import { JourneyFlow } from "@/components/lab/JourneyFlow";
 import { FreeWriteSpace } from "@/components/lab/FreeWriteSpace";
 import { SideQuestDeck } from "@/components/lab/SideQuestDeck";
 
-import { ResearchFeed } from "@/components/lab/ResearchFeed";
 
-type LabTab = "write" | "weekly" | "experiments" | "research" | "patterns";
+type LabTab = "write" | "weekly" | "experiments" | "patterns";
 
 interface Experiment {
   id: string;
