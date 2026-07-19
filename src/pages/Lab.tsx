@@ -340,8 +340,7 @@ const Lab = ({ embedded }: { embedded?: boolean } = {}) => {
               </div>
             )}
 
-            {/* RESEARCH */}
-            {activeTab === "research" && <ResearchFeed />}
+
 
             {/* PATTERNS */}
             {activeTab === "patterns" && (
