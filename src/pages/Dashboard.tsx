@@ -793,7 +793,7 @@ const Dashboard = () => {
 
             {/* Progress dots */}
             <div className="flex items-center justify-center gap-2 mb-6">
-              {nodes.map((node, i) => {
+              {cappedNodes.map((node, i) => {
                 const isDone = node.type === 'action' && node.action.completed;
                 return (
                   <button
