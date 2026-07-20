@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { EveningClose } from "@/components/dashboard/EveningClose";
-import { CriticalThinkingGuard } from "@/components/dashboard/CriticalThinkingGuard";
 
 import { Confetti, useConfetti } from "@/components/ui/confetti";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
@@ -576,9 +575,10 @@ const Dashboard = () => {
     const gemPos = firstAiIndex >= 0 ? firstAiIndex : nodes.length;
     nodes.splice(gemPos, 0, { type: 'gem', gem: forgottenGem });
   }
-
-  const totalNodes = nodes.length;
-  const currentNode = nodes[activeIndex];
+  // Cap to 5 nodes to reduce paradox of choice — keep user-added + earliest AI + gem
+  const cappedNodes = nodes.slice(0, 5);
+  const totalNodes = cappedNodes.length;
+  const currentNode = cappedNodes[activeIndex];
 
   const navigate = (dir: number) => {
     const next = activeIndex + dir;
@@ -793,7 +793,7 @@ const Dashboard = () => {
 
             {/* Progress dots */}
             <div className="flex items-center justify-center gap-2 mb-6">
-              {nodes.map((node, i) => {
+              {cappedNodes.map((node, i) => {
                 const isDone = node.type === 'action' && node.action.completed;
                 return (
                   <button
@@ -919,8 +919,6 @@ const Dashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* Critical Thinking Guard — daily provocation to protect against AI offloading */}
-      {!isLoading && brief && <CriticalThinkingGuard />}
 
 
 

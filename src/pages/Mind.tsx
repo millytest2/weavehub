@@ -1,36 +1,30 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical, BookOpen } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
-import { MindSynthesis } from "@/components/explore/MindSynthesis";
+import { ThreadWeave } from "@/components/mind/ThreadWeave";
 import { AskWeave } from "@/components/mind/AskWeave";
+import { ResearchFeed } from "@/components/lab/ResearchFeed";
 
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "ask" | "lab";
+type MindTab = "identity" | "thread" | "research" | "ask" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<MindTab>("identity");
   const [insightCount, setInsightCount] = useState(0);
-  const [identityContext, setIdentityContext] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const [insightsRes, identityRes] = await Promise.all([
-        supabase.from("insights").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-        supabase.from("identity_seeds").select("weekly_focus, year_note, core_values, content").eq("user_id", user.id).maybeSingle(),
-      ]);
+      const insightsRes = await supabase
+        .from("insights")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
       setInsightCount(insightsRes.count || 0);
-      if (identityRes.data) {
-        setIdentityContext({
-          yearNote: identityRes.data.year_note,
-          weeklyFocus: identityRes.data.weekly_focus,
-        });
-      }
     };
     load();
   }, [user]);
@@ -38,6 +32,7 @@ const Mind = () => {
   const tabs = [
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
     { id: "thread" as MindTab, label: "Thread", icon: Route },
+    { id: "research" as MindTab, label: "Research", icon: BookOpen },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
     { id: "ask" as MindTab, label: "Ask", icon: MessageCircle },
   ];
@@ -86,9 +81,16 @@ const Mind = () => {
             <div className="max-w-lg mx-auto space-y-5">
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-display font-semibold">The Thread</h1>
-                <p className="text-sm text-muted-foreground/40">{insightCount} insights woven</p>
+                <p className="text-sm text-muted-foreground/40">
+                  {insightCount} insights woven with this week's reads and rhythm
+                </p>
               </div>
-              <MindSynthesis insightCount={insightCount} />
+              <ThreadWeave insightCount={insightCount} />
+            </div>
+          )}
+          {activeTab === "research" && (
+            <div className="max-w-lg mx-auto">
+              <ResearchFeed />
             </div>
           )}
           {activeTab === "lab" && <Lab embedded />}
@@ -98,6 +100,5 @@ const Mind = () => {
     </div>
   );
 };
-
 
 export default Mind;
