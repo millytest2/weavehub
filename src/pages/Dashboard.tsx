@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { WeaveLoader } from "@/components/ui/weave-loader";
 import { EveningClose } from "@/components/dashboard/EveningClose";
-import { CriticalThinkingGuard } from "@/components/dashboard/CriticalThinkingGuard";
 
 import { Confetti, useConfetti } from "@/components/ui/confetti";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
@@ -919,8 +918,6 @@ const Dashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* Critical Thinking Guard — daily provocation to protect against AI offloading */}
-      {!isLoading && brief && <CriticalThinkingGuard />}
 
 
 
