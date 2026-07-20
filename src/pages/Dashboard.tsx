@@ -575,9 +575,10 @@ const Dashboard = () => {
     const gemPos = firstAiIndex >= 0 ? firstAiIndex : nodes.length;
     nodes.splice(gemPos, 0, { type: 'gem', gem: forgottenGem });
   }
-
-  const totalNodes = nodes.length;
-  const currentNode = nodes[activeIndex];
+  // Cap to 5 nodes to reduce paradox of choice — keep user-added + earliest AI + gem
+  const cappedNodes = nodes.slice(0, 5);
+  const totalNodes = cappedNodes.length;
+  const currentNode = cappedNodes[activeIndex];
 
   const navigate = (dir: number) => {
     const next = activeIndex + dir;
