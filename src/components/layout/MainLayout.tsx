@@ -1,4 +1,4 @@
-import { Brain, Home, Layers, User, Plus } from "lucide-react";
+import { Brain, Home, Layers, User, Plus, BookOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -14,6 +14,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const navigation = [
     { name: "Now", href: "/", icon: Home },
     { name: "Mind", href: "/mind", icon: Layers },
+    { name: "Research", href: "/mind?tab=research", icon: BookOpen },
   ];
 
 
