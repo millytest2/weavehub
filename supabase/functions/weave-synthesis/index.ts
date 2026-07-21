@@ -616,40 +616,32 @@ Be direct. No fluff. Ground everything in their actual words.`;
 
     const fullContext = contextParts.join('\n\n');
 
-    const systemPrompt = `You are a personal synthesis engine. Your job is to weave together EVERYTHING this person has collected, thought, done, and aspired to become.
+    const systemPrompt = `You are a personal pattern-weaver. Your job is to READ everything this person has captured and reflect back the concrete threads running through it — not generic advice, not therapy language, not summaries.
 
-You're not a therapist. You're not a life coach. You're not an AI giving advice. You're a MIRROR that shows them what their entire collection of knowledge, actions, and aspirations are pointing toward.
+You are a MIRROR with evidence. Every claim you make must cite something SPECIFIC from the data: a quoted phrase, a topic name, an action they took, an observation they noted, or a count.
 
 THE FULL PICTURE OF THEIR MIND:
 ${fullContext}
 
 DATA THEY'VE COLLECTED:
-- ${stats.insightsCount} insights captured
-- ${stats.documentsCount} documents consumed  
-- ${stats.experimentsCount} experiments run
-- ${stats.actionsCount} actions taken
-- ${stats.observationsCount} observations noted
-- ${stats.topicsCount} topics tracked
+- ${stats.insightsCount} insights
+- ${stats.documentsCount} documents
+- ${stats.experimentsCount} experiments
+- ${stats.actionsCount} actions
+- ${stats.observationsCount} observations
+- ${stats.topicsCount} topics
 - ${stats.learningPathsCount} learning paths
 
-YOUR TASK:
-Weave together EVERYTHING above into ONE coherent picture. This person has been collecting knowledge from ChatGPT, Claude, Twitter, PDFs, YouTube, voice notes, and more. They want to see how it ALL connects.
+RULES (non-negotiable):
+1. Cite. Every consistency, tension, small moment, and through-line must reference an ACTUAL phrase, topic, action, or observation from above. Use short direct quotes in "quotes" (5–15 words).
+2. Be specific. "Health matters to you" is banned. "You've logged 'chest day' 6 times in 14 days while writing 'body is my anchor'" is the target.
+3. No therapy-speak, no emojis, no coaching, no 'unlock/journey/embrace'. Direct, behavioral, grounded.
+4. Weight recency: last 14 days matter more than everything older.
+5. If evidence is thin, SAY IT ("only 2 signals here — not enough to call a pattern") instead of inventing.
+6. Prefer nouns and verbs from THEIR vocabulary. If they say "reps", say "reps". If they say "Misogi", say "Misogi".
+7. Small moments = the throwaway lines that reveal more than the plans. Surface 2-3 of them verbatim.
 
-Find the threads that connect their:
-1. CURRENT REALITY (where they are now)
-2. CORE VALUES (what they stand for)
-3. 2026 DIRECTION (their Misogi / year goals)
-4. DREAM REALITY (who they're becoming)
-5. ALL THE KNOWLEDGE they've captured (insights, documents)
-6. ALL THE EXPERIMENTS they've run or are running
-7. ALL THE ACTIONS they've actually taken
-8. ALL THE OBSERVATIONS and thoughts they've recorded
-
-Be SPECIFIC. Use THEIR actual words, concepts, and language. Quote directly from their content.
-
-Show them what THEIR mind is really saying when you look at ALL of it together. What patterns emerge? What's the throughline? Where is everything pointing?
-
-Don't be generic. Don't be therapeutic. Don't give advice. Be a clear, comprehensive mirror.`;
+Show them what their mind is actually doing — the consistencies, the topic pulse, the tensions, the small moments, and where the thread is pulling next.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -661,41 +653,96 @@ Don't be generic. Don't be therapeutic. Don't give advice. Be a clear, comprehen
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: "Weave together everything I've captured, done, and am becoming. What is my mind really saying? What patterns connect it all? What direction is everything pointing?" }
+          { role: "user", content: "Weave the threads. Show the consistencies, the topic pulse, the tensions, the small moments, and where I'm heading. Cite my actual words." }
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "weave_synthesis",
-              description: "Return a comprehensive synthesis of the user's mind",
+              description: "Return an evidence-cited weave of the user's mind",
               parameters: {
                 type: "object",
                 properties: {
-                  synthesis: { 
-                    type: "string", 
-                    description: "2-3 paragraph synthesis of what their entire collection of knowledge, actions, and aspirations weaves into. Be specific, use their language." 
-                  },
-                  coreThemes: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "3-5 core themes that run through everything they've captured and done"
-                  },
-                  emergingDirection: {
+                  whatYourMindIsSaying: {
                     type: "string",
-                    description: "One sentence about the direction everything is pointing"
+                    description: "One sentence — the voice of their mind if it spoke as one. Must feel like THEM (use their vocabulary, not generic wisdom)."
+                  },
+                  synthesis: {
+                    type: "string",
+                    description: "2 short paragraphs weaving the threads. Reference specific topics, quoted phrases, and actions. No generalities."
+                  },
+                  consistencies: {
+                    type: "array",
+                    description: "3-5 things showing up REPEATEDLY across insights/actions/observations. Each needs concrete evidence.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        pattern: { type: "string", description: "Short label of the recurring thread (5-10 words)" },
+                        evidence: { type: "string", description: "The count + specific proof: 'logged 4x in 10 days as reps' or '3 insights + 2 experiments on this'" },
+                        quotes: { type: "array", items: { type: "string" }, description: "1-2 short direct quotes from their content" }
+                      },
+                      required: ["pattern", "evidence"]
+                    }
+                  },
+                  topicPulse: {
+                    type: "array",
+                    description: "3-5 topics/domains they've been circling recently, ranked by weight.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        topic: { type: "string" },
+                        weight: { type: "string", description: "e.g. 'heavy — 8 hits in 14d', 'steady', 'fading — last touched 3w ago'" }
+                      },
+                      required: ["topic", "weight"]
+                    }
+                  },
+                  smallMoments: {
+                    type: "array",
+                    description: "2-4 throwaway lines/observations that reveal something the plans don't. Verbatim quotes.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        quote: { type: "string", description: "Direct quote from an insight, observation, or action reflection" },
+                        source: { type: "string", description: "Where it came from (insight title, observation, action)" },
+                        why: { type: "string", description: "One line — what this small moment reveals" }
+                      },
+                      required: ["quote", "why"]
+                    }
+                  },
+                  tensions: {
+                    type: "array",
+                    description: "1-3 real contradictions in what they say vs. do, or between two pulls they hold.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        pullA: { type: "string" },
+                        pullB: { type: "string" },
+                        note: { type: "string", description: "One line on how this shows up in the data" }
+                      },
+                      required: ["pullA", "pullB", "note"]
+                    }
                   },
                   hiddenConnections: {
                     type: "array",
                     items: { type: "string" },
-                    description: "2-4 non-obvious connections between seemingly unrelated things in their mind"
+                    description: "2-4 non-obvious links between seemingly unrelated topics/actions. Each must name both sides concretely."
                   },
-                  whatYourMindIsSaying: {
+                  nextThread: {
                     type: "string",
-                    description: "If their mind could speak as one voice, what would it say? One powerful sentence."
+                    description: "One sentence — where the thread is pulling next based on the last 14 days of signal. Grounded, not aspirational."
+                  },
+                  coreThemes: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "3-5 short tag-like themes (2-4 words each)"
+                  },
+                  emergingDirection: {
+                    type: "string",
+                    description: "One sentence — the direction everything is pointing"
                   }
                 },
-                required: ["synthesis", "coreThemes", "emergingDirection", "hiddenConnections", "whatYourMindIsSaying"]
+                required: ["whatYourMindIsSaying", "synthesis", "consistencies", "topicPulse", "smallMoments", "hiddenConnections", "nextThread", "coreThemes", "emergingDirection"]
               }
             }
           }
