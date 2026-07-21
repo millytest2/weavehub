@@ -56,7 +56,14 @@ const Mind = () => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                // keep URL in sync so top-nav "Research" link stays coherent
+                const params = new URLSearchParams(location.search);
+                if (tab.id === "identity") params.delete("tab");
+                else params.set("tab", tab.id);
+                navigate({ pathname: "/mind", search: params.toString() ? `?${params}` : "" }, { replace: true });
+              }}
               className={`relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 text-[13px] sm:text-sm font-medium transition-colors shrink-0 ${
                 isActive
                   ? "text-foreground"
