@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Compass, Route, MessageCircle, FlaskConical, BookOpen } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
@@ -14,8 +15,17 @@ type MindTab = "identity" | "thread" | "research" | "ask" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<MindTab>("identity");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const initialTab = (new URLSearchParams(location.search).get("tab") as MindTab) || "identity";
+  const [activeTab, setActiveTab] = useState<MindTab>(initialTab);
   const [insightCount, setInsightCount] = useState(0);
+
+  // Sync when URL query changes (e.g. clicking Research from top nav while on Mind)
+  useEffect(() => {
+    const tab = (new URLSearchParams(location.search).get("tab") as MindTab) || "identity";
+    setActiveTab(tab);
+  }, [location.search]);
 
   useEffect(() => {
     if (!user) return;
