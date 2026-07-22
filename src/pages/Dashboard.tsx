@@ -445,27 +445,35 @@ const Dashboard = () => {
     if (!user || !action.id) return;
     try {
       await supabase.from("daily_tasks").delete().eq("id", action.id);
-      setActions(prev => prev.filter(a => a.id !== action.id));
+      const remaining = actions.filter(a => a.id !== action.id);
+      setActions(remaining);
       setTodayTotal(prev => Math.max(0, prev - 1));
       const now = new Date();
       await supabase.from('user_activity_patterns').insert({
         user_id: user.id, hour_of_day: now.getHours(), day_of_week: now.getDay(),
         activity_type: 'skip', pillar: action.pillar
       });
-      toast.message("Passed — pulling a fresh one");
-      if (activeIndex < totalNodes - 2) {
-        setTimeout(() => navigate(1), 300);
-      }
-      // Ask morning-brief to top up so the brief stays current after a pass
-      try {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        await supabase.functions.invoke("morning-brief", {
-          body: { timezone, top_up: true, skipped_pillar: action.pillar },
-        });
-        hasLoaded.current = false;
-        await fetchBrief({ force: true });
-      } catch (e) {
-        console.error("Top-up after skip failed:", e);
+
+      // Don't regenerate on every pass — only when ALL AI-suggested
+      // actions are gone. Pinned actions (no action_type) don't count.
+      const aiLeft = remaining.filter(a => !!a.action_type).length;
+      if (aiLeft === 0) {
+        toast.message("All passed — weaving 5 fresh moves");
+        try {
+          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          await supabase.functions.invoke("morning-brief", {
+            body: { timezone, top_up: true },
+          });
+          hasLoaded.current = false;
+          await fetchBrief();
+        } catch (e) {
+          console.error("Top-up after all-skipped failed:", e);
+        }
+      } else {
+        toast.message("Passed");
+        if (activeIndex < totalNodes - 2) {
+          setTimeout(() => navigate(1), 300);
+        }
       }
     } catch (error: any) {
       console.error("Skip error:", error);
