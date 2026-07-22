@@ -550,11 +550,17 @@ const Dashboard = () => {
       }
 
       if (newTasks.length > 0) {
-        // Prepend user tasks so they appear first in the deck
-        setActions(prev => [...newTasks, ...prev]);
-        setTodayTotal(prev => prev + newTasks.length);
-        setActiveIndex(0); // Jump to first new task
-        toast.success(`Added ${newTasks.length} task${newTasks.length > 1 ? 's' : ''}`);
+        // User pinned their own — drop the AI suggestions so their list stands alone.
+        const aiIds = actions.filter(a => !!a.action_type && a.id).map(a => a.id as string);
+        if (aiIds.length > 0) {
+          await supabase.from("daily_tasks").delete().in("id", aiIds);
+        }
+        const pinnedExisting = actions.filter(a => !a.action_type);
+        setActions([...newTasks, ...pinnedExisting]);
+        setForgottenGem(null);
+        setTodayTotal(pinnedExisting.length + newTasks.length);
+        setActiveIndex(0);
+        toast.success(`Added ${newTasks.length} — your list`);
         setQuickAddText("");
         setShowQuickAdd(false);
       }
