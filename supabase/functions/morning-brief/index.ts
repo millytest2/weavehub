@@ -401,28 +401,26 @@ ${previousBriefActions || 'None'}
 
 FRESHNESS SEED: ${varietySeed} — use this only as a tiebreaker to vary phrasing and framing between days.
 
-TASK: Generate a morning brief with these EXACT sections:
+SLOTS TO FILL: ${slotsToFill}. Produce EXACTLY ${slotsToFill} actions — no more, no less. The user's dashboard holds ${TARGET_TOTAL} things total; ${pinnedTasks.length} are already pinned by the user and ${existingAiTasks.length} are already suggested. You are filling the remaining ${slotsToFill}.
 
-1. WHAT_SHIFTED: 2-3 bullet points about what changed in the last 48 hours. Reference specific journal entries, captures, or patterns WITH dates. Be concrete — "You mentioned X on [date]" not "You've been thinking about X".
+WEAVING RULES (this is the whole point — obey strictly):
+1. IDENTITY-FIRST. Every action must connect to CURRENT PHASE, WEEKLY FOCUS, 2026 DIRECTION, or the through-line — never generic productivity.
+2. REVERSE-ENGINEER THE WEEK. Read the ideal-week anchors as "this week's floor and stretch." Today's action = the smallest meaningful rep that moves a real weekly commitment forward, sized to today's energy — floor if depleted, stretch if momentum is high.
+3. RECENCY-WEIGHTED. Last 14 days of captures/observations/journal lead. Older material only surfaces as a "gem" when it directly reframes today.
+4. WEAVE MULTIPLE THREADS. Every action must cite ≥5 sources spanning at least 3 different types (capture + pattern + goal + journal + gem + experiment + identity + milestone). No single-thread actions.
+5. NO REPEATS. Never restate a pinned item, an existing AI action, or a prior brief action.
 
-2. THREE RECOMMENDED ACTIONS (one per type):
-   - ACTION 1 (goal_gap): MUST come from "TODAY'S IDEAL-WEEK ANCHORS" if any are unfinished — the user pre-committed to these for TODAY. Only fall back to weekly intentions / milestones if today has no anchors.
-   - ACTION 2 (domain_balance): Addresses a neglected domain or leverages a learned pattern (respect the ideal-week pillar mix — don't stack on domains already covered today)
-   - ACTION 3 (capture_test): Tests or applies something from a recent capture/insight
-   
-   Each action needs: action_text, why (citing specific user data with dates), impact (connection to their goal), time_estimate, pillar, action_type
+ACTION MIX (fill in this order until slots are used):
+- goal_gap → pull from TODAY'S IDEAL-WEEK ANCHORS first, then weekly intentions.
+- domain_balance → warm a neglected pillar OR leverage a learned energy pattern.
+- capture_test → apply/test something from a recent capture (last 14 days).
+- bonus → aligned but lighter, only if slots remain.
 
-3. ONE BONUS ACTION (nice_to_have): Lower priority but still aligned
+Each action needs: action_text (specific and concrete, not "think about"), why (cite specific user data with dates), impact (connection to a stated goal), time_estimate, pillar, action_type, priority, sources.
 
-4. FORGOTTEN GEM CONTEXT: If a gem is provided, explain why it's relevant NOW given their current situation.
+WHAT_SHIFTED: 2-3 bullet points about what changed in the last 48 hours. Reference specific journal entries, captures, or patterns WITH dates. Be concrete — "You mentioned X on [date]" not "You've been thinking about X".
 
-CRITICAL RULES:
-- All citations must reference ACTUAL user data with dates
-- Actions must be specific and concrete (not "think about" or "plan")
-- Connect actions to their stated goals explicitly
-- Use their language/tone from journal entries when possible
-- NEVER repeat actions they already did
-- Respect their current phase and energy patterns`;
+FORGOTTEN GEM CONTEXT: If a gem is provided, explain in one line why it's relevant NOW given their current situation.`;
 
     const userPrompt = forgottenGem
       ? `Generate my morning brief. The forgotten gem to contextualize is: "${forgottenGem.title}" — "${(forgottenGem.content || '').substring(0, 200)}"`
