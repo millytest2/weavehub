@@ -91,9 +91,27 @@ serve(async (req) => {
       .is("daily_brief_id", null);
     const pinnedTasks = pinnedTasksRaw || [];
 
+    // In top_up mode, count existing AI tasks so we only fill the remaining slots to 5.
+    let existingAiTasks: any[] = [];
+    if (topUp && existingBrief) {
+      const { data: aiTasks } = await supabase
+        .from("daily_tasks")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("task_date", today)
+        .eq("daily_brief_id", existingBrief.id);
+      existingAiTasks = aiTasks || [];
+    }
+
+    const TARGET_TOTAL = 5;
+    const currentTotal = pinnedTasks.length + existingAiTasks.length;
+    const slotsToFill = topUp
+      ? Math.max(0, TARGET_TOTAL - currentTotal)
+      : Math.max(0, Math.min(4, TARGET_TOTAL - pinnedTasks.length));
+
     // Respect the user's own list. If they've pinned 5+ items and this isn't
     // an explicit force/regenerate, don't add AI-generated actions on top.
-    if (pinnedTasks.length >= 5 && !force) {
+    if ((pinnedTasks.length >= TARGET_TOTAL && !force) || (topUp && slotsToFill === 0)) {
       const { data: credits } = await supabase
         .from("daily_credits")
         .select("*")
@@ -102,10 +120,10 @@ serve(async (req) => {
         .maybeSingle();
       return new Response(JSON.stringify({
         brief: existingBrief || { id: null, brief_date: today, what_shifted: "Your list — nothing added.", forgotten_gem_context: null },
-        actions: pinnedTasks,
+        actions: [...pinnedTasks, ...existingAiTasks],
         credits: credits || { total_credits: 3, credits_spent: 0, actions_committed: [] },
         cached: true,
-        pinned_only: true,
+        pinned_only: pinnedTasks.length >= TARGET_TOTAL,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
