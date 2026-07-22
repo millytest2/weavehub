@@ -335,11 +335,13 @@ serve(async (req) => {
       ? pinnedTasks.map((t: any) => `- ${t.completed ? '✓' : '○'} [${t.pillar || 'General'}] ${t.one_thing || t.title}`).join('\n')
       : 'None';
 
-    // Previous briefs' actions — the AI must NOT repeat these action texts
-    const previousBriefActions = (recentBriefs || [])
-      .flatMap((b: any) => (Array.isArray(b.recommended_actions) ? b.recommended_actions : []).map((a: any) => `- [${b.brief_date}] ${a.action_text}`))
-      .slice(0, 15)
-      .join('\n');
+    // Previous briefs' actions — the AI must NOT repeat these action texts.
+    // Also include today's already-suggested AI actions in top-up mode so we don't restate them.
+    const previousBriefActions = [
+      ...existingAiTasks.map((t: any) => `- [today, already suggested] ${t.one_thing || t.title}`),
+      ...(recentBriefs || [])
+        .flatMap((b: any) => (Array.isArray(b.recommended_actions) ? b.recommended_actions : []).map((a: any) => `- [${b.brief_date}] ${a.action_text}`)),
+    ].slice(0, 20).join('\n');
 
     // Freshness seed — nudges the model to produce different framings across days
     const varietySeed = Math.random().toString(36).slice(2, 8);
