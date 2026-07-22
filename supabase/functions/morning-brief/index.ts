@@ -559,48 +559,64 @@ FORGOTTEN GEM CONTEXT: If a gem is provided, explain in one line why it's releva
       });
     }
 
-    // ===== SAVE BRIEF =====
-    const { data: savedBrief, error: briefError } = await supabase
-      .from("daily_briefs")
-      .insert({
-        user_id: user.id,
-        brief_date: today,
-        what_shifted: briefData.what_shifted,
-        recommended_actions: briefData.actions,
-        forgotten_gem_id: forgottenGem?.id || null,
-        forgotten_gem_context: briefData.forgotten_gem_context || null,
-      })
-      .select()
-      .single();
-
-    if (briefError) {
-      console.error("Brief save error:", briefError);
-      // Might be duplicate - fetch existing
-      const { data: existing } = await supabase
+    // ===== SAVE OR REUSE BRIEF =====
+    let savedBrief: any;
+    if (topUp && existingBrief) {
+      // Merge new actions into the existing brief; don't create a new row.
+      const mergedActions = [
+        ...(Array.isArray(existingBrief.recommended_actions) ? existingBrief.recommended_actions : []),
+        ...(briefData.actions || []),
+      ];
+      const { data: updated } = await supabase
         .from("daily_briefs")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("brief_date", today)
-        .maybeSingle();
-
-      if (existing) {
-        return new Response(JSON.stringify({
-          brief: existing,
-          actions: [],
-          credits: { total_credits: 3, credits_spent: 0, actions_committed: [] },
-          cached: true
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        .update({ recommended_actions: mergedActions })
+        .eq("id", existingBrief.id)
+        .select()
+        .single();
+      savedBrief = updated || existingBrief;
+    } else {
+      const { data: inserted, error: briefError } = await supabase
+        .from("daily_briefs")
+        .insert({
+          user_id: user.id,
+          brief_date: today,
+          what_shifted: briefData.what_shifted,
+          recommended_actions: briefData.actions,
+          forgotten_gem_id: forgottenGem?.id || null,
+          forgotten_gem_context: briefData.forgotten_gem_context || null,
+        })
+        .select()
+        .single();
+      if (briefError) {
+        console.error("Brief save error:", briefError);
+        const { data: existing } = await supabase
+          .from("daily_briefs")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("brief_date", today)
+          .maybeSingle();
+        if (existing) {
+          return new Response(JSON.stringify({
+            brief: existing,
+            actions: [],
+            credits: { total_credits: 3, credits_spent: 0, actions_committed: [] },
+            cached: true
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        throw briefError;
       }
-      throw briefError;
+      savedBrief = inserted;
     }
 
     // ===== SAVE ACTIONS AS DAILY_TASKS =====
-    // Pinned tasks keep sequence 1..N, AI actions come after
-    const pinnedOffset = pinnedTasks.length;
-    const taskInserts = (briefData.actions || []).map((action: any, idx: number) => ({
+    // Pinned tasks + any existing AI tasks come first; new AI actions append after,
+    // capped to slotsToFill so we never exceed the 5-item dashboard target.
+    const baseOffset = pinnedTasks.length + existingAiTasks.length;
+    const newActions = (briefData.actions || []).slice(0, Math.max(0, slotsToFill));
+    const taskInserts = newActions.map((action: any, idx: number) => ({
       user_id: user.id,
       task_date: today,
-      task_sequence: pinnedOffset + idx + 1,
+      task_sequence: baseOffset + idx + 1,
       title: action.pillar || "Action",
       one_thing: action.action_text,
       why_matters: action.why,
@@ -615,10 +631,9 @@ FORGOTTEN GEM CONTEXT: If a gem is provided, explain in one line why it's releva
       cited_sources: action.sources || [],
     }));
 
-    const { data: savedTasks } = await supabase
-      .from("daily_tasks")
-      .insert(taskInserts)
-      .select();
+    const { data: savedTasks } = taskInserts.length > 0
+      ? await supabase.from("daily_tasks").insert(taskInserts).select()
+      : { data: [] as any[] };
 
     // ===== ENSURE CREDITS ROW =====
     await supabase.from("daily_credits").upsert({
