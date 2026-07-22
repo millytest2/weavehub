@@ -477,8 +477,8 @@ FORGOTTEN GEM CONTEXT: If a gem is provided, explain in one line why it's releva
                     },
                     required: ["action_text", "why", "impact", "time_estimate", "pillar", "action_type", "priority", "sources"]
                   },
-                  minItems: 3,
-                  maxItems: 4
+                  minItems: Math.max(1, slotsToFill),
+                  maxItems: Math.max(1, slotsToFill)
                 },
                 forgotten_gem_context: { type: "string", description: "Why the forgotten gem is relevant now" }
               },
