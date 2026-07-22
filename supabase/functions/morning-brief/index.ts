@@ -24,10 +24,12 @@ serve(async (req) => {
 
     let timezone: string | undefined;
     let force = false;
+    let topUp = false;
     try {
       const body = await req.json();
       timezone = body?.timezone;
       force = body?.force === true;
+      topUp = body?.top_up === true;
     } catch { /* no body */ }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
