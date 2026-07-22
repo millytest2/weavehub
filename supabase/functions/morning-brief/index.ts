@@ -107,7 +107,7 @@ serve(async (req) => {
     const currentTotal = pinnedTasks.length + existingAiTasks.length;
     const slotsToFill = topUp
       ? Math.max(0, TARGET_TOTAL - currentTotal)
-      : Math.max(0, Math.min(4, TARGET_TOTAL - pinnedTasks.length));
+      : Math.max(0, TARGET_TOTAL - pinnedTasks.length);
 
     // Respect the user's own list. If they've pinned 5+ items and this isn't
     // an explicit force/regenerate, don't add AI-generated actions on top.
