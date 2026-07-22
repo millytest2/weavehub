@@ -52,7 +52,7 @@ serve(async (req) => {
       .eq("brief_date", today)
       .maybeSingle();
 
-    if (existingBrief && !force) {
+    if (existingBrief && !force && !topUp) {
       // Return existing brief with tasks
       const { data: tasks } = await supabase
         .from("daily_tasks")
