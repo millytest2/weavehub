@@ -24,10 +24,12 @@ serve(async (req) => {
 
     let timezone: string | undefined;
     let force = false;
+    let topUp = false;
     try {
       const body = await req.json();
       timezone = body?.timezone;
       force = body?.force === true;
+      topUp = body?.top_up === true;
     } catch { /* no body */ }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -50,7 +52,7 @@ serve(async (req) => {
       .eq("brief_date", today)
       .maybeSingle();
 
-    if (existingBrief && !force) {
+    if (existingBrief && !force && !topUp) {
       // Return existing brief with tasks
       const { data: tasks } = await supabase
         .from("daily_tasks")
@@ -89,9 +91,27 @@ serve(async (req) => {
       .is("daily_brief_id", null);
     const pinnedTasks = pinnedTasksRaw || [];
 
+    // In top_up mode, count existing AI tasks so we only fill the remaining slots to 5.
+    let existingAiTasks: any[] = [];
+    if (topUp && existingBrief) {
+      const { data: aiTasks } = await supabase
+        .from("daily_tasks")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("task_date", today)
+        .eq("daily_brief_id", existingBrief.id);
+      existingAiTasks = aiTasks || [];
+    }
+
+    const TARGET_TOTAL = 5;
+    const currentTotal = pinnedTasks.length + existingAiTasks.length;
+    const slotsToFill = topUp
+      ? Math.max(0, TARGET_TOTAL - currentTotal)
+      : Math.max(0, TARGET_TOTAL - pinnedTasks.length);
+
     // Respect the user's own list. If they've pinned 5+ items and this isn't
     // an explicit force/regenerate, don't add AI-generated actions on top.
-    if (pinnedTasks.length >= 5 && !force) {
+    if ((pinnedTasks.length >= TARGET_TOTAL && !force) || (topUp && slotsToFill === 0)) {
       const { data: credits } = await supabase
         .from("daily_credits")
         .select("*")
@@ -100,10 +120,10 @@ serve(async (req) => {
         .maybeSingle();
       return new Response(JSON.stringify({
         brief: existingBrief || { id: null, brief_date: today, what_shifted: "Your list — nothing added.", forgotten_gem_context: null },
-        actions: pinnedTasks,
+        actions: [...pinnedTasks, ...existingAiTasks],
         credits: credits || { total_credits: 3, credits_spent: 0, actions_committed: [] },
         cached: true,
-        pinned_only: true,
+        pinned_only: pinnedTasks.length >= TARGET_TOTAL,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -315,11 +335,13 @@ serve(async (req) => {
       ? pinnedTasks.map((t: any) => `- ${t.completed ? '✓' : '○'} [${t.pillar || 'General'}] ${t.one_thing || t.title}`).join('\n')
       : 'None';
 
-    // Previous briefs' actions — the AI must NOT repeat these action texts
-    const previousBriefActions = (recentBriefs || [])
-      .flatMap((b: any) => (Array.isArray(b.recommended_actions) ? b.recommended_actions : []).map((a: any) => `- [${b.brief_date}] ${a.action_text}`))
-      .slice(0, 15)
-      .join('\n');
+    // Previous briefs' actions — the AI must NOT repeat these action texts.
+    // Also include today's already-suggested AI actions in top-up mode so we don't restate them.
+    const previousBriefActions = [
+      ...existingAiTasks.map((t: any) => `- [today, already suggested] ${t.one_thing || t.title}`),
+      ...(recentBriefs || [])
+        .flatMap((b: any) => (Array.isArray(b.recommended_actions) ? b.recommended_actions : []).map((a: any) => `- [${b.brief_date}] ${a.action_text}`)),
+    ].slice(0, 20).join('\n');
 
     // Freshness seed — nudges the model to produce different framings across days
     const varietySeed = Math.random().toString(36).slice(2, 8);
@@ -381,28 +403,26 @@ ${previousBriefActions || 'None'}
 
 FRESHNESS SEED: ${varietySeed} — use this only as a tiebreaker to vary phrasing and framing between days.
 
-TASK: Generate a morning brief with these EXACT sections:
+SLOTS TO FILL: ${slotsToFill}. Produce EXACTLY ${slotsToFill} actions — no more, no less. The user's dashboard holds ${TARGET_TOTAL} things total; ${pinnedTasks.length} are already pinned by the user and ${existingAiTasks.length} are already suggested. You are filling the remaining ${slotsToFill}.
 
-1. WHAT_SHIFTED: 2-3 bullet points about what changed in the last 48 hours. Reference specific journal entries, captures, or patterns WITH dates. Be concrete — "You mentioned X on [date]" not "You've been thinking about X".
+WEAVING RULES (this is the whole point — obey strictly):
+1. IDENTITY-FIRST. Every action must connect to CURRENT PHASE, WEEKLY FOCUS, 2026 DIRECTION, or the through-line — never generic productivity.
+2. REVERSE-ENGINEER THE WEEK. Read the ideal-week anchors as "this week's floor and stretch." Today's action = the smallest meaningful rep that moves a real weekly commitment forward, sized to today's energy — floor if depleted, stretch if momentum is high.
+3. RECENCY-WEIGHTED. Last 14 days of captures/observations/journal lead. Older material only surfaces as a "gem" when it directly reframes today.
+4. WEAVE MULTIPLE THREADS. Every action must cite ≥5 sources spanning at least 3 different types (capture + pattern + goal + journal + gem + experiment + identity + milestone). No single-thread actions.
+5. NO REPEATS. Never restate a pinned item, an existing AI action, or a prior brief action.
 
-2. THREE RECOMMENDED ACTIONS (one per type):
-   - ACTION 1 (goal_gap): MUST come from "TODAY'S IDEAL-WEEK ANCHORS" if any are unfinished — the user pre-committed to these for TODAY. Only fall back to weekly intentions / milestones if today has no anchors.
-   - ACTION 2 (domain_balance): Addresses a neglected domain or leverages a learned pattern (respect the ideal-week pillar mix — don't stack on domains already covered today)
-   - ACTION 3 (capture_test): Tests or applies something from a recent capture/insight
-   
-   Each action needs: action_text, why (citing specific user data with dates), impact (connection to their goal), time_estimate, pillar, action_type
+ACTION MIX (fill in this order until slots are used):
+- goal_gap → pull from TODAY'S IDEAL-WEEK ANCHORS first, then weekly intentions.
+- domain_balance → warm a neglected pillar OR leverage a learned energy pattern.
+- capture_test → apply/test something from a recent capture (last 14 days).
+- bonus → aligned but lighter, only if slots remain.
 
-3. ONE BONUS ACTION (nice_to_have): Lower priority but still aligned
+Each action needs: action_text (specific and concrete, not "think about"), why (cite specific user data with dates), impact (connection to a stated goal), time_estimate, pillar, action_type, priority, sources.
 
-4. FORGOTTEN GEM CONTEXT: If a gem is provided, explain why it's relevant NOW given their current situation.
+WHAT_SHIFTED: 2-3 bullet points about what changed in the last 48 hours. Reference specific journal entries, captures, or patterns WITH dates. Be concrete — "You mentioned X on [date]" not "You've been thinking about X".
 
-CRITICAL RULES:
-- All citations must reference ACTUAL user data with dates
-- Actions must be specific and concrete (not "think about" or "plan")
-- Connect actions to their stated goals explicitly
-- Use their language/tone from journal entries when possible
-- NEVER repeat actions they already did
-- Respect their current phase and energy patterns`;
+FORGOTTEN GEM CONTEXT: If a gem is provided, explain in one line why it's relevant NOW given their current situation.`;
 
     const userPrompt = forgottenGem
       ? `Generate my morning brief. The forgotten gem to contextualize is: "${forgottenGem.title}" — "${(forgottenGem.content || '').substring(0, 200)}"`
@@ -459,8 +479,8 @@ CRITICAL RULES:
                     },
                     required: ["action_text", "why", "impact", "time_estimate", "pillar", "action_type", "priority", "sources"]
                   },
-                  minItems: 3,
-                  maxItems: 4
+                  minItems: Math.max(1, slotsToFill),
+                  maxItems: Math.max(1, slotsToFill)
                 },
                 forgotten_gem_context: { type: "string", description: "Why the forgotten gem is relevant now" }
               },
@@ -539,48 +559,64 @@ CRITICAL RULES:
       });
     }
 
-    // ===== SAVE BRIEF =====
-    const { data: savedBrief, error: briefError } = await supabase
-      .from("daily_briefs")
-      .insert({
-        user_id: user.id,
-        brief_date: today,
-        what_shifted: briefData.what_shifted,
-        recommended_actions: briefData.actions,
-        forgotten_gem_id: forgottenGem?.id || null,
-        forgotten_gem_context: briefData.forgotten_gem_context || null,
-      })
-      .select()
-      .single();
-
-    if (briefError) {
-      console.error("Brief save error:", briefError);
-      // Might be duplicate - fetch existing
-      const { data: existing } = await supabase
+    // ===== SAVE OR REUSE BRIEF =====
+    let savedBrief: any;
+    if (topUp && existingBrief) {
+      // Merge new actions into the existing brief; don't create a new row.
+      const mergedActions = [
+        ...(Array.isArray(existingBrief.recommended_actions) ? existingBrief.recommended_actions : []),
+        ...(briefData.actions || []),
+      ];
+      const { data: updated } = await supabase
         .from("daily_briefs")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("brief_date", today)
-        .maybeSingle();
-
-      if (existing) {
-        return new Response(JSON.stringify({
-          brief: existing,
-          actions: [],
-          credits: { total_credits: 3, credits_spent: 0, actions_committed: [] },
-          cached: true
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        .update({ recommended_actions: mergedActions })
+        .eq("id", existingBrief.id)
+        .select()
+        .single();
+      savedBrief = updated || existingBrief;
+    } else {
+      const { data: inserted, error: briefError } = await supabase
+        .from("daily_briefs")
+        .insert({
+          user_id: user.id,
+          brief_date: today,
+          what_shifted: briefData.what_shifted,
+          recommended_actions: briefData.actions,
+          forgotten_gem_id: forgottenGem?.id || null,
+          forgotten_gem_context: briefData.forgotten_gem_context || null,
+        })
+        .select()
+        .single();
+      if (briefError) {
+        console.error("Brief save error:", briefError);
+        const { data: existing } = await supabase
+          .from("daily_briefs")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("brief_date", today)
+          .maybeSingle();
+        if (existing) {
+          return new Response(JSON.stringify({
+            brief: existing,
+            actions: [],
+            credits: { total_credits: 3, credits_spent: 0, actions_committed: [] },
+            cached: true
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        throw briefError;
       }
-      throw briefError;
+      savedBrief = inserted;
     }
 
     // ===== SAVE ACTIONS AS DAILY_TASKS =====
-    // Pinned tasks keep sequence 1..N, AI actions come after
-    const pinnedOffset = pinnedTasks.length;
-    const taskInserts = (briefData.actions || []).map((action: any, idx: number) => ({
+    // Pinned tasks + any existing AI tasks come first; new AI actions append after,
+    // capped to slotsToFill so we never exceed the 5-item dashboard target.
+    const baseOffset = pinnedTasks.length + existingAiTasks.length;
+    const newActions = (briefData.actions || []).slice(0, Math.max(0, slotsToFill));
+    const taskInserts = newActions.map((action: any, idx: number) => ({
       user_id: user.id,
       task_date: today,
-      task_sequence: pinnedOffset + idx + 1,
+      task_sequence: baseOffset + idx + 1,
       title: action.pillar || "Action",
       one_thing: action.action_text,
       why_matters: action.why,
@@ -595,10 +631,9 @@ CRITICAL RULES:
       cited_sources: action.sources || [],
     }));
 
-    const { data: savedTasks } = await supabase
-      .from("daily_tasks")
-      .insert(taskInserts)
-      .select();
+    const { data: savedTasks } = taskInserts.length > 0
+      ? await supabase.from("daily_tasks").insert(taskInserts).select()
+      : { data: [] as any[] };
 
     // ===== ENSURE CREDITS ROW =====
     await supabase.from("daily_credits").upsert({
@@ -632,7 +667,7 @@ CRITICAL RULES:
 
     return new Response(JSON.stringify({
       brief: savedBrief,
-      actions: [...pinnedTasks, ...(savedTasks || [])],
+      actions: [...pinnedTasks, ...existingAiTasks, ...(savedTasks || [])],
       credits: credits || { total_credits: 3, credits_spent: 0, actions_committed: [] },
       forgotten_gem: gemDetails,
       cached: false,
