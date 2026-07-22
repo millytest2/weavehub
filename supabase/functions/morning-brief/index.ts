@@ -667,7 +667,7 @@ FORGOTTEN GEM CONTEXT: If a gem is provided, explain in one line why it's releva
 
     return new Response(JSON.stringify({
       brief: savedBrief,
-      actions: [...pinnedTasks, ...(savedTasks || [])],
+      actions: [...pinnedTasks, ...existingAiTasks, ...(savedTasks || [])],
       credits: credits || { total_credits: 3, credits_spent: 0, actions_committed: [] },
       forgotten_gem: gemDetails,
       cached: false,
