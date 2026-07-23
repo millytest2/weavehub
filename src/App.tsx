@@ -20,6 +20,7 @@ import Admin from "./pages/Admin";
 import Lab from "./pages/Lab";
 import Landing from "./pages/Landing";
 import Mind from "./pages/Mind";
+import Research from "./pages/Research";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MainLayout>
                     <Mind />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/research"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Research />
                   </MainLayout>
                 </ProtectedRoute>
               }
