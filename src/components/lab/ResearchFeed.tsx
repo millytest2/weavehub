@@ -40,13 +40,33 @@ const PILLAR_COLORS: Record<string, string> = {
 
 const FOCUS_CHIPS = ["All", "Money", "Body", "Charisma", "Mind", "UPath", "Relationship"];
 
-// Module-level cache so switching tabs doesn't refetch. Manual Refresh button re-fetches.
-const feedCache: { readings: Reading[]; focus: string; topic: string; ts: number } = {
+// Module-level cache so switching tabs doesn't refetch. Auto-invalidates when
+// the user's context signature changes (identity focus, capture count, weekly
+// focus) or after 6 hours — whichever comes first.
+const feedCache: { readings: Reading[]; focus: string; topic: string; ts: number; sig: string } = {
   readings: [],
   focus: "All",
   topic: "",
   ts: 0,
+  sig: "",
 };
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+async function buildContextSignature(userId: string): Promise<string> {
+  const [idRes, obsRes, insRes] = await Promise.all([
+    supabase.from("identity_seeds").select("weekly_focus, year_note, updated_at").eq("user_id", userId).maybeSingle(),
+    supabase.from("observations").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    supabase.from("insights").select("id", { count: "exact", head: true }).eq("user_id", userId),
+  ]);
+  const parts = [
+    idRes.data?.weekly_focus || "",
+    idRes.data?.year_note || "",
+    idRes.data?.updated_at || "",
+    String(obsRes.count || 0),
+    String(insRes.count || 0),
+  ];
+  return parts.join("|");
+}
 
 export function ResearchFeed() {
   const { user } = useAuth();
@@ -66,8 +86,14 @@ export function ResearchFeed() {
   useEffect(() => {
     if (!user) return;
     loadSources();
-    // Only auto-load on very first visit — never re-fetch on tab switch.
-    if (feedCache.readings.length === 0) loadReadings("All", "");
+    (async () => {
+      const sig = await buildContextSignature(user.id);
+      const stale =
+        feedCache.readings.length === 0 ||
+        feedCache.sig !== sig ||
+        Date.now() - feedCache.ts > CACHE_TTL_MS;
+      if (stale) loadReadings(feedCache.focus || "All", feedCache.topic || "", sig);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -109,7 +135,7 @@ export function ResearchFeed() {
     loadSources();
   };
 
-  const loadReadings = async (focus: string, topicOverride?: string) => {
+  const loadReadings = async (focus: string, topicOverride?: string, sigOverride?: string) => {
     if (!user) return;
     setLoading(true);
     setActiveFocus(focus);
@@ -118,6 +144,8 @@ export function ResearchFeed() {
         body: {
           focus: focus === "All" ? null : focus,
           topic: (topicOverride ?? topic).trim() || null,
+          // cache-buster so upstream/edge doesn't return the same set
+          nonce: Math.random().toString(36).slice(2, 10),
         },
       });
       if (error) throw error;
@@ -128,6 +156,7 @@ export function ResearchFeed() {
       feedCache.focus = focus;
       feedCache.topic = (topicOverride ?? topic).trim();
       feedCache.ts = Date.now();
+      feedCache.sig = sigOverride ?? (await buildContextSignature(user.id));
     } catch (err: any) {
       toast.error(err.message || "Couldn't load research");
     } finally {
