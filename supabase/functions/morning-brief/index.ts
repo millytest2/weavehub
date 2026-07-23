@@ -52,7 +52,27 @@ serve(async (req) => {
       .eq("brief_date", today)
       .maybeSingle();
 
+    // Staleness check — if identity, observations, insights, or weekly plan
+    // moved since the brief was created, treat it as stale and regenerate so
+    // today's brief reflects the newest signal (unless the user explicitly
+    // just wants a top-up on remaining slots).
+    let staleAutoForce = false;
     if (existingBrief && !force && !topUp) {
+      const briefCreatedAt = new Date(existingBrief.created_at).getTime();
+      const [idRes, obsRes, insRes, wkRes] = await Promise.all([
+        supabase.from("identity_seeds").select("updated_at").eq("user_id", user.id).maybeSingle(),
+        supabase.from("observations").select("created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("insights").select("created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("weekly_intentions").select("updated_at").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      const stamps = [
+        idRes.data?.updated_at, obsRes.data?.created_at, insRes.data?.created_at, wkRes.data?.updated_at,
+      ].filter(Boolean).map((s: any) => new Date(s).getTime());
+      const latest = stamps.length ? Math.max(...stamps) : 0;
+      if (latest > briefCreatedAt) staleAutoForce = true;
+    }
+
+    if (existingBrief && !force && !topUp && !staleAutoForce) {
       // Return existing brief with tasks
       const { data: tasks } = await supabase
         .from("daily_tasks")
@@ -76,7 +96,7 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (existingBrief && force) {
+    if (existingBrief && (force || staleAutoForce)) {
       // Wipe today's brief + AI-generated tasks. Preserve user-pinned tasks (daily_brief_id null).
       await supabase.from("daily_tasks").delete().eq("daily_brief_id", existingBrief.id);
       await supabase.from("daily_briefs").delete().eq("id", existingBrief.id);

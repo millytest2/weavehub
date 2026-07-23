@@ -14,7 +14,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const navigation = [
     { name: "Now", href: "/", icon: Home },
     { name: "Mind", href: "/mind", icon: Layers },
-    { name: "Research", href: "/mind?tab=research", icon: BookOpen },
+    { name: "Research", href: "/research", icon: BookOpen },
   ];
 
 
