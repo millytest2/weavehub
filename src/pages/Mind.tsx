@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical, Beaker } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadWeave } from "@/components/mind/ThreadWeave";
 import { AskWeave } from "@/components/mind/AskWeave";
+import { ExperimentsSimple } from "@/components/mind/ExperimentsSimple";
 
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "ask" | "lab";
+type MindTab = "identity" | "thread" | "experiments" | "ask" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
