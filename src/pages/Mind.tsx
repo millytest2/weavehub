@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Route, MessageCircle, FlaskConical } from "lucide-react";
+import { Compass, Route, MessageCircle, FlaskConical, Beaker } from "lucide-react";
 import IdentitySeed from "./IdentitySeed";
 import { ThreadWeave } from "@/components/mind/ThreadWeave";
 import { AskWeave } from "@/components/mind/AskWeave";
+import { ExperimentsSimple } from "@/components/mind/ExperimentsSimple";
 
 import Lab from "./Lab";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
-type MindTab = "identity" | "thread" | "ask" | "lab";
+type MindTab = "identity" | "thread" | "experiments" | "ask" | "lab";
 
 const Mind = () => {
   const { user } = useAuth();
@@ -40,7 +41,8 @@ const Mind = () => {
 
   const tabs = [
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
-    { id: "thread" as MindTab, label: "Thread", icon: Route },
+    { id: "thread" as MindTab, label: "Through-line", icon: Route },
+    { id: "experiments" as MindTab, label: "Experiments", icon: Beaker },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
     { id: "ask" as MindTab, label: "Ask", icon: MessageCircle },
   ];
@@ -95,14 +97,15 @@ const Mind = () => {
           {activeTab === "thread" && (
             <div className="max-w-lg mx-auto space-y-5">
               <div className="text-center space-y-1">
-                <h1 className="text-2xl font-display font-semibold">The Thread</h1>
+                <h1 className="text-2xl font-display font-semibold">The Through-line</h1>
                 <p className="text-sm text-muted-foreground/40">
-                  {insightCount} insights woven with this week's reads and rhythm
+                  Every strand — identity, captures, journal, actions, reads — woven into one view
                 </p>
               </div>
               <ThreadWeave insightCount={insightCount} />
             </div>
           )}
+          {activeTab === "experiments" && <ExperimentsSimple />}
           {activeTab === "lab" && <Lab embedded />}
           {activeTab === "ask" && <AskWeave />}
         </motion.div>
