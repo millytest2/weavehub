@@ -97,14 +97,15 @@ const Mind = () => {
           {activeTab === "thread" && (
             <div className="max-w-lg mx-auto space-y-5">
               <div className="text-center space-y-1">
-                <h1 className="text-2xl font-display font-semibold">The Thread</h1>
+                <h1 className="text-2xl font-display font-semibold">The Through-line</h1>
                 <p className="text-sm text-muted-foreground/40">
-                  {insightCount} insights woven with this week's reads and rhythm
+                  Every strand — identity, captures, journal, actions, reads — woven into one view
                 </p>
               </div>
               <ThreadWeave insightCount={insightCount} />
             </div>
           )}
+          {activeTab === "experiments" && <ExperimentsSimple />}
           {activeTab === "lab" && <Lab embedded />}
           {activeTab === "ask" && <AskWeave />}
         </motion.div>
