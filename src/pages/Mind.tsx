@@ -41,7 +41,8 @@ const Mind = () => {
 
   const tabs = [
     { id: "identity" as MindTab, label: "Identity", icon: Compass },
-    { id: "thread" as MindTab, label: "Thread", icon: Route },
+    { id: "thread" as MindTab, label: "Through-line", icon: Route },
+    { id: "experiments" as MindTab, label: "Experiments", icon: Beaker },
     { id: "lab" as MindTab, label: "Lab", icon: FlaskConical },
     { id: "ask" as MindTab, label: "Ask", icon: MessageCircle },
   ];
